@@ -38,3 +38,12 @@ def leer_insumo(db: Session, insumo_id: int) -> schemas.Insumo:
 
 def listar_insumos(db: Session):
     return db.scalars(select(Insumo)).all()
+
+
+def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
+    # Verificamos que el insumo exista
+    db_insumo = leer_insumo(db, insumo_id)
+    db.execute(delete(Insumo).where(Insumo.id == insumo_id))
+    db.commit()
+    return db_insumo
+    
