@@ -18,3 +18,7 @@ def crear_insumo(insumo: schemas.InsumoCreate, db: Session = Depends(get_db)):
 @router.post("/{insumo_id}", response_model=schemas.Insumo)
 def leer_insumo(insumo_id: int, db: Session = Depends(get_db)):
     return services.leer_insumo(db, insumo_id)
+
+@router.get("/", response_model=list[schemas.Insumo])
+def listar_insumos(db: Session = Depends(get_db)):
+    return services.listar_insumos(db)

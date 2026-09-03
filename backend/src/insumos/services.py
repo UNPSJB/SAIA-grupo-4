@@ -34,3 +34,7 @@ def leer_insumo(db: Session, insumo_id: int) -> schemas.Insumo:
 
     # Si existe el insumo lo retorna
     return db_insumo
+
+
+def listar_insumos(db: Session):
+    return db.scalars(select(Insumo)).all()
