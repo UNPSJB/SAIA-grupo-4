@@ -10,3 +10,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/insumos", tags=["insumos"])
 
 # Rutas para Insumos
+
+@router.post("/", response_model=schemas.Insumo)
+def crear_insumo(insumo: schemas.InsumoCreate, db: Session = Depends(get_db)):
+    return services.crear_insumo(db, insumo)
+
+@router.post("/{insumo_id}", response_model=schemas.Insumo)
+def leer_insumo(insumo_id: int, db: Session = Depends(get_db)):
+    return services.leer_insumo(db, insumo_id)
