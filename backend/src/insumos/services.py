@@ -46,4 +46,23 @@ def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
     db.execute(delete(Insumo).where(Insumo.id == insumo_id))
     db.commit()
     return db_insumo
-    
+
+
+def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) -> schemas.InsumoUpdate:
+    db_insumo = leer_insumo(db, insumo_id)
+
+    # Verifica que no exista un insumo con el mismo nombre
+    db_insumo_duplicado = db.scalar(select(Insumo).where(Insumo.nombre == insumo.nombre))
+    if db_insumo_duplicado:
+        raise exceptions.NombreDuplicado()
+
+    # Modifica el insumo y lo sube a la db
+    db.execute(update(Insumo).where(Insumo.id == insumo_id).values(**insumo.model_dump()))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.BadRequest(detail="Ocurrio un error inesperado")
+
+    db.refresh(db_insumo)
+    return db_insumo
