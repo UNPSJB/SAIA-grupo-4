@@ -8,7 +8,8 @@ from src.insumos import exceptions
 
 
 class InsumoBase(BaseModel):
-    pass
+    nombre: str
+    unidad_medida: str
 
 class InsumoCreate(InsumoBase):
     pass
@@ -16,13 +17,11 @@ class InsumoCreate(InsumoBase):
 class InsumoUpdate(InsumoBase):
     pass
 
-
 class InsumoDelete(InsumoBase):
     pass
 
-
 class Insumo(InsumoBase):
-    pass
+    id: int
 
     # La siguiente opción nos permite instanciar schemas pydantic pasando modelos SQLAlchemy por parámetros.
     # De otro modo solo podríamos usar diccionarios.
