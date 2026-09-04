@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack} from '@chakra-ui/react';
+import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack, Text} from '@chakra-ui/react';
 import { FiSave, FiXCircle, FiBox} from 'react-icons/fi';
 
 interface FormValues {
@@ -9,11 +9,54 @@ interface FormValues {
 
 export const CrearInsumo = () => {
     const [datos, setDatos] = useState<FormValues>({nombre: '', unidad_medida: ''});
+    const [errores, setErrores] = useState<{ nombre?: string; unidad_medida?: string; otros?: string}>({});
 
     //Logica con la conexion con la API
-    const manejarEnvio = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault(); 
-        console.log('Datos listos para enviar a la base de datos:', datos);
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const nuevosErrores: { nombre?: string; unidad_medida?: string; otros?: string} = {};
+        
+        if (!datos.nombre.trim()) {
+            nuevosErrores.nombre = "El nombre es obligatorio"; 
+        } 
+        else {
+            // Verificamos que el nombre sean caracteres y no numeros o simbolos
+            const nombreValido = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{1,50}$/.test(datos.nombre);
+            if(!nombreValido) {
+                nuevosErrores.nombre = "Por favor, ingrese un nombre valido"    
+            }
+        }
+
+        if (!datos.unidad_medida.trim()) {
+            nuevosErrores.unidad_medida = "La unidad de medida es obligatoria";
+        }
+        
+        if (Object.keys(nuevosErrores).length > 0) {
+            setErrores(nuevosErrores);
+            return;
+        }
+
+        try {
+            const res = await fetch(
+                'http://127.0.0.1:8000/insumos/',
+                {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ datos }),
+                },
+            );
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || 'Error al crear el insumo');
+            }
+
+            setDatos({ nombre: '', unidad_medida: '' });
+            setErrores({}); 
+        } catch (err: any){
+            nuevosErrores.otros = err.message || "Error inesperado"
+            setErrores(nuevosErrores)
+        }
     };
 
 
@@ -24,25 +67,28 @@ export const CrearInsumo = () => {
                 Nuevo Insumo
             </Heading>
 
-            <form onSubmit={manejarEnvio}>
+            <form onSubmit={handleSubmit}>
                 <VStack gap={4}>
-                    <Field.Root required>
+                    <Field.Root>
                     <Field.Label fontSize="md" fontFamily="sans-serif">Nombre</Field.Label>
                         <Input
                         type="text"
                         placeholder="Ej: Arroz"
                         value={datos.nombre}
-                        onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
+                        onChange={(e) => {setDatos({ ...datos, nombre: e.target.value });
+                                          setErrores(prev => ({ ...prev, nombre: undefined }))}}
                         />
+                        {errores.nombre && <Text color="red.500" fontSize="sm">{errores.nombre}</Text>}
                     </Field.Root>
 
-                    <Field.Root required>
+                    <Field.Root>
                         <Field.Label fontSize="md" fontFamily="sans-serif">Unidad de medida</Field.Label>
                         <NativeSelectRoot>
                             <NativeSelectField 
                             placeholder="Selecciona una opción" 
                             value={datos.unidad_medida}
-                            onChange={(e) => setDatos({ ...datos, unidad_medida: e.target.value })}
+                            onChange={(e) => {setDatos({ ...datos, unidad_medida: e.target.value });
+                                              setErrores(prev => ({ ...prev, unidad_medida: undefined }))}}
                             >
                                 <option value="litros">Litros</option>
                                 <option value="kilogramos">Kilogramos</option>
@@ -50,6 +96,7 @@ export const CrearInsumo = () => {
                                 <option value="unidades">Unidades</option>
                             </NativeSelectField>
                         </NativeSelectRoot>
+                        {errores.unidad_medida && <Text color="red.500" fontSize="sm">{errores.unidad_medida}</Text>}
                     </Field.Root>
 
                     <HStack justify="center" width="100%">
@@ -62,6 +109,7 @@ export const CrearInsumo = () => {
                             Cancelar
                         </Button>
                     </HStack>
+                    {errores.otros && <Text color="red.500" fontSize="sm">{errores.otros}</Text>}
                 </VStack>
             </form>
         </Box>
