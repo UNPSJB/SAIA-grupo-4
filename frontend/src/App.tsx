@@ -1,5 +1,5 @@
 import { Box } from '@chakra-ui/react';
-import { CrearInsumo } from './componentes/CrearInsumo';
+import { CrearInsumo } from './componentes/insumo/CrearInsumo';
 
 export default function App() {
   return (

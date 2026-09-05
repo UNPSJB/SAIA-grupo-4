@@ -11,26 +11,27 @@ export const CrearInsumo = () => {
     const [datos, setDatos] = useState<FormValues>({nombre: '', unidad_medida: ''});
     const [errores, setErrores] = useState<{ nombre?: string; unidad_medida?: string; otros?: string}>({});
     const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
+    const [success, setSuccess] = useState(Boolean);
 
     //Logica con la conexion con la API
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const nuevosErrores: { nombre?: string; unidad_medida?: string; otros?: string} = {};
-        
+
+        setSuccess(false);
         if (!datos.nombre.trim()) {
-            nuevosErrores.nombre = "El nombre es obligatorio"; 
+            nuevosErrores.nombre = "Por favor, ingrese un nombre valido"; 
         } 
         else {
             // Verificamos que el nombre sean caracteres y no numeros o simbolos
             const nombreValido = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{1,50}$/.test(datos.nombre);
             if(!nombreValido) {
-                nuevosErrores.nombre = "Por favor, ingrese un nombre valido"    
+                nuevosErrores.nombre = "El nombre solo debe contener letras mayusculas o minusculas"    
             }
         }
 
         if (!datos.unidad_medida.trim()) {
-            nuevosErrores.unidad_medida = "La unidad de medida es obligatoria";
+            nuevosErrores.unidad_medida = "Por favor, ingrese una unidad de medida";
         }
         
         if (Object.keys(nuevosErrores).length > 0) {
@@ -41,12 +42,15 @@ export const CrearInsumo = () => {
         setLoading(true);
 
         try {
+            const nombre = datos.nombre.toLocaleLowerCase();
+            const unidad_medida = datos.unidad_medida;
+
             const res = await fetch(
                 'http://127.0.0.1:8000/insumos/',
                 {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ datos }),
+                body: JSON.stringify({nombre, unidad_medida}),
                 },
             );
 
@@ -64,9 +68,6 @@ export const CrearInsumo = () => {
 
             switch (errorCode) {
                 case '400':
-                mensajeError = 'Datos inválidos. Por favor, revise los campos.';
-                break;
-                case '409':
                 mensajeError = 'El insumo ya existe.';
                 break;
                 case '500':
