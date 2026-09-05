@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack, Text} from '@chakra-ui/react';
+import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack, Text, Alert} from '@chakra-ui/react';
 import { FiSave, FiXCircle, FiBox} from 'react-icons/fi';
 
 interface FormValues {
@@ -10,6 +10,8 @@ interface FormValues {
 export const CrearInsumo = () => {
     const [datos, setDatos] = useState<FormValues>({nombre: '', unidad_medida: ''});
     const [errores, setErrores] = useState<{ nombre?: string; unidad_medida?: string; otros?: string}>({});
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
 
     //Logica con la conexion con la API
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -36,6 +38,8 @@ export const CrearInsumo = () => {
             return;
         }
 
+        setLoading(true);
+
         try {
             const res = await fetch(
                 'http://127.0.0.1:8000/insumos/',
@@ -47,15 +51,34 @@ export const CrearInsumo = () => {
             );
 
             if (!res.ok) {
-                const msg = await res.text();
-                throw new Error(msg || 'Error al crear el insumo');
+                throw new Error(`Error ${res.status}`);
             }
 
             setDatos({ nombre: '', unidad_medida: '' });
             setErrores({}); 
+            setSuccess(true);
         } catch (err: any){
-            nuevosErrores.otros = err.message || "Error inesperado"
-            setErrores(nuevosErrores)
+            const errorCode = err.message?.match(/Error (\d+)/)?.[1] ?? '';
+            
+            let mensajeError = 'Ocurrió un error inesperado';
+
+            switch (errorCode) {
+                case '400':
+                mensajeError = 'Datos inválidos. Por favor, revise los campos.';
+                break;
+                case '409':
+                mensajeError = 'El insumo ya existe.';
+                break;
+                case '500':
+                mensajeError = 'Error interno del servidor. Intente más tarde.';
+                break;
+                default:
+                mensajeError = `Error ${errorCode || 'desconocido'}`;
+            }
+            nuevosErrores.otros = mensajeError;
+            setErrores(nuevosErrores);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -100,7 +123,7 @@ export const CrearInsumo = () => {
                     </Field.Root>
 
                     <HStack justify="center" width="100%">
-                        <Button type="submit" colorPalette="green">
+                        <Button loading={loading} loadingText="Guardando..." type="submit" colorPalette="green">
                             <FiSave/>
                             Guardar
                         </Button>
@@ -109,7 +132,20 @@ export const CrearInsumo = () => {
                             Cancelar
                         </Button>
                     </HStack>
-                    {errores.otros && <Text color="red.500" fontSize="sm">{errores.otros}</Text>}
+
+                    {errores.otros && 
+                    <Alert.Root status="error">
+                        <Alert.Indicator />
+                        <Alert.Title>{errores.otros}</Alert.Title>
+                    </Alert.Root>
+                    }
+
+                    {success && 
+                    <Alert.Root status="success">
+                        <Alert.Indicator />
+                        <Alert.Title>El insumo a sido cargado exitosamente!</Alert.Title>
+                    </Alert.Root>
+                    }
                 </VStack>
             </form>
         </Box>
