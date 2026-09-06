@@ -3,6 +3,7 @@ import { Box, Button, Heading, Table, HStack, Text, Alert, Spinner, Pagination, 
 import { FiList, FiEdit2, FiTrash2, FiPlus, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 interface Insumo {
+    id: number;
     nombre: string;
     unidad_medida: string;
 }
@@ -50,7 +51,7 @@ export const ListadoInsumos = ({ onCrear, onModificar, onEliminar }: ListadoInsu
   return (
     <Box maxW="4xl" mx="auto" mt={20} p={10} borderWidth="1px" borderRadius="lg" boxShadow="lg">
       <HStack justify="space-between" mb={6}>
-        <Heading size="2xl" color="green.600">
+        <Heading size="2xl" color="green">
           <FiList style={{ display: 'inline', marginRight: 8 }} />
           Insumos
         </Heading>
