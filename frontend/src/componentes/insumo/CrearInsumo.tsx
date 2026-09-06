@@ -7,7 +7,11 @@ interface FormValues {
   unidad_medida: string;
 }
 
-export const CrearInsumo = () => {
+interface CrearInsumoProps {
+  onCancelar?: () => void;
+}
+
+export const CrearInsumo = ({ onCancelar }: CrearInsumoProps) => {
     const [datos, setDatos] = useState<FormValues>({nombre: '', unidad_medida: ''});
     const [errores, setErrores] = useState<{ nombre?: string; unidad_medida?: string; otros?: string}>({});
     const [loading, setLoading] = useState(false);
@@ -128,7 +132,7 @@ export const CrearInsumo = () => {
                             <FiSave/>
                             Guardar
                         </Button>
-                        <Button colorPalette="red" variant="outline">
+                        <Button colorPalette="red" variant="outline" onClick={onCancelar}>
                             <FiXCircle/>
                             Cancelar
                         </Button>
