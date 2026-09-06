@@ -3,6 +3,7 @@ import { Box } from '@chakra-ui/react';
 import { CrearInsumo } from './componentes/insumo/CrearInsumo';
 import { ListadoInsumos } from './componentes/insumo/ListadoInsumo';
 import { ModificarInsumo } from './componentes/insumo/ModificarInsumo';
+import { EliminarInsumo } from './componentes/insumo/EliminarInsumo';
 
 interface Insumo {
   id: number;
@@ -15,12 +16,17 @@ type Vista = 'listado' | 'crear' | 'modificar';
 export default function App() {
   const [vista, setVista] = useState<Vista>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(null);
+  const [insumoEliminar, setInsumoEliminar] = useState<Insumo | null>(null);
+  const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const [refescar, setRefrescar] = useState(0);
 
   return (
     <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
-      {vista === 'listado' && (<ListadoInsumos 
+      {vista === 'listado' && (<ListadoInsumos
+            key={refescar}
             onCrear={() => setVista('crear')} 
-            onModificar={(insumo) => { setInsumoSeleccionado(insumo); setVista('modificar'); }} />)}
+            onModificar={(insumo) => { setInsumoSeleccionado(insumo); setVista('modificar'); }}
+            onEliminar={(insumo) => { setInsumoEliminar(insumo); setEliminarAbierto(true); }} />)}
       {vista === 'crear' && <CrearInsumo onCancelar={() => setVista('listado')} />}
       {vista === 'modificar' && insumoSeleccionado && (<ModificarInsumo
             insumo={insumoSeleccionado}
@@ -28,6 +34,13 @@ export default function App() {
             onGuardado={() => setVista('listado')}
         />
       )}
+      
+      <EliminarInsumo
+        insumo={insumoEliminar}
+        open={eliminarAbierto}
+        onCancelar={() => setEliminarAbierto(false)}
+        onEliminar={() => setRefrescar((prev) => prev + 1)}
+      />
     </Box>
   );
 }

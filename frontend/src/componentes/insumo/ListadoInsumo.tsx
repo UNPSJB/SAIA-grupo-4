@@ -94,7 +94,7 @@ export const ListadoInsumos = ({ onCrear, onModificar, onEliminar }: ListadoInsu
           </Table.Header>
           <Table.Body>
             {insPaginados.map((insumo) => (
-              <Table.Row key={insumo.nombre}>
+              <Table.Row key={insumo.id}>
                 <Table.Cell textTransform="capitalize">{insumo.nombre}</Table.Cell>
                 <Table.Cell textTransform="capitalize">{insumo.unidad_medida}</Table.Cell>
                 <Table.Cell textAlign="end">
