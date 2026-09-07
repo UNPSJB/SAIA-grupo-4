@@ -1,21 +1,27 @@
-from pydantic import BaseModel, ConfigDict, field_validator
-from src.insumos.models import Insumo
-from src.insumos import exceptions
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated, Optional
+from enum import Enum
 
 # Los siguientes schemas contienen atributos sin muchas restricciones de tipo.
 # Podemos crear atributos con ciertas reglas mediante el uso de un "Field" adecuado.
 # https://docs.pydantic.dev/latest/concepts/fields/
+class UnidadMedida(str, Enum):
+    LITROS = "litros"
+    KILOGRAMOS = "kilogramos"
+    GRAMOS = "gramos"
+    UNIDADES = "unidades"
 
 
 class InsumoBase(BaseModel):
-    nombre: str
-    unidad_medida: str
+    nombre: Annotated[str, Field(min_length=1, max_length=50, description="El nombre del insumo es obligatorio")]
+    unidad_medida: Annotated[UnidadMedida, Field(description="Unidad de medida del insumo")]
 
 class InsumoCreate(InsumoBase):
     pass
 
 class InsumoUpdate(InsumoBase):
-    pass
+    nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100, description="El nombre del equipo es obligatorio")]
+    unidad_medida: Annotated[Optional[UnidadMedida], Field(default=None, description="Unidad de medida del insumo")]
 
 class InsumoDelete(InsumoBase):
     pass
