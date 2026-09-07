@@ -91,7 +91,7 @@ export const CrearInsumo = ({ onCancelar }: CrearInsumoProps) => {
     return (
         <Box maxW="xl" mx="auto" mt={20} p={20} borderWidth="1px" borderRadius="lg" boxShadow="lg">
             <Heading size="4xl" mb={15} textAlign="left" color="green">
-                <FiBox/>
+                <FiBox style={{ display: 'inline', marginRight: 8 }}/>
                 Nuevo Insumo
             </Heading>
 

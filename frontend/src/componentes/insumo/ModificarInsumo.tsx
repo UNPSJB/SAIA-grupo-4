@@ -142,7 +142,7 @@ export const ModificarInsumo = ({ insumo, onCancelar, onGuardado }: ModificarIns
                     <HStack justify="center" width="100%">
                         <Button loading={loading} loadingText="Guardando..." type="submit" colorPalette="green">
                             <FiSave />
-                            Guardar cambios
+                            Guardar
                         </Button>
                         <Button colorPalette="red" variant="outline" onClick={onCancelar}>
                             <FiXCircle />
