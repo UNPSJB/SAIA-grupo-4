@@ -148,7 +148,7 @@ export const CrearInsumo = ({ onCancelar }: CrearInsumoProps) => {
                     {success && 
                     <Alert.Root status="success">
                         <Alert.Indicator />
-                        <Alert.Title>El insumo a sido cargado exitosamente!</Alert.Title>
+                        <Alert.Title>El insumo ha sido cargado exitosamente!</Alert.Title>
                     </Alert.Root>
                     }
                 </VStack>
