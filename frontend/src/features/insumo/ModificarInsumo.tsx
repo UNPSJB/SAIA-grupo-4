@@ -99,7 +99,7 @@ export const ModificarInsumo = ({ insumo, onCancelar, onGuardado }: ModificarIns
     return (
         <Box maxW="xl" mx="auto" mt={20} p={20} borderWidth="1px" borderRadius="lg" boxShadow="lg">
             <Heading size="4xl" mb={15} textAlign="left" color="green">
-                <FiEdit2 />
+                <FiEdit2 style={{ display: 'inline', marginRight: 8 }}/>
                 Modificar Insumo
             </Heading>
 
