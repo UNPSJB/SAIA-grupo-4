@@ -1,8 +1,8 @@
 from typing import List
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
-from persona import Persona
-from persona import schemas, exceptions
+from src.persona.models import Persona
+from src.persona import schemas, exceptions
 
 
 def crear_persona(

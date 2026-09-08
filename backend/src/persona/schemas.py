@@ -1,3 +1,4 @@
+from datetime import date
 from pydantic import BaseModel, ConfigDict
 
 class PersonaBase(BaseModel):
@@ -5,13 +6,12 @@ class PersonaBase(BaseModel):
     legajo: int
 
 class PersonaCreate(PersonaBase):
-    fecha_alta: str
+    fecha_alta: date
 
 class PersonaUpdate(PersonaBase):
-    fecha_alta: str
+    fecha_alta: date
 
-class PersonaResponse(PersonaBase):
+class Persona(PersonaBase):
     id: int
-    fecha_alta: str
-
+    fecha_alta: date
     model_config = ConfigDict(from_attributes=True)
