@@ -1,5 +1,5 @@
 import { Box, ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { EquiposPage } from './componentes/equipo/EquiposPage';
+import EquiposPage from './pages/EquiposPage';
 
 export default function App() {
   return (

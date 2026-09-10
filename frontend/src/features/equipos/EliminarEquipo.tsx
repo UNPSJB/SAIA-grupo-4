@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, Portal, Button, Text, Alert, HStack } from '@chakra-ui/react';
 import { FiTrash2, FiXCircle } from 'react-icons/fi';
-import type { Equipo } from './ListadoEquipo';
+import type { Equipo } from './types';
 
 
 interface EliminarEquipoProps {

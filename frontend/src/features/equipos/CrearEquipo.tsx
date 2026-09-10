@@ -88,8 +88,8 @@ export const CrearEquipo = ({ onCancelar }: CrearEquipoProps) => {
     };
 
     return (
-        <Box maxW="xl" mx="auto" mt={20} p={10} borderWidth="1px" borderRadius="lg" boxShadow="lg" bg="white">
-            <Heading size="2xl" mb={10} textAlign="left" color="blue.600">
+        <Box maxW="xl" mx="auto" mt={20} p={20} borderWidth="1px" borderRadius="lg" boxShadow="lg">
+            <Heading size="4xl" mb={15} textAlign="left" color="green">
                 <FiBox style={{ display: 'inline', marginRight: 8 }}/>
                 Nuevo Equipo
             </Heading>
@@ -141,8 +141,8 @@ export const CrearEquipo = ({ onCancelar }: CrearEquipoProps) => {
                         />
                     </Field.Root>
 
-                    <HStack justify="center" width="100%" mt={4}>
-                        <Button loading={loading} loadingText="Guardando..." type="submit" colorPalette="blue">
+                    <HStack justify="center" width="100%">
+                        <Button loading={loading} loadingText="Guardando..." type="submit" colorPalette="green">
                             <FiSave/> Guardar
                         </Button>
                         <Button colorPalette="red" variant="outline" onClick={onCancelar}>
@@ -151,14 +151,14 @@ export const CrearEquipo = ({ onCancelar }: CrearEquipoProps) => {
                     </HStack>
 
                     {errores.otros && 
-                        <Alert.Root status="error" mt={4}>
+                        <Alert.Root status="error">
                             <Alert.Indicator />
                             <Alert.Title>{errores.otros}</Alert.Title>
                         </Alert.Root>
                     }
 
                     {success && 
-                        <Alert.Root status="success" mt={4}>
+                        <Alert.Root status="success">
                             <Alert.Indicator />
                             <Alert.Title>¡El equipo ha sido cargado exitosamente!</Alert.Title>
                         </Alert.Root>

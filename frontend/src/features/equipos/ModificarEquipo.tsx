@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack, Text, Alert } from "@chakra-ui/react";
 import { FiSave, FiXCircle, FiEdit2 } from "react-icons/fi";
-import type { Equipo } from './ListadoEquipo';
-
-
+import type { Equipo } from './types';
 
 interface FormValues {
   nombre: string;
@@ -26,11 +24,9 @@ export const ModificarEquipo = ({ equipo, onCancelar, onGuardado }: ModificarEqu
     const [errores, setErrores] = useState<{ nombre?: string; categoria?: string; otros?: string }>({});
     const [loading, setLoading] = useState(false);
     
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const nuevosErrores: { nombre?: string; categoria?: string; otros?: string } = {};
-
     
         if (!datos.nombre.trim()) {
             nuevosErrores.nombre = "Por favor, ingrese un nombre válido";
@@ -90,8 +86,8 @@ export const ModificarEquipo = ({ equipo, onCancelar, onGuardado }: ModificarEqu
     };
 
     return (
-        <Box maxW="xl" mx="auto" mt={20} p={10} borderWidth="1px" borderRadius="lg" boxShadow="lg" bg="white">
-            <Heading size="2xl" mb={10} textAlign="left" color="blue.600">
+        <Box maxW="xl" mx="auto" mt={20} p={20} borderWidth="1px" borderRadius="lg" boxShadow="lg">
+            <Heading size="4xl" mb={15} textAlign="left" color="green">
                 <FiEdit2 style={{ display: 'inline', marginRight: 8 }}/>
                 Modificar Equipo
             </Heading>
@@ -140,8 +136,8 @@ export const ModificarEquipo = ({ equipo, onCancelar, onGuardado }: ModificarEqu
                         />
                     </Field.Root>
 
-                    <HStack justify="center" width="100%" mt={4}>
-                        <Button loading={loading} loadingText="Guardando..." type="submit" colorPalette="blue">
+                    <HStack justify="center" width="100%">
+                        <Button loading={loading} loadingText="Guardando..." type="submit" colorPalette="green">
                             <FiSave /> Guardar
                         </Button>
                         <Button colorPalette="red" variant="outline" onClick={onCancelar}>
@@ -150,7 +146,7 @@ export const ModificarEquipo = ({ equipo, onCancelar, onGuardado }: ModificarEqu
                     </HStack>
 
                     {errores.otros && 
-                        <Alert.Root status="error" mt={4}>
+                        <Alert.Root status="error">
                             <Alert.Indicator />
                             <Alert.Title>{errores.otros}</Alert.Title>
                         </Alert.Root>
