@@ -1,17 +1,9 @@
 import { useState } from "react";
 import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack, Text, Alert } from "@chakra-ui/react";
 import { FiSave, FiXCircle, FiEdit2 } from "react-icons/fi";
+import { useInsumoSubmit } from '../../utils/insumo/useInsumoSubmit';
+import type { FormValues, Insumo} from '../../utils/insumo/types';
 
-interface Insumo {
-  id: number;
-  nombre: string;
-  unidad_medida: string;
-}
-
-interface FormValues {
-  nombre: string;
-  unidad_medida: string;
-}
 
 interface ModificarInsumoProps {
     insumo: Insumo;
@@ -28,73 +20,15 @@ export const ModificarInsumo = ({ insumo, onCancelar, onGuardado }: ModificarIns
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const nuevosErrores: { nombre?: string; unidad_medida?: string; otros?: string } = {};
 
-        setSuccess(false);
-        if (!datos.nombre.trim()) {
-            nuevosErrores.nombre = "Por favor, ingrese un nombre valido";
-        } else {
-            const nombreValido = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{1,50}$/.test(datos.nombre);
-            if (!nombreValido) {
-                nuevosErrores.nombre = "El nombre solo debe contener letras mayusculas o minusculas";
-            }
-        }
-
-        if (!datos.unidad_medida.trim()) {
-            nuevosErrores.unidad_medida = "Por favor, ingrese una unidad de medida";
-        }
-
-        if (Object.keys(nuevosErrores).length > 0) {
-            setErrores(nuevosErrores);
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const nombre = datos.nombre.toLocaleLowerCase();
-            const unidad_medida = datos.unidad_medida;
-
-            const res = await fetch(
-                `http://127.0.0.1:8000/insumos/${insumo.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre, unidad_medida }),
-            });
-
-            if (!res.ok) {
-                throw new Error(`Error ${res.status}`);
-            }
-
-            setErrores({});
-            setSuccess(true);
-            onGuardado?.();
-        } catch (err: any) {
-            const errorCode = err.message?.match(/Error (\d+)/)?.[1] ?? '';
-
-            let mensajeError = 'No se pudo modificar el insumo.';
-
-            switch (errorCode) {
-                case '400':
-                    mensajeError = 'Datos inválidos.';
-                    break;
-                case '404':
-                    mensajeError = 'Insumo no existe.';
-                    break;
-                case '500':
-                    mensajeError = 'Error interno del servidor.';
-                    break;
-                default:
-                    mensajeError = `Error ${errorCode || 'desconocido'}`;
-            }
-            nuevosErrores.otros = mensajeError;
-            setErrores(nuevosErrores);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const handleSubmit = useInsumoSubmit({
+      endpoint: 'http://127.0.0.1:8000/insumos/',
+      method: 'PUT',
+      id: insumo.id,
+      onSuccess: () => {
+        onGuardado?.();
+      }
+    });
 
     return (
         <Box maxW="xl" mx="auto" mt={20} p={20} borderWidth="1px" borderRadius="lg" boxShadow="lg">
@@ -103,7 +37,7 @@ export const ModificarInsumo = ({ insumo, onCancelar, onGuardado }: ModificarIns
                 Modificar Insumo
             </Heading>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(e) => handleSubmit(e, datos, setDatos, setErrores, setLoading, setSuccess)}>
                 <VStack gap={4}>
                     <Field.Root>
                         <Field.Label fontSize="md" fontFamily="sans-serif">Nombre</Field.Label>

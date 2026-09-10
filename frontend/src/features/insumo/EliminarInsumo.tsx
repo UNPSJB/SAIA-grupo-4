@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { Dialog, Portal, Button, Text, Alert, HStack } from '@chakra-ui/react';
 import { FiTrash2, FiXCircle } from 'react-icons/fi';
-
-interface Insumo {
-  id: number;
-  nombre: string;
-  unidad_medida: string;
-}
+import type { Insumo } from '../../utils/insumo/types';
 
 interface EliminarInsumoProps {
     insumo: Insumo | null;

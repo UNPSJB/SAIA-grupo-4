@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { Box, Button, Input, VStack, Heading, Field, NativeSelectRoot, NativeSelectField, HStack, Text, Alert} from '@chakra-ui/react';
 import { FiSave, FiXCircle, FiBox} from 'react-icons/fi';
-
-interface FormValues {
-  nombre: string;
-  unidad_medida: string;
-}
+import { useInsumoSubmit } from '../../utils/insumo/useInsumoSubmit';
+import type { FormValues } from '../../utils/insumo/types';
 
 interface CrearInsumoProps {
   onCancelar?: () => void;
@@ -15,77 +12,16 @@ export const CrearInsumo = ({ onCancelar }: CrearInsumoProps) => {
     const [datos, setDatos] = useState<FormValues>({nombre: '', unidad_medida: ''});
     const [errores, setErrores] = useState<{ nombre?: string; unidad_medida?: string; otros?: string}>({});
     const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState(Boolean);
+    const [success, setSuccess] = useState(false);
 
-    //Logica con la conexion con la API
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const nuevosErrores: { nombre?: string; unidad_medida?: string; otros?: string} = {};
 
-        setSuccess(false);
-        if (!datos.nombre.trim()) {
-            nuevosErrores.nombre = "Por favor, ingrese un nombre valido"; 
-        } 
-        else {
-            // Verificamos que el nombre sean caracteres y no numeros o simbolos
-            const nombreValido = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{1,50}$/.test(datos.nombre);
-            if(!nombreValido) {
-                nuevosErrores.nombre = "El nombre solo debe contener letras mayusculas o minusculas"    
-            }
-        }
-
-        if (!datos.unidad_medida.trim()) {
-            nuevosErrores.unidad_medida = "Por favor, ingrese una unidad de medida";
-        }
-        
-        if (Object.keys(nuevosErrores).length > 0) {
-            setErrores(nuevosErrores);
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const nombre = datos.nombre.toLocaleLowerCase();
-            const unidad_medida = datos.unidad_medida;
-
-            const res = await fetch(
-                'http://127.0.0.1:8000/insumos/',
-                {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({nombre, unidad_medida}),
-                },
-            );
-
-            if (!res.ok) {
-                throw new Error(`Error ${res.status}`);
-            }
-
-            setDatos({ nombre: '', unidad_medida: '' });
-            setErrores({}); 
-            setSuccess(true);
-        } catch (err: any){
-            const errorCode = err.message?.match(/Error (\d+)/)?.[1] ?? '';
-            
-            let mensajeError = 'Ocurrió un error inesperado';
-
-            switch (errorCode) {
-                case '400':
-                mensajeError = 'El insumo ya existe.';
-                break;
-                case '500':
-                mensajeError = 'Error interno del servidor. Intente más tarde.';
-                break;
-                default:
-                mensajeError = `Error ${errorCode || 'desconocido'}`;
-            }
-            nuevosErrores.otros = mensajeError;
-            setErrores(nuevosErrores);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const handleSubmit = useInsumoSubmit({
+      endpoint: 'http://127.0.0.1:8000/insumos/',
+      method: 'POST',
+      onSuccess: () => {
+        // opcional: acciones tras crear
+      }
+    });
 
 
     return (
@@ -95,7 +31,7 @@ export const CrearInsumo = ({ onCancelar }: CrearInsumoProps) => {
                 Nuevo Insumo
             </Heading>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(e) => handleSubmit(e, datos, setDatos, setErrores, setLoading, setSuccess)}>
                 <VStack gap={4}>
                     <Field.Root>
                     <Field.Label fontSize="md" fontFamily="sans-serif">Nombre</Field.Label>
