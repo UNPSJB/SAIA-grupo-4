@@ -74,8 +74,8 @@ export const ModificarInsumo = ({ insumo, onCancelar, onGuardado }: ModificarIns
               error={errores.unidad_medida}
             />
             <FormActions>
-              <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} />
               <SubmitButton text="Guardar" icon={FiSave} loading={loading} type="submit" />
+              <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} />
             </FormActions>
 
             {errores.otros && <AlertMessage type="error" message={errores.otros} />}
