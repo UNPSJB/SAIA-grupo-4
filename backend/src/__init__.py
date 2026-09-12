@@ -1,3 +1,2 @@
-#from src.mascotas.schemas import Mascota
-#from src.personas.schemas import Persona
 from src.equipos.schemas import Equipo
+from src.insumos.schemas import Insumo

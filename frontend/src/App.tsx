@@ -1,6 +1,7 @@
 import { Box, ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import EquiposPage from './pages/EquiposPage';
+import InsumoPage from './pages/InsumoPage';
 
 export default function App() {
   return (
@@ -15,7 +16,8 @@ export default function App() {
             <Route path="/equipos" element={<EquiposPage />} />
             
             {/* Aca irian las otras rutas */}
-            
+            <Route path='/insumos' element={<InsumoPage/>}/>
+
             {/* Ruta por si se escribe una URL que no existe */}
             <Route path="*" element={
               <Box p={4} textAlign="center">
