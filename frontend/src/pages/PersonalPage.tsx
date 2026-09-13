@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
 import { CrearPersona } from '../features/personal/CrearPersona';
 import { ListadoPersonal } from '../features/personal/ListadoPersonal';
@@ -14,11 +15,8 @@ interface Persona {
 
 type Vista = 'listado' | 'crear' | 'modificar';
 
-interface PersonaPageProps {
-  onVerCapacidades?: () => void;
-}
-
-export default function PersonaPage({ onVerCapacidades }: PersonaPageProps) {
+export default function PersonaPage() {
+  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>('listado');
   const [personaSeleccionada, setPersonaSeleccionada] = useState<Persona | null>(null);
   const [personaEliminar, setPersonaEliminar] = useState<Persona | null>(null);
@@ -32,7 +30,7 @@ export default function PersonaPage({ onVerCapacidades }: PersonaPageProps) {
             onCrear={() => setVista('crear')}
             onModificar={(persona) => { setPersonaSeleccionada(persona); setVista('modificar'); }}
             onEliminar={(persona) => { setPersonaEliminar(persona); setEliminarAbierto(true); }}
-            onVerCapacidades={onVerCapacidades} />)}
+            onVerCapacidades={() => navigate('/capacidades')} />)}
       {vista === 'crear' && <CrearPersona onCancelar={() => setVista('listado')} />}
       {vista === 'modificar' && personaSeleccionada && (<ModificarPersona
             persona={personaSeleccionada}

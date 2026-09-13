@@ -4,12 +4,7 @@ import { CrearInsumo } from '../features/insumo/CrearInsumo';
 import { ListadoInsumos } from '../features/insumo/ListadoInsumo';
 import { ModificarInsumo } from '../features/insumo/ModificarInsumo';
 import { EliminarInsumo } from '../features/insumo/EliminarInsumo';
-
-interface Insumo {
-  id: number;
-  nombre: string;
-  unidad_medida: string;
-}
+import type { Insumo } from '../utils/insumo/types';
 
 type Vista = 'listado' | 'crear' | 'modificar';
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Button } from '@chakra-ui/react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { CrearCapacidad } from '../features/capacidad/CrearCapacidad';
@@ -12,24 +13,19 @@ interface Capacidad {
 
 type Vista = 'listado' | 'crear' | 'modificar';
 
-interface CapacidadPageProps {
-  onVolver?: () => void;
-}
-
-export default function CapacidadPage({ onVolver }: CapacidadPageProps) {
+export default function CapacidadPage() {
+  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>('listado');
   const [capacidadSeleccionada, setCapacidadSeleccionada] = useState<Capacidad | null>(null);
 
   return (
     <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
-      {onVolver && (
-        <Box maxW="4xl" mx="auto" mb={-4} textAlign="left">
-          <Button variant="ghost" colorPalette="green" onClick={onVolver}>
-            <FiArrowLeft />
-            Volver a Personal
-          </Button>
-        </Box>
-      )}
+      <Box maxW="4xl" mx="auto" mb={-4} textAlign="left">
+        <Button variant="ghost" colorPalette="green" onClick={() => navigate('/personal')}>
+          <FiArrowLeft />
+          Volver a Personal
+        </Button>
+      </Box>
       {vista === 'listado' && (<ListadoCapacidades
             onCrear={() => setVista('crear')}
             onModificar={(capacidad) => { setCapacidadSeleccionada(capacidad); setVista('modificar'); }} />)}

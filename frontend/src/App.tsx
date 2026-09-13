@@ -1,40 +1,33 @@
-import { useState } from 'react';
-import { Box, ChakraProvider, defaultSystem, HStack, Button } from '@chakra-ui/react';
-import { FiBox, FiUsers } from 'react-icons/fi';
+import { Box, ChakraProvider, defaultSystem } from '@chakra-ui/react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import EquiposPage from './pages/EquiposPage';
 import InsumoPage from './pages/InsumoPage';
 import PersonaPage from './pages/PersonalPage';
 import CapacidadPage from './pages/CapacidadPage';
 
-type Modulo = 'insumo' | 'persona' | 'capacidad';
-
 export default function App() {
-  const [modulo, setModulo] = useState<Modulo>('persona');
-
   return (
     <ChakraProvider value={defaultSystem}>
       <Box bg="gray.100" minH="100vh" w="100%">
-        <HStack justify="center" gap={4} pt={6}>
-          <Button
-            variant={modulo === 'persona' || modulo === 'capacidad' ? 'solid' : 'outline'}
-            colorPalette="green"
-            onClick={() => setModulo('persona')}
-          >
-            <FiUsers />
-            Personal
-          </Button>
-          <Button
-            variant={modulo === 'insumo' ? 'solid' : 'outline'}
-            colorPalette="green"
-            onClick={() => setModulo('insumo')}
-          >
-            <FiBox />
-            Insumos
-          </Button>
-        </HStack>
+        <BrowserRouter>
+          <Routes>
+            {/* Si se va a la raíz ("/"), redirige a "/equipos" por ahora */}
+            <Route path="/" element={<Navigate to="/equipos" replace />} />
 
-        {modulo === 'persona' && <PersonaPage onVerCapacidades={() => setModulo('capacidad')} />}
-        {modulo === 'insumo' && <InsumoPage />}
-        {modulo === 'capacidad' && <CapacidadPage onVolver={() => setModulo('persona')} />}
+            {/* Rutas activas */}
+            <Route path="/equipos" element={<EquiposPage />} />
+            <Route path="/insumos" element={<InsumoPage />} />
+            <Route path="/personal" element={<PersonaPage />} />
+            <Route path="/capacidades" element={<CapacidadPage />} />
+
+            {/* Ruta por si se escribe una URL que no existe */}
+            <Route path="*" element={
+              <Box p={4} textAlign="center">
+                <h2>Página no encontrada</h2>
+              </Box>
+            } />
+          </Routes>
+        </BrowserRouter>
       </Box>
     </ChakraProvider>
   );

@@ -1,26 +1,27 @@
 import { useState } from 'react';
 import { Dialog, Portal, Button, Text, Alert, HStack } from '@chakra-ui/react';
 import { FiTrash2, FiXCircle } from 'react-icons/fi';
-import type { Insumo } from '../../utils/insumo/types';
+import type { Equipo } from './types';
 
-interface EliminarInsumoProps {
-    insumo: Insumo | null;
+
+interface EliminarEquipoProps {
+    equipo: Equipo | null;
     open: boolean;
     onCancelar: () => void;
     onEliminar?: () => void;
 }
 
-export const EliminarInsumo = ({ insumo, open, onCancelar, onEliminar }: EliminarInsumoProps) => {
+export const EliminarEquipo = ({ equipo, open, onCancelar, onEliminar }: EliminarEquipoProps) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     const handleEliminar = async () => {
-        if (!insumo) return;
+        if (!equipo) return;
         setLoading(true);
         setError("");
 
         try {
-            const res = await fetch(`http://127.0.0.1:8000/insumos/${insumo.id}`, {
+            const res = await fetch(`http://127.0.0.1:8000/equipos/${equipo.id}`, {
                 method: 'DELETE',
             });
 
@@ -33,10 +34,10 @@ export const EliminarInsumo = ({ insumo, open, onCancelar, onEliminar }: Elimina
         } catch (err: any) {
             const errorCode = err.message?.match(/Error (\d+)/)?.[1] ?? "";
 
-            let mensajeError = "No se pudo eliminar el insumo.";
+            let mensajeError = "No se pudo eliminar el equipo.";
             switch (errorCode) {
                 case "404":
-                    mensajeError = "El insumo no existe.";
+                    mensajeError = "El equipo no existe.";
                     break;
                 case "500":
                     mensajeError = "Error interno del servidor.";
@@ -57,14 +58,14 @@ export const EliminarInsumo = ({ insumo, open, onCancelar, onEliminar }: Elimina
                 <Dialog.Positioner>
                     <Dialog.Content>
                         <Dialog.Header>
-                            <Dialog.Title>Eliminar Insumo</Dialog.Title>
+                            <Dialog.Title>Eliminar Equipo</Dialog.Title>
                         </Dialog.Header>
 
                         <Dialog.Body>
                             <Text>
-                                ¿Estás seguro que querés eliminar {" "}
+                                ¿Estás seguro que querés eliminar el equipo {" "}
                                 <Text as="span" fontWeight="bold" textTransform="capitalize">
-                                    {insumo?.nombre}
+                                    {equipo?.nombre}
                                 </Text>
                                 ? Esta acción no se puede deshacer.
                             </Text>
@@ -80,8 +81,7 @@ export const EliminarInsumo = ({ insumo, open, onCancelar, onEliminar }: Elimina
                         <Dialog.Footer>
                             <HStack gap={2}>
                                 <Button variant="outline" onClick={onCancelar} disabled={loading}>
-                                    <FiXCircle />
-                                    Cancelar
+                                    <FiXCircle /> Cancelar
                                 </Button>
                                 <Button 
                                     colorPalette="red"
@@ -89,8 +89,7 @@ export const EliminarInsumo = ({ insumo, open, onCancelar, onEliminar }: Elimina
                                     loading={loading}
                                     loadingText="Eliminando..."
                                 >
-                                    <FiTrash2 />
-                                    Eliminar
+                                    <FiTrash2 /> Eliminar
                                 </Button>
                             </HStack>
                         </Dialog.Footer>
@@ -99,4 +98,4 @@ export const EliminarInsumo = ({ insumo, open, onCancelar, onEliminar }: Elimina
             </Portal>
         </Dialog.Root>
     );
-}
+};

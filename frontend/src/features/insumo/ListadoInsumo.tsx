@@ -1,12 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Box, Button, Heading, Table, HStack, Text, Alert, Spinner, Pagination, ButtonGroup, IconButton } from "@chakra-ui/react";
 import { FiList, FiEdit2, FiTrash2, FiPlus, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-
-interface Insumo {
-    id: number;
-    nombre: string;
-    unidad_medida: string;
-}
+import type { Insumo } from '../../utils/insumo/types';
 
 interface ListadoInsumosProps {
   onCrear?: () => void;
