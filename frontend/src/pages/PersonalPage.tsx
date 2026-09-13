@@ -14,7 +14,11 @@ interface Persona {
 
 type Vista = 'listado' | 'crear' | 'modificar';
 
-export default function PersonaPage() {
+interface PersonaPageProps {
+  onVerCapacidades?: () => void;
+}
+
+export default function PersonaPage({ onVerCapacidades }: PersonaPageProps) {
   const [vista, setVista] = useState<Vista>('listado');
   const [personaSeleccionada, setPersonaSeleccionada] = useState<Persona | null>(null);
   const [personaEliminar, setPersonaEliminar] = useState<Persona | null>(null);
@@ -27,7 +31,8 @@ export default function PersonaPage() {
             key={refrescar}
             onCrear={() => setVista('crear')}
             onModificar={(persona) => { setPersonaSeleccionada(persona); setVista('modificar'); }}
-            onEliminar={(persona) => { setPersonaEliminar(persona); setEliminarAbierto(true); }} />)}
+            onEliminar={(persona) => { setPersonaEliminar(persona); setEliminarAbierto(true); }}
+            onVerCapacidades={onVerCapacidades} />)}
       {vista === 'crear' && <CrearPersona onCancelar={() => setVista('listado')} />}
       {vista === 'modificar' && personaSeleccionada && (<ModificarPersona
             persona={personaSeleccionada}

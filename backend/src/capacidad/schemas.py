@@ -1,9 +1,11 @@
 from datetime import date
-from pydantic import BaseModel, ConfigDict
+from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
 
 
 class CapacidadBase(BaseModel):
-    nombre: str
+    nombre: Annotated[str, Field(min_length=1, max_length=100, description="El nombre de la capacidad es obligatorio")]
 
 
 class CapacidadCreate(CapacidadBase):
@@ -11,7 +13,7 @@ class CapacidadCreate(CapacidadBase):
 
 
 class CapacidadUpdate(CapacidadBase):
-    pass
+    nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100, description="El nombre de la capacidad es obligatorio")]
 
 
 class Capacidad(CapacidadBase):
@@ -19,10 +21,12 @@ class Capacidad(CapacidadBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# Schemas para la asignación de una Capacidad a una Persona
+
 class PersonaCapacidadBase(BaseModel):
     capacidad_id: int
     fecha_desde: date
-    fecha_hasta: date | None = None
+    fecha_hasta: Optional[date] = None
 
 
 class PersonaCapacidadCreate(PersonaCapacidadBase):
@@ -34,13 +38,14 @@ class PersonaCapacidad(BaseModel):
     persona_id: int
     capacidad_id: int
     fecha_desde: date
-    fecha_hasta: date | None = None
+    fecha_hasta: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class PersonaCapacidadConDetalle(BaseModel):
     id: int
     persona_nombre: str
     fecha_desde: date
-    fecha_hasta: date | None = None
+    fecha_hasta: Optional[date] = None
     capacidad: Capacidad
     model_config = ConfigDict(from_attributes=True)

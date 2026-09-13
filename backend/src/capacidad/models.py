@@ -4,12 +4,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
 
-
 class Capacidad(ModeloBase):
     __tablename__ = "capacidad"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    nombre: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
     personas: Mapped[list["PersonaCapacidad"]] = relationship(
         back_populates="capacidad"

@@ -64,6 +64,7 @@ def delete_persona(
         persona_id
     )
 
+
 @router.post("/{persona_id}/capacidades", response_model=capacidad_schemas.PersonaCapacidad)
 def asignar_capacidad_a_persona(
     persona_id: int,
@@ -72,6 +73,7 @@ def asignar_capacidad_a_persona(
 ):
     return capacidad_services.asignar_capacidad(db, persona_id, datos)
 
+
 @router.delete("/{persona_id}/capacidades/{capacidad_id}", response_model=capacidad_schemas.PersonaCapacidad)
 def quitar_capacidad_a_persona(
     persona_id: int,
@@ -79,6 +81,7 @@ def quitar_capacidad_a_persona(
     db: Session = Depends(get_db)
 ):
     return capacidad_services.quitar_capacidad(db, persona_id, capacidad_id)
+
 
 @router.get("/{persona_id}/capacidades", response_model=list[capacidad_schemas.PersonaCapacidadConDetalle])
 def listar_capacidades_de_persona(
