@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from src.database import engine
 from src.models import ModeloBase
 
+
 # Importamos la configuración validada por Pydantic
 from src.config import settings
 
@@ -10,8 +11,10 @@ from src.config import settings
 from src.logger import setup_logging
 
 # Importamos los routers desde nuestros modulos
-from src.personas.router import router as personas_router
-from src.mascotas.router import router as mascotas_router
+from src.persona.router import router as persona_router
+from src.capacidad.router import router as capacidad_router
+from src.equipos.router import router as equipos_router
+from src.insumos.router import router as insumos_router
 from fastapi.middleware.cors import CORSMiddleware
 
 ENV = settings.ENV.upper()
@@ -41,5 +44,7 @@ app.add_middleware(
 
 
 # asociamos los routers a nuestra app
-app.include_router(personas_router)
-app.include_router(mascotas_router)
+app.include_router(persona_router)
+app.include_router(capacidad_router)
+app.include_router(equipos_router)
+app.include_router(insumos_router)
