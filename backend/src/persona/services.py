@@ -40,7 +40,7 @@ def leer_persona(
     )
 
     if db_persona is None:
-        raise exceptions.PersonaNoEncontrado()
+        raise exceptions.PersonaNoEncontrada()
 
     return db_persona
 

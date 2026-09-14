@@ -1,11 +1,16 @@
-import { useState } from 'react';
-import { Box, Button, Input, VStack, Heading, Field, HStack, Text, Alert } from '@chakra-ui/react';
+import { useState, useEffect } from 'react';
+import { Box, Button, Input, VStack, Heading, Field, HStack, Text, Alert, Checkbox } from '@chakra-ui/react';
 import { FiSave, FiXCircle, FiUser } from 'react-icons/fi';
 
 interface FormValues {
   nombre: string;
   legajo: string;
   fecha_alta: string;
+}
+
+interface Capacidad {
+  id: number;
+  nombre: string;
 }
 
 interface CrearPersonaProps {
@@ -17,6 +22,23 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
     const [errores, setErrores] = useState<{ nombre?: string; legajo?: string; fecha_alta?: string; otros?: string }>({});
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [capacidadesDisponibles, setCapacidadesDisponibles] = useState<Capacidad[]>([]);
+    const [capacidadesSeleccionadas, setCapacidadesSeleccionadas] = useState<number[]>([]);
+
+    useEffect(() => {
+        fetch('http://127.0.0.1:8000/capacidades/')
+            .then((res) => res.json())
+            .then((data) => setCapacidadesDisponibles(data))
+            .catch(() => {});
+    }, []);
+
+    const toggleCapacidad = (capacidadId: number) => {
+        setCapacidadesSeleccionadas((prev) =>
+            prev.includes(capacidadId)
+                ? prev.filter((id) => id !== capacidadId)
+                : [...prev, capacidadId]
+        );
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -68,7 +90,24 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
                 throw new Error(`Error ${res.status}`);
             }
 
+            const nuevaPersona = await res.json();
+
+            for (const capacidadId of capacidadesSeleccionadas) {
+                await fetch(
+                    `http://127.0.0.1:8000/personal/${nuevaPersona.id}/capacidades`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            capacidad_id: capacidadId,
+                            fecha_desde: datos.fecha_alta,
+                        }),
+                    },
+                );
+            }
+
             setDatos({ nombre: '', legajo: '', fecha_alta: '' });
+            setCapacidadesSeleccionadas([]);
             setErrores({});
             setSuccess(true);
         } catch (err: any) {
@@ -141,6 +180,26 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
                             }}
                         />
                         {errores.fecha_alta && <Text color="red.500" fontSize="sm">{errores.fecha_alta}</Text>}
+                    </Field.Root>
+
+                    <Field.Root>
+                        <Field.Label fontSize="md" fontFamily="sans-serif">Capacidades</Field.Label>
+                        <VStack align="start" gap={2}>
+                            {capacidadesDisponibles.map((cap) => (
+                                <Checkbox.Root
+                                    key={cap.id}
+                                    checked={capacidadesSeleccionadas.includes(cap.id)}
+                                    onCheckedChange={() => toggleCapacidad(cap.id)}
+                                >
+                                    <Checkbox.HiddenInput />
+                                    <Checkbox.Control />
+                                    <Checkbox.Label textTransform="capitalize">{cap.nombre}</Checkbox.Label>
+                                </Checkbox.Root>
+                            ))}
+                            {capacidadesDisponibles.length === 0 && (
+                                <Text fontSize="sm" color="gray.500">Todavía no hay capacidades cargadas.</Text>
+                            )}
+                        </VStack>
                     </Field.Root>
 
                     <HStack justify="center" width="100%">

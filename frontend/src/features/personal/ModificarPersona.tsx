@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Box, Button, Input, VStack, Heading, Field, HStack, Text, Alert } from "@chakra-ui/react";
+import { useState, useEffect } from "react";
+import { Box, Button, Input, VStack, Heading, Field, HStack, Text, Alert, Checkbox } from "@chakra-ui/react";
 import { FiSave, FiXCircle, FiEdit2 } from "react-icons/fi";
 
 interface Persona {
@@ -13,6 +13,11 @@ interface FormValues {
   nombre: string;
   legajo: string;
   fecha_alta: string;
+}
+
+interface Capacidad {
+  id: number;
+  nombre: string;
 }
 
 interface ModificarPersonaProps {
@@ -30,6 +35,37 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
     const [errores, setErrores] = useState<{ nombre?: string; legajo?: string; fecha_alta?: string; otros?: string }>({});
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [capacidadesDisponibles, setCapacidadesDisponibles] = useState<Capacidad[]>([]);
+    const [capacidadesAsignadas, setCapacidadesAsignadas] = useState<number[]>([]);
+    const [capacidadesSeleccionadas, setCapacidadesSeleccionadas] = useState<number[]>([]);
+
+    useEffect(() => {
+        fetch('http://127.0.0.1:8000/capacidades/')
+            .then((res) => res.json())
+            .then((data) => setCapacidadesDisponibles(data))
+            .catch(() => {});
+
+        fetch(`http://127.0.0.1:8000/personal/${persona.id}/capacidades`)
+            .then((res) => res.json())
+            .then((data) => {
+                // El endpoint devuelve también asignaciones históricas (ya cerradas
+                // con fecha_hasta), así que nos quedamos solo con las activas.
+                const activas = data
+                    .filter((asignacion: any) => asignacion.fecha_hasta === null)
+                    .map((asignacion: any) => asignacion.capacidad.id);
+                setCapacidadesAsignadas(activas);
+                setCapacidadesSeleccionadas(activas);
+            })
+            .catch(() => {});
+    }, [persona.id]);
+
+    const toggleCapacidad = (capacidadId: number) => {
+        setCapacidadesSeleccionadas((prev) =>
+            prev.includes(capacidadId)
+                ? prev.filter((id) => id !== capacidadId)
+                : [...prev, capacidadId]
+        );
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -79,6 +115,36 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
                 throw new Error(`Error ${res.status}`);
             }
 
+            const aAsignar = capacidadesSeleccionadas.filter(
+                (id) => !capacidadesAsignadas.includes(id)
+            );
+            const aQuitar = capacidadesAsignadas.filter(
+                (id) => !capacidadesSeleccionadas.includes(id)
+            );
+            const hoy = new Date().toISOString().slice(0, 10);
+
+            for (const capacidadId of aAsignar) {
+                await fetch(
+                    `http://127.0.0.1:8000/personal/${persona.id}/capacidades`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            capacidad_id: capacidadId,
+                            fecha_desde: hoy,
+                        }),
+                    },
+                );
+            }
+
+            for (const capacidadId of aQuitar) {
+                await fetch(
+                    `http://127.0.0.1:8000/personal/${persona.id}/capacidades/${capacidadId}`,
+                    { method: 'DELETE' },
+                );
+            }
+
+            setCapacidadesAsignadas(capacidadesSeleccionadas);
             setErrores({});
             setSuccess(true);
             onGuardado?.();
@@ -153,6 +219,26 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
                             }}
                         />
                         {errores.fecha_alta && <Text color="red.500" fontSize="sm">{errores.fecha_alta}</Text>}
+                    </Field.Root>
+
+                    <Field.Root>
+                        <Field.Label fontSize="md" fontFamily="sans-serif">Capacidades</Field.Label>
+                        <VStack align="start" gap={2}>
+                            {capacidadesDisponibles.map((cap) => (
+                                <Checkbox.Root
+                                    key={cap.id}
+                                    checked={capacidadesSeleccionadas.includes(cap.id)}
+                                    onCheckedChange={() => toggleCapacidad(cap.id)}
+                                >
+                                    <Checkbox.HiddenInput />
+                                    <Checkbox.Control />
+                                    <Checkbox.Label textTransform="capitalize">{cap.nombre}</Checkbox.Label>
+                                </Checkbox.Root>
+                            ))}
+                            {capacidadesDisponibles.length === 0 && (
+                                <Text fontSize="sm" color="gray.500">Todavía no hay capacidades cargadas.</Text>
+                            )}
+                        </VStack>
                     </Field.Root>
 
                     <HStack justify="center" width="100%">
