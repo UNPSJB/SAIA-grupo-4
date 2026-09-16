@@ -72,9 +72,34 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVerCapacid
     cargarPersonas();
   }, []);
 
-  const esVigente = (fechaHasta: string | null) => {
-    if (!fechaHasta) return true;
-    return new Date(fechaHasta) >= new Date();
+  type EstadoCapacidad = 'vigente' | 'por_vencer' | 'vencida';
+
+  const colorPorEstado: Record<EstadoCapacidad, string> = {
+    vigente: 'green',
+    por_vencer: 'red',
+    vencida: 'gray',
+  };
+
+  const estadoCapacidad = (fechaHasta: string | null): EstadoCapacidad => {
+    if (!fechaHasta) {
+      return 'vigente';
+    }
+    // Comparamos días de calendario, no instantes: normalizamos "hoy" a
+    // medianoche UTC del día local actual, igual que "new Date('YYYY-MM-DD')"
+    // ya parsea fechaHasta. Si no, mezclar hora local vs. medianoche UTC hacía
+    // que una capacidad que vence hoy mismo diera 'vencida' antes de tiempo.
+    const hoy = new Date();
+    const hoyUTC = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const fechaVencimiento = new Date(fechaHasta);
+    const diffDias = (fechaVencimiento.getTime() - hoyUTC) / (1000 * 60 * 60 * 24);
+
+    if (diffDias < 0) {
+      return 'vencida';
+    } else if (diffDias <= 30) { // Umbral de 30 días para 'por_vencer'
+      return 'por_vencer';
+    } else {
+      return 'vigente';
+    }
   };
 
   const personasPaginadas = useMemo(() => {
@@ -148,7 +173,7 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVerCapacid
                     {(capacidadesPorPersona[persona.id] ?? []).map((pc) => (
                       <Badge
                         key={pc.id}
-                        colorPalette={esVigente(pc.fecha_hasta) ? 'green' : 'gray'}
+                        colorPalette={colorPorEstado[estadoCapacidad(pc.fecha_hasta)]}
                         variant="subtle"
                       >
                         {pc.capacidad.nombre}
