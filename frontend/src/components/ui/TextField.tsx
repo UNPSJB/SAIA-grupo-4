@@ -1,10 +1,12 @@
-import { Field, Input, Text } from '@chakra-ui/react';
+import { Field, Input, Text } from "@chakra-ui/react";
 
 interface TextFieldProps {
   label: string;
   placeholder?: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => void;
   error?: string;
   disabled?: boolean;
 }
@@ -18,14 +20,20 @@ export const TextField = ({
   disabled = false,
 }: TextFieldProps) => (
   <Field.Root>
-    <Field.Label fontSize="md" fontFamily="sans-serif">{label}</Field.Label>
+    <Field.Label fontSize='md' fontFamily='sans-serif'>
+      {label}
+    </Field.Label>
     <Input
-      type="text"
+      type='text'
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      disabled={disabled}
+      readOnly={disabled}
     />
-    {error && <Text color="red.500" fontSize="sm">{error}</Text>}
+    {error && (
+      <Text color='red.500' fontSize='sm'>
+        {error}
+      </Text>
+    )}
   </Field.Root>
 );
