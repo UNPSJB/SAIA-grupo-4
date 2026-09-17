@@ -6,3 +6,4 @@ export { FormHeader } from "../layout/FormHeader";
 export { SelectField } from "./SelectField";
 export { SubmitButton } from "./SubmitButton";
 export { TextField } from "./TextField";
+export { AlertDelete } from "./AlertDelete";

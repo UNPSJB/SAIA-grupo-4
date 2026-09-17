@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
-import { EliminarInsumo } from "../features/insumo/EliminarInsumo";
+import { AlertDelete } from "../components/ui";
+import { handleDelete } from "../features/insumo/useInsumoDelete";
 import type { Insumo } from "../features/insumo/types";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
@@ -12,9 +13,23 @@ export default function InsumoPage() {
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
     null,
   );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [insumoEliminar, setInsumoEliminar] = useState<Insumo | null>(null);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [refescar, setRefrescar] = useState(0);
+  const confirmarEliminar = () => {
+    handleDelete({
+      insumo: insumoEliminar,
+      setLoading,
+      setError,
+      onSuccess: () => {
+        setEliminarAbierto(false);
+        setInsumoEliminar(null);
+        setRefrescar((r) => r + 1);
+      },
+    });
+  };
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
@@ -59,11 +74,13 @@ export default function InsumoPage() {
         />
       )}
 
-      <EliminarInsumo
-        insumo={insumoEliminar}
+      <AlertDelete
         open={eliminarAbierto}
-        onCancelar={() => setEliminarAbierto(false)}
-        onEliminar={() => setRefrescar((prev) => prev + 1)}
+        name={insumoEliminar?.nombre ?? null}
+        loading={loading}
+        error={error}
+        onConfirm={confirmarEliminar}
+        onCancel={() => setEliminarAbierto(false)}
       />
     </Box>
   );
