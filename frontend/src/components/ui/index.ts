@@ -1,4 +1,5 @@
 export { AlertMessage } from "./AlertMessage";
+export { AlertConfirm } from "./AlertConfirm";
 export { CancelButton } from "./CancelButton";
 export { FormActions } from "../layout/FormActions";
 export { FormContainer } from "../layout/FormContainer";

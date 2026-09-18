@@ -27,6 +27,9 @@ export const handleDelete = async ({
     const errorCode = err.message?.match(/Error (\d+)/)?.[1] ?? "";
     let mensajeError = "No se pudo eliminar el insumo.";
     switch (errorCode) {
+      case "400":
+        mensajeError = "El insumo ya esta dado de baja";
+        break;
       case "404":
         mensajeError = "El insumo no existe.";
         break;

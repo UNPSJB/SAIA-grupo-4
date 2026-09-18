@@ -11,6 +11,7 @@ import {
   SubmitButton,
   CancelButton,
   AlertMessage,
+  AlertConfirm,
 } from "../../components/ui";
 import { FiBox, FiEdit2, FiSave, FiXCircle, FiEye } from "react-icons/fi";
 
@@ -27,49 +28,99 @@ export const InsumoForm = ({
   onCancelar,
   onGuardado,
 }: InsumoFormProps) => {
-  const isModoVer = modo === "ver";
+  const esModoVer = modo === "ver";
   const esModoCrear = modo === "crear";
   const esModoModificar = modo === "modificar";
 
   const initialDatos =
-    esModoModificar || isModoVer
-      ? { nombre: insumo!.nombre, unidad_medida: insumo!.unidad_medida }
-      : { nombre: "", unidad_medida: "" };
+    esModoModificar || esModoVer
+      ? {
+          nombre: insumo!.nombre,
+          unidad_medida: insumo!.unidad_medida,
+          categoria: insumo!.categoria,
+          descripcion: insumo!.descripcion,
+        }
+      : { nombre: "", unidad_medida: "", categoria: "", descripcion: "" };
 
   const [datos, setDatos] = useState<FormValues>(initialDatos);
   const [errores, setErrores] = useState<{
     nombre?: string;
     unidad_medida?: string;
+    categoria?: string;
+    descripcion?: string;
     otros?: string;
   }>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
+  const [insumoInactivoId, setInsumoInactivoId] = useState<number | null>(null);
 
   const handleSubmit = useInsumoSubmit({
     endpoint: "http://127.0.0.1:8000/insumos/",
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? insumo!.id : undefined,
+    onInactivo: (insumoId) => {
+      if (!esModoCrear) return;
+      setInsumoInactivoId(insumoId);
+      setErrores((prev) => ({ ...prev, otros: undefined }));
+      setConfirmAltaAbierto(true);
+    },
     onSuccess: () => {
       setSuccess(true);
       onGuardado?.(insumo!);
     },
   });
 
+  const reactivar = useInsumoSubmit({
+    endpoint: "http://127.0.0.1:8000/insumos/",
+    method: "PUT",
+    id: insumoInactivoId ?? undefined,
+    body: { disponible: true },
+    validar: false,
+    onSuccess: () => {
+      setConfirmAltaAbierto(false);
+      setInsumoInactivoId(null);
+      onGuardado?.(insumo!);
+    },
+  });
+
+  const confirmarAlta = () => {
+    if (insumoInactivoId === null) return;
+    setErrores((prev) => ({ ...prev, otros: undefined }));
+    reactivar(
+      { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>,
+      { nombre: "", unidad_medida: "", categoria: "", descripcion: "" },
+      () => {},
+      (erroresAlta) => {
+        if (
+          erroresAlta &&
+          typeof erroresAlta === "object" &&
+          !Array.isArray(erroresAlta)
+        ) {
+          const e = erroresAlta as { otros?: string };
+          if (e.otros) setErrores((prev) => ({ ...prev, otros: e.otros }));
+        }
+      },
+      setLoading,
+      () => {},
+    );
+  };
+
   return (
     <FormContainer>
       <FormHeader
         title={
-          isModoVer
+          esModoVer
             ? "Ver Insumo"
             : modo === "crear"
               ? "Nuevo Insumo"
               : "Modificar Insumo"
         }
-        icon={isModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
+        icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
       />
       <form
         onSubmit={
-          isModoVer
+          esModoVer
             ? undefined
             : (e) =>
                 handleSubmit(
@@ -85,13 +136,13 @@ export const InsumoForm = ({
         <VStack gap={4}>
           <TextField
             label='Nombre'
-            disabled={isModoVer}
+            disabled={esModoVer}
             value={datos.nombre}
             placeholder='Ej. Harina 0000'
             onChange={(
               e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
             ) => {
-              if (isModoVer) return;
+              if (esModoVer) return;
               setDatos({ ...datos, nombre: e.target.value });
               setErrores((prev) => ({ ...prev, nombre: undefined }));
             }}
@@ -99,12 +150,13 @@ export const InsumoForm = ({
           />
           <SelectField
             label='Unidad de medida'
-            readOnly={isModoVer}
+            placeholder='Selecciona una opcion'
+            readOnly={esModoVer}
             value={datos.unidad_medida}
-            onFocus={isModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={isModoVer ? (e) => e.preventDefault() : undefined}
+            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
             onChange={
-              isModoVer
+              esModoVer
                 ? () => {}
                 : (e: React.ChangeEvent<HTMLSelectElement>) => {
                     setDatos({ ...datos, unidad_medida: e.target.value });
@@ -122,8 +174,51 @@ export const InsumoForm = ({
             ]}
             error={errores.unidad_medida}
           />
+
+          <SelectField
+            label='Categoria'
+            placeholder='Selecciona una opcion'
+            readOnly={esModoVer}
+            value={datos.categoria}
+            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+            onChange={
+              esModoVer
+                ? () => {}
+                : (e: React.ChangeEvent<HTMLSelectElement>) => {
+                    setDatos({ ...datos, categoria: e.target.value });
+                    setErrores((prev) => ({
+                      ...prev,
+                      categoria: undefined,
+                    }));
+                  }
+            }
+            options={[
+              { label: "Materia Prima", value: "materia prima" },
+              { label: "Aditivo", value: "aditivo" },
+              { label: "Envase", value: "envase" },
+              { label: "Otro", value: "otro" },
+            ]}
+            error={errores.categoria}
+          />
+
+          <TextField
+            label='Descripcion'
+            disabled={esModoVer}
+            value={datos.descripcion}
+            placeholder='Breve descripcion del insumo'
+            onChange={(
+              e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+            ) => {
+              if (esModoVer) return;
+              setDatos({ ...datos, descripcion: e.target.value });
+              setErrores((prev) => ({ ...prev, descripcion: undefined }));
+            }}
+            error={errores.descripcion}
+          />
+
           <FormActions>
-            {isModoVer ? (
+            {esModoVer ? (
               <CancelButton
                 text='Cerrar'
                 icon={FiXCircle}
@@ -154,7 +249,7 @@ export const InsumoForm = ({
           {errores.otros && (
             <AlertMessage type='error' message={errores.otros} />
           )}
-          {success && !isModoVer && (
+          {success && !esModoVer && (
             <AlertMessage
               type='success'
               message={
@@ -166,6 +261,18 @@ export const InsumoForm = ({
           )}
         </VStack>
       </form>
+
+      {esModoCrear && (
+        <AlertConfirm
+          open={confirmAltaAbierto}
+          title='Dar de Alta'
+          message={`Ya existe un insumo inactivo con ese nombre. ¿Queres darlo de alta a ${datos.nombre}?`}
+          loading={loading}
+          error={errores.otros}
+          onConfirm={confirmarAlta}
+          onCancel={() => setConfirmAltaAbierto(false)}
+        />
+      )}
     </FormContainer>
   );
 };

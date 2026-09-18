@@ -35,5 +35,6 @@ class NotAuthenticated(DetailedHTTPException):
     STATUS_CODE = status.HTTP_401_UNAUTHORIZED
     DETAIL = "Usuario no autorizado"
 
-    def __init__(self) -> None:
-        super().__init__(headers={"WWW-Authenticate": "Bearer"})
+class Conflict(DetailedHTTPException):
+    STATUS_CODE = status.HTTP_409_CONFLICT
+    DETAIL = "Conflicto"

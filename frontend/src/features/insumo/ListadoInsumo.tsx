@@ -11,11 +11,13 @@ import {
   Pagination,
   ButtonGroup,
   IconButton,
+  Badge,
 } from "@chakra-ui/react";
 import {
   FiList,
   FiEdit2,
   FiTrash2,
+  FiCheckCircle,
   FiEye,
   FiPlus,
   FiChevronLeft,
@@ -28,6 +30,7 @@ interface ListadoInsumosProps {
   onModificar?: (insumo: Insumo) => void;
   onEliminar?: (insumo: Insumo) => void;
   onVer?: (insumo: Insumo) => void;
+  onDarAlta?: (insumo: Insumo) => void;
 }
 
 const ITEMS_POR_PAGINA = 5;
@@ -37,6 +40,7 @@ export const ListadoInsumos = ({
   onModificar,
   onEliminar,
   onVer,
+  onDarAlta,
 }: ListadoInsumosProps) => {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +122,7 @@ export const ListadoInsumos = ({
               <Table.Row>
                 <Table.ColumnHeader>Nombre</Table.ColumnHeader>
                 <Table.ColumnHeader>Unidad de medida</Table.ColumnHeader>
+                <Table.ColumnHeader>Disponible</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign='end'>
                   Acciones
                 </Table.ColumnHeader>
@@ -132,6 +137,11 @@ export const ListadoInsumos = ({
                   <Table.Cell textTransform='capitalize'>
                     {insumo.unidad_medida}
                   </Table.Cell>
+                  <Table.Cell textTransform='capitalize'>
+                    <Badge colorPalette={insumo.disponible ? "green" : "red"}>
+                      {insumo.disponible ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </Table.Cell>
                   <Table.Cell textAlign='end'>
                     <HStack justify='flex-end' gap={2}>
                       <Button
@@ -142,22 +152,38 @@ export const ListadoInsumos = ({
                       >
                         <FiEye />
                       </Button>
-                      <Button
-                        size='sm'
-                        variant='ghost'
-                        colorPalette='blue'
-                        onClick={() => onModificar?.(insumo)}
-                      >
-                        <FiEdit2 />
-                      </Button>
-                      <Button
-                        size='sm'
-                        variant='ghost'
-                        colorPalette='red'
-                        onClick={() => onEliminar?.(insumo)}
-                      >
-                        <FiTrash2 />
-                      </Button>
+                      {insumo.disponible && (
+                        <Button
+                          size='sm'
+                          variant='ghost'
+                          colorPalette='blue'
+                          onClick={() => onModificar?.(insumo)}
+                        >
+                          <FiEdit2 />
+                        </Button>
+                      )}
+
+                      {insumo.disponible && (
+                        <Button
+                          size='sm'
+                          variant='ghost'
+                          colorPalette='red'
+                          onClick={() => onEliminar?.(insumo)}
+                        >
+                          <FiTrash2 />
+                        </Button>
+                      )}
+
+                      {!insumo.disponible && (
+                        <Button
+                          size='sm'
+                          variant='ghost'
+                          colorPalette='green'
+                          onClick={() => onDarAlta?.(insumo)}
+                        >
+                          <FiCheckCircle />
+                        </Button>
+                      )}
                     </HStack>
                   </Table.Cell>
                 </Table.Row>

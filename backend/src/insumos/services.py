@@ -1,5 +1,5 @@
 from typing import List
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.insumos.models import Insumo
@@ -10,9 +10,11 @@ from src.insumos import schemas, exceptions
 
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
     # Verifica que no exista un insumo con el mismo nombre
-    db_insumo_duplicado = db.scalar(select(Insumo).where(Insumo.nombre == insumo.nombre))
-    if db_insumo_duplicado:
-        raise exceptions.NombreDuplicado()
+    db_insumo_existente = db.scalar(select(Insumo).where(Insumo.nombre == insumo.nombre))
+    if db_insumo_existente:
+        if db_insumo_existente.disponible:
+            raise exceptions.NombreDuplicado()
+        raise exceptions.NombreDuplicadoInactivo(insumo_id=db_insumo_existente.id)
 
     # Crea el insumo y lo sube a la db
     db_insumo = Insumo(**insumo.model_dump())
@@ -21,7 +23,7 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise exceptions.BadRequest(detail="Ocurrio un error inesperado") # Lanzar un error y realizar rollback si ocurre un error al subir los cambios. Es probacle crear una excepcion  
+        raise exceptions.ErrorInesperado() 
     db.refresh(db_insumo)
     return db_insumo
 
@@ -40,23 +42,23 @@ def listar_insumos(db: Session):
     return db.scalars(select(Insumo)).all()
 
 
-def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
-    # Verificamos que el insumo exista
-    db_insumo = leer_insumo(db, insumo_id)
-    db.execute(delete(Insumo).where(Insumo.id == insumo_id))
-    db.commit()
-    return db_insumo
-
-
 def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) -> schemas.InsumoUpdate:
     db_insumo = leer_insumo(db, insumo_id)
     update_data = insumo.model_dump(exclude_unset=True)
 
     if "nombre" in update_data:
         # Verifica que no exista un insumo con el mismo nombre
-        db_insumo_duplicado = db.scalar(select(Insumo).where(Insumo.nombre == insumo.nombre))
+        db_insumo_duplicado = db.scalar(select(Insumo).where(Insumo.nombre == insumo.nombre, Insumo.id != insumo_id))
         if db_insumo_duplicado:
             raise exceptions.NombreDuplicado()
+
+    if "disponible" in update_data:
+        if db_insumo.disponible == insumo.disponible:
+            if insumo.disponible:
+                raise exceptions.InsumoActivo()
+            else:
+                raise exceptions.InsumoBaja()
+
     if update_data:
         # Modifica el insumo y lo sube a la db
         db.execute(update(Insumo).where(Insumo.id == insumo_id).values(**update_data))        
@@ -65,7 +67,15 @@ def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) 
             db.commit()
         except IntegrityError:
             db.rollback()
-            raise exceptions.BadRequest(detail="Ocurrio un error inesperado")
+            raise exceptions.ErrorInesperado()
 
         db.refresh(db_insumo)
+    return db_insumo
+
+
+def eliminar_insumo(db: Session, insumo_id: int, ) -> schemas.InsumoDelete:
+    # Verificamos que el insumo exista
+    insumo = schemas.InsumoUpdate(disponible=False)
+    db_insumo = modificar_insumo(db, insumo_id, insumo)
+
     return db_insumo

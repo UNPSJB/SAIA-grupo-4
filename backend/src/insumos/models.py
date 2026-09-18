@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Mapped, mapped_column
 from src.models import ModeloBase
 
@@ -8,3 +9,6 @@ class Insumo(ModeloBase):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(index=True)
     unidad_medida: Mapped[str] = mapped_column()
+    categoria: Mapped[str] = mapped_column(index=True)
+    descripcion: Mapped[Optional[str]] = mapped_column(nullable=True)
+    disponible: Mapped[bool] = mapped_column(default=True)
