@@ -1,3 +1,4 @@
+export { NavBar } from "./NavBar";
 export { FormHeader } from "./FormHeader";
 export { FormContainer } from "./FormContainer";
 export { FormActions } from "./FormActions";
