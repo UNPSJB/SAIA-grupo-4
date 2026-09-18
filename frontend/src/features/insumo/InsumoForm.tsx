@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { VStack } from "@chakra-ui/react";
-import { useInsumoSubmit } from "./useInsumoSubmit";
+import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
 import type { FormValues, Insumo } from "./types";
 import {
   FormContainer,

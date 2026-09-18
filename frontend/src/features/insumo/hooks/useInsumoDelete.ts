@@ -1,4 +1,4 @@
-import type { Insumo } from "./types";
+import type { Insumo } from "../types";
 
 interface HandleDeleteOptions {
   insumo: Insumo | null;

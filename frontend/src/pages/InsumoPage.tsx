@@ -3,8 +3,8 @@ import { Box } from "@chakra-ui/react";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
 import { AlertDelete, AlertConfirm } from "../components/ui";
-import { handleDelete } from "../features/insumo/useInsumoDelete";
-import { useInsumoSubmit } from "../features/insumo/useInsumoSubmit";
+import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
+import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
 import type { Insumo } from "../features/insumo/types";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";

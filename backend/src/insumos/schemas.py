@@ -33,7 +33,7 @@ class InsumoUpdate(InsumoBase):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100, description="El nombre del equipo es obligatorio")]
     unidad_medida: Annotated[Optional[UnidadMedida], Field(default=None, description="Unidad de medida del insumo")]
     categoria: Annotated[Optional[Categoria], Field(default=None, description="Categoria a la que pertenece el insumo")]
-    descripcion: Annotated[Optional[str], Field(default=None, min_length=1, max_length=200, description="Descripcion de insumo")]
+    descripcion: Annotated[Optional[str], Field(default=None, max_length=200, description="Descripcion de insumo")]
     disponible: Annotated[Optional[bool], Field(default=None, description="Campo para verificar la baja logica")]
 
 class InsumoDelete(InsumoBase):

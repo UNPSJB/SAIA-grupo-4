@@ -6,8 +6,6 @@ import {
   FiCheckCircle,
   FiEye,
 } from "react-icons/fi";
-import type { Insumo } from "./types";
-import { useListadoData } from "../../hooks/useListadoData";
 import {
   AlertMessage,
   DataTable,
@@ -16,10 +14,9 @@ import {
   RowActions,
   TablePagination,
 } from "../../components/ui";
-import {
-  ListadoContainer,
-  ListadoHeader,
-} from "../../components/layout";
+import { ListadoContainer, ListadoHeader } from "../../components/layout";
+import { useListadoData } from "./hooks/useListadoData";
+import type { Insumo } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
 interface ListadoInsumosProps {
@@ -75,28 +72,28 @@ export const ListadoInsumos = ({
         <RowActions>
           <RowActionButton
             icon={FiEye}
-            label="Ver"
-            colorPalette="yellow"
+            label='Ver'
+            colorPalette='yellow'
             onClick={() => onVer?.(insumo)}
           />
           <RowActionButton
             icon={FiEdit2}
-            label="Modificar"
-            colorPalette="blue"
+            label='Modificar'
+            colorPalette='blue'
             onClick={() => onModificar?.(insumo)}
             visible={insumo.disponible}
           />
           <RowActionButton
             icon={FiTrash2}
-            label="Eliminar"
-            colorPalette="red"
+            label='Eliminar'
+            colorPalette='red'
             onClick={() => onEliminar?.(insumo)}
             visible={insumo.disponible}
           />
           <RowActionButton
             icon={FiCheckCircle}
-            label="Dar de alta"
-            colorPalette="green"
+            label='Dar de alta'
+            colorPalette='green'
             onClick={() => onDarAlta?.(insumo)}
             visible={!insumo.disponible}
           />
@@ -108,18 +105,18 @@ export const ListadoInsumos = ({
   return (
     <ListadoContainer>
       <ListadoHeader
-        title="Insumos"
+        title='Insumos'
         icon={FiList}
-        buttonLabel="Nuevo insumo"
+        buttonLabel='Nuevo insumo'
         onCrear={onCrear}
       />
 
-      {loading && <LoadingState message="Cargando insumos..." />}
+      {loading && <LoadingState message='Cargando insumos...' />}
 
-      {!loading && error && <AlertMessage type="error" message={error} />}
+      {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type="info" message="Todavía no hay insumos cargados." />
+        <AlertMessage type='info' message='Todavía no hay insumos cargados.' />
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -135,8 +132,8 @@ export const ListadoInsumos = ({
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
-            labelSingular="insumo"
-            labelPlural="insumos"
+            labelSingular='insumo'
+            labelPlural='insumos'
           />
         </>
       )}
