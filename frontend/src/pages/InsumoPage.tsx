@@ -39,7 +39,6 @@ export default function InsumoPage() {
     method: "PUT",
     id: insumoAlta?.id,
     body: { disponible: true },
-    validar: false,
     onSuccess: () => {
       setAltaAbierto(false);
       setInsumoAlta(null);
@@ -47,22 +46,13 @@ export default function InsumoPage() {
     },
   });
 
-  const confirmarAlta = () => {
+  const confirmarAlta = async () => {
     if (!insumoAlta) return;
     setError("");
-    reactivar(
-      { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>,
-      { nombre: "", unidad_medida: "", categoria: "", descripcion: "" },
-      () => {},
-      (errores) => {
-        if (errores && typeof errores === "object" && !Array.isArray(errores)) {
-          const e = errores as { otros?: string };
-          if (e.otros) setError(e.otros);
-        }
-      },
-      setLoading,
-      () => {},
-    );
+    const res = await reactivar.submit();
+    if (res.status === "error") {
+      setError(res.message);
+    }
   };
 
   return (
@@ -125,7 +115,7 @@ export default function InsumoPage() {
         open={altaAbierto}
         title='Dar de Alta'
         message={`¿Esta seguro que quiere dar de alta a ${insumoAlta?.nombre}?`}
-        loading={loading}
+        loading={reactivar.isSubmitting}
         error={error}
         onConfirm={confirmarAlta}
         onCancel={() => {

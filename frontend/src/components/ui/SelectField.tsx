@@ -8,8 +8,12 @@ import {
 interface SelectFieldProps {
   label: string;
   placeholder?: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  name?: string;
+  value?: string;
+  defaultValue?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLSelectElement>) => void;
+  ref?: React.Ref<HTMLSelectElement>;
   options: Array<{ label: string; value: string }>;
   error?: string;
   disabled?: boolean;
@@ -21,8 +25,12 @@ interface SelectFieldProps {
 export const SelectField = ({
   label,
   placeholder,
+  name,
   value,
+  defaultValue,
   onChange,
+  onBlur,
+  ref,
   options,
   error,
   disabled = false,
@@ -36,9 +44,13 @@ export const SelectField = ({
     </Field.Label>
     <NativeSelectRoot disabled={disabled}>
       <NativeSelectField
+        name={name}
         placeholder={placeholder}
         value={value}
+        defaultValue={defaultValue}
         onChange={onChange}
+        onBlur={onBlur}
+        ref={ref}
         onFocus={onFocus}
         onClick={onClick}
         aria-readonly={readOnly}

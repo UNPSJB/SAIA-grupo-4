@@ -71,17 +71,17 @@ export const ListadoInsumos = ({
       render: (insumo) => (
         <RowActions>
           <RowActionButton
-            icon={FiEye}
-            label='Ver'
-            colorPalette='yellow'
-            onClick={() => onVer?.(insumo)}
-          />
-          <RowActionButton
             icon={FiEdit2}
             label='Modificar'
             colorPalette='blue'
             onClick={() => onModificar?.(insumo)}
             visible={insumo.disponible}
+          />
+          <RowActionButton
+            icon={FiEye}
+            label='Ver'
+            colorPalette='yellow'
+            onClick={() => onVer?.(insumo)}
           />
           <RowActionButton
             icon={FiTrash2}

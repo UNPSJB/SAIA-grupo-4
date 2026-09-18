@@ -11,7 +11,7 @@ router = APIRouter(prefix="/insumos", tags=["insumos"])
 
 # Rutas para Insumos
 
-@router.post("/", response_model=schemas.Insumo)
+@router.post("/", response_model=schemas.Insumo, status_code=201)
 def crear_insumo(insumo: schemas.InsumoCreate, db: Session = Depends(get_db)):
     return services.crear_insumo(db, insumo)
 

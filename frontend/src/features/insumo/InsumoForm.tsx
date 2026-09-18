@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack } from "@chakra-ui/react";
 import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
-import type { FormValues, Insumo } from "./types";
+import { insumoSchema, type InsumoFormValues } from "./validationSchema";
+import type { Insumo } from "./types";
 import {
   FormContainer,
   FormHeader,
@@ -32,7 +35,7 @@ export const InsumoForm = ({
   const esModoCrear = modo === "crear";
   const esModoModificar = modo === "modificar";
 
-  const initialDatos =
+  const defaultValues: InsumoFormValues =
     esModoModificar || esModoVer
       ? {
           nombre: insumo!.nombre,
@@ -42,27 +45,32 @@ export const InsumoForm = ({
         }
       : { nombre: "", unidad_medida: "", categoria: "", descripcion: "" };
 
-  const [datos, setDatos] = useState<FormValues>(initialDatos);
-  const [errores, setErrores] = useState<{
-    nombre?: string;
-    unidad_medida?: string;
-    categoria?: string;
-    descripcion?: string;
-    otros?: string;
-  }>({});
-  const [loading, setLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+    clearErrors,
+    reset,
+  } = useForm<InsumoFormValues>({
+    resolver: zodResolver(insumoSchema),
+    defaultValues,
+  });
+
   const [success, setSuccess] = useState(false);
   const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
   const [insumoInactivoId, setInsumoInactivoId] = useState<number | null>(null);
+  const [errorConfirmar, setErrorConfirmar] = useState("");
+  const [nombreEnviado, setNombreEnviado] = useState("");
 
-  const handleSubmit = useInsumoSubmit({
+  const { submit } = useInsumoSubmit({
     endpoint: "http://127.0.0.1:8000/insumos/",
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? insumo!.id : undefined,
     onInactivo: (insumoId) => {
       if (!esModoCrear) return;
       setInsumoInactivoId(insumoId);
-      setErrores((prev) => ({ ...prev, otros: undefined }));
+      setErrorConfirmar("");
       setConfirmAltaAbierto(true);
     },
     onSuccess: () => {
@@ -76,7 +84,6 @@ export const InsumoForm = ({
     method: "PUT",
     id: insumoInactivoId ?? undefined,
     body: { disponible: true },
-    validar: false,
     onSuccess: () => {
       setConfirmAltaAbierto(false);
       setInsumoInactivoId(null);
@@ -84,27 +91,26 @@ export const InsumoForm = ({
     },
   });
 
-  const confirmarAlta = () => {
+  const confirmarAlta = async () => {
     if (insumoInactivoId === null) return;
-    setErrores((prev) => ({ ...prev, otros: undefined }));
-    reactivar(
-      { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>,
-      { nombre: "", unidad_medida: "", categoria: "", descripcion: "" },
-      () => {},
-      (erroresAlta) => {
-        if (
-          erroresAlta &&
-          typeof erroresAlta === "object" &&
-          !Array.isArray(erroresAlta)
-        ) {
-          const e = erroresAlta as { otros?: string };
-          if (e.otros) setErrores((prev) => ({ ...prev, otros: e.otros }));
-        }
-      },
-      setLoading,
-      () => {},
-    );
+    setErrorConfirmar("");
+    const res = await reactivar.submit();
+    if (res.status === "error") {
+      setErrorConfirmar(res.message);
+    }
   };
+
+  const onSubmit = handleSubmit(async (values) => {
+    setSuccess(false);
+    clearErrors("root");
+    setNombreEnviado(values.nombre);
+    const res = await submit(values);
+    if (res.status === "error") {
+      setError("root", { message: res.message });
+    } else if (res.status === "success") {
+      reset(defaultValues);
+    }
+  });
 
   return (
     <FormContainer>
@@ -118,103 +124,57 @@ export const InsumoForm = ({
         }
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
       />
-      <form
-        onSubmit={
-          esModoVer
-            ? undefined
-            : (e) =>
-                handleSubmit(
-                  e as React.FormEvent<HTMLFormElement>,
-                  datos,
-                  setDatos,
-                  setErrores,
-                  setLoading,
-                  setSuccess,
-                )
-        }
-      >
+      <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
           <TextField
             label='Nombre'
             disabled={esModoVer}
-            value={datos.nombre}
+            defaultValue={defaultValues.nombre}
             placeholder='Ej. Harina 0000'
-            onChange={(
-              e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-            ) => {
-              if (esModoVer) return;
-              setDatos({ ...datos, nombre: e.target.value });
-              setErrores((prev) => ({ ...prev, nombre: undefined }));
-            }}
-            error={errores.nombre}
+            error={errors.nombre?.message}
+            {...register("nombre")}
           />
           <SelectField
             label='Unidad de medida'
             placeholder='Selecciona una opcion'
             readOnly={esModoVer}
-            value={datos.unidad_medida}
+            defaultValue={defaultValues.unidad_medida}
             onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
             onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            onChange={
-              esModoVer
-                ? () => {}
-                : (e: React.ChangeEvent<HTMLSelectElement>) => {
-                    setDatos({ ...datos, unidad_medida: e.target.value });
-                    setErrores((prev) => ({
-                      ...prev,
-                      unidad_medida: undefined,
-                    }));
-                  }
-            }
             options={[
               { label: "Litros", value: "litros" },
               { label: "Kilogramos", value: "kilogramos" },
               { label: "Gramos", value: "gramos" },
               { label: "Unidades", value: "unidades" },
             ]}
-            error={errores.unidad_medida}
+            error={errors.unidad_medida?.message}
+            {...register("unidad_medida")}
           />
 
           <SelectField
             label='Categoria'
             placeholder='Selecciona una opcion'
             readOnly={esModoVer}
-            value={datos.categoria}
+            defaultValue={defaultValues.categoria}
             onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
             onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            onChange={
-              esModoVer
-                ? () => {}
-                : (e: React.ChangeEvent<HTMLSelectElement>) => {
-                    setDatos({ ...datos, categoria: e.target.value });
-                    setErrores((prev) => ({
-                      ...prev,
-                      categoria: undefined,
-                    }));
-                  }
-            }
             options={[
               { label: "Materia Prima", value: "materia prima" },
               { label: "Aditivo", value: "aditivo" },
               { label: "Envase", value: "envase" },
               { label: "Otro", value: "otro" },
             ]}
-            error={errores.categoria}
+            error={errors.categoria?.message}
+            {...register("categoria")}
           />
 
           <TextField
             label='Descripcion'
             disabled={esModoVer}
-            value={datos.descripcion}
+            defaultValue={defaultValues.descripcion}
             placeholder='Breve descripcion del insumo'
-            onChange={(
-              e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-            ) => {
-              if (esModoVer) return;
-              setDatos({ ...datos, descripcion: e.target.value });
-              setErrores((prev) => ({ ...prev, descripcion: undefined }));
-            }}
-            error={errores.descripcion}
+            error={errors.descripcion?.message}
+            {...register("descripcion")}
           />
 
           <FormActions>
@@ -231,7 +191,7 @@ export const InsumoForm = ({
                 <SubmitButton
                   text='Guardar'
                   icon={FiSave}
-                  loading={loading}
+                  loading={isSubmitting}
                   type='submit'
                   colorPalette='green'
                 />
@@ -246,8 +206,8 @@ export const InsumoForm = ({
             )}
           </FormActions>
 
-          {errores.otros && (
-            <AlertMessage type='error' message={errores.otros} />
+          {errors.root?.message && (
+            <AlertMessage type='error' message={errors.root.message} />
           )}
           {success && !esModoVer && (
             <AlertMessage
@@ -266,9 +226,9 @@ export const InsumoForm = ({
         <AlertConfirm
           open={confirmAltaAbierto}
           title='Dar de Alta'
-          message={`Ya existe un insumo inactivo con ese nombre. ¿Queres darlo de alta a ${datos.nombre}?`}
-          loading={loading}
-          error={errores.otros}
+          message={`Ya existe un insumo inactivo con ese nombre. ¿Queres darlo de alta a ${nombreEnviado}?`}
+          loading={reactivar.isSubmitting}
+          error={errorConfirmar}
           onConfirm={confirmarAlta}
           onCancel={() => setConfirmAltaAbierto(false)}
         />
