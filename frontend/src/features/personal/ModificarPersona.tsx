@@ -38,8 +38,6 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
     const [capacidadesDisponibles, setCapacidadesDisponibles] = useState<Capacidad[]>([]);
     const [capacidadesAsignadas, setCapacidadesAsignadas] = useState<number[]>([]);
     const [capacidadesSeleccionadas, setCapacidadesSeleccionadas] = useState<number[]>([]);
-    const [fechasAsignadas, setFechasAsignadas] = useState<Record<number, { fecha_desde: string; fecha_hasta: string | null }>>({});
-    const [fechasPorCapacidad, setFechasPorCapacidad] = useState<Record<number, { fecha_desde: string; fecha_hasta: string }>>({});
 
     useEffect(() => {
         fetch('http://127.0.0.1:8000/capacidades/')
@@ -50,20 +48,9 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
         fetch(`http://127.0.0.1:8000/personal/${persona.id}/capacidades`)
             .then((res) => res.json())
             .then((data) => {
-                // El endpoint devuelve también asignaciones históricas (ya cerradas
-                // con fecha_hasta), así que nos quedamos solo con las activas.
-                const asignacionesActivas = data.filter((asignacion: any) => asignacion.fecha_hasta === null);
-                const activas = asignacionesActivas.map((asignacion: any) => asignacion.capacidad.id);
-                const fechas: Record<number, { fecha_desde: string; fecha_hasta: string | null }> = {};
-                asignacionesActivas.forEach((asignacion: any) => {
-                    fechas[asignacion.capacidad.id] = {
-                        fecha_desde: asignacion.fecha_desde,
-                        fecha_hasta: asignacion.fecha_hasta,
-                    };
-                });
+                const activas = data.map((asignacion: any) => asignacion.capacidad.id);
                 setCapacidadesAsignadas(activas);
                 setCapacidadesSeleccionadas(activas);
-                setFechasAsignadas(fechas);
             })
             .catch(() => {});
     }, [persona.id]);
@@ -122,20 +109,14 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
             const aQuitar = capacidadesAsignadas.filter(
                 (id) => !capacidadesSeleccionadas.includes(id)
             );
-            const hoy = new Date().toISOString().slice(0, 10);
 
             for (const capacidadId of aAsignar) {
-                const fechas = fechasPorCapacidad[capacidadId];
                 await fetch(
                     `http://127.0.0.1:8000/personal/${persona.id}/capacidades`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            capacidad_id: capacidadId,
-                            fecha_desde: fechas?.fecha_desde || hoy,
-                            fecha_hasta: fechas?.fecha_hasta || null,
-                        }),
+                        body: JSON.stringify({ capacidad_id: capacidadId }),
                     },
                 );
             }
@@ -228,70 +209,16 @@ export const ModificarPersona = ({ persona, onCancelar, onGuardado }: ModificarP
                         <Text fontSize="md" fontFamily="sans-serif" mb={1} textAlign="left">Capacidades</Text>
                         <Checkbox.Group
                             value={capacidadesSeleccionadas.map(String)}
-                            onValueChange={(value) => {
-                                const nuevosIds = value.map(Number);
-                                setCapacidadesSeleccionadas(nuevosIds);
-                                setFechasPorCapacidad((prev) => {
-                                    const actualizado = { ...prev };
-                                    nuevosIds.forEach((id) => {
-                                        if (!actualizado[id] && !capacidadesAsignadas.includes(id)) {
-                                            actualizado[id] = { fecha_desde: new Date().toISOString().slice(0, 10), fecha_hasta: '' };
-                                        }
-                                    });
-                                    return actualizado;
-                                });
-                            }}
+                            onValueChange={(value) => setCapacidadesSeleccionadas(value.map(Number))}
                         >
-                            <VStack align="start" gap={2}>
-                                {capacidadesDisponibles.map((cap) => {
-                                    const yaAsignada = capacidadesAsignadas.includes(cap.id);
-                                    const seleccionada = capacidadesSeleccionadas.includes(cap.id);
-                                    return (
-                                        <Box key={cap.id} width="100%">
-                                            <Checkbox.Root value={String(cap.id)}>
-                                                <Checkbox.HiddenInput />
-                                                <Checkbox.Control />
-                                                <Checkbox.Label textTransform="capitalize">{cap.nombre}</Checkbox.Label>
-                                            </Checkbox.Root>
-                                            {seleccionada && yaAsignada && (
-                                                <Text fontSize="xs" color="gray.500" ml={6} mb={1}>
-                                                    Desde {fechasAsignadas[cap.id]?.fecha_desde}
-                                                    {fechasAsignadas[cap.id]?.fecha_hasta
-                                                        ? ` hasta ${fechasAsignadas[cap.id]?.fecha_hasta}`
-                                                        : ' (sin vencimiento)'}
-                                                </Text>
-                                            )}
-                                            {seleccionada && !yaAsignada && (
-                                                <HStack gap={2} ml={6} mt={1} mb={1}>
-                                                    <Field.Root>
-                                                        <Field.Label fontSize="xs" color="gray.600">Desde</Field.Label>
-                                                        <Input
-                                                            size="sm"
-                                                            type="date"
-                                                            value={fechasPorCapacidad[cap.id]?.fecha_desde ?? ''}
-                                                            onChange={(e) => setFechasPorCapacidad((prev) => ({
-                                                                ...prev,
-                                                                [cap.id]: { fecha_hasta: '', ...prev[cap.id], fecha_desde: e.target.value },
-                                                            }))}
-                                                        />
-                                                    </Field.Root>
-                                                    <Field.Root>
-                                                        <Field.Label fontSize="xs" color="gray.600">Hasta (opcional)</Field.Label>
-                                                        <Input
-                                                            size="sm"
-                                                            type="date"
-                                                            value={fechasPorCapacidad[cap.id]?.fecha_hasta ?? ''}
-                                                            onChange={(e) => setFechasPorCapacidad((prev) => ({
-                                                                ...prev,
-                                                                [cap.id]: { fecha_desde: '', ...prev[cap.id], fecha_hasta: e.target.value },
-                                                            }))}
-                                                        />
-                                                    </Field.Root>
-                                                </HStack>
-                                            )}
-                                        </Box>
-                                    );
-                                })}
+                            <VStack align="flex-start" width="100%" gap={2}>
+                                {capacidadesDisponibles.map((cap) => (
+                                    <Checkbox.Root key={cap.id} value={String(cap.id)}>
+                                        <Checkbox.HiddenInput />
+                                        <Checkbox.Control />
+                                        <Checkbox.Label textTransform="capitalize">{cap.nombre}</Checkbox.Label>
+                                    </Checkbox.Root>
+                                ))}
                                 {capacidadesDisponibles.length === 0 && (
                                     <Text fontSize="sm" color="gray.500">Todavía no hay capacidades cargadas.</Text>
                                 )}

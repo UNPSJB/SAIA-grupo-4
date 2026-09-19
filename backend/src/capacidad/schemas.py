@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Annotated
@@ -25,8 +24,6 @@ class Capacidad(CapacidadBase):
 
 class PersonaCapacidadBase(BaseModel):
     capacidad_id: int
-    fecha_desde: date
-    fecha_hasta: Optional[date] = None
 
 
 class PersonaCapacidadCreate(PersonaCapacidadBase):
@@ -37,15 +34,11 @@ class PersonaCapacidad(BaseModel):
     id: int
     persona_id: int
     capacidad_id: int
-    fecha_desde: date
-    fecha_hasta: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class PersonaCapacidadConDetalle(BaseModel):
     id: int
     persona_nombre: str
-    fecha_desde: date
-    fecha_hasta: Optional[date] = None
     capacidad: Capacidad
     model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, Input, VStack, Heading, Field, HStack, Text, Alert, Checkbox } from '@chakra-ui/react';
-import { FiSave, FiXCircle, FiUser } from 'react-icons/fi';
+import { FiSave, FiXCircle, FiUser} from 'react-icons/fi';
 
 interface FormValues {
   nombre: string;
@@ -24,7 +24,6 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
     const [success, setSuccess] = useState(false);
     const [capacidadesDisponibles, setCapacidadesDisponibles] = useState<Capacidad[]>([]);
     const [capacidadesSeleccionadas, setCapacidadesSeleccionadas] = useState<number[]>([]);
-    const [fechasPorCapacidad, setFechasPorCapacidad] = useState<Record<number, { fecha_desde: string; fecha_hasta: string }>>({});
 
     useEffect(() => {
         fetch('http://127.0.0.1:8000/capacidades/')
@@ -86,24 +85,18 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
             const nuevaPersona = await res.json();
 
             for (const capacidadId of capacidadesSeleccionadas) {
-                const fechas = fechasPorCapacidad[capacidadId];
                 await fetch(
                     `http://127.0.0.1:8000/personal/${nuevaPersona.id}/capacidades`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            capacidad_id: capacidadId,
-                            fecha_desde: fechas?.fecha_desde || datos.fecha_alta,
-                            fecha_hasta: fechas?.fecha_hasta || null,
-                        }),
+                        body: JSON.stringify({ capacidad_id: capacidadId }),
                     },
                 );
             }
 
             setDatos({ nombre: '', legajo: '', fecha_alta: '' });
             setCapacidadesSeleccionadas([]);
-            setFechasPorCapacidad({});
             setErrores({});
             setSuccess(true);
         } catch (err: any) {
@@ -182,57 +175,15 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
                         <Text fontSize="md" fontFamily="sans-serif" mb={1} textAlign="left">Capacidades</Text>
                         <Checkbox.Group
                             value={capacidadesSeleccionadas.map(String)}
-                            onValueChange={(value) => {
-                                const nuevosIds = value.map(Number);
-                                setCapacidadesSeleccionadas(nuevosIds);
-                                setFechasPorCapacidad((prev) => {
-                                    const actualizado = { ...prev };
-                                    nuevosIds.forEach((id) => {
-                                        if (!actualizado[id]) {
-                                            actualizado[id] = { fecha_desde: datos.fecha_alta, fecha_hasta: '' };
-                                        }
-                                    });
-                                    return actualizado;
-                                });
-                            }}
+                            onValueChange={(value) => setCapacidadesSeleccionadas(value.map(Number))}
                         >
-                            <VStack align="start" gap={2}>
+                            <VStack align="flex-start" width="100%" gap={2}>
                                 {capacidadesDisponibles.map((cap) => (
-                                    <Box key={cap.id} width="100%">
-                                        <Checkbox.Root value={String(cap.id)}>
-                                            <Checkbox.HiddenInput />
-                                            <Checkbox.Control />
-                                            <Checkbox.Label textTransform="capitalize">{cap.nombre}</Checkbox.Label>
-                                        </Checkbox.Root>
-                                        {capacidadesSeleccionadas.includes(cap.id) && (
-                                            <HStack gap={2} ml={6} mt={1} mb={1}>
-                                                <Field.Root>
-                                                    <Field.Label fontSize="xs" color="gray.600">Desde</Field.Label>
-                                                    <Input
-                                                        size="sm"
-                                                        type="date"
-                                                        value={fechasPorCapacidad[cap.id]?.fecha_desde ?? ''}
-                                                        onChange={(e) => setFechasPorCapacidad((prev) => ({
-                                                            ...prev,
-                                                            [cap.id]: { fecha_hasta: '', ...prev[cap.id], fecha_desde: e.target.value },
-                                                        }))}
-                                                    />
-                                                </Field.Root>
-                                                <Field.Root>
-                                                    <Field.Label fontSize="xs" color="gray.600">Hasta (opcional)</Field.Label>
-                                                    <Input
-                                                        size="sm"
-                                                        type="date"
-                                                        value={fechasPorCapacidad[cap.id]?.fecha_hasta ?? ''}
-                                                        onChange={(e) => setFechasPorCapacidad((prev) => ({
-                                                            ...prev,
-                                                            [cap.id]: { fecha_desde: '', ...prev[cap.id], fecha_hasta: e.target.value },
-                                                        }))}
-                                                    />
-                                                </Field.Root>
-                                            </HStack>
-                                        )}
-                                    </Box>
+                                    <Checkbox.Root key={cap.id} value={String(cap.id)}>
+                                        <Checkbox.HiddenInput />
+                                        <Checkbox.Control />
+                                        <Checkbox.Label textTransform="capitalize">{cap.nombre}</Checkbox.Label>
+                                    </Checkbox.Root>
                                 ))}
                                 {capacidadesDisponibles.length === 0 && (
                                     <Text fontSize="sm" color="gray.500">Todavía no hay capacidades cargadas.</Text>
@@ -270,3 +221,4 @@ export const CrearPersona = ({ onCancelar }: CrearPersonaProps) => {
         </Box>
     );
 };
+

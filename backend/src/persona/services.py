@@ -3,6 +3,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.persona.models import Persona
 from src.persona import schemas, exceptions
+from src.capacidad.models import PersonaCapacidad
 
 
 def crear_persona(
@@ -76,6 +77,13 @@ def eliminar_persona(
     db_persona = leer_persona(
         db,
         persona_id
+    )
+
+    # Borramos primero las capacidades asignadas a esta persona,
+    # para no violar la foreign key en personal_capacidad.persona_id
+    db.execute(
+        delete(PersonaCapacidad)
+        .where(PersonaCapacidad.persona_id == persona_id)
     )
 
     db.execute(

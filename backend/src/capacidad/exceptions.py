@@ -22,3 +22,4 @@ class CapacidadNoExiste(NotFound):
 
 class PersonaCapacidadNoEncontrada(NotFound):
     DETAIL = ErrorCode.PERSONA_CAPACIDAD_NO_ENCONTRADA
+

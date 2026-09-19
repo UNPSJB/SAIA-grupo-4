@@ -1,4 +1,3 @@
-from datetime import date
 from typing import List
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -69,9 +68,22 @@ def modificar_capacidad(db: Session, capacidad_id: int, capacidad: schemas.Capac
 def asignar_capacidad(
     db: Session, persona_id: int, datos: schemas.PersonaCapacidadCreate
 ) -> PersonaCapacidad:
+    ya_existe = db.scalar(
+        select(PersonaCapacidad).where(
+            PersonaCapacidad.persona_id == persona_id,
+            PersonaCapacidad.capacidad_id == datos.capacidad_id,
+        )
+    )
+    if ya_existe:
+        raise exceptions.PersonaCapacidadDuplicada()
+
     db_asignacion = PersonaCapacidad(persona_id=persona_id, **datos.model_dump())
     db.add(db_asignacion)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.BadRequest(detail="Ocurrio un error inesperado")
     db.refresh(db_asignacion)
     return db_asignacion
 
@@ -83,15 +95,13 @@ def quitar_capacidad(
         select(PersonaCapacidad).where(
             PersonaCapacidad.persona_id == persona_id,
             PersonaCapacidad.capacidad_id == capacidad_id,
-            PersonaCapacidad.fecha_hasta.is_(None)
         )
     )
     if db_asignacion is None:
         raise exceptions.PersonaCapacidadNoEncontrada()
 
-    db_asignacion.fecha_hasta = date.today()
+    db.delete(db_asignacion)
     db.commit()
-    db.refresh(db_asignacion)
     return db_asignacion
 
 

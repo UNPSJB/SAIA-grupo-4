@@ -1,5 +1,4 @@
-from datetime import date
-from sqlalchemy import String, Date, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
@@ -21,8 +20,6 @@ class PersonaCapacidad(ModeloBase):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     persona_id: Mapped[int] = mapped_column(ForeignKey("personal.id"), nullable=False)
     capacidad_id: Mapped[int] = mapped_column(ForeignKey("capacidad.id"), nullable=False)
-    fecha_desde: Mapped[date] = mapped_column(Date, nullable=False)
-    fecha_hasta: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     persona: Mapped["Persona"] = relationship(back_populates="capacidades")
     capacidad: Mapped["Capacidad"] = relationship(back_populates="personas")
