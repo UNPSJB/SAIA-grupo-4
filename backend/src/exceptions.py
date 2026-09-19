@@ -14,7 +14,6 @@ class DetailedHTTPException(HTTPException):
             **kwargs
         )
 
-
 class PermissionDenied(DetailedHTTPException):
     STATUS_CODE = status.HTTP_403_FORBIDDEN
     DETAIL = "Permiso denegado"
