@@ -18,6 +18,7 @@ import {
   FiLogOut,
   FiMenu,
   FiPackage,
+  FiHash,
   FiShield,
   FiTool,
   FiUser,
@@ -41,6 +42,7 @@ interface NavBarProps {
 const defaultItems: NavItem[] = [
   { to: "/equipos", label: "Equipos", icon: FiTool },
   { to: "/insumos", label: "Insumos", icon: FiPackage },
+  { to: "/unidades-de-medida", label: "Unidades de medida", icon: FiHash },
 ];
 
 const isActiveRoute = (pathname: string, to: string) =>

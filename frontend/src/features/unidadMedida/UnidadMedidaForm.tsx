@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack } from "@chakra-ui/react";
-import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
-import { useListadoData } from "../../hooks/useListadoData";
-import { insumoSchema, type InsumoFormValues } from "./validationSchema";
-import type { Insumo, UnidadMedida } from "./types";
+import { useUnidadMedidaSubmit } from "./hooks/useUnidadMedidaSubmit";
+import {
+  unidadMedidaSchema,
+  type UnidadMedidaFormValues,
+} from "./validationSchema";
+import type { UnidadMedida } from "./types";
 import {
   FormContainer,
   FormHeader,
@@ -17,58 +19,43 @@ import {
   AlertMessage,
   AlertConfirm,
 } from "../../components/ui";
-import { FiBox, FiEdit2, FiSave, FiXCircle, FiEye } from "react-icons/fi";
+import { FiHash, FiEdit2, FiSave, FiXCircle, FiEye } from "react-icons/fi";
 
-type InsumoFormProps = {
+const TIPOS_MAGNITUD = [
+  { label: "Masa", value: "masa" },
+  { label: "Volumen", value: "volumen" },
+  { label: "Temperatura", value: "temperatura" },
+  { label: "Tiempo", value: "tiempo" },
+  { label: "Longitud", value: "longitud" },
+  { label: "Cantidad", value: "cantidad" },
+  { label: "Concentracion", value: "concentracion" },
+];
+
+type UnidadMedidaFormProps = {
   modo: "crear" | "modificar" | "ver";
-  insumo?: Insumo;
+  unidad?: UnidadMedida;
   onCancelar?: () => void;
-  onGuardado?: (insumo: Insumo) => void;
+  onGuardado?: (unidad: UnidadMedida) => void;
 };
 
-export const InsumoForm = ({
+export const UnidadMedidaForm = ({
   modo,
-  insumo,
+  unidad,
   onCancelar,
   onGuardado,
-}: InsumoFormProps) => {
+}: UnidadMedidaFormProps) => {
   const esModoVer = modo === "ver";
   const esModoCrear = modo === "crear";
   const esModoModificar = modo === "modificar";
 
-  const { data: unidades } = useListadoData<UnidadMedida>({
-    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
-    pageSize: 100,
-    errorMessage: "No se pudieron cargar las unidades de medida.",
-  });
-
-  const opcionesUnidad = useMemo(() => {
-    const activas = unidades.filter((unidad) => unidad.disponible);
-    const opciones = activas.map((unidad) => ({
-      label: `${unidad.nombre} (${unidad.simbolo})`,
-      value: String(unidad.id),
-    }));
-
-    const unidadActual =
-      esModoModificar || esModoVer ? insumo?.unidad_medida : undefined;
-    if (unidadActual && !activas.some((u) => u.id === unidadActual.id)) {
-      opciones.unshift({
-        label: `${unidadActual.nombre} (${unidadActual.simbolo})`,
-        value: String(unidadActual.id),
-      });
-    }
-    return opciones;
-  }, [unidades, esModoModificar, esModoVer, insumo]);
-
-  const defaultValues: InsumoFormValues =
+  const defaultValues: UnidadMedidaFormValues =
     esModoModificar || esModoVer
       ? {
-          nombre: insumo!.nombre,
-          unidad_medida_id: String(insumo!.unidad_medida.id),
-          categoria: insumo!.categoria,
-          descripcion: insumo!.descripcion,
+          nombre: unidad!.nombre,
+          simbolo: unidad!.simbolo,
+          tipo_magnitud: unidad!.tipo_magnitud,
         }
-      : { nombre: "", unidad_medida_id: "", categoria: "", descripcion: "" };
+      : { nombre: "", simbolo: "", tipo_magnitud: "" };
 
   const {
     register,
@@ -77,47 +64,47 @@ export const InsumoForm = ({
     setError,
     clearErrors,
     reset,
-  } = useForm<InsumoFormValues>({
-    resolver: zodResolver(insumoSchema),
+  } = useForm<UnidadMedidaFormValues>({
+    resolver: zodResolver(unidadMedidaSchema),
     defaultValues,
   });
 
   const [success, setSuccess] = useState(false);
   const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
-  const [insumoInactivoId, setInsumoInactivoId] = useState<number | null>(null);
+  const [unidadInactivaId, setUnidadInactivaId] = useState<number | null>(null);
   const [errorConfirmar, setErrorConfirmar] = useState("");
   const [nombreEnviado, setNombreEnviado] = useState("");
 
-  const { submit } = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+  const { submit } = useUnidadMedidaSubmit({
+    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
     method: esModoCrear ? "POST" : "PUT",
-    id: esModoModificar ? insumo!.id : undefined,
-    onInactivo: (insumoId) => {
+    id: esModoModificar ? unidad!.id : undefined,
+    onInactivo: (unidadId) => {
       if (!esModoCrear) return;
-      setInsumoInactivoId(insumoId);
+      setUnidadInactivaId(unidadId);
       setErrorConfirmar("");
       setConfirmAltaAbierto(true);
     },
     onSuccess: () => {
       setSuccess(true);
-      onGuardado?.(insumo!);
+      onGuardado?.(unidad!);
     },
   });
 
-  const reactivar = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+  const reactivar = useUnidadMedidaSubmit({
+    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
     method: "PUT",
-    id: insumoInactivoId ?? undefined,
+    id: unidadInactivaId ?? undefined,
     body: { disponible: true },
     onSuccess: () => {
       setConfirmAltaAbierto(false);
-      setInsumoInactivoId(null);
-      onGuardado?.(insumo!);
+      setUnidadInactivaId(null);
+      onGuardado?.(unidad!);
     },
   });
 
   const confirmarAlta = async () => {
-    if (insumoInactivoId === null) return;
+    if (unidadInactivaId === null) return;
     setErrorConfirmar("");
     const res = await reactivar.submit();
     if (res.status === "error") {
@@ -142,12 +129,12 @@ export const InsumoForm = ({
       <FormHeader
         title={
           esModoVer
-            ? "Ver Insumo"
+            ? "Ver Unidad de Medida"
             : modo === "crear"
-              ? "Nuevo Insumo"
-              : "Modificar Insumo"
+              ? "Nueva Unidad de Medida"
+              : "Modificar Unidad de Medida"
         }
-        icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
+        icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiHash}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
@@ -155,46 +142,28 @@ export const InsumoForm = ({
             label='Nombre'
             disabled={esModoVer}
             defaultValue={defaultValues.nombre}
-            placeholder='Ej. Harina 0000'
+            placeholder='Ej. Kilogramo'
             error={errors.nombre?.message}
             {...register("nombre")}
           />
-          <SelectField
-            label='Unidad de medida'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.unidad_medida_id}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={opcionesUnidad}
-            error={errors.unidad_medida_id?.message}
-            {...register("unidad_medida_id")}
-          />
-
-          <SelectField
-            label='Categoria'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.categoria}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={[
-              { label: "Materia Prima", value: "materia prima" },
-              { label: "Aditivo", value: "aditivo" },
-              { label: "Envase", value: "envase" },
-              { label: "Otro", value: "otro" },
-            ]}
-            error={errors.categoria?.message}
-            {...register("categoria")}
-          />
-
           <TextField
-            label='Descripcion'
+            label='Simbolo'
             disabled={esModoVer}
-            defaultValue={defaultValues.descripcion}
-            placeholder='Breve descripcion del insumo'
-            error={errors.descripcion?.message}
-            {...register("descripcion")}
+            defaultValue={defaultValues.simbolo}
+            placeholder='Ej. kg'
+            error={errors.simbolo?.message}
+            {...register("simbolo")}
+          />
+          <SelectField
+            label='Tipo de magnitud'
+            placeholder='Selecciona una opcion'
+            readOnly={esModoVer}
+            defaultValue={defaultValues.tipo_magnitud}
+            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+            options={TIPOS_MAGNITUD}
+            error={errors.tipo_magnitud?.message}
+            {...register("tipo_magnitud")}
           />
 
           <FormActions>
@@ -234,8 +203,8 @@ export const InsumoForm = ({
               type='success'
               message={
                 esModoCrear
-                  ? "El insumo ha sido cargado exitosamente!"
-                  : "Insumo modificado exitosamente!"
+                  ? "La unidad de medida ha sido cargada exitosamente!"
+                  : "Unidad de medida modificada exitosamente!"
               }
             />
           )}
@@ -246,7 +215,7 @@ export const InsumoForm = ({
         <AlertConfirm
           open={confirmAltaAbierto}
           title='Dar de Alta'
-          message={`Ya existe un insumo inactivo con ese nombre. ¿Queres darlo de alta a ${nombreEnviado}?`}
+          message={`Ya existe una unidad de medida inactiva con ese nombre. ¿Queres darla de alta a ${nombreEnviado}?`}
           loading={reactivar.isSubmitting}
           error={errorConfirmar}
           onConfirm={confirmarAlta}

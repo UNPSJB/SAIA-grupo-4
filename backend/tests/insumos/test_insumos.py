@@ -108,6 +108,70 @@ def test_crear_insumo_unidad_inexistente():
     assert response.status_code == 400
 
 
+def test_crear_insumo_con_unidad_inactiva():
+    unidad_id = crear_unidad_medida(nombre="Bolsas", tipo="cantidad")
+    res_del = client.delete(f"/unidades-de-medida/{unidad_id}")
+    assert res_del.status_code == 200
+
+    response = client.post(
+        "/insumos/",
+        json={
+            "nombre": "Bolsa",
+            "unidad_medida_id": unidad_id,
+            "categoria": "envase",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "La unidad de medida ya esta dada de baja"
+
+
+def test_dar_alta_insumo_con_unidad_inactiva():
+    unidad_id = crear_unidad_medida(nombre="Tarro", tipo="cantidad")
+    res_post = client.post(
+        "/insumos/",
+        json={
+            "nombre": "Tapa de tarro",
+            "unidad_medida_id": unidad_id,
+            "categoria": "envase",
+        },
+    )
+    insumo_id = res_post.json()["id"]
+    res_del_insumo = client.delete(f"/insumos/{insumo_id}")
+    assert res_del_insumo.status_code == 200
+
+    res_del_unidad = client.delete(f"/unidades-de-medida/{unidad_id}")
+    assert res_del_unidad.status_code == 200
+
+    res_put = client.put(
+        f"/insumos/{insumo_id}",
+        json={"disponible": True},
+    )
+    assert res_put.status_code == 400
+    assert res_put.json()["detail"] == "La unidad de medida ya esta dada de baja"
+
+
+def test_dar_alta_insumo_con_unidad_activa():
+    unidad_id = crear_unidad_medida(nombre="Botella", tipo="cantidad")
+    res_post = client.post(
+        "/insumos/",
+        json={
+            "nombre": "Botella 500ml",
+            "unidad_medida_id": unidad_id,
+            "categoria": "envase",
+        },
+    )
+    insumo_id = res_post.json()["id"]
+    res_del = client.delete(f"/insumos/{insumo_id}")
+    assert res_del.status_code == 200
+
+    res_put = client.put(
+        f"/insumos/{insumo_id}",
+        json={"disponible": True},
+    )
+    assert res_put.status_code == 200
+    assert res_put.json()["disponible"] is True
+
+
 def test_listar_insumos():
     response = client.get("/insumos/")
     assert response.status_code == 200

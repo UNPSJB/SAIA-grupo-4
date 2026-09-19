@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { NavBar } from './components/layout';
 import EquiposPage from './pages/EquiposPage';
 import InsumoPage from './pages/InsumoPage';
+import UnidadMedidaPage from './pages/UnidadMedidaPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
               
               {/* Aca irian las otras rutas */}
               <Route path='/insumos' element={<InsumoPage/>}/>
+              <Route path='/unidades-de-medida' element={<UnidadMedidaPage/>}/>
 
               {/* Ruta por si se escribe una URL que no existe */}
               <Route path="*" element={

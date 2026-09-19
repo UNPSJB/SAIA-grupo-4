@@ -16,52 +16,56 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import type { Insumo } from "./types";
+import type { UnidadMedida } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
-interface ListadoInsumosProps {
+interface ListadoUnidadMedidaProps {
   onCrear?: () => void;
-  onModificar?: (insumo: Insumo) => void;
-  onEliminar?: (insumo: Insumo) => void;
-  onVer?: (insumo: Insumo) => void;
-  onDarAlta?: (insumo: Insumo) => void;
+  onModificar?: (unidad: UnidadMedida) => void;
+  onEliminar?: (unidad: UnidadMedida) => void;
+  onVer?: (unidad: UnidadMedida) => void;
+  onDarAlta?: (unidad: UnidadMedida) => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/insumos/";
+const ENDPOINT = "http://127.0.0.1:8000/unidades-de-medida/";
 const ITEMS_POR_PAGINA = 5;
 
-export const ListadoInsumos = ({
+export const ListadoUnidadMedida = ({
   onCrear,
   onModificar,
   onEliminar,
   onVer,
   onDarAlta,
-}: ListadoInsumosProps) => {
+}: ListadoUnidadMedidaProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
-    useListadoData<Insumo>({
+    useListadoData<UnidadMedida>({
       endpoint: ENDPOINT,
       pageSize: ITEMS_POR_PAGINA,
-      errorMessage: "No se pudo cargar la lista de insumos.",
+      errorMessage: "No se pudo cargar la lista de unidades de medida.",
     });
 
-  const columnas: ColumnDef<Insumo>[] = [
+  const columnas: ColumnDef<UnidadMedida>[] = [
     {
       key: "nombre",
       label: "Nombre",
-      render: (insumo) => insumo.nombre,
+      render: (unidad) => unidad.nombre,
     },
     {
-      key: "unidad_medida",
-      label: "Unidad de medida",
-      render: (insumo) =>
-        `${insumo.unidad_medida.nombre} (${insumo.unidad_medida.simbolo})`,
+      key: "simbolo",
+      label: "Simbolo",
+      render: (unidad) => unidad.simbolo,
+    },
+    {
+      key: "tipo_magnitud",
+      label: "Tipo de magnitud",
+      render: (unidad) => unidad.tipo_magnitud,
     },
     {
       key: "disponible",
       label: "Disponible",
-      render: (insumo) => (
-        <Badge colorPalette={insumo.disponible ? "green" : "red"}>
-          {insumo.disponible ? "Activo" : "Inactivo"}
+      render: (unidad) => (
+        <Badge colorPalette={unidad.disponible ? "green" : "red"}>
+          {unidad.disponible ? "Activo" : "Inactivo"}
         </Badge>
       ),
     },
@@ -69,34 +73,34 @@ export const ListadoInsumos = ({
       key: "acciones",
       label: "Acciones",
       align: "end",
-      render: (insumo) => (
+      render: (unidad) => (
         <RowActions>
           <RowActionButton
             icon={FiEdit2}
             label='Modificar'
             colorPalette='blue'
-            onClick={() => onModificar?.(insumo)}
-            visible={insumo.disponible}
+            onClick={() => onModificar?.(unidad)}
+            visible={unidad.disponible}
           />
           <RowActionButton
             icon={FiEye}
             label='Ver'
             colorPalette='yellow'
-            onClick={() => onVer?.(insumo)}
+            onClick={() => onVer?.(unidad)}
           />
           <RowActionButton
             icon={FiTrash2}
             label='Eliminar'
             colorPalette='red'
-            onClick={() => onEliminar?.(insumo)}
-            visible={insumo.disponible}
+            onClick={() => onEliminar?.(unidad)}
+            visible={unidad.disponible}
           />
           <RowActionButton
             icon={FiCheckCircle}
             label='Dar de alta'
             colorPalette='green'
-            onClick={() => onDarAlta?.(insumo)}
-            visible={!insumo.disponible}
+            onClick={() => onDarAlta?.(unidad)}
+            visible={!unidad.disponible}
           />
         </RowActions>
       ),
@@ -106,18 +110,21 @@ export const ListadoInsumos = ({
   return (
     <ListadoContainer>
       <ListadoHeader
-        title='Insumos'
+        title='Unidades de Medida'
         icon={FiList}
-        buttonLabel='Nuevo insumo'
+        buttonLabel='Nueva unidad de medida'
         onCrear={onCrear}
       />
 
-      {loading && <LoadingState message='Cargando insumos...' />}
+      {loading && <LoadingState message='Cargando unidades de medida...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type='info' message='Todavía no hay insumos cargados.' />
+        <AlertMessage
+          type='info'
+          message='Todavía no hay unidades de medida cargadas.'
+        />
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -125,7 +132,7 @@ export const ListadoInsumos = ({
           <DataTable
             items={itemsPaginados}
             columns={columnas}
-            getRowKey={(insumo) => insumo.id}
+            getRowKey={(unidad) => unidad.id}
           />
 
           <TablePagination
@@ -133,8 +140,8 @@ export const ListadoInsumos = ({
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
-            labelSingular='insumo'
-            labelPlural='insumos'
+            labelSingular='unidad de medida'
+            labelPlural='unidades de medida'
           />
         </>
       )}
