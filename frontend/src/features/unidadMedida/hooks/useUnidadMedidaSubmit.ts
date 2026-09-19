@@ -2,53 +2,51 @@ import { useCallback, useState } from "react";
 
 export type SubmitResult =
   | { status: "success" }
-  | { status: "inactivo"; insumoId: number }
+  | { status: "inactivo"; unidadMedidaId: number }
   | { status: "error"; message: string };
 
-export interface InsumoPayload {
+export interface UnidadMedidaPayload {
   nombre: string;
-  unidad_medida_id: string;
-  categoria: string;
-  descripcion: string;
+  simbolo: string;
+  tipo_magnitud: string;
 }
 
 type FastApiError = {
-  detail?: string | { code?: string; insumo_id?: number };
+  detail?: string | { code?: string; unidad_medida_id?: number };
 };
 
-interface UseInsumoSubmitOptions {
-  endpoint: string; // URL base (ej: "http://127.0.0.1:8000/insumos/")
+interface UseUnidadMedidaSubmitOptions {
+  endpoint: string; // URL base (ej: "http://127.0.0.1:8000/unidades-de-medida/")
   method?: "POST" | "PUT"; // método HTTP
   id?: number | string; // solo para PUT
   body?: Record<string, unknown>; // override del body (ej: { disponible: true })
-  onInactivo?: (insumo_id: number) => void; // cuando el insumo existe pero está inactivo (409)
+  onInactivo?: (unidad_medida_id: number) => void; // cuando la unidad existe pero está inactiva (409)
   onSuccess?: () => void;
 }
 
 /**
- * Hook que devuelve una función de envío para los formularios de insumo.
+ * Hook que devuelve una función de envío para los formularios de unidad de medida.
  * La validación de campos la resuelve react-hook-form (zod); este hook
  * solo se encarga del fetch y del mapeo de errores HTTP.
  */
-export const useInsumoSubmit = ({
+export const useUnidadMedidaSubmit = ({
   endpoint,
   method = "POST",
   id,
   body,
   onInactivo,
   onSuccess,
-}: UseInsumoSubmitOptions) => {
+}: UseUnidadMedidaSubmitOptions) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submit = useCallback(
-    async (values?: InsumoPayload): Promise<SubmitResult> => {
+    async (values?: UnidadMedidaPayload): Promise<SubmitResult> => {
       setIsSubmitting(true);
       try {
         const payload = body ?? {
           nombre: values?.nombre.toLocaleLowerCase() ?? "",
-          unidad_medida_id: values ? Number(values.unidad_medida_id) : undefined,
-          categoria: values?.categoria ?? "",
-          descripcion: values?.descripcion ?? "",
+          simbolo: values?.simbolo ?? "",
+          tipo_magnitud: values?.tipo_magnitud ?? "",
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
@@ -66,16 +64,19 @@ export const useInsumoSubmit = ({
             // Si la respuesta no es JSON, bodyRes queda en null
           }
 
-          // 1. Caso especial: Insumo inactivo (captura el 409 y el insumo_id)
+          // 1. Caso especial: Unidad de medida inactiva (captura el 409 y el unidad_medida_id)
           const detailInactivo = bodyRes?.detail;
           if (
             res.status === 409 &&
             typeof detailInactivo === "object" &&
             detailInactivo !== null &&
-            typeof detailInactivo.insumo_id === "number"
+            typeof detailInactivo.unidad_medida_id === "number"
           ) {
-            onInactivo?.(detailInactivo.insumo_id);
-            return { status: "inactivo", insumoId: detailInactivo.insumo_id };
+            onInactivo?.(detailInactivo.unidad_medida_id);
+            return {
+              status: "inactivo",
+              unidadMedidaId: detailInactivo.unidad_medida_id,
+            };
           }
 
           // 2. Extraer el mensaje exacto que manda FastAPI
@@ -90,13 +91,14 @@ export const useInsumoSubmit = ({
             // 3. Fallback genérico por status HTTP
             switch (res.status) {
               case 400:
-                mensajeError = "El insumo ya existe.";
+                mensajeError = "La unidad de medida ya existe.";
                 break;
               case 404:
-                mensajeError = "Insumo no existe.";
+                mensajeError = "La unidad de medida no existe.";
                 break;
               case 409:
-                mensajeError = "Ya existe un insumo activo con ese nombre.";
+                mensajeError =
+                  "Ya existe una unidad de medida activa con ese nombre.";
                 break;
               case 500:
                 mensajeError = "Error interno del servidor.";

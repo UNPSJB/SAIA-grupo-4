@@ -1,53 +1,55 @@
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
-import { InsumoForm } from "../features/insumo/InsumoForm";
-import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
+import { UnidadMedidaForm } from "../features/unidadMedida/UnidadMedidaForm";
+import { ListadoUnidadMedida } from "../features/unidadMedida/ListadoUnidadMedida";
 import { AlertDelete, AlertConfirm } from "../components/ui";
-import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
-import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
-import type { Insumo } from "../features/insumo/types";
+import { handleDelete } from "../features/unidadMedida/hooks/useUnidadMedidaDelete";
+import { useUnidadMedidaSubmit } from "../features/unidadMedida/hooks/useUnidadMedidaSubmit";
+import type { UnidadMedida } from "../features/unidadMedida/types";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
-export default function InsumoPage() {
+export default function UnidadMedidaPage() {
   const [vista, setVista] = useState<Vista>("listado");
-  const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
-    null,
-  );
+  const [unidadSeleccionada, setUnidadSeleccionada] =
+    useState<UnidadMedida | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [insumoEliminar, setInsumoEliminar] = useState<Insumo | null>(null);
+  const [unidadEliminar, setUnidadEliminar] = useState<UnidadMedida | null>(
+    null,
+  );
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
-  const [insumoAlta, setInsumoAlta] = useState<Insumo | null>(null);
+  const [unidadAlta, setUnidadAlta] = useState<UnidadMedida | null>(null);
   const [altaAbierto, setAltaAbierto] = useState(false);
-  const [refescar, setRefrescar] = useState(0);
+  const [refrescar, setRefrescar] = useState(0);
+
   const confirmarEliminar = () => {
     handleDelete({
-      insumo: insumoEliminar,
+      unidad: unidadEliminar,
       setLoading,
       setError,
       onSuccess: () => {
         setEliminarAbierto(false);
-        setInsumoEliminar(null);
+        setUnidadEliminar(null);
         setRefrescar((r) => r + 1);
       },
     });
   };
 
-  const reactivar = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+  const reactivar = useUnidadMedidaSubmit({
+    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
     method: "PUT",
-    id: insumoAlta?.id,
+    id: unidadAlta?.id,
     body: { disponible: true },
     onSuccess: () => {
       setAltaAbierto(false);
-      setInsumoAlta(null);
+      setUnidadAlta(null);
       setRefrescar((r) => r + 1);
     },
   });
 
   const confirmarAlta = async () => {
-    if (!insumoAlta) return;
+    if (!unidadAlta) return;
     setError("");
     const res = await reactivar.submit();
     if (res.status === "error") {
@@ -58,52 +60,52 @@ export default function InsumoPage() {
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       {vista === "listado" && (
-        <ListadoInsumos
-          key={refescar}
+        <ListadoUnidadMedida
+          key={refrescar}
           onCrear={() => {
             setError("");
             setVista("crear");
           }}
-          onModificar={(insumo) => {
+          onModificar={(unidad) => {
             setError("");
-            setInsumoSeleccionado(insumo);
+            setUnidadSeleccionada(unidad);
             setVista("modificar");
           }}
-          onEliminar={(insumo) => {
+          onEliminar={(unidad) => {
             setError("");
-            setInsumoEliminar(insumo);
+            setUnidadEliminar(unidad);
             setEliminarAbierto(true);
           }}
-          onVer={(insumo) => {
+          onVer={(unidad) => {
             setError("");
-            setInsumoSeleccionado(insumo);
+            setUnidadSeleccionada(unidad);
             setVista("ver");
           }}
-          onDarAlta={(insumo) => {
+          onDarAlta={(unidad) => {
             setError("");
-            setInsumoAlta(insumo);
+            setUnidadAlta(unidad);
             setAltaAbierto(true);
           }}
         />
       )}
-      {vista === "ver" && insumoSeleccionado && (
-        <InsumoForm
+      {vista === "ver" && unidadSeleccionada && (
+        <UnidadMedidaForm
           modo='ver'
-          insumo={insumoSeleccionado}
+          unidad={unidadSeleccionada}
           onCancelar={() => setVista("listado")}
         />
       )}
       {vista === "crear" && (
-        <InsumoForm
+        <UnidadMedidaForm
           modo='crear'
           onCancelar={() => setVista("listado")}
           onGuardado={() => setVista("listado")}
         />
       )}
-      {vista === "modificar" && insumoSeleccionado && (
-        <InsumoForm
+      {vista === "modificar" && unidadSeleccionada && (
+        <UnidadMedidaForm
           modo='modificar'
-          insumo={insumoSeleccionado}
+          unidad={unidadSeleccionada}
           onCancelar={() => setVista("listado")}
           onGuardado={() => setVista("listado")}
         />
@@ -111,7 +113,7 @@ export default function InsumoPage() {
 
       <AlertDelete
         open={eliminarAbierto}
-        name={insumoEliminar?.nombre ?? null}
+        name={unidadEliminar?.nombre ?? null}
         loading={loading}
         error={error}
         onConfirm={confirmarEliminar}
@@ -124,7 +126,7 @@ export default function InsumoPage() {
       <AlertConfirm
         open={altaAbierto}
         title='Dar de Alta'
-        message={`¿Esta seguro que quiere dar de alta a ${insumoAlta?.nombre}?`}
+        message={`¿Esta seguro que quiere dar de alta a ${unidadAlta?.nombre}?`}
         loading={reactivar.isSubmitting}
         error={error}
         onConfirm={confirmarAlta}

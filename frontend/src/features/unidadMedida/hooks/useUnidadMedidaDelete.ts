@@ -1,30 +1,31 @@
-import type { Insumo } from "../types";
+import type { UnidadMedida } from "../types";
 
 type FastApiError = {
-  detail?: string | { code?: string; insumo_id?: number };
+  detail?: string | { code?: string; unidad_medida_id?: number };
 };
 
 interface HandleDeleteOptions {
-  insumo: Insumo | null;
+  unidad: UnidadMedida | null;
   setLoading: (v: boolean) => void;
   setError: (msg: string) => void;
   onSuccess?: () => void;
 }
 
 export const handleDelete = async ({
-  insumo,
+  unidad,
   setLoading,
   setError,
   onSuccess,
 }: HandleDeleteOptions) => {
-  if (!insumo) return;
+  if (!unidad) return;
   setLoading(true);
   setError("");
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/insumos/${insumo.id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      `http://127.0.0.1:8000/unidades-de-medida/${unidad.id}`,
+      { method: "DELETE" },
+    );
 
     if (!res.ok) {
       let bodyRes: FastApiError | null = null;
@@ -44,10 +45,14 @@ export const handleDelete = async ({
       } else {
         switch (res.status) {
           case 400:
-            mensajeError = "El insumo ya esta dado de baja.";
+            mensajeError = "La unidad de medida ya esta dado de baja";
             break;
           case 404:
-            mensajeError = "El insumo no existe.";
+            mensajeError = "La unidad de medida no existe.";
+            break;
+          case 409:
+            mensajeError =
+              "No se puede eliminar una unidad de medida asociada a un insumo activo.";
             break;
           case 500:
             mensajeError = "Error interno del servidor.";

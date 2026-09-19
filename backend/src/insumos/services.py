@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.insumos.models import Insumo
 from src.insumos import schemas, exceptions
+from src.unidad_medida.models import UnidadMedida
+from src.unidad_medida.exceptions import UnidadMedidaReactivar
 
 
 # operaciones CRUD para Insumo
@@ -15,6 +17,11 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
         if db_insumo_existente.disponible:
             raise exceptions.NombreDuplicado()
         raise exceptions.NombreDuplicadoInactivo(insumo_id=db_insumo_existente.id)
+
+    # Verifica que la unidad de medida exista y este activa
+    db_unidad = db.scalar(select(UnidadMedida).where(UnidadMedida.id == insumo.unidad_medida_id))
+    if db_unidad is None or not db_unidad.disponible:
+        raise UnidadMedidaReactivar()
 
     # Crea el insumo y lo sube a la db
     db_insumo = Insumo(**insumo.model_dump())
@@ -58,6 +65,13 @@ def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) 
                 raise exceptions.InsumoActivo()
             else:
                 raise exceptions.InsumoBaja()
+
+        if insumo.disponible:
+            # Al dar de alta, la unidad de medida asociada debe existir y estar activa
+            unidad_id = update_data.get("unidad_medida_id", db_insumo.unidad_medida_id)
+            db_unidad = db.scalar(select(UnidadMedida).where(UnidadMedida.id == unidad_id))
+            if db_unidad is None or not db_unidad.disponible:
+                raise UnidadMedidaReactivar()
 
     if update_data:
         # Modifica el insumo y lo sube a la db
