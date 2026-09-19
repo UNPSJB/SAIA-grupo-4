@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack } from "@chakra-ui/react";
 import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
+import { useListadoData } from "./hooks/useListadoData";
 import { insumoSchema, type InsumoFormValues } from "./validationSchema";
-import type { Insumo } from "./types";
+import type { Insumo, UnidadMedida } from "./types";
 import {
   FormContainer,
   FormHeader,
@@ -35,15 +36,38 @@ export const InsumoForm = ({
   const esModoCrear = modo === "crear";
   const esModoModificar = modo === "modificar";
 
+  const { data: unidades } = useListadoData<UnidadMedida>({
+    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
+    pageSize: 100,
+    errorMessage: "No se pudieron cargar las unidades de medida.",
+  });
+
+  const opcionesUnidad = useMemo(() => {
+    const activas = unidades.filter((unidad) => unidad.disponible);
+    const opciones = activas.map((unidad) => ({
+      label: `${unidad.nombre} (${unidad.simbolo})`,
+      value: String(unidad.id),
+    }));
+
+    const unidadActual = esModoModificar || esModoVer ? insumo?.unidad_medida : undefined;
+    if (unidadActual && !activas.some((u) => u.id === unidadActual.id)) {
+      opciones.unshift({
+        label: `${unidadActual.nombre} (${unidadActual.simbolo})`,
+        value: String(unidadActual.id),
+      });
+    }
+    return opciones;
+  }, [unidades, esModoModificar, esModoVer, insumo]);
+
   const defaultValues: InsumoFormValues =
     esModoModificar || esModoVer
       ? {
           nombre: insumo!.nombre,
-          unidad_medida: insumo!.unidad_medida,
+          unidad_medida_id: String(insumo!.unidad_medida.id),
           categoria: insumo!.categoria,
           descripcion: insumo!.descripcion,
         }
-      : { nombre: "", unidad_medida: "", categoria: "", descripcion: "" };
+      : { nombre: "", unidad_medida_id: "", categoria: "", descripcion: "" };
 
   const {
     register,
@@ -138,17 +162,12 @@ export const InsumoForm = ({
             label='Unidad de medida'
             placeholder='Selecciona una opcion'
             readOnly={esModoVer}
-            defaultValue={defaultValues.unidad_medida}
+            defaultValue={defaultValues.unidad_medida_id}
             onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
             onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={[
-              { label: "Litros", value: "litros" },
-              { label: "Kilogramos", value: "kilogramos" },
-              { label: "Gramos", value: "gramos" },
-              { label: "Unidades", value: "unidades" },
-            ]}
-            error={errors.unidad_medida?.message}
-            {...register("unidad_medida")}
+            options={opcionesUnidad}
+            error={errors.unidad_medida_id?.message}
+            {...register("unidad_medida_id")}
           />
 
           <SelectField

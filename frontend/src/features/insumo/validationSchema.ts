@@ -9,7 +9,7 @@ export const insumoSchema = z.object({
       /^[A-Za-zÁÉÍÓÚáéíóúÑñ 0-9]{1,50}$/,
       "El nombre solo debe contener letras mayusculas o minusculas",
     ),
-  unidad_medida: z
+  unidad_medida_id: z
     .string()
     .min(1, "Por favor, ingrese una unidad de medida"),
   categoria: z.string().min(1, "Por favor, ingrese una categoria"),

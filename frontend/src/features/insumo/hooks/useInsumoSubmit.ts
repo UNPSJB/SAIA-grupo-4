@@ -7,7 +7,7 @@ export type SubmitResult =
 
 export interface InsumoPayload {
   nombre: string;
-  unidad_medida: string;
+  unidad_medida_id: string;
   categoria: string;
   descripcion: string;
 }
@@ -42,7 +42,7 @@ export const useInsumoSubmit = ({
       try {
         const payload = body ?? {
           nombre: values?.nombre.toLocaleLowerCase() ?? "",
-          unidad_medida: values?.unidad_medida ?? "",
+          unidad_medida_id: values ? Number(values.unidad_medida_id) : undefined,
           categoria: values?.categoria ?? "",
           descripcion: values?.descripcion ?? "",
         };

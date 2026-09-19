@@ -53,7 +53,8 @@ export const ListadoInsumos = ({
     {
       key: "unidad_medida",
       label: "Unidad de medida",
-      render: (insumo) => insumo.unidad_medida,
+      render: (insumo) =>
+        `${insumo.unidad_medida.nombre} (${insumo.unidad_medida.simbolo})`,
     },
     {
       key: "disponible",
