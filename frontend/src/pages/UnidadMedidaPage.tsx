@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { UnidadMedidaForm } from "../features/unidadMedida/UnidadMedidaForm";
 import { ListadoUnidadMedida } from "../features/unidadMedida/ListadoUnidadMedida";
-import { AlertDelete, AlertConfirm } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/unidadMedida/hooks/useUnidadMedidaDelete";
 import { useUnidadMedidaSubmit } from "../features/unidadMedida/hooks/useUnidadMedidaSubmit";
 import type { UnidadMedida } from "../features/unidadMedida/types";
@@ -59,56 +59,67 @@ export default function UnidadMedidaPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      {vista === "listado" && (
-        <ListadoUnidadMedida
-          key={refrescar}
-          onCrear={() => {
+      <ListadoUnidadMedida
+        key={refrescar}
+        onCrear={() => {
+          setError("");
+          setVista("crear");
+        }}
+        onModificar={(unidad) => {
+          setError("");
+          setUnidadSeleccionada(unidad);
+          setVista("modificar");
+        }}
+        onEliminar={(unidad) => {
+          setError("");
+          setUnidadEliminar(unidad);
+          setEliminarAbierto(true);
+        }}
+        onVer={(unidad) => {
+          setError("");
+          setUnidadSeleccionada(unidad);
+          setVista("ver");
+        }}
+        onDarAlta={(unidad) => {
+          setError("");
+          setUnidadAlta(unidad);
+          setAltaAbierto(true);
+        }}
+      />
+      {vista !== "listado" && (
+        <FormModal
+          open
+          onClose={() => {
             setError("");
-            setVista("crear");
+            setVista("listado");
           }}
-          onModificar={(unidad) => {
-            setError("");
-            setUnidadSeleccionada(unidad);
-            setVista("modificar");
-          }}
-          onEliminar={(unidad) => {
-            setError("");
-            setUnidadEliminar(unidad);
-            setEliminarAbierto(true);
-          }}
-          onVer={(unidad) => {
-            setError("");
-            setUnidadSeleccionada(unidad);
-            setVista("ver");
-          }}
-          onDarAlta={(unidad) => {
-            setError("");
-            setUnidadAlta(unidad);
-            setAltaAbierto(true);
-          }}
-        />
-      )}
-      {vista === "ver" && unidadSeleccionada && (
-        <UnidadMedidaForm
-          modo='ver'
-          unidad={unidadSeleccionada}
-          onCancelar={() => setVista("listado")}
-        />
-      )}
-      {vista === "crear" && (
-        <UnidadMedidaForm
-          modo='crear'
-          onCancelar={() => setVista("listado")}
-          onGuardado={() => setVista("listado")}
-        />
-      )}
-      {vista === "modificar" && unidadSeleccionada && (
-        <UnidadMedidaForm
-          modo='modificar'
-          unidad={unidadSeleccionada}
-          onCancelar={() => setVista("listado")}
-          onGuardado={() => setVista("listado")}
-        />
+        >
+          {vista === "ver" && unidadSeleccionada && (
+            <UnidadMedidaForm
+              modo='ver'
+              unidad={unidadSeleccionada}
+              onCancelar={() => setVista("listado")}
+              enModal
+            />
+          )}
+          {vista === "crear" && (
+            <UnidadMedidaForm
+              modo='crear'
+              onCancelar={() => setVista("listado")}
+              onGuardado={() => setVista("listado")}
+              enModal
+            />
+          )}
+          {vista === "modificar" && unidadSeleccionada && (
+            <UnidadMedidaForm
+              modo='modificar'
+              unidad={unidadSeleccionada}
+              onCancelar={() => setVista("listado")}
+              onGuardado={() => setVista("listado")}
+              enModal
+            />
+          )}
+        </FormModal>
       )}
 
       <AlertDelete

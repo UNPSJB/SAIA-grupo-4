@@ -4,21 +4,23 @@ interface FormContainerProps {
   children: React.ReactNode;
   className?: string;
   /** any other props you want to spread */
+  modal?: boolean;
 }
 
 export const FormContainer = ({
   children,
   className,
+  modal = false,
   ...rest
 }: FormContainerProps) => (
   <Box
-    maxW="xl"
+    maxW={modal ? "100%" : "xl"}
     mx="auto"
-    mt={20}
-    p={20}
-    borderWidth="1px"
-    borderRadius="lg"
-    boxShadow="lg"
+    mt={modal ? 0 : 20}
+    p={modal ? 6 : 20}
+    borderWidth={modal ? 0 : "1px"}
+    borderRadius={modal ? "none" : "lg"}
+    boxShadow={modal ? "none" : "lg"}
     className={className}
     {...rest}
   >

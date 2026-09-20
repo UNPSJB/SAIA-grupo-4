@@ -24,6 +24,7 @@ type InsumoFormProps = {
   insumo?: Insumo;
   onCancelar?: () => void;
   onGuardado?: (insumo: Insumo) => void;
+  enModal?: boolean;
 };
 
 export const InsumoForm = ({
@@ -31,6 +32,7 @@ export const InsumoForm = ({
   insumo,
   onCancelar,
   onGuardado,
+  enModal = false,
 }: InsumoFormProps) => {
   const esModoVer = modo === "ver";
   const esModoCrear = modo === "crear";
@@ -138,7 +140,7 @@ export const InsumoForm = ({
   });
 
   return (
-    <FormContainer>
+    <FormContainer modal={enModal}>
       <FormHeader
         title={
           esModoVer

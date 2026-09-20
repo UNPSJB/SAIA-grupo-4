@@ -25,6 +25,7 @@ type EquipoFormProps = {
     equipo?: Equipo;
     onCancelar?: () => void;
     onGuardado?: (equipo: Equipo) => void;
+    enModal?: boolean;
 };
 
 export const EquipoForm = ({
@@ -32,6 +33,7 @@ export const EquipoForm = ({
     equipo,
     onCancelar,
     onGuardado,
+    enModal = false,
 }: EquipoFormProps) => {
     const esModoVer = modo === "ver";
     const esModoCrear = modo === "crear";
@@ -138,7 +140,7 @@ export const EquipoForm = ({
     });
 
     return (
-        <FormContainer>
+        <FormContainer modal={enModal}>
             <FormHeader
                 title={
                     esModoVer
