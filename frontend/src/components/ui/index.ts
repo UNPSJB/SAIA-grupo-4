@@ -15,3 +15,5 @@ export type { ColumnDef } from "./DataTable";
 export { RowActions } from "./RowActions";
 export { RowActionButton } from "./RowActionButton";
 export { TablePagination } from "./TablePagination";
+export { DetalleItem } from "./DetalleItem";
+export { DetalleSection } from "./DetalleSection";

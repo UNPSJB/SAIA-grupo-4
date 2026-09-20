@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { UnidadMedidaForm } from "../features/unidadMedida/UnidadMedidaForm";
+import { UnidadMedidaDetalle } from "../features/unidadMedida/UnidadMedidaDetalle";
 import { ListadoUnidadMedida } from "../features/unidadMedida/ListadoUnidadMedida";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/unidadMedida/hooks/useUnidadMedidaDelete";
@@ -86,7 +87,14 @@ export default function UnidadMedidaPage() {
           setAltaAbierto(true);
         }}
       />
-      {vista !== "listado" && (
+      {vista === "ver" && unidadSeleccionada && (
+        <UnidadMedidaDetalle
+          unidad={unidadSeleccionada}
+          onCerrar={() => setVista("listado")}
+        />
+      )}
+
+      {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
           onClose={() => {
@@ -94,19 +102,14 @@ export default function UnidadMedidaPage() {
             setVista("listado");
           }}
         >
-          {vista === "ver" && unidadSeleccionada && (
-            <UnidadMedidaForm
-              modo='ver'
-              unidad={unidadSeleccionada}
-              onCancelar={() => setVista("listado")}
-              enModal
-            />
-          )}
           {vista === "crear" && (
             <UnidadMedidaForm
               modo='crear'
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}
@@ -115,7 +118,10 @@ export default function UnidadMedidaPage() {
               modo='modificar'
               unidad={unidadSeleccionada}
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { InsumoForm } from "../features/insumo/InsumoForm";
+import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
 import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
@@ -84,7 +85,14 @@ export default function InsumoPage() {
           setAltaAbierto(true);
         }}
       />
-      {vista !== "listado" && (
+      {vista === "ver" && insumoSeleccionado && (
+        <InsumoDetalle
+          insumo={insumoSeleccionado}
+          onCerrar={() => setVista("listado")}
+        />
+      )}
+
+      {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
           onClose={() => {
@@ -92,28 +100,27 @@ export default function InsumoPage() {
             setVista("listado");
           }}
         >
-          {vista === "ver" && insumoSeleccionado && (
-            <InsumoForm
-              modo='ver'
-              insumo={insumoSeleccionado}
-              onCancelar={() => setVista("listado")}
-              enModal
-            />
-          )}
           {vista === "crear" && (
             <InsumoForm
               modo='crear'
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}
+
           {vista === "modificar" && insumoSeleccionado && (
             <InsumoForm
               modo='modificar'
               insumo={insumoSeleccionado}
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}

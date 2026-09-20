@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { EquipoForm } from "../features/equipos/EquipoForm";
+import { EquipoDetalle } from "../features/equipos/EquipoDetalle";
 import { ListadoEquipos } from "../features/equipos/ListadoEquipo";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/equipos/hooks/useEquipoDelete";
@@ -86,7 +87,14 @@ export default function EquiposPage() {
         }}
       />
 
-      {vista !== "listado" && (
+      {vista === "ver" && equipoSeleccionado && (
+        <EquipoDetalle
+          equipo={equipoSeleccionado}
+          onCerrar={() => setVista("listado")}
+        />
+      )}
+
+      {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
           onClose={() => {
@@ -94,20 +102,14 @@ export default function EquiposPage() {
             setVista("listado");
           }}
         >
-          {vista === "ver" && equipoSeleccionado && (
-            <EquipoForm
-              modo='ver'
-              equipo={equipoSeleccionado}
-              onCancelar={() => setVista("listado")}
-              enModal
-            />
-          )}
-
           {vista === "crear" && (
             <EquipoForm
               modo='crear'
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}
@@ -117,7 +119,10 @@ export default function EquiposPage() {
               modo='modificar'
               equipo={equipoSeleccionado}
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}

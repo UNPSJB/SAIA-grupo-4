@@ -5,3 +5,4 @@ export { FormModal } from "./FormModal";
 export { FormActions } from "./FormActions";
 export { ListadoContainer } from "./ListadoContainer";
 export { ListadoHeader } from "./ListadoHeader";
+export { DetalleModal, type SeccionDetalle } from "./DetalleModal";

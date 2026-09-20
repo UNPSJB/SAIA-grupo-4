@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { SectorForm } from "../features/sectores/SectorForm";
+import { SectorDetalle } from "../features/sectores/SectorDetalle";
 import { ListadoSectores } from "../features/sectores/ListadoSector";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/sectores/hooks/useSectorDelete";
@@ -86,7 +87,14 @@ export default function SectoresPage() {
         }}
       />
 
-      {vista !== "listado" && (
+      {vista === "ver" && sectorSeleccionado && (
+        <SectorDetalle
+          sector={sectorSeleccionado}
+          onCerrar={() => setVista("listado")}
+        />
+      )}
+
+      {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
           onClose={() => {
@@ -94,20 +102,14 @@ export default function SectoresPage() {
             setVista("listado");
           }}
         >
-          {vista === "ver" && sectorSeleccionado && (
-            <SectorForm
-              modo='ver'
-              sector={sectorSeleccionado}
-              onCancelar={() => setVista("listado")}
-              enModal
-            />
-          )}
-
           {vista === "crear" && (
             <SectorForm
               modo='crear'
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}
@@ -117,7 +119,10 @@ export default function SectoresPage() {
               modo='modificar'
               sector={sectorSeleccionado}
               onCancelar={() => setVista("listado")}
-              onGuardado={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
               enModal
             />
           )}
