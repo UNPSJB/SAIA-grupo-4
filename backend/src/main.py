@@ -14,7 +14,9 @@ from src.logger import setup_logging
 from src.persona.router import router as persona_router
 from src.capacidad.router import router as capacidad_router
 from src.equipos.router import router as equipos_router
+from src.sectores.router import router as sectores_router
 from src.insumos.router import router as insumos_router
+from src.unidad_medida.router import router as unidades_de_medidas_router
 from fastapi.middleware.cors import CORSMiddleware
 
 ENV = settings.ENV.upper()
@@ -47,4 +49,6 @@ app.add_middleware(
 app.include_router(persona_router)
 app.include_router(capacidad_router)
 app.include_router(equipos_router)
+app.include_router(sectores_router)
 app.include_router(insumos_router)
+app.include_router(unidades_de_medidas_router)

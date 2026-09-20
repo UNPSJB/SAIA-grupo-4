@@ -7,9 +7,12 @@ class DetailedHTTPException(HTTPException):
     STATUS_CODE = status.HTTP_500_INTERNAL_SERVER_ERROR
     DETAIL = "Error del servidor"
 
-    def __init__(self, **kwargs: Dict[str, Any]) -> None:
-        super().__init__(status_code=self.STATUS_CODE, detail=self.DETAIL, **kwargs)
-
+    def __init__(self, detail: Any = None, **kwargs: Dict[str, Any]) -> None:
+        super().__init__(
+            status_code=self.STATUS_CODE,
+            detail=self.DETAIL if detail is None else detail,
+            **kwargs
+        )
 
 class PermissionDenied(DetailedHTTPException):
     STATUS_CODE = status.HTTP_403_FORBIDDEN
@@ -37,3 +40,7 @@ class NotAuthenticated(DetailedHTTPException):
 
     def __init__(self) -> None:
         super().__init__(headers={"WWW-Authenticate": "Bearer"})
+        
+class Conflict(DetailedHTTPException):
+    STATUS_CODE = status.HTTP_409_CONFLICT
+    DETAIL = "Conflicto con el estado actual del recurso"
