@@ -1,0 +1,168 @@
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from typing import List
+
+from src.insumo_quimico.models import InsumoQuimico
+from src.insumo_quimico import schemas, exceptions
+
+from src.unidad_medida.models import UnidadMedida
+from src.unidad_medida.exceptions import UnidadMedidaReactivar, UnidadMedidaNoEncontrada
+
+def crear_insumo_quimico(db: Session, insumo_quimico: schemas.InsumoQuimicoCreate) -> schemas.InsumoQuimico:
+    unidad_medida = db.scalar(
+        select(UnidadMedida).where(
+            UnidadMedida.id == insumo_quimico.unidad_medida_id
+        )
+    )
+
+    if unidad_medida is None:
+        raise UnidadMedidaNoEncontrada()
+
+    if not unidad_medida.disponible:
+        raise UnidadMedidaReactivar()
+
+    insumo_quimico_existente = db.scalar(
+        select(InsumoQuimico).where(
+            InsumoQuimico.nombre == insumo_quimico.nombre,
+            InsumoQuimico.tipo == insumo_quimico.tipo,
+            InsumoQuimico.unidad_medida_id == insumo_quimico.unidad_medida_id,
+        )
+    )
+
+    if insumo_quimico_existente:
+        if not insumo_quimico_existente.activo:
+            raise exceptions.InsumoQuimicoRequiereReactivacion(
+                insumo_quimico_existente.id
+            )
+
+        raise exceptions.InsumoQuimicoDuplicado()
+
+    _insumo_quimico = InsumoQuimico(**insumo_quimico.model_dump(), activo=True)
+
+    db.add(_insumo_quimico)
+    try:
+        db.commit()
+        db.refresh(_insumo_quimico)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(
+            detail="Error de integridad al intentar guardar el insumo químico."
+        )
+
+    return _insumo_quimico
+
+def listar_insumos_quimicos(db: Session) -> List[InsumoQuimico]:
+    return db.scalars(select(InsumoQuimico)).all()
+
+def leer_insumo_quimico(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
+    db_insumo_quimico = db.scalar(
+        select(InsumoQuimico).where(
+            InsumoQuimico.id == insumo_quimico_id
+        )
+    )
+
+    if db_insumo_quimico is None:
+        raise exceptions.InsumoQuimicoNoEncontrado()
+
+    return db_insumo_quimico
+
+
+def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico: schemas.InsumoQuimicoUpdate) -> InsumoQuimico:
+    db_insumo_quimico = leer_insumo_quimico(db, insumo_quimico_id)
+    update_data = insumo_quimico.model_dump(exclude_unset=True)
+
+    if not db_insumo_quimico.activo:
+
+        if update_data != {"activo": True}:
+            raise exceptions.InsumoQuimicoInactivo()
+
+        if not db_insumo_quimico.unidad_medida.disponible:
+            raise UnidadMedidaReactivar()
+
+    else:
+        
+        if update_data.get("activo") is False:
+            raise exceptions.InsumoQuimicoBajaNoPermitida()
+
+        if any(
+            campo in update_data
+            for campo in (
+                "nombre",
+                "tipo",
+                "unidad_medida_id"
+            )
+        ):
+            nombre = update_data.get(
+                "nombre",
+                db_insumo_quimico.nombre
+            )
+
+            tipo = update_data.get(
+                "tipo",
+                db_insumo_quimico.tipo
+            )
+
+            unidad_medida_id = update_data.get(
+                "unidad_medida_id",
+                db_insumo_quimico.unidad_medida_id
+            )
+
+            insumo_quimico_existente = db.scalar(
+                select(InsumoQuimico).where(
+                    InsumoQuimico.nombre == nombre,
+                    InsumoQuimico.tipo == tipo,
+                    InsumoQuimico.unidad_medida_id == unidad_medida_id,
+                    InsumoQuimico.id != insumo_quimico_id
+                )
+            )
+
+            if equipo_existente:
+                raise exceptions.InsumoQuimicoDuplicado()
+
+        if "unidad_medida_id" in update_data:
+
+            unidad_medida_nueva = db.scalar(
+                select(UnidadMedida).where(
+                    UnidadMedida.id == update_data["unidad_medida_id"]
+                )
+            )
+
+            if unidad_medida_nueva is None:
+                raise unidad_medida_exceptions.UnidadMedidaNoEncontrado()
+
+            if not unidad_medida_nueva.activa:
+                raise unidad_medida_exceptions.UnidadMedidaInactiva()
+
+    if update_data:
+        db.execute(
+            update(InsumoQuimico)
+            .where(InsumoQuimico.id == insumo_quimico_id)
+            .values(**update_data)
+        )
+
+        try:
+            db.commit()
+            db.refresh(db_insumo_quimico)
+        except IntegrityError:
+            db.rollback()
+            raise exceptions.Conflict(
+                detail="Error de integridad al intentar guardar el insumo químico."
+            )
+
+    return db_insumo_quimico
+
+def eliminar_equipo(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
+    db_insumo_quimico = leer_insumo_quimico(db, insumo_quimico_id)
+    db_insumo_quimico.activo = False
+    try:
+        db.commit()
+        db.refresh(db_insumo_quimico)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(
+            detail="Error de integridad al intentar guardar el insumo químico."
+        )
+
+    return db_insumo_quimico
