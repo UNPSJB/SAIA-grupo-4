@@ -13,9 +13,10 @@ type CapacidadFormProps = {
     capacidad?: Capacidad;
     onCancelar?: () => void;
     onGuardado?: (capacidad: Capacidad) => void;
+    enModal?: boolean;
 };
 
-export const CapacidadForm = ({ modo, capacidad, onCancelar, onGuardado }: CapacidadFormProps) => {
+export const CapacidadForm = ({ modo, capacidad, onCancelar, onGuardado, enModal = false }: CapacidadFormProps) => {
     const esModoVer = modo === "ver";
     const esModoCrear = modo === "crear";
     const esModoModificar = modo === "modificar";
@@ -81,7 +82,7 @@ export const CapacidadForm = ({ modo, capacidad, onCancelar, onGuardado }: Capac
     });
 
     return (
-        <FormContainer>
+        <FormContainer modal={enModal}>
             <FormHeader
                 title={esModoVer ? "Ver Capacidad" : esModoCrear ? "Nueva Capacidad" : "Modificar Capacidad"}
                 icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiAward}

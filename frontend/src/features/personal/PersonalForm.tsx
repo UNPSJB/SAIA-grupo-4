@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack, Text, Checkbox, Box } from "@chakra-ui/react";
-import { usePersonalSubmit } from "./hooks/usePersonalSubmit"; 
+import { usePersonalSubmit, type PersonalPayload } from "./hooks/usePersonalSubmit"; 
 import { useListadoData } from "../../hooks/useListadoData";
 import { personalSchema, type PersonalFormInput, type PersonalFormValues } from "./validationSchema";
 import type { Persona } from "./types";
@@ -15,9 +15,10 @@ type PersonalFormProps = {
     persona?: Persona;
     onCancelar?: () => void;
     onGuardado?: (persona: Persona) => void;
+    enModal?: boolean;
 };
 
-export const PersonalForm = ({ modo, persona, onCancelar, onGuardado }: PersonalFormProps) => {
+export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = false }: PersonalFormProps) => {
     const esModoVer = modo === "ver";
     const esModoCrear = modo === "crear";
     const esModoModificar = modo === "modificar";
@@ -27,12 +28,12 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado }: Personal
               nombre: persona!.nombre,
               apellido: persona!.apellido,
               dni: persona!.dni,
-              legajo: persona!.legajo,
+              legajo: String(persona!.legajo),
               email: persona!.email || "",
               telefono: persona!.telefono || "",
               capacidades_ids: persona!.capacidades.filter(c => c.activo).map(c => c.capacidad_id),
           }
-        : { nombre: "", apellido: "", dni: "", legajo: 0, email: "", telefono: "", capacidades_ids: [] };
+        : { nombre: "", apellido: "", dni: "", legajo: "", email: "", telefono: "", capacidades_ids: [] };
 
     const { register, handleSubmit, control, formState: { errors, isSubmitting }, setError, clearErrors, reset } = useForm<PersonalFormInput, unknown, PersonalFormValues>({
         resolver: zodResolver(personalSchema),
@@ -85,13 +86,13 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado }: Personal
     const onSubmit = handleSubmit(async (values) => {
         setSuccess(false);
         clearErrors("root");
-        const res = await submit(values);
+        const res = await submit(values as PersonalPayload);
         if (res.status === "error") setError("root", { message: res.message });
         else if (res.status === "success" && esModoCrear) reset();
     });
 
     return (
-        <FormContainer>
+        <FormContainer modal={enModal}>
             <FormHeader
                 title={esModoVer ? "Ver Persona" : esModoCrear ? "Nueva Persona" : "Modificar Persona"}
                 icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiUser}

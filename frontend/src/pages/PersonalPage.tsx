@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { PersonalForm } from "../features/personal/PersonalForm";
+import { PersonalDetalle } from "../features/personal/PersonaDetalle";
 import { ListadoPersonal } from "../features/personal/ListadoPersonal";
-import { AlertDelete, AlertConfirm } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/personal/hooks/usePersonalDelete";
 import { usePersonalSubmit } from "../features/personal/hooks/usePersonalSubmit";
 import type { Persona } from "../features/personal/types";
@@ -59,26 +60,56 @@ export default function PersonalPage() {
 
     return (
         <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
-            {vista === "listado" && (
-                <ListadoPersonal
-                    key={refrescar}
-                    onVerCapacidades={() => navigate("/capacidades")}
-                    onCrear={() => setVista("crear")}
-                    onModificar={(persona) => { setError(""); setPersonaSeleccionada(persona); setVista("modificar"); }}
-                    onEliminar={(persona) => { setError(""); setPersonaEliminar(persona); setEliminarAbierto(true); }}
-                    onVer={(persona) => { setError(""); setPersonaSeleccionada(persona); setVista("ver"); }}
-                    onDarAlta={(persona) => { setError(""); setPersonaAlta(persona); setAltaAbierto(true); }}
+            <ListadoPersonal
+                key={refrescar}
+                onVerCapacidades={() => navigate("/capacidades")}
+                onCrear={() => setVista("crear")}
+                onModificar={(persona) => { setError(""); setPersonaSeleccionada(persona); setVista("modificar"); }}
+                onEliminar={(persona) => { setError(""); setPersonaEliminar(persona); setEliminarAbierto(true); }}
+                onVer={(persona) => { setError(""); setPersonaSeleccionada(persona); setVista("ver"); }}
+                onDarAlta={(persona) => { setError(""); setPersonaAlta(persona); setAltaAbierto(true); }}
+            />
+            
+            {/* Modal de Detalle (Vista) */}
+            {vista === "ver" && personaSeleccionada && (
+                <PersonalDetalle 
+                    persona={personaSeleccionada} 
+                    onCerrar={() => setVista("listado")} 
                 />
             )}
-            
-            {vista === "ver" && personaSeleccionada && (
-                <PersonalForm modo="ver" persona={personaSeleccionada} onCancelar={() => setVista("listado")} />
-            )}
-            {vista === "crear" && (
-                <PersonalForm modo="crear" onCancelar={() => setVista("listado")} onGuardado={() => setVista("listado")} />
-            )}
-            {vista === "modificar" && personaSeleccionada && (
-                <PersonalForm modo="modificar" persona={personaSeleccionada} onCancelar={() => setVista("listado")} onGuardado={() => setVista("listado")} />
+
+            {/* Modal de Formularios (Crear / Modificar) */}
+            {(vista === "crear" || vista === "modificar") && (
+                <FormModal
+                    open
+                    onClose={() => {
+                        setError("");
+                        setVista("listado");
+                    }}
+                >
+                    {vista === "crear" && (
+                        <PersonalForm 
+                            modo="crear" 
+                            onCancelar={() => setVista("listado")} 
+                            onGuardado={() => {
+                                setVista("listado");
+                                setRefrescar((r) => r + 1);
+                            }}
+                        />
+                    )}
+
+                    {vista === "modificar" && personaSeleccionada && (
+                        <PersonalForm 
+                            modo="modificar" 
+                            persona={personaSeleccionada} 
+                            onCancelar={() => setVista("listado")} 
+                            onGuardado={() => {
+                                setVista("listado");
+                                setRefrescar((r) => r + 1);
+                            }}
+                        />
+                    )}
+                </FormModal>
             )}
 
             <AlertDelete

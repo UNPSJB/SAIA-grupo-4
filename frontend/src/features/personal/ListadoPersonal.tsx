@@ -1,4 +1,4 @@
-import { Badge, Wrap, HStack, Button, Box } from "@chakra-ui/react";
+import { Badge, Wrap, HStack, Button } from "@chakra-ui/react";
 import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";

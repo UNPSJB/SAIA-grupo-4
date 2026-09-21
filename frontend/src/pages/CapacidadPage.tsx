@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Box, Button } from "@chakra-ui/react";
 import { FiArrowLeft } from "react-icons/fi";
 import { CapacidadForm } from "../features/capacidades/CapacidadForm";
+import { CapacidadDetalle } from "../features/capacidades/CapacidadDetalle";
 import { ListadoCapacidades } from "../features/capacidades/ListadoCapacidad";
-import { AlertDelete, AlertConfirm } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/capacidades/hooks/useCapacidadDelete";
 import { useCapacidadSubmit } from "../features/capacidades/hooks/useCapacidadSubmit";
 import type { Capacidad } from "../features/capacidades/types";
@@ -65,27 +66,54 @@ export default function CapacidadPage() {
                     <FiArrowLeft /> Volver a Personal
                 </Button>
             </Box>
-
-            {vista === "listado" && (
-                <ListadoCapacidades
-                    key={refrescar}
-                    onCrear={() => setVista("crear")}
-                    onModificar={(capacidad) => { setError(""); setCapacidadSeleccionada(capacidad); setVista("modificar"); }}
-                    onEliminar={(capacidad) => { setError(""); setCapacidadEliminar(capacidad); setEliminarAbierto(true); }}
-                    onVer={(capacidad) => { setError(""); setCapacidadSeleccionada(capacidad); setVista("ver"); }}
-                    onDarAlta={(capacidad) => { setError(""); setCapacidadAlta(capacidad); setAltaAbierto(true); }}
-                />
-            )}
+            
+            <ListadoCapacidades
+                key={refrescar}
+                onCrear={() => setVista("crear")}
+                onModificar={(capacidad) => { setError(""); setCapacidadSeleccionada(capacidad); setVista("modificar"); }}
+                onEliminar={(capacidad) => { setError(""); setCapacidadEliminar(capacidad); setEliminarAbierto(true); }}
+                onVer={(capacidad) => { setError(""); setCapacidadSeleccionada(capacidad); setVista("ver"); }}
+                onDarAlta={(capacidad) => { setError(""); setCapacidadAlta(capacidad); setAltaAbierto(true); }}
+            />
+            
             
             {vista === "ver" && capacidadSeleccionada && (
-                <CapacidadForm modo="ver" capacidad={capacidadSeleccionada} onCancelar={() => setVista("listado")} />
+                <CapacidadDetalle capacidad={capacidadSeleccionada} onCerrar={() => setVista("listado")} />
             )}
-            {vista === "crear" && (
-                <CapacidadForm modo="crear" onCancelar={() => setVista("listado")} onGuardado={() => setVista("listado")} />
-            )}
-            {vista === "modificar" && capacidadSeleccionada && (
-                <CapacidadForm modo="modificar" capacidad={capacidadSeleccionada} onCancelar={() => setVista("listado")} onGuardado={() => setVista("listado")} />
-            )}
+            {(vista === "crear" || vista === "modificar") && (
+                    <FormModal
+                      open
+                      onClose={() => {
+                        setError("");
+                        setVista("listado");
+                      }}
+                    >
+                      {vista === "crear" && (
+                        <CapacidadForm
+                          modo='crear'
+                          onCancelar={() => setVista("listado")}
+                          onGuardado={() => {
+                            setVista("listado");
+                            setRefrescar((r) => r + 1);
+                          }}
+                          enModal
+                        />
+                      )}
+            
+                      {vista === "modificar" && capacidadSeleccionada && (
+                        <CapacidadForm
+                          modo='modificar'
+                          capacidad={capacidadSeleccionada}
+                          onCancelar={() => setVista("listado")}
+                          onGuardado={() => {
+                            setVista("listado");
+                            setRefrescar((r) => r + 1);
+                          }}
+                          enModal
+                        />
+                      )}
+                    </FormModal>
+                  )}
 
             <AlertDelete
                 open={eliminarAbierto}
