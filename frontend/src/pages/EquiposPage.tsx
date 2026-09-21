@@ -22,7 +22,7 @@ export default function EquiposPage() {
     const [altaAbierto, setAltaAbierto] = useState(false);
     
     const [refrescar, setRefrescar] = useState(0);
-
+    
     const confirmarEliminar = () => {
         handleDelete({
             equipo: equipoEliminar,
