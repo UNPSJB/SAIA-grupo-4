@@ -4,8 +4,8 @@ from src.insumo_quimico.constants import ErrorCode
 from src.exceptions import NotFound, BadRequest, Conflict
 
 # Excepciones para Insumo Químico
-class NombreDuplicado(BadRequest):
-    DETAIL = ErrorCode.NOMBRE_DUPLICADO
+class InsumoQuimicoDuplicado(BadRequest):
+    DETAIL = ErrorCode.INSUMO_QUIMICO_DUPLICADO
 
 class InsumoQuimicoNoExiste(NotFound):
     DETAIL = ErrorCode.INSUMO_QUIMICO_NO_EXISTE
@@ -19,11 +19,11 @@ class InsumoQuimicoActivo(BadRequest):
 class InsumoQuimicoBaja(BadRequest):
     DETAIL = ErrorCode.INSUMO_QUIMICO_BAJA
 
-class NombreDuplicadoInactivo(Conflict):
+class InsumoQuimicoDuplicadoInactivo(Conflict):
     def __init__(self, insumo_quimico_id: int) -> None:
         self.insumo_quimico_id = insumo_quimico_id
         self.DETAIL = {
-            "code": ErrorCode.NOMBRE_DUPLICADO_INACTIVO,
+            "code": ErrorCode.INSUMO_QUIMICO_DUPLICADO_INACTIVO,
             "insumo_quimico_id": insumo_quimico_id,
         }
         super().__init__(headers={"X-Insumo-Quimico-Id": str(insumo_quimico_id)})

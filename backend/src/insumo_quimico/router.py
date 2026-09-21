@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.insumo_quimico import schemas, services
 
-router = APIRouter(prefix="/insumo-quimico", tags=["insumo-quimico"])
+router = APIRouter(prefix="/insumos-quimicos", tags=["insumos-quimicos"])
 
 @router.post("/", response_model=schemas.InsumoQuimico, status_code=201)
 def create_insumo_quimico(insumo_quimico: schemas.InsumoQuimicoCreate, db: Session = Depends(get_db)):

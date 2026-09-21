@@ -33,7 +33,7 @@ def crear_insumo_quimico(db: Session, insumo_quimico: schemas.InsumoQuimicoCreat
 
     if insumo_quimico_existente:
         if not insumo_quimico_existente.activo:
-            raise exceptions.InsumoQuimicoRequiereReactivacion(
+            raise exceptions.InsumoQuimicoDuplicadoInactivo(
                 insumo_quimico_existente.id
             )
 
@@ -153,7 +153,7 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
 
     return db_insumo_quimico
 
-def eliminar_equipo(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
+def eliminar_insumo_quimico(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
     db_insumo_quimico = leer_insumo_quimico(db, insumo_quimico_id)
     db_insumo_quimico.activo = False
     try:
