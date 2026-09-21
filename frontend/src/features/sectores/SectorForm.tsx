@@ -22,6 +22,7 @@ type SectorFormProps = {
     sector?: Sector;
     onCancelar?: () => void;
     onGuardado?: (sector: Sector) => void;
+    enModal?: boolean;
 };
 
 export const SectorForm = ({
@@ -29,6 +30,7 @@ export const SectorForm = ({
     sector,
     onCancelar,
     onGuardado,
+    enModal = false,
 }: SectorFormProps) => {
     const esModoVer = modo === "ver";
     const esModoCrear = modo === "crear";
@@ -109,7 +111,7 @@ export const SectorForm = ({
     });
 
     return (
-        <FormContainer>
+        <FormContainer modal={enModal}>
             <FormHeader
                 title={
                     esModoVer

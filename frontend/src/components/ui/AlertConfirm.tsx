@@ -40,17 +40,24 @@ export const AlertConfirm = ({
           </Dialog.Body>
           <Dialog.Footer>
             <HStack gap={2}>
-              <Button variant='outline' onClick={onCancel} disabled={loading}>
+              <Button
+                variant='outline'
+                onClick={onCancel}
+                disabled={loading}
+                colorPalette='red'
+              >
                 <FiXCircle /> Cancelar
               </Button>
-              <Button
-                colorPalette='green'
-                onClick={onConfirm}
-                loading={loading}
-                loadingText='Dando de alta...'
-              >
-                <FiCheck /> Confirmar
-              </Button>
+              {!error && (
+                <Button
+                  colorPalette='green'
+                  onClick={onConfirm}
+                  loading={loading}
+                  loadingText='Dando de alta...'
+                >
+                  <FiCheck /> Confirmar
+                </Button>
+              )}
             </HStack>
           </Dialog.Footer>
         </Dialog.Content>
