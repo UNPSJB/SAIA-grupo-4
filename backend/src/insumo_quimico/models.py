@@ -11,7 +11,7 @@ class InsumoQuimico(ModeloBase):
     unidad_medida_id: Mapped[int] = mapped_column(ForeignKey("unidades_de_medidas.id"), index=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    unidad_medida: Mapped["src.UnidadMedida"] = relationship(back_populates="insumos")
+    unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="insumos_quimicos")
 
     __table_args__ = (
         UniqueConstraint(
