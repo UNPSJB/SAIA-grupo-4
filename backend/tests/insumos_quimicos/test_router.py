@@ -31,7 +31,7 @@ def test_crear_insumo_quimico():
     assert data["activo"] is True
     assert "id" in data
 
-def test_crear_insumo_duplicado_activo():
+def test_crear_insumo_quimico_duplicado_activo():
     cli = client
     unidad_id = crear_unidad_medida(nombre="Kilogramo")
     cli.post(
@@ -54,7 +54,7 @@ def test_crear_insumo_duplicado_activo():
 
     assert response.status_code == 400
 
-def test_crear_insumo_duplicado_inactivo():
+def test_crear_insumo_quimico_duplicado_inactivo():
     cli = client
     unidad_id = crear_unidad_medida(nombre="Kilogramo")
     res_post = cli.post(
@@ -84,3 +84,26 @@ def test_crear_insumo_duplicado_inactivo():
     assert "code" in data["detail"]
     assert response.headers.get("X-Insumo-Quimico-Id") == str(insumo_q_id)
 
+def test_crear_insumo_quimico_tipo_invalido():
+    unidad_id = crear_unidad_medida(nombre="Kilogramo")
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Algo",
+            "tipo": "papel",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+    assert response.status_code == 422
+
+def test_crear_insumo_quimico_con_unidad_inexistente():
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Algo",
+            "tipo": "otro",
+            "unidad_medida_id": 25,
+        },
+    )
+    assert response.status_code == 400
+    
