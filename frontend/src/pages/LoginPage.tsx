@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Center, Text, VStack } from "@chakra-ui/react";
 import { FiLogIn, FiShield } from "react-icons/fi";
 import { useAuth } from "../features/auth/useAuth";
+import { esAdministrador } from "../features/auth/roles";
 import {
   loginSchema,
   type LoginFormInput,
@@ -34,8 +35,12 @@ export default function LoginPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await login(values.documento); // valida formato + persiste sesión
-      navigate("/equipos", { replace: true });
+      // valida el DNI contra el backend y persiste la sesión
+      const usuario = await login(values.documento);
+      // el destino depende del rol: administrar → gestión, resto → operador
+      navigate(esAdministrador(usuario) ? "/equipos" : "/operador", {
+        replace: true,
+      });
     } catch (err) {
       setError("root", {
         message:

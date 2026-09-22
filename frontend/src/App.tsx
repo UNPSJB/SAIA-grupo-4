@@ -3,12 +3,16 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { NavBar } from "./components/layout";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
+import { esAdministrador } from "./features/auth/roles";
 import { RequireAuth } from "./features/auth/RequireAuth";
 import LoginPage from "./pages/LoginPage";
+import OperadorPage from "./pages/OperadorPage";
 import EquiposPage from "./pages/EquiposPage";
 import InsumoPage from "./pages/InsumoPage";
 import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
+import PersonalPage from "./pages/PersonalPage";
+import CapacidadPage from "./pages/CapacidadPage";
 
 function AppContent() {
   const { usuario, logout } = useAuth();
@@ -24,10 +28,25 @@ function AppContent() {
     );
   }
 
-  // RAMA CON SESIÓN: layout completo (NavBar + rutas protegidas).
+  // RAMA OPERADOR: quien no tiene "administrar", sin NavBar, solo su vista.
+  // Cualquier ruta de gestión queda bloqueada y redirige a /operador.
+  if (!esAdministrador(usuario)) {
+    return (
+      <Routes>
+        <Route path='/' element={<Navigate to='/operador' replace />} />
+        <Route path='/operador' element={<OperadorPage />} />
+        <Route path='*' element={<Navigate to='/operador' replace />} />
+      </Routes>
+    );
+  }
+
+  // RAMA ADMINISTRADOR: layout completo (NavBar + rutas protegidas).
   return (
     <Flex minH='100vh' w='100%'>
-      <NavBar username={usuario.documento} onLogout={logout} />
+      <NavBar
+        username={`${usuario.nombre} ${usuario.apellido}`}
+        onLogout={logout}
+      />
       <Box bg='gray.100' flex='1' minW='0'>
         <Routes>
           {/* La raíz, estando logueado, va a /equipos */}
@@ -51,6 +70,14 @@ function AppContent() {
             }
           />
           <Route
+            path='/personal'
+            element={
+              <RequireAuth>
+                <PersonalPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path='/sectores'
             element={
               <RequireAuth>
@@ -63,6 +90,14 @@ function AppContent() {
             element={
               <RequireAuth>
                 <UnidadMedidaPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path='/capacidades'
+            element={
+              <RequireAuth>
+                <CapacidadPage />
               </RequireAuth>
             }
           />

@@ -1,7 +1,12 @@
-// Forma que toma la sesión activa dentro de la app.
+import type { Capacidad } from "../capacidades/types";
+
+// Sesión activa del usuario logueado, construida a partir de la persona real.
 export interface UsuarioLogueado {
-  documento: string;
-  // (Reservado para el futuro módulo de Personal)
-  // "administrar" | "operar"
-  capacidad?: "administrar" | "operar" | null;
+  personaId: number;
+  dni: string;
+  nombre: string;
+  apellido: string;
+  legajo: number;
+  // Capacidades activas del usuario (ej.: "administrar", "operar").
+  capacidades: Capacidad[];
 }
