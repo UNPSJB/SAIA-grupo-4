@@ -45,17 +45,24 @@ export const AlertDelete = ({
           </Dialog.Body>
           <Dialog.Footer>
             <HStack gap={2}>
-              <Button variant='outline' onClick={onCancel} disabled={loading}>
+              <Button
+                variant='outline'
+                onClick={onCancel}
+                disabled={loading}
+                colorPalette='red'
+              >
                 <FiXCircle /> Cancelar
               </Button>
-              <Button
-                colorPalette='red'
-                onClick={onConfirm}
-                loading={loading}
-                loadingText='Eliminando...'
-              >
-                <FiTrash2 /> Eliminar
-              </Button>
+              {!error && (
+                <Button
+                  colorPalette='red'
+                  onClick={onConfirm}
+                  loading={loading}
+                  loadingText='Eliminando...'
+                >
+                  <FiTrash2 /> Eliminar
+                </Button>
+              )}
             </HStack>
           </Dialog.Footer>
         </Dialog.Content>

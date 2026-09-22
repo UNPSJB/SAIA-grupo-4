@@ -37,6 +37,7 @@ type UnidadMedidaFormProps = {
   unidad?: UnidadMedida;
   onCancelar?: () => void;
   onGuardado?: (unidad: UnidadMedida) => void;
+  enModal?: boolean;
 };
 
 export const UnidadMedidaForm = ({
@@ -44,6 +45,7 @@ export const UnidadMedidaForm = ({
   unidad,
   onCancelar,
   onGuardado,
+  enModal = false,
 }: UnidadMedidaFormProps) => {
   const esModoVer = modo === "ver";
   const esModoCrear = modo === "crear";
@@ -126,7 +128,7 @@ export const UnidadMedidaForm = ({
   });
 
   return (
-    <FormContainer>
+    <FormContainer modal={enModal}>
       <FormHeader
         title={
           esModoVer

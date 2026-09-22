@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { InsumoForm } from "../features/insumo/InsumoForm";
+import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
 import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
-import { AlertDelete, AlertConfirm } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
 import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
 import type { Insumo } from "../features/insumo/types";
@@ -57,56 +58,73 @@ export default function InsumoPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      {vista === "listado" && (
-        <ListadoInsumos
-          key={refescar}
-          onCrear={() => {
-            setError("");
-            setVista("crear");
-          }}
-          onModificar={(insumo) => {
-            setError("");
-            setInsumoSeleccionado(insumo);
-            setVista("modificar");
-          }}
-          onEliminar={(insumo) => {
-            setError("");
-            setInsumoEliminar(insumo);
-            setEliminarAbierto(true);
-          }}
-          onVer={(insumo) => {
-            setError("");
-            setInsumoSeleccionado(insumo);
-            setVista("ver");
-          }}
-          onDarAlta={(insumo) => {
-            setError("");
-            setInsumoAlta(insumo);
-            setAltaAbierto(true);
-          }}
-        />
-      )}
+      <ListadoInsumos
+        key={refescar}
+        onCrear={() => {
+          setError("");
+          setVista("crear");
+        }}
+        onModificar={(insumo) => {
+          setError("");
+          setInsumoSeleccionado(insumo);
+          setVista("modificar");
+        }}
+        onEliminar={(insumo) => {
+          setError("");
+          setInsumoEliminar(insumo);
+          setEliminarAbierto(true);
+        }}
+        onVer={(insumo) => {
+          setError("");
+          setInsumoSeleccionado(insumo);
+          setVista("ver");
+        }}
+        onDarAlta={(insumo) => {
+          setError("");
+          setInsumoAlta(insumo);
+          setAltaAbierto(true);
+        }}
+      />
       {vista === "ver" && insumoSeleccionado && (
-        <InsumoForm
-          modo='ver'
+        <InsumoDetalle
           insumo={insumoSeleccionado}
-          onCancelar={() => setVista("listado")}
+          onCerrar={() => setVista("listado")}
         />
       )}
-      {vista === "crear" && (
-        <InsumoForm
-          modo='crear'
-          onCancelar={() => setVista("listado")}
-          onGuardado={() => setVista("listado")}
-        />
-      )}
-      {vista === "modificar" && insumoSeleccionado && (
-        <InsumoForm
-          modo='modificar'
-          insumo={insumoSeleccionado}
-          onCancelar={() => setVista("listado")}
-          onGuardado={() => setVista("listado")}
-        />
+
+      {(vista === "crear" || vista === "modificar") && (
+        <FormModal
+          open
+          onClose={() => {
+            setError("");
+            setVista("listado");
+          }}
+        >
+          {vista === "crear" && (
+            <InsumoForm
+              modo='crear'
+              onCancelar={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
+              enModal
+            />
+          )}
+
+          {vista === "modificar" && insumoSeleccionado && (
+            <InsumoForm
+              modo='modificar'
+              insumo={insumoSeleccionado}
+              onCancelar={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
+              enModal
+            />
+          )}
+        </FormModal>
       )}
 
       <AlertDelete
