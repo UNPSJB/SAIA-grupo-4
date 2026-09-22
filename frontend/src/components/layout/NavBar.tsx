@@ -43,6 +43,7 @@ interface NavBarProps {
 const defaultItems: NavItem[] = [
   { to: "/equipos", label: "Equipos", icon: FiThermometer },
   { to: "/insumos", label: "Insumos", icon: FiPackage },
+  { to: "/insumos-quimicos", label: "Insumos Quimicos", icon: FiPackage},
   { to: "/sectores", label: "Sectores", icon: FiMap },
   { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
 ];
