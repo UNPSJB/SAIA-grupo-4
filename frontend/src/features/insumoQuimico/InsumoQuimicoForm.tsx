@@ -147,10 +147,10 @@ export const InsumoQuimicoForm = ({
       <FormHeader
         title={
           esModoVer
-            ? "Ver Insumo"
+            ? "Ver Insumo Químico"
             : modo === "crear"
-              ? "Nuevo Insumo"
-              : "Modificar Insumo"
+              ? "Nuevo Insumo Químico"
+              : "Modificar Insumo Químico"
         }
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
       />
