@@ -64,7 +64,7 @@ def leer_insumo_quimico(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
     )
 
     if db_insumo_quimico is None:
-        raise exceptions.InsumoQuimicoNoEncontrado()
+        raise exceptions.InsumoQuimicoNoExiste()
 
     return db_insumo_quimico
 
@@ -76,7 +76,7 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
     if not db_insumo_quimico.activo:
 
         if update_data != {"activo": True}:
-            raise exceptions.InsumoQuimicoInactivo()
+            raise exceptions.InsumoQuimicoDuplicadoInactivo(db_insumo_quimico.id)
 
         if not db_insumo_quimico.unidad_medida.disponible:
             raise UnidadMedidaReactivar()
@@ -118,7 +118,7 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
                 )
             )
 
-            if equipo_existente:
+            if insumo_quimico_existente:
                 raise exceptions.InsumoQuimicoDuplicado()
 
         if "unidad_medida_id" in update_data:
@@ -130,10 +130,10 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
             )
 
             if unidad_medida_nueva is None:
-                raise unidad_medida_exceptions.UnidadMedidaNoEncontrado()
+                raise UnidadMedidaNoEncontrada()
 
-            if not unidad_medida_nueva.activa:
-                raise unidad_medida_exceptions.UnidadMedidaInactiva()
+            if not unidad_medida_nueva.disponible:
+                raise UnidadMedidaInactiva()
 
     if update_data:
         db.execute(
