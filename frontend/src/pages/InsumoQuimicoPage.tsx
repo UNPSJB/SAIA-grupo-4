@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { InsumoQuimicoForm } from "../features/insumoQuimico/InsumoQuimicoForm";
 import { ListadoInsumosQuimicos } from "../features/insumoQuimico/ListadoInsumoQuimico";
@@ -10,6 +11,7 @@ import type { InsumoQuimico } from "../features/insumoQuimico/types";
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
 export default function InsumoQuimicoPage() {
+  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>("listado");
   const [insumoQuimicoSeleccionado, setInsumoQuimicoSeleccionado] = useState<InsumoQuimico | null>(
     null,
@@ -61,6 +63,7 @@ export default function InsumoQuimicoPage() {
       {vista === "listado" && (
         <ListadoInsumosQuimicos
           key={refescar}
+          onVerUnidades={() => navigate("/unidades-de-medida")}
           onCrear={() => {
             setError("");
             setVista("crear");

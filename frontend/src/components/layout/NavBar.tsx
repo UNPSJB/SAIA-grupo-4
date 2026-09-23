@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { ElementType, ReactNode } from "react";
-import { FaRuler } from "react-icons/fa";
 import {
   Box,
   Button,
@@ -61,7 +60,6 @@ const defaultItems: NavItem[] = [
       { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
     ],
   },
-  { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
 ];
 
 const isActiveRoute = (pathname: string, to: string) =>

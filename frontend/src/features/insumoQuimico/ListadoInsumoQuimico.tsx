@@ -1,11 +1,13 @@
-import { Badge } from "@chakra-ui/react";
+import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
   FiEdit2,
   FiEye,
   FiTrash2,
   FiCheckCircle,
-  FiDroplet
+  FiDroplet,
+  FiPlus,
 } from "react-icons/fi";
+import { FaRuler } from "react-icons/fa";
 import {
   AlertMessage,
   DataTable,
@@ -25,6 +27,7 @@ interface ListadoInsumosQuimicosProps {
   onEliminar?: (insumoQuimico: InsumoQuimico) => void;
   onVer?: (insumoQuimico: InsumoQuimico) => void;
   onDarAlta?: (insumoQuimico: InsumoQuimico) => void;
+  onVerUnidades?: () => void;
 }
 
 const ENDPOINT = "http://127.0.0.1:8000/insumos-quimicos/";
@@ -36,12 +39,13 @@ export const ListadoInsumosQuimicos = ({
   onEliminar,
   onVer,
   onDarAlta,
+  onVerUnidades,
 }: ListadoInsumosQuimicosProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<InsumoQuimico>({
       endpoint: ENDPOINT,
       pageSize: ITEMS_POR_PAGINA,
-      errorMessage: "No se pudo cargar la lista de insumos.",
+      errorMessage: "No se pudo cargar la lista de insumos químicos.",
     });
 
   const columnas: ColumnDef<InsumoQuimico>[] = [
@@ -105,12 +109,21 @@ export const ListadoInsumosQuimicos = ({
 
   return (
     <ListadoContainer>
-      <ListadoHeader
-        title="Insumos Químicos"
-        icon={FiDroplet}
-        buttonLabel='Nuevo insumo químico'
-        onCrear={onCrear}
-      />
+      <HStack justify="space-between" mb={6} align="center">
+        <ListadoHeader title="Insumos Químicos" icon={FiDroplet} />
+        <HStack gap={2}>
+          <Button
+            variant="outline"
+            colorPalette="green"
+            onClick={onVerUnidades}
+          >
+            <FaRuler /> Unidades de medida
+          </Button>
+          <Button colorPalette="green" onClick={onCrear}>
+            <FiPlus /> Nuevo insumo químico
+          </Button>
+        </HStack>
+      </HStack>
       
       {loading && <LoadingState message='Cargando insumos químicos...' />}
 

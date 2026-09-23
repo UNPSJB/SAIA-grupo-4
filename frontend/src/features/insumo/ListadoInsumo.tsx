@@ -1,11 +1,13 @@
-import { Badge } from "@chakra-ui/react";
+import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
   FiBox,
   FiEdit2,
   FiTrash2,
   FiCheckCircle,
   FiEye,
+  FiPlus,
 } from "react-icons/fi";
+import { FaRuler } from "react-icons/fa";
 import {
   AlertMessage,
   DataTable,
@@ -25,6 +27,7 @@ interface ListadoInsumosProps {
   onEliminar?: (insumo: Insumo) => void;
   onVer?: (insumo: Insumo) => void;
   onDarAlta?: (insumo: Insumo) => void;
+  onVerUnidades?: () => void;
 }
 
 const ENDPOINT = "http://127.0.0.1:8000/insumos/";
@@ -36,6 +39,7 @@ export const ListadoInsumos = ({
   onEliminar,
   onVer,
   onDarAlta,
+  onVerUnidades,
 }: ListadoInsumosProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Insumo>({
@@ -105,12 +109,21 @@ export const ListadoInsumos = ({
 
   return (
     <ListadoContainer>
-      <ListadoHeader
-        title='Insumos'
-        icon={FiBox}
-        buttonLabel='Nuevo insumo'
-        onCrear={onCrear}
-      />
+      <HStack justify="space-between" mb={6} align="center">
+        <ListadoHeader title="Insumos" icon={FiBox} />
+        <HStack gap={2}>
+          <Button
+            variant="outline"
+            colorPalette="green"
+            onClick={onVerUnidades}
+          >
+            <FaRuler /> Unidades de medida
+          </Button>
+          <Button colorPalette="green" onClick={onCrear}>
+            <FiPlus /> Nuevo insumo
+          </Button>
+        </HStack>
+      </HStack>
 
       {loading && <LoadingState message='Cargando insumos...' />}
 
