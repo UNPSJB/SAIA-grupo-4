@@ -18,6 +18,12 @@ class Sector(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class Equipo(BaseModel):
+    id: int
+    nombre: str
+    activo: bool
+
+    model_config = ConfigDict(from_attributes=True)
 
 class ElementoLimpiezaBase(BaseModel):
     tipo_id: Annotated[int, Field(description="Tipo de elemento de limpieza al que corresponde esta instancia")]
@@ -31,6 +37,7 @@ class ElementoLimpiezaCreate(ElementoLimpiezaBase):
 class ElementoLimpiezaUpdate(BaseModel):
     tipo_id: Annotated[Optional[int], Field(default=None)]
     sector_id: Annotated[Optional[int], Field(default=None)]
+    equipo_id: Annotated[Optional[int], Field(default=None)]
     frecuencia_recambio_dias: Annotated[Optional[int], Field(default=None, gt=0)]
     activo: Annotated[Optional[bool], Field(default=None)]
 
@@ -42,5 +49,6 @@ class ElementoLimpieza(ElementoLimpiezaBase):
     fecha_ultimo_recambio: Optional[datetime]
     tipo: TipoElementoLimpieza
     sector: Optional[Sector]
+    equipo: Optional[Equipo]
 
     model_config = ConfigDict(from_attributes=True)

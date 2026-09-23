@@ -17,5 +17,8 @@ class ElementoBaja(BadRequest):
 class SectorInvalido(BadRequest):
     DETAIL = ErrorCode.SECTOR_INVALIDO
 
+class EquipoInvalido(BadRequest):
+    DETAIL = ErrorCode.EQUIPO_INVALIDO
+
 class TipoInvalido(BadRequest):
     DETAIL = ErrorCode.TIPO_INVALIDO

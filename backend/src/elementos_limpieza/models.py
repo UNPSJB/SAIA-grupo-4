@@ -19,3 +19,4 @@ class ElementoLimpieza(ModeloBase):
 
     tipo: Mapped["TipoElementoLimpieza"] = relationship(back_populates="elementos")
     sector: Mapped[Optional["Sector"]] = relationship(back_populates="elementos_limpieza")
+    equipo: Mapped[Optional["Equipo"]] = relationship(back_populates="elementos_limpieza")
