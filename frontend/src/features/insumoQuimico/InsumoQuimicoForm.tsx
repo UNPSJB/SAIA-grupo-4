@@ -18,7 +18,7 @@ import {
   AlertConfirm,
 } from "../../components/ui";
 import { 
-    FiBox, 
+    FiDroplet,
     FiEdit2, 
     FiSave, 
     FiXCircle, 
@@ -152,7 +152,7 @@ export const InsumoQuimicoForm = ({
               ? "Nuevo Insumo Químico"
               : "Modificar Insumo Químico"
         }
-        icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
+        icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiDroplet}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>

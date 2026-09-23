@@ -81,13 +81,13 @@ export const useInsumoQuimicoSubmit = ({
             // 3. Fallback genérico por status HTTP
             switch (res.status) {
               case 400:
-                mensajeError = "El insumo quimico ya existe.";
+                mensajeError = "El insumo químico ya existe.";
                 break;
               case 404:
-                mensajeError = "Insumo quimico no existe.";
+                mensajeError = "Insumo químico no existe.";
                 break;
               case 409:
-                mensajeError = "Ya existe un insumo quimico activo con ese nombre.";
+                mensajeError = "Ya existe un insumo químico activo con ese nombre.";
                 break;
               case 500:
                 mensajeError = "Error interno del servidor.";

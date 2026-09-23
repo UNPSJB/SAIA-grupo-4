@@ -44,10 +44,10 @@ export const handleDelete = async ({
       } else {
         switch (res.status) {
           case 400:
-            mensajeError = "El insumo quimico ya esta dado de baja.";
+            mensajeError = "El insumo químico ya esta dado de baja.";
             break;
           case 404:
-            mensajeError = "El insumo quimico no existe.";
+            mensajeError = "El insumo químico no existe.";
             break;
           case 500:
             mensajeError = "Error interno del servidor.";

@@ -23,13 +23,22 @@ import {
   FiThermometer,
   FiUser,
   FiMap,
+  FiDroplet,
 } from "react-icons/fi";
 
-interface NavItem {
+interface LinkNavItem {
   to: string;
   label: string;
   icon: ElementType;
 }
+
+interface ParentNavItem {
+  label: string;
+  icon: ElementType;
+  children: LinkNavItem[];
+}
+
+type NavItem = LinkNavItem | ParentNavItem;
 
 interface NavBarProps {
   title?: string;
@@ -42,9 +51,15 @@ interface NavBarProps {
 
 const defaultItems: NavItem[] = [
   { to: "/equipos", label: "Equipos", icon: FiThermometer },
-  { to: "/insumos", label: "Insumos", icon: FiPackage },
-  { to: "/insumos-quimicos", label: "Insumos Quimicos", icon: FiPackage},
   { to: "/sectores", label: "Sectores", icon: FiMap },
+  { 
+    label: "Insumos",
+    icon: FiPackage,
+    children: [
+      { to: "/insumos", label: "Insumos", icon: FiPackage },
+      { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
+    ],
+  },
   { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
 ];
 
@@ -77,6 +92,7 @@ export const NavBar = ({
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const sidebarW = isCollapsed ? "64px" : "260px";
@@ -210,6 +226,83 @@ export const NavBar = ({
         <Collapsible.Content>
           <VStack align='stretch' gap={1} mt={2}>
             {items.map((item) => {
+              if ("children" in item) {
+                const submenuOpen =
+                  openSubmenus[item.label] ??
+                  item.children.some(
+                    (child) => child.to && isActiveRoute(pathname, child.to),
+                  );
+
+                return (
+                  <Collapsible.Root
+                    key={item.label}
+                    open={submenuOpen}
+                    onOpenChange={(event) =>
+                      setOpenSubmenus((current) => ({
+                        ...current,
+                        [item.label]: event.open,
+                      }))
+                    }
+                  >
+                    <Collapsible.Trigger asChild>
+                      <Button
+                        variant='plain'
+                        color='white'
+                        w='100%'
+                        justifyContent={
+                          isCollapsed ? "center" : "space-between"
+                        }
+                        _hover={{ bg: "whiteAlpha.200" }}
+                      >
+                        <Flex align='center' gap={2}>
+                          <Icon as={item.icon} />
+                          {!isCollapsed && item.label}
+                        </Flex>
+                        {!isCollapsed && (
+                          <Icon
+                            as={FiChevronRight}
+                            transform={submenuOpen ? "rotate(90deg)" : "rotate(0deg)"}
+                            transition='transform 0.2s'
+                          />
+                        )}
+                      </Button>
+                    </Collapsible.Trigger>
+
+                    <Collapsible.Content>
+                      <VStack
+                        align='stretch'
+                        gap={1}
+                        pl={isCollapsed ? 0 : 4}
+                      >
+                        {item.children.map((child) => (
+                          <Button 
+                            key={child.to} 
+                            asChild 
+                            variant='ghost' 
+                            color='white'
+                            justifyContent={isCollapsed ? "center" : "flex-start"}
+                            _hover={{ bg: "whiteAlpha.200" }}
+                          >
+                            <NavLink
+                              to={child.to}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                width: "100%",
+                              }}
+                            >
+                              <Icon as={child.icon} />
+                              {!isCollapsed && child.label}
+                            </NavLink>
+                          </Button>
+                        ))}
+                      </VStack>
+                    </Collapsible.Content>
+                  </Collapsible.Root>
+                );
+              }
+
               const active = isActiveRoute(pathname, item.to);
               const navButton = (
                 <Button

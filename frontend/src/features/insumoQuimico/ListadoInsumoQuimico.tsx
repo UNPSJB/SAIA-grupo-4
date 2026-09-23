@@ -4,7 +4,7 @@ import {
   FiEye,
   FiTrash2,
   FiCheckCircle,
-  FiBox,
+  FiDroplet
 } from "react-icons/fi";
 import {
   AlertMessage,
@@ -106,18 +106,18 @@ export const ListadoInsumosQuimicos = ({
   return (
     <ListadoContainer>
       <ListadoHeader
-        title="Insumos Quimicos"
-        icon={FiBox}
-        buttonLabel='Nuevo insumo quimico'
+        title="Insumos Químicos"
+        icon={FiDroplet}
+        buttonLabel='Nuevo insumo químico'
         onCrear={onCrear}
       />
       
-      {loading && <LoadingState message='Cargando insumos quimicos...' />}
+      {loading && <LoadingState message='Cargando insumos químicos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type='info' message='Todavía no hay insumos quimicos cargados.' />
+        <AlertMessage type='info' message='Todavía no hay insumos químicos cargados.' />
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -133,8 +133,8 @@ export const ListadoInsumosQuimicos = ({
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
-            labelSingular='insumo quimico'
-            labelPlural='insumos quimicos'
+            labelSingular='insumo químico'
+            labelPlural='insumos químicos'
           />
         </>
       )}
