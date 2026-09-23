@@ -6,6 +6,7 @@ interface FormModalProps {
   open: boolean;
   title?: string;
   titleIcon?: ElementType;
+  showClose?: boolean;
   onClose: () => void;
   children: ReactNode;
 }
@@ -14,6 +15,7 @@ export const FormModal = ({
   open,
   title,
   titleIcon,
+  showClose = false,
   onClose,
   children,
 }: FormModalProps) => (
@@ -35,9 +37,15 @@ export const FormModal = ({
                 {title}
               </Dialog.Title>
             )}
-            <Dialog.CloseTrigger>
-              <FiX />
-            </Dialog.CloseTrigger>
+            {showClose && (
+              <Dialog.CloseTrigger
+                _hover={{ color: "red.500", bg: "red.50" }}
+                transition='background 0.2s, color 0.2s'
+                cursor='pointer'
+              >
+                <FiX />
+              </Dialog.CloseTrigger>
+            )}
           </Dialog.Header>
           <Dialog.Body>{children}</Dialog.Body>
         </Dialog.Content>
