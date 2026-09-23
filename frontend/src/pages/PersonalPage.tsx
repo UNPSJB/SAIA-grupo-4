@@ -1,99 +1,101 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
-import { SectorForm } from "../features/sectores/SectorForm";
-import { SectorDetalle } from "../features/sectores/SectorDetalle";
-import { ListadoSectores } from "../features/sectores/ListadoSector";
+import { PersonalForm } from "../features/personal/PersonalForm";
+import { PersonalDetalle } from "../features/personal/PersonaDetalle";
+import { ListadoPersonal } from "../features/personal/ListadoPersonal";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
-import { handleDelete } from "../features/sectores/hooks/useSectorDelete";
-import { useSectorSubmit } from "../features/sectores/hooks/useSectorSubmit";
-import type { Sector } from "../features/sectores/types";
+import { handleDelete } from "../features/personal/hooks/usePersonalDelete";
+import { usePersonalSubmit } from "../features/personal/hooks/usePersonalSubmit";
+import type { Persona } from "../features/personal/types";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
-export default function SectoresPage() {
+export default function PersonalPage() {
+  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>("listado");
-  const [sectorSeleccionado, setSectorSeleccionado] = useState<Sector | null>(
-    null,
-  );
+  const [personaSeleccionada, setPersonaSeleccionada] =
+    useState<Persona | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [sectorEliminar, setSectorEliminar] = useState<Sector | null>(null);
+  const [personaEliminar, setPersonaEliminar] = useState<Persona | null>(null);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
 
-  const [sectorAlta, setSectorAlta] = useState<Sector | null>(null);
+  const [personaAlta, setPersonaAlta] = useState<Persona | null>(null);
   const [altaAbierto, setAltaAbierto] = useState(false);
 
   const [refrescar, setRefrescar] = useState(0);
 
   const confirmarEliminar = () => {
     handleDelete({
-      sector: sectorEliminar,
+      persona: personaEliminar,
       setLoading,
       setError,
       onSuccess: () => {
         setEliminarAbierto(false);
-        setSectorEliminar(null);
+        setPersonaEliminar(null);
         setRefrescar((r) => r + 1);
       },
     });
   };
 
-  const reactivar = useSectorSubmit({
-    endpoint: "http://127.0.0.1:8000/sectores/",
+  const reactivar = usePersonalSubmit({
+    endpoint: "http://127.0.0.1:8000/personal/",
     method: "PUT",
-    id: sectorAlta?.id,
+    id: personaAlta?.id,
     body: { activo: true },
     onSuccess: () => {
       setAltaAbierto(false);
-      setSectorAlta(null);
+      setPersonaAlta(null);
       setRefrescar((r) => r + 1);
     },
   });
 
   const confirmarAlta = async () => {
-    if (!sectorAlta) return;
+    if (!personaAlta) return;
     setError("");
     const res = await reactivar.submit();
-    if (res.status === "error") {
-      setError(res.message);
-    }
+    if (res.status === "error") setError(res.message);
   };
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      <ListadoSectores
+      <ListadoPersonal
         key={refrescar}
+        onVerCapacidades={() => navigate("/capacidades")}
         onCrear={() => setVista("crear")}
-        onModificar={(sector) => {
+        onModificar={(persona) => {
           setError("");
-          setSectorSeleccionado(sector);
+          setPersonaSeleccionada(persona);
           setVista("modificar");
         }}
-        onEliminar={(sector) => {
+        onEliminar={(persona) => {
           setError("");
-          setSectorEliminar(sector);
+          setPersonaEliminar(persona);
           setEliminarAbierto(true);
         }}
-        onVer={(sector) => {
+        onVer={(persona) => {
           setError("");
-          setSectorSeleccionado(sector);
+          setPersonaSeleccionada(persona);
           setVista("ver");
         }}
-        onDarAlta={(sector) => {
+        onDarAlta={(persona) => {
           setError("");
-          setSectorAlta(sector);
+          setPersonaAlta(persona);
           setAltaAbierto(true);
         }}
       />
 
-      {vista === "ver" && sectorSeleccionado && (
-        <SectorDetalle
-          sector={sectorSeleccionado}
+      {/* Modal de Detalle (Vista) */}
+      {vista === "ver" && personaSeleccionada && (
+        <PersonalDetalle
+          persona={personaSeleccionada}
           onCerrar={() => setVista("listado")}
         />
       )}
 
+      {/* Modal de Formularios (Crear / Modificar) */}
       {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
@@ -103,7 +105,7 @@ export default function SectoresPage() {
           }}
         >
           {vista === "crear" && (
-            <SectorForm
+            <PersonalForm
               modo='crear'
               onCancelar={() => setVista("listado")}
               onGuardado={() => {
@@ -114,10 +116,10 @@ export default function SectoresPage() {
             />
           )}
 
-          {vista === "modificar" && sectorSeleccionado && (
-            <SectorForm
+          {vista === "modificar" && personaSeleccionada && (
+            <PersonalForm
               modo='modificar'
-              sector={sectorSeleccionado}
+              persona={personaSeleccionada}
               onCancelar={() => setVista("listado")}
               onGuardado={() => {
                 setVista("listado");
@@ -131,7 +133,11 @@ export default function SectoresPage() {
 
       <AlertDelete
         open={eliminarAbierto}
-        name={sectorEliminar?.nombre ?? null}
+        name={
+          personaEliminar
+            ? `${personaEliminar.nombre} ${personaEliminar.apellido}`
+            : null
+        }
         loading={loading}
         error={error}
         onConfirm={confirmarEliminar}
@@ -144,7 +150,7 @@ export default function SectoresPage() {
       <AlertConfirm
         open={altaAbierto}
         title='Dar de Alta'
-        message={`¿Estás seguro que querés dar de alta el sector ${sectorAlta?.nombre}?`}
+        message={`¿Estás seguro que querés dar de alta a ${personaAlta?.nombre} ${personaAlta?.apellido}?`}
         loading={reactivar.isSubmitting}
         error={error}
         onConfirm={confirmarAlta}

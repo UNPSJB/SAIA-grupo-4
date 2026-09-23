@@ -5,6 +5,8 @@ import EquiposPage from "./pages/EquiposPage";
 import InsumoPage from "./pages/InsumoPage";
 import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
+import PersonalPage from "./pages/PersonalPage";
+import CapacidadPage from "./pages/CapacidadPage";
 import InsumoQuimicoPage from "./pages/InsumoQuimicoPage";
 
 export default function App() {
@@ -32,6 +34,10 @@ export default function App() {
                 path='/unidades-de-medida'
                 element={<UnidadMedidaPage />}
               />
+
+              <Route path='/personal' element={<PersonalPage />} />
+
+              <Route path='/capacidades' element={<CapacidadPage />} />
 
               {/* Ruta por si se escribe una URL que no existe */}
               <Route
