@@ -3,19 +3,27 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.elementos_limpieza import schemas, exceptions
+from src.sectores.models import Sector
+from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
 
 
-# operaciones CRUD para ElementoLimpieza
+def _validar_tipo(db: Session, tipo_id: int) -> None:
+    db_tipo = db.scalar(select(TipoElementoLimpieza).where(TipoElementoLimpieza.id == tipo_id))
+    if db_tipo is None or not db_tipo.activo:
+        raise exceptions.TipoInvalido()
+
+
+def _validar_sector(db: Session, sector_id: int) -> None:
+    db_sector = db.scalar(select(Sector).where(Sector.id == sector_id))
+    if db_sector is None or not db_sector.activo:
+        raise exceptions.SectorInvalido()
+
 
 def crear_elemento_limpieza(db: Session, elemento: schemas.ElementoLimpiezaCreate) -> schemas.ElementoLimpieza:
-    # Verifica que no exista un elemento con el mismo nombre
-    db_elemento_existente = db.scalar(select(ElementoLimpieza).where(ElementoLimpieza.nombre == elemento.nombre))
-    if db_elemento_existente:
-        if db_elemento_existente.activo:
-            raise exceptions.NombreDuplicado()
-        raise exceptions.NombreDuplicadoInactivo(elemento_id=db_elemento_existente.id)
+    _validar_tipo(db, elemento.tipo_id)
+    if elemento.sector_id is not None:
+        _validar_sector(db, elemento.sector_id)
 
-    # Crea el elemento y lo sube a la db
     db_elemento = ElementoLimpieza(**elemento.model_dump())
     db.add(db_elemento)
     try:
@@ -28,12 +36,9 @@ def crear_elemento_limpieza(db: Session, elemento: schemas.ElementoLimpiezaCreat
 
 
 def leer_elemento_limpieza(db: Session, elemento_id: int) -> schemas.ElementoLimpieza:
-    # Verificamos que el elemento exista en la base
     db_elemento = db.scalar(select(ElementoLimpieza).where(ElementoLimpieza.id == elemento_id))
     if not db_elemento:
         raise exceptions.ElementoNoExiste()
-
-    # Si existe el elemento lo retorna
     return db_elemento
 
 
@@ -45,11 +50,11 @@ def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas
     db_elemento = leer_elemento_limpieza(db, elemento_id)
     update_data = elemento.model_dump(exclude_unset=True)
 
-    if "nombre" in update_data:
-        # Verifica que no exista un elemento con el mismo nombre
-        db_elemento_duplicado = db.scalar(select(ElementoLimpieza).where(ElementoLimpieza.nombre == elemento.nombre, ElementoLimpieza.id != elemento_id))
-        if db_elemento_duplicado:
-            raise exceptions.NombreDuplicado()
+    if "tipo_id" in update_data and update_data["tipo_id"] is not None:
+        _validar_tipo(db, update_data["tipo_id"])
+
+    if "sector_id" in update_data and update_data["sector_id"] is not None:
+        _validar_sector(db, update_data["sector_id"])
 
     if "activo" in update_data:
         if db_elemento.activo == elemento.activo:
@@ -59,22 +64,16 @@ def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas
                 raise exceptions.ElementoBaja()
 
     if update_data:
-        # Modifica el elemento y lo sube a la db
         db.execute(update(ElementoLimpieza).where(ElementoLimpieza.id == elemento_id).values(**update_data))
-
         try:
             db.commit()
         except IntegrityError:
             db.rollback()
             raise exceptions.ErrorInesperado()
-
         db.refresh(db_elemento)
     return db_elemento
 
 
 def eliminar_elemento_limpieza(db: Session, elemento_id: int) -> schemas.ElementoLimpiezaDelete:
-    # Verificamos que el elemento exista
     elemento = schemas.ElementoLimpiezaUpdate(activo=False)
-    db_elemento = modificar_elemento_limpieza(db, elemento_id, elemento)
-
-    return db_elemento
+    return modificar_elemento_limpieza(db, elemento_id, elemento)
