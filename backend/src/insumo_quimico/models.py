@@ -12,6 +12,7 @@ class InsumoQuimico(ModeloBase):
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
 
     unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="insumos_quimicos")
+    tareas_asociadas: Mapped[list["TareaInsumoQuimico"]] = relationship("TareaInsumoQuimico", back_populates="insumo_quimico")
 
     __table_args__ = (
         UniqueConstraint(
