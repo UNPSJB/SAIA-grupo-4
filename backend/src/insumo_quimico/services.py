@@ -24,7 +24,7 @@ def validar_asociacion(
     sector_id: int | None,
 ):
     if equipo_id is not None and sector_id is not None:
-        raise exceptions.InsumoQuimicoSinSectorNiEquipo()
+        raise exceptions.InsumoQuimicoConSectorYEquipo()
 
     if equipo_id is not None:
         equipo = db.scalar(
