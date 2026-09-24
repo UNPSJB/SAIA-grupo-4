@@ -18,6 +18,9 @@ from src.equipos.router import router as equipos_router
 from src.sectores.router import router as sectores_router
 from src.insumos.router import router as insumos_router
 from src.unidad_medida.router import router as unidades_de_medidas_router
+from src.elementos_limpieza.router import router as elementos_limpieza_router
+from src.insumo_quimico.router import router as insumo_quimico_router
+from src.plan_poes.router import router as plan_poes_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -57,3 +60,6 @@ app.include_router(equipos_router)
 app.include_router(sectores_router)
 app.include_router(insumos_router)
 app.include_router(unidades_de_medidas_router)
+app.include_router(elementos_limpieza_router)
+app.include_router(insumo_quimico_router)
+app.include_router(plan_poes_router)
