@@ -16,9 +16,12 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   FiChevronLeft,
   FiChevronRight,
+  FiClipboard,
+  FiClock,
   FiLogOut,
   FiMenu,
   FiPackage,
+  FiPlus,
   FiShield,
   FiThermometer,
   FiUser,
@@ -48,6 +51,12 @@ const defaultItems: NavItem[] = [
   { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
 ];
 
+const planItems: NavItem[] = [
+  { to: "/nuevo-plan", label: "Nuevo Plan", icon: FiPlus },
+  { to: "/plan-poes", label: "Plan Vigente", icon: FiClipboard },
+  { to: "/historial-planes", label: "Historial", icon: FiClock },
+];
+
 const isActiveRoute = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`);
 
@@ -66,6 +75,118 @@ const NavTooltip = ({
   </Tooltip.Root>
 );
 
+interface NavSectionProps {
+  label: string;
+  icon: ElementType;
+  items: NavItem[];
+  isCollapsed: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCollapsedClick: () => void;
+}
+
+const NavSection = ({
+  label,
+  icon,
+  items,
+  isCollapsed,
+  open,
+  onOpenChange,
+  onCollapsedClick,
+}: NavSectionProps) => {
+  const { pathname } = useLocation();
+
+  return (
+    <Collapsible.Root
+      open={open}
+      onOpenChange={(e) => onOpenChange(e.open)}
+    >
+      <Collapsible.Trigger asChild>
+        {isCollapsed ? (
+          <NavTooltip label={label}>
+            <IconButton
+              aria-label={label}
+              variant='ghost'
+              color='white'
+              w='100%'
+              onClick={onCollapsedClick}
+              _hover={{ bg: "whiteAlpha.200" }}
+            >
+              <Icon as={icon} />
+            </IconButton>
+          </NavTooltip>
+        ) : (
+          <Button
+            variant='plain'
+            color='white'
+            w='100%'
+            justifyContent='space-between'
+            _hover={{ bg: "whiteAlpha.200" }}
+          >
+            <Flex align='center' gap={2}>
+              <Icon as={icon} />
+              {label}
+            </Flex>
+            <Icon
+              as={FiChevronRight}
+              transform={open ? "rotate(90deg)" : "rotate(0deg)"}
+              transition='transform 0.2s'
+            />
+          </Button>
+        )}
+      </Collapsible.Trigger>
+
+      <Collapsible.Content>
+        <VStack align='stretch' gap={1} mt={2}>
+          {items.map((item) => {
+            const active = isActiveRoute(pathname, item.to);
+            const navButton = (
+              <Button
+                key={item.to}
+                asChild
+                w='100%'
+                justifyContent={isCollapsed ? "center" : "flex-start"}
+                px={isCollapsed ? 0 : undefined}
+                variant='ghost'
+                bg={active ? "white" : undefined}
+                color={active ? "green.700" : "white"}
+                borderLeft='4px solid'
+                borderLeftColor={active ? "green.400" : "transparent"}
+                focusRing='outside'
+                _hover={
+                  active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }
+                }
+                transition='background 0.15s ease, color 0.15s ease'
+              >
+                <NavLink
+                  to={item.to}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                  }}
+                >
+                  <Icon as={item.icon} flexShrink={0} />
+                  {!isCollapsed && item.label}
+                </NavLink>
+              </Button>
+            );
+
+            return isCollapsed ? (
+              <NavTooltip key={item.to} label={item.label}>
+                {navButton}
+              </NavTooltip>
+            ) : (
+              navButton
+            );
+          })}
+        </VStack>
+      </Collapsible.Content>
+    </Collapsible.Root>
+  );
+};
+
 export const NavBar = ({
   title = "SAIA-4",
   brandIcon = FiShield,
@@ -74,15 +195,20 @@ export const NavBar = ({
   username = "Usuario",
   onLogout,
 }: NavBarProps) => {
-  const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
+  const [planOpen, setPlanOpen] = useState(true);
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
+  const planAccordionOpen = isCollapsed ? true : planOpen;
   const sidebarW = isCollapsed ? "64px" : "260px";
 
   const handleOpenChange = (open: boolean) => {
     if (!isCollapsed) setNavigationOpen(open);
+  };
+
+  const handlePlanOpenChange = (open: boolean) => {
+    if (!isCollapsed) setPlanOpen(open);
   };
 
   return (
@@ -168,93 +294,25 @@ export const NavBar = ({
         </Text>
       )}
 
-      <Collapsible.Root
+      <NavSection
+        label='Navegación'
+        icon={FiMenu}
+        items={items}
+        isCollapsed={isCollapsed}
         open={accordionOpen}
-        onOpenChange={(e) => handleOpenChange(e.open)}
-      >
-        <Collapsible.Trigger asChild>
-          {isCollapsed ? (
-            <NavTooltip label='Navegación'>
-              <IconButton
-                aria-label='Navegación'
-                variant='ghost'
-                color='white'
-                w='100%'
-                onClick={() => setIsCollapsed(false)}
-                _hover={{ bg: "whiteAlpha.200" }}
-              >
-                <Icon as={FiMenu} />
-              </IconButton>
-            </NavTooltip>
-          ) : (
-            <Button
-              variant='plain'
-              color='white'
-              w='100%'
-              justifyContent='space-between'
-              _hover={{ bg: "whiteAlpha.200" }}
-            >
-              <Flex align='center' gap={2}>
-                <Icon as={FiMenu} />
-                Navegación
-              </Flex>
-              <Icon
-                as={FiChevronRight}
-                transform={accordionOpen ? "rotate(90deg)" : "rotate(0deg)"}
-                transition='transform 0.2s'
-              />
-            </Button>
-          )}
-        </Collapsible.Trigger>
+        onOpenChange={handleOpenChange}
+        onCollapsedClick={() => setIsCollapsed(false)}
+      />
 
-        <Collapsible.Content>
-          <VStack align='stretch' gap={1} mt={2}>
-            {items.map((item) => {
-              const active = isActiveRoute(pathname, item.to);
-              const navButton = (
-                <Button
-                  key={item.to}
-                  asChild
-                  w='100%'
-                  justifyContent={isCollapsed ? "center" : "flex-start"}
-                  px={isCollapsed ? 0 : undefined}
-                  variant='ghost'
-                  bg={active ? "white" : undefined}
-                  color={active ? "green.700" : "white"}
-                  borderLeft='4px solid'
-                  borderLeftColor={active ? "green.400" : "transparent"}
-                  focusRing='outside'
-                  _hover={
-                    active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }
-                  }
-                  transition='background 0.15s ease, color 0.15s ease'
-                >
-                  <NavLink
-                    to={item.to}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      width: "100%",
-                    }}
-                  >
-                    <Icon as={item.icon} flexShrink={0} />
-                    {!isCollapsed && item.label}
-                  </NavLink>
-                </Button>
-              );
-
-              return isCollapsed ? (
-                <NavTooltip key={item.to} label={item.label}>
-                  {navButton}
-                </NavTooltip>
-              ) : (
-                navButton
-              );
-            })}
-          </VStack>
-        </Collapsible.Content>
-      </Collapsible.Root>
+      <NavSection
+        label='Plan POE'
+        icon={FiClipboard}
+        items={planItems}
+        isCollapsed={isCollapsed}
+        open={planAccordionOpen}
+        onOpenChange={handlePlanOpenChange}
+        onCollapsedClick={() => setIsCollapsed(false)}
+      />
 
       <Box mt='auto' pt={3} borderTop='1px solid' borderColor='whiteAlpha.300'>
         <VStack align='stretch' gap={2}>

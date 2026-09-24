@@ -7,6 +7,9 @@ import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
 import CapacidadPage from "./pages/CapacidadPage";
+import PlanPage from "./pages/PlanPage";
+import NuevoPlanPage from "./pages/NuevoPlanPage";
+import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 
 export default function App() {
   return (
@@ -35,6 +38,15 @@ export default function App() {
               <Route path='/personal' element={<PersonalPage />} />
 
               <Route path='/capacidades' element={<CapacidadPage />} />
+
+              <Route path='/plan-poes' element={<PlanPage />} />
+
+              <Route path='/nuevo-plan' element={<NuevoPlanPage />} />
+
+              <Route
+                path='/historial-planes'
+                element={<HistorialPlanesPage />}
+              />
 
               {/* Ruta por si se escribe una URL que no existe */}
               <Route
