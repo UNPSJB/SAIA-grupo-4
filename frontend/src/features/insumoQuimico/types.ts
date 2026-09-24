@@ -1,10 +1,4 @@
-export interface UnidadMedida {
-    id: number;
-    nombre: string;
-    simbolo: string;
-    tipo_magnitud: string;
-    disponible: boolean;
-}
+import type { UnidadMedida } from "../unidadMedida/types";
 
 export interface InsumoQuimico {
     id: number;
@@ -12,5 +6,7 @@ export interface InsumoQuimico {
     unidad_medida_id: number;
     unidad_medida: UnidadMedida;
     tipo: string;
+    equipo?: { id: number; nombre: string} | null;
+    sector?: { id: number; nombre: string} | null;
     activo: boolean;
 }

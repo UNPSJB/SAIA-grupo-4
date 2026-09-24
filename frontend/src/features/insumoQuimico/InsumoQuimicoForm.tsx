@@ -5,7 +5,10 @@ import { VStack } from "@chakra-ui/react";
 import { useInsumoQuimicoSubmit } from "./hooks/useInsumoQuimicoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoQuimicoSchema, type InsumoQuimicoFormValues } from "./validationSchema";
-import type { InsumoQuimico, UnidadMedida } from "./types";
+import type { InsumoQuimico } from "./types";
+import type { UnidadMedida } from "../unidadMedida/types";
+import type { Sector } from "../sectores/types";
+import type { Equipo } from "../equipos/types";
 import {
   FormContainer,
   FormHeader,
@@ -48,6 +51,18 @@ export const InsumoQuimicoForm = ({
     errorMessage: "No se pudieron cargar las unidades de medida.",
   });
 
+  const { data: sectores } = useListadoData<Sector>({
+  endpoint: "http://127.0.0.1:8000/sectores/",
+  pageSize: 100,
+  errorMessage: "No se pudieron cargar los sectores.",
+  });
+
+  const { data: equipos } = useListadoData<Equipo>({
+  endpoint: "http://127.0.0.1:8000/equipos/",
+  pageSize: 100,
+  errorMessage: "No se pudieron cargar los equipos.",
+  });
+
   const opcionesUnidad = useMemo(() => {
     const activas = unidades.filter((unidad) => unidad.disponible);
     const opciones = activas.map((unidad) => ({
@@ -57,14 +72,30 @@ export const InsumoQuimicoForm = ({
 
     const unidadActual =
       esModoModificar || esModoVer ? insumoQuimico?.unidad_medida : undefined;
+
     if (unidadActual && !activas.some((u) => u.id === unidadActual.id)) {
       opciones.unshift({
         label: `${unidadActual.nombre} (${unidadActual.simbolo})`,
         value: String(unidadActual.id),
       });
     }
+
     return opciones;
   }, [unidades, esModoModificar, esModoVer, insumoQuimico]);
+
+  const opcionesSectores = useMemo(() =>
+      sectores
+        .filter((s) => s.activo)
+        .map((s) => ({ label: s.nombre, value: String(s.id) })),
+    [sectores]
+  );
+
+  const opcionesEquipos = useMemo(() =>
+      equipos
+        .filter((e) => e.activo)
+        .map((e) => ({ label: e.nombre, value: String(e.id) })),
+    [equipos]
+  );
 
   const defaultValues: InsumoQuimicoFormValues =
     esModoModificar || esModoVer
@@ -72,8 +103,16 @@ export const InsumoQuimicoForm = ({
           nombre: insumoQuimico!.nombre,
           unidad_medida_id: String(insumoQuimico!.unidad_medida.id),
           tipo: insumoQuimico!.tipo,
+          equipo_id: insumoQuimico?.equipo ? String(insumoQuimico.equipo.id) : "",
+          sector_id: insumoQuimico?.sector ? String(insumoQuimico.sector.id) : "",
         }
-      : { nombre: "", unidad_medida_id: "", tipo: "" };
+      : { 
+        nombre: "", 
+        unidad_medida_id: "", 
+        tipo: "",
+        equipo_id: "",
+        sector_id: "",
+      };
 
   const {
     register,
@@ -82,6 +121,7 @@ export const InsumoQuimicoForm = ({
     setError,
     clearErrors,
     reset,
+    setValue,
   } = useForm<InsumoQuimicoFormValues>({
     resolver: zodResolver(insumoQuimicoSchema),
     defaultValues,
@@ -103,9 +143,11 @@ export const InsumoQuimicoForm = ({
       setErrorConfirmar("");
       setConfirmAltaAbierto(true);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setSuccess(true);
-      onGuardado?.(insumoQuimico!);
+      if (data) {
+        onGuardado?.(data as InsumoQuimico);
+      }
     },
   });
 
@@ -192,6 +234,38 @@ export const InsumoQuimicoForm = ({
             ]}
             error={errors.tipo?.message}
             {...register("tipo")}
+          />
+
+          <SelectField
+            label='Equipo'
+            placeholder='Selecciona un equipo'
+            readOnly={esModoVer}
+            defaultValue={defaultValues.equipo_id}
+            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+            {...register("equipo_id", {
+              onChange: (e) => {
+                if (e.target.value) setValue("sector_id", "", { shouldValidate: true });
+              },
+            })}
+            options={opcionesEquipos}
+            error={errors.equipo_id?.message}
+          />
+
+          <SelectField
+            label='Sector'
+            placeholder='Selecciona un sector'
+            readOnly={esModoVer}
+            defaultValue={defaultValues.sector_id}
+            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+            {...register("sector_id", {
+              onChange: (e) => {
+                if (e.target.value) setValue("equipo_id", "", { shouldValidate: true });
+              },
+            })}
+            options={opcionesSectores}
+            error={errors.sector_id?.message}
           />
 
           <FormActions>

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
-export type SubmitResult =
-  | { status: "success" }
+export type SubmitResult<T = unknown> =
+  | { status: "success"; data: T }
   | { status: "inactivo"; insumoQuimicoId: number }
   | { status: "error"; message: string };
 
@@ -9,6 +9,8 @@ export interface InsumoQuimicoPayload {
   nombre: string;
   unidad_medida_id: string;
   tipo: string;
+  equipo_id?: string;
+  sector_id?: string;
 }
 
 type FastApiError = {
@@ -21,7 +23,7 @@ interface UseInsumoQuimicoSubmitOptions {
   id?: number | string;
   body?: Record<string, unknown>;
   onInactivo?: (insumo_quimico_id: number) => void;
-  onSuccess?: () => void;
+  onSuccess?: (data?: any) => void;
 }
 
 export const useInsumoQuimicoSubmit = ({
@@ -33,7 +35,7 @@ export const useInsumoQuimicoSubmit = ({
   onSuccess,
 }: UseInsumoQuimicoSubmitOptions) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  
   const submit = useCallback(
     async (values?: InsumoQuimicoPayload): Promise<SubmitResult> => {
       setIsSubmitting(true);
@@ -42,6 +44,8 @@ export const useInsumoQuimicoSubmit = ({
           nombre: values?.nombre.toLocaleLowerCase() ?? "",
           unidad_medida_id: values ? Number(values.unidad_medida_id) : undefined,
           tipo: values?.tipo ?? "",
+          equipo_id: values?.equipo_id ? Number(values.equipo_id) : null,
+          sector_id: values?.sector_id ? Number(values.sector_id) : null,
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
@@ -100,8 +104,9 @@ export const useInsumoQuimicoSubmit = ({
           return { status: "error", message: mensajeError };
         }
 
-        onSuccess?.();
-        return { status: "success" };
+        const data = await res.json();
+        onSuccess?.(data);
+        return { status: "success", data };
       } catch {
         return { status: "error", message: "Ocurrió un error de red o inesperado" };
       } finally {
