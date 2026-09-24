@@ -23,6 +23,7 @@ import {
   FiThermometer,
   FiUser,
   FiMap,
+  FiDroplet,
 } from "react-icons/fi";
 
 interface NavItem {
@@ -46,6 +47,7 @@ const defaultItems: NavItem[] = [
   { to: "/personal", label: "Personal", icon: FiUser },
   { to: "/sectores", label: "Sectores", icon: FiMap },
   { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
+  { to: "/elementos-limpieza", label: "Elementos de limpieza", icon: FiDroplet },
 ];
 
 const isActiveRoute = (pathname: string, to: string) =>

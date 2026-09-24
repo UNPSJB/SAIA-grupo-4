@@ -11,6 +11,7 @@ class ElementoLimpieza(ModeloBase):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     tipo_id: Mapped[int] = mapped_column(ForeignKey("tipos_elemento_limpieza.id"), index=True)
     sector_id: Mapped[Optional[int]] = mapped_column(ForeignKey("sectores.id"), nullable=True, index=True)
+    equipo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("equipos.id"), nullable=True, index=True)
     frecuencia_recambio_dias: Mapped[Optional[int]] = mapped_column(nullable=True)
     fecha_ultimo_recambio: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, server_default=func.now()
