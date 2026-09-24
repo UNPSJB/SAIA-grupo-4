@@ -19,6 +19,9 @@ class InsumoQuimicoActivo(BadRequest):
 class InsumoQuimicoBaja(BadRequest):
     DETAIL = ErrorCode.INSUMO_QUIMICO_BAJA
 
+class InsumoQuimicoSinSectorNiEquipo(BadRequest):
+    DETAIL = ErrorCode.INSUMO_QUIMICO_SIN_SECTOR_NI_EQUIPO
+
 class InsumoQuimicoDuplicadoInactivo(Conflict):
     def __init__(self, insumo_quimico_id: int) -> None:
         self.insumo_quimico_id = insumo_quimico_id

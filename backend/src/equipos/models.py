@@ -15,6 +15,8 @@ class Equipo(ModeloBase):
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sector: Mapped["Sector"] = relationship(back_populates="equipos")
     
+    insumos_quimicos: Mapped[list["InsumoQuimico"]] = relationship(back_populates="equipo")
+
     __table_args__ = (
         UniqueConstraint(
             "nombre",

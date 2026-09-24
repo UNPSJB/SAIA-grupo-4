@@ -13,6 +13,28 @@ def crear_unidad_medida(nombre: str = "Kilogramo", simbolo: str = "kg", tipo: st
     assert res.status_code == 201, res.text
     return res.json()["id"]
 
+def crear_sector(nombre: str = "Algo") -> int:
+    res = client.post(
+        "/sectores/",
+        json={"nombre": nombre},
+    )
+    assert res.status_code == 201, res.text
+    return res.json()["id"]
+
+def crear_equipo(sector_id: int, nro_serie: str = "A1") -> int:
+    res = client.post(
+        "/equipos/",
+        json={
+            "nombre": "Algo",
+            "marca": "Algo",
+            "numero_serie": nro_serie,
+            "categoria": "balanza",
+            "sector_id": sector_id,
+        },
+    )
+    assert res.status_code == 201, res.text
+    return res.json()["id"]
+
 def test_crear_insumo_quimico():
     unidad_id = crear_unidad_medida()
     response = client.post(
@@ -224,3 +246,173 @@ def test_eliminar_insumo_quimico():
 
     res_del = client.delete(f"/insumos-quimicos/{insumo_id}")
     assert res_del.status_code == 200
+
+def test_crear_insumo_quimico_asociado_a_sector():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+            "equipo_id": None,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    data = response.json()
+
+    assert data["sector"]["id"] == sector_id
+    assert data["equipo"] is None
+
+def test_crear_insumo_quimico_asociado_a_equipo():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector()
+    equipo_id = crear_equipo(sector_id)
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": equipo_id,
+            "sector_id": None,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    data = response.json()
+
+    assert data["equipo"]["id"] == equipo_id
+    assert data["sector"] is None
+
+def test_no_permitir_equipo_y_sector():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector()
+    equipo_id = crear_equipo(sector_id)
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": equipo_id,
+            "sector_id": sector_id,
+        },
+    )
+
+    assert response.status_code == 400
+
+def test_permitir_insumo_sin_equipo_ni_sector():
+    unidad_id = crear_unidad_medida()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": None,
+            "sector_id": None,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    data = response.json()
+
+    assert data["equipo"] is None
+    assert data["sector"] is None
+
+def test_crear_insumo_con_equipo_inexistente():
+    unidad_id = crear_unidad_medida()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": 9999,
+            "sector_id": None,
+        },
+    )
+
+    assert response.status_code == 404
+
+def test_crear_insumo_con_sector_inexistente():
+    unidad_id = crear_unidad_medida()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": None,
+            "sector_id": 9999,
+        },
+    )
+
+    assert response.status_code == 404
+
+def test_crear_insumo_quimico_con_consumo():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "algo",
+            "tipo": "detergente",
+            "consumo": 123.456,
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+            "equipo_id": None,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+
+    data = response.json()
+    assert float(data["consumo"]) == 123.456
+
+def test_crear_insumo_quimico_consumo_por_defecto():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Producto",
+            "tipo": "otro",
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+            "equipo_id": None,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert float(response.json()["consumo"]) == 0
+
+def test_consumo_con_mas_de_tres_decimales():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector()
+
+    response = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Producto",
+            "tipo": "otro",
+            "consumo": 12.3456,
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+            "equipo_id": None,
+        },
+    )
+
+    assert response.status_code == 422
