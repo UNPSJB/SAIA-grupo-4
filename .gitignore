@@ -322,7 +322,8 @@ node_modules
 psd
 thumb
 sketch
-
+backend/uploads/
+repomix-output.xml
 # End of https://www.toptal.com/developers/gitignore/api/react,node,python
 backend/database.db
 *.db
