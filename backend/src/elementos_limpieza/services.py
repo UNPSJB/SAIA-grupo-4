@@ -8,6 +8,8 @@ from src.sectores.exceptions import SectorNoEncontrado, SectorInactivo
 from src.equipos.models import Equipo
 from src.equipos.exceptions import EquipoNoEncontrado, EquipoInactivo
 from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
+from src.equipos.services import leer_equipo
+from src.sectores.services import leer_sector 
 
 
 def _validar_tipo(db: Session, tipo_id: int) -> None:
@@ -74,10 +76,22 @@ def leer_elemento_limpieza(db: Session, elemento_id: int) -> schemas.ElementoLim
         raise exceptions.ElementoNoExiste()
     return db_elemento
 
+def listar_elementos_limpieza(
+    db: Session, 
+    sector_id: int | None = None, 
+    equipo_id: int | None = None
+):
+    query = select(ElementoLimpieza).where(ElementoLimpieza.activo == True)
 
-def listar_elementos_limpieza(db: Session):
-    return db.scalars(select(ElementoLimpieza)).all()
+    if sector_id is not None:
+        leer_sector(db, sector_id)
+        query = query.where(ElementoLimpieza.sector_id == sector_id)
+        
+    elif equipo_id is not None:
+        leer_equipo(db, equipo_id)
+        query = query.where(ElementoLimpieza.equipo_id == equipo_id)
 
+    return db.scalars(query).all()
 
 def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate) -> schemas.ElementoLimpiezaUpdate:
     db_elemento = leer_elemento_limpieza(db, elemento_id)
