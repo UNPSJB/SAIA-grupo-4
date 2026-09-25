@@ -46,6 +46,9 @@ export const useElementoLimpiezaSubmit = ({ endpoint, method = "POST", id, body,
           let mensajeError = "Ocurrió un error inesperado";
           if (bodyRes?.detail) {
             if (typeof bodyRes.detail === "string") mensajeError = bodyRes.detail;
+            else if (Array.isArray(bodyRes.detail) && bodyRes.detail[0]?.msg) {
+              mensajeError = bodyRes.detail[0].msg.replace(/^Value error,\s*/, "");
+            }
             else if (typeof bodyRes.detail.code === "string") mensajeError = bodyRes.detail.code;
           } else {
             switch (res.status) {

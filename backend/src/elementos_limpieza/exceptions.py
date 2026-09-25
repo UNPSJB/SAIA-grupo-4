@@ -14,11 +14,8 @@ class ElementoActivo(BadRequest):
 class ElementoBaja(BadRequest):
     DETAIL = ErrorCode.ELEMENTO_BAJA
 
-class SectorInvalido(BadRequest):
-    DETAIL = ErrorCode.SECTOR_INVALIDO
-
-class EquipoInvalido(BadRequest):
-    DETAIL = ErrorCode.EQUIPO_INVALIDO
-
 class TipoInvalido(BadRequest):
     DETAIL = ErrorCode.TIPO_INVALIDO
+
+class UbicacionExclusiva(BadRequest):
+    DETAIL = ErrorCode.UBICACION_EXCLUSIVA

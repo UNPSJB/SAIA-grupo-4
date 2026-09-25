@@ -6,6 +6,7 @@ class ErrorCode:
     SECTOR_INVALIDO = "El sector indicado no existe o no está activo"
     EQUIPO_INVALIDO = "El equipo indicado no existe o no está activo"
     TIPO_INVALIDO = "El tipo de elemento indicado no existe o no está activo"
+    UBICACION_EXCLUSIVA = "Un elemento de limpieza no puede estar asociado a un sector y a un equipo al mismo tiempo"
 
 class Constantes:
     pass
