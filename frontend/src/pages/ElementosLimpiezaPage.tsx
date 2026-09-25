@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { ElementoLimpiezaForm } from "../features/elementosLimpieza/ElementoLimpiezaForm";
 import { ListadoElementosLimpieza } from "../features/elementosLimpieza/ListadoElementosLimpieza";
-import { TipoElementoLimpiezaForm } from "../features/elementosLimpieza/TipoElementoLimpiezaForm";
+import { GestionTiposElementoLimpieza } from "../features/elementosLimpieza/GestionTiposElementoLimpieza";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/elementosLimpieza/hooks/useElementoLimpiezaDelete";
 import { useElementoLimpiezaSubmit } from "../features/elementosLimpieza/hooks/useElementoLimpiezaSubmit";
@@ -101,10 +101,7 @@ export default function ElementosLimpiezaPage() {
 
             {tipoModalAbierto && (
                 <FormModal open onClose={() => setTipoModalAbierto(false)}>
-                    <TipoElementoLimpiezaForm
-                        onCancelar={() => setTipoModalAbierto(false)}
-                        onGuardado={() => setTipoModalAbierto(false)}
-                    />
+                    <GestionTiposElementoLimpieza />
                 </FormModal>
             )}
 

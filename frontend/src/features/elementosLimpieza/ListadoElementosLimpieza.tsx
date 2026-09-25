@@ -1,5 +1,5 @@
 import { Badge, HStack, Button } from "@chakra-ui/react";
-import { FiTrash2, FiEdit2, FiEye, FiCheckCircle, FiPlus, FiTag, FiDroplet  } from "react-icons/fi";
+import { FiTrash2, FiEdit2, FiEye, FiCheckCircle, FiPlus, FiDroplet, FiSettings  } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -15,6 +15,15 @@ interface ListadoElementosLimpiezaProps {
     onDarAlta?: (elemento: ElementoLimpieza) => void;
 }
 
+const formatearFecha = (fechaStr?: string | null) => {
+    if (!fechaStr) return "—";
+    try {
+        return new Date(fechaStr).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch {
+        return fechaStr;
+    }
+};
+
 export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, onEliminar, onVer, onDarAlta }: ListadoElementosLimpiezaProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<ElementoLimpieza>({
         endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
@@ -24,24 +33,26 @@ export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, on
 
     const columnas: ColumnDef<ElementoLimpieza>[] = [
         { key: "codigo", label: "Código", render: (e) => e.codigo },
-        { key: "tipo", label: "Tipo", render: (e) => e.tipo?.nombre ?? "—" },
         { key: "nombre", label: "Nombre", render: (e) => e.nombre },
-        { key: "sector", label: "Sector", render: (e) => e.sector?.nombre ?? "Sin asignar" },
-        { key: "equipo", label: "Equipo", render: (e) => e.equipo?.nombre ?? "Sin asignar" },
-        { key: "frecuencia", label: "Frecuencia (días)", render: (e) => e.frecuencia_recambio_dias ?? "—" },
         {
-            key: "activo",
-            label: "Estado",
+            key: "asociado_a",
+            label: "Asociado a",
+            render: (e) => {
+            if (e.sector) return <Badge colorPalette="blue" variant="subtle">Sector: {e.sector.nombre}</Badge>;
+            if (e.equipo) return <Badge colorPalette="purple" variant="subtle">Equipo: {e.equipo.nombre}</Badge>;
+            return <span style={{ color: "var(--chakra-colors-gray-400)" }}>Sin asignar</span>;
+            },
+        },
+        { key: "frecuencia", label: "Frecuencia (días)", render: (e) => e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : <span style={{ color: "var(--chakra-colors-gray-400)" }}>Sin definir</span> },
+        { key: "ultimo_recambio", label: "Último Recambio", render: (e) => formatearFecha(e.fecha_ultimo_recambio) },        
+        { key: "activo", label: "Estado",
             render: (e) => (
                 <Badge colorPalette={e.activo ? "green" : "red"}>
                     {e.activo ? "Activo" : "Inactivo"}
                 </Badge>
             ),
         },
-        {
-            key: "acciones",
-            label: "Acciones",
-            align: "end",
+        { key: "acciones", label: "Acciones", align: "end",
             render: (e) => (
                 <RowActions>
                     <RowActionButton icon={FiEdit2} label="Modificar" colorPalette="blue" onClick={() => onModificar?.(e)} visible={e.activo} />
@@ -59,7 +70,7 @@ export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, on
                 <ListadoHeader title="Elementos de Limpieza" icon={FiDroplet} />
                 <HStack gap={2}>
                     <Button variant="outline" colorPalette="green" onClick={onCrearTipo}>
-                        <FiPlus /> Nuevo tipo
+                        <FiSettings /> Gestionar tipos
                     </Button>
                     <Button colorPalette="green" onClick={onCrear}>
                         <FiPlus /> Nuevo elemento
