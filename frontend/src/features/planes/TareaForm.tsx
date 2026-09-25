@@ -361,8 +361,8 @@ export const TareaForm = ({
                 })
               }
               options={[
-                { label: "Equipo de Maestro", value: "equipo" },
-                { label: "Sector / Área Física", value: "sector" },
+                { label: "Equipo", value: "equipo" },
+                { label: "Sector", value: "sector" },
               ]}
             />
 

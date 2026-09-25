@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
-import { FiTool } from "react-icons/fi";
-import {
-  AlertMessage,
-  FormModal,
-  LoadingState,
-} from "../components/ui";
+import { Box, Button, HStack } from "@chakra-ui/react";
+import { FiClock, FiPlus, FiTool } from "react-icons/fi";
+import { AlertMessage, FormModal, LoadingState } from "../components/ui";
 import { ListadoContainer, ListadoHeader } from "../components/layout";
 import { PlanForm } from "../features/planes/PlanForm";
 import { PlanWorkspace } from "../features/planes/PlanWorkspace";
@@ -21,6 +17,9 @@ export default function NuevoPlanPage() {
     setCrearAbierto(false);
     reload();
   };
+
+  const irHistorial = () =>
+    navigate("/historial-planes", { state: { origen: "nuevo-plan" } });
 
   if (loading) {
     return (
@@ -39,6 +38,7 @@ export default function NuevoPlanPage() {
           key={borrador.id}
           initialPlan={borrador}
           esBorrador
+          historialOrigen='nuevo-plan'
           onPromovido={() => navigate("/plan-poes")}
           onCambio={reload}
         />
@@ -48,12 +48,20 @@ export default function NuevoPlanPage() {
 
   return (
     <ListadoContainer maxW='6xl'>
-      <ListadoHeader
-        title='Nuevo Plan POES'
-        icon={FiTool}
-        buttonLabel='Crear plan'
-        onCrear={() => setCrearAbierto(true)}
-      />
+      <ListadoHeader title='Nuevo Plan POES' icon={FiTool}>
+        <HStack justify='space-between' mb={6} align='center'>
+          <Button variant='outline' colorPalette='green' onClick={irHistorial}>
+            <FiClock /> Ver historial
+          </Button>
+          <Button
+            variant='solid'
+            colorPalette='green'
+            onClick={() => setCrearAbierto(true)}
+          >
+            <FiPlus /> Crear Plan
+          </Button>
+        </HStack>
+      </ListadoHeader>
 
       {error && <AlertMessage type='error' message={error} />}
 

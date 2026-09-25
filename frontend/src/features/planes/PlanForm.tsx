@@ -9,7 +9,6 @@ import {
   FormActions,
   FormContainer,
   FormHeader,
-  SelectField,
   SubmitButton,
   TextField,
 } from "../../components/ui";
@@ -19,8 +18,8 @@ import {
   type PlanFormValues,
 } from "./validationSchema";
 import type { PlanPOES } from "./types";
-import { usePlanCatalogs } from "./hooks/usePlanCatalogs";
 import { planesApi } from "./hooks/planApi";
+import { useAuth } from "../auth/useAuth";
 
 interface PlanFormProps {
   modo?: "crear" | "modificar";
@@ -39,12 +38,13 @@ export const PlanForm = ({
 }: PlanFormProps) => {
   const esModoCrear = modo === "crear";
 
-  const { catalogs, loading: cargandoCatalogos } = usePlanCatalogs();
+  const { usuario } = useAuth();
 
   const defaultValues: PlanFormInput = {
     nombre: plan?.nombre ?? "",
     objetivo: plan?.objetivo ?? "",
-    elaborado_por_id: plan?.elaborado_por_id ?? undefined,
+    // En modo crear "Elaborado por" no se elige: siempre es la persona logueada.
+    elaborado_por_id: esModoCrear ? usuario?.personaId : undefined,
   };
 
   const {
@@ -60,15 +60,13 @@ export const PlanForm = ({
 
   const [success, setSuccess] = useState(false);
 
-  const personasActivas = catalogs.personas.filter((p) => p.activo);
-
   const onSubmit = handleSubmit(async (values) => {
     clearErrors("root");
     try {
       if (esModoCrear) {
         if (!values.elaborado_por_id) {
           setError("elaborado_por_id", {
-            message: "Seleccioná quién elabora el plan",
+            message: "No se pudo determinar quién elabora el plan",
           });
           return;
         }
@@ -119,16 +117,14 @@ export const PlanForm = ({
             {...register("objetivo")}
           />
           {esModoCrear && (
-            <SelectField
+            <TextField
               label='Elaborado por'
-              placeholder='Seleccione una persona'
-              disabled={cargandoCatalogos}
-              options={personasActivas.map((p) => ({
-                label: `${p.nombre} ${p.apellido}`,
-                value: String(p.id),
-              }))}
-              error={errors.elaborado_por_id?.message?.toString()}
-              {...register("elaborado_por_id")}
+              value={
+                usuario
+                  ? `${usuario.nombre} ${usuario.apellido}`
+                  : "Sin asignar"
+              }
+              disabled
             />
           )}
 

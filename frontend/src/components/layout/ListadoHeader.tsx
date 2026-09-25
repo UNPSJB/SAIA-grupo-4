@@ -1,4 +1,4 @@
-import type { ElementType } from "react";
+import type { ElementType, ReactNode } from "react";
 import { Button, HStack, Heading, Icon } from "@chakra-ui/react";
 import { FiPlus } from "react-icons/fi";
 
@@ -7,6 +7,7 @@ interface ListadoHeaderProps {
   icon?: ElementType;
   buttonLabel?: string;
   onCrear?: () => void;
+  children?: ReactNode;
 }
 
 export const ListadoHeader = ({
@@ -14,6 +15,7 @@ export const ListadoHeader = ({
   icon,
   buttonLabel,
   onCrear,
+  children,
 }: ListadoHeaderProps) => (
   <HStack justify="space-between" mb={6}>
     <Heading size="2xl" color="green">
@@ -26,5 +28,6 @@ export const ListadoHeader = ({
         {buttonLabel}
       </Button>
     )}
+    {children}
   </HStack>
 );

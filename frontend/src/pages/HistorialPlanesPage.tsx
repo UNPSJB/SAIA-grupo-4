@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Heading, HStack, Icon } from "@chakra-ui/react";
 import { FiArrowLeft, FiClock, FiEye, FiUser } from "react-icons/fi";
 import {
@@ -38,6 +38,9 @@ const labelsEstado = {
 
 export default function HistorialPlanesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const origen = (location.state as { origen?: string } | null)?.origen;
+  const desdeNuevoPlan = origen === "nuevo-plan";
   const { loading, error: errorPlanes, planes } = usePlanData();
   const { catalogs, error: errorCatalogos } = usePlanCatalogs();
 
@@ -221,9 +224,10 @@ export default function HistorialPlanesPage() {
         <Button
           variant='outline'
           colorPalette='green'
-          onClick={() => navigate("/plan-poes")}
+          onClick={() => navigate(desdeNuevoPlan ? "/nuevo-plan" : "/plan-poes")}
         >
-          <FiArrowLeft /> Volver al plan vigente
+          <FiArrowLeft />{" "}
+          {desdeNuevoPlan ? "Volver al nuevo plan" : "Volver al plan vigente"}
         </Button>
       </HStack>
 

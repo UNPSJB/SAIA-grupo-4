@@ -26,6 +26,7 @@ type Vista =
 interface PlanWorkspaceProps {
   initialPlan: PlanPOES;
   esBorrador?: boolean;
+  historialOrigen?: "nuevo-plan";
   onPromovido?: () => void;
   onCambio?: () => void;
 }
@@ -33,10 +34,17 @@ interface PlanWorkspaceProps {
 export const PlanWorkspace = ({
   initialPlan,
   esBorrador = false,
+  historialOrigen,
   onPromovido,
   onCambio,
 }: PlanWorkspaceProps) => {
   const navigate = useNavigate();
+
+  const irAlHistorial = () =>
+    navigate(
+      "/historial-planes",
+      historialOrigen ? { state: { origen: historialOrigen } } : undefined,
+    );
 
   const {
     catalogs,
@@ -50,8 +58,9 @@ export const PlanWorkspace = ({
   const [errorTareas, setErrorTareas] = useState("");
 
   const [vista, setVista] = useState<Vista>("listado");
-  const [tareaSeleccionada, setTareaSeleccionada] =
-    useState<TareaPOES | null>(null);
+  const [tareaSeleccionada, setTareaSeleccionada] = useState<TareaPOES | null>(
+    null,
+  );
 
   const [tareaBaja, setTareaBaja] = useState<TareaPOES | null>(null);
   const [bajaTareaAbierto, setBajaTareaAbierto] = useState(false);
@@ -112,14 +121,10 @@ export const PlanWorkspace = ({
               : "No hay un plan vigente. El plan fue dado de baja."
           }
         />
-        {!esBorrador && (
-          <Button
-            colorPalette='green'
-            onClick={() => navigate("/historial-planes")}
-          >
-            <FiClock /> Ver historial de planes
-          </Button>
-        )}
+
+        <Button colorPalette='green' onClick={irAlHistorial}>
+          <FiClock /> Ver historial de planes
+        </Button>
       </VStack>
     );
   }
@@ -249,12 +254,10 @@ export const PlanWorkspace = ({
           setTareaAlta(tarea);
           setAltaTareaAbierto(true);
         }}
-        onHistorial={() => navigate("/historial-planes")}
+        onHistorial={irAlHistorial}
         onModificarPlan={() => setVista("modificarPlan")}
         onDarBajaPlan={() => setBajaPlanAbierto(true)}
-        onDarAltaPlan={
-          esBorrador ? () => setAltaPlanAbierto(true) : undefined
-        }
+        onDarAltaPlan={esBorrador ? () => setAltaPlanAbierto(true) : undefined}
       />
 
       {(errorTareas || errorCatalogos) && (
