@@ -15,15 +15,6 @@ interface ListadoElementosLimpiezaProps {
     onDarAlta?: (elemento: ElementoLimpieza) => void;
 }
 
-const formatearFecha = (fechaStr?: string | null) => {
-    if (!fechaStr) return "—";
-    try {
-        return new Date(fechaStr).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    } catch {
-        return fechaStr;
-    }
-};
-
 export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, onEliminar, onVer, onDarAlta }: ListadoElementosLimpiezaProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<ElementoLimpieza>({
         endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
@@ -32,11 +23,12 @@ export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, on
     });
 
     const columnas: ColumnDef<ElementoLimpieza>[] = [
+        { key: "codigo", label: "Código", render: (e) => e.codigo },
         { key: "tipo", label: "Tipo", render: (e) => e.tipo?.nombre ?? "—" },
+        { key: "nombre", label: "Nombre", render: (e) => e.nombre },
         { key: "sector", label: "Sector", render: (e) => e.sector?.nombre ?? "Sin asignar" },
         { key: "equipo", label: "Equipo", render: (e) => e.equipo?.nombre ?? "Sin asignar" },
         { key: "frecuencia", label: "Frecuencia (días)", render: (e) => e.frecuencia_recambio_dias ?? "—" },
-        { key: "ultimo_recambio", label: "Último recambio", render: (e) => formatearFecha(e.fecha_ultimo_recambio) },
         {
             key: "activo",
             label: "Estado",

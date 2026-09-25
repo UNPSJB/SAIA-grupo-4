@@ -28,6 +28,7 @@ class Equipo(BaseModel):
 
 
 class ElementoLimpiezaBase(BaseModel):
+    nombre: Annotated[str, Field(min_length=1, max_length=20, description="Nombre o descripción de esta instancia del elemento")]
     tipo_id: Annotated[int, Field(description="Tipo de elemento de limpieza al que corresponde esta instancia")]
     sector_id: Annotated[Optional[int], Field(default=None, description="Sector donde se usa el elemento (opcional)")]
     equipo_id: Annotated[Optional[int], Field(default=None, description="Equipo donde se usa el elemento (opcional)")]
@@ -50,6 +51,7 @@ class ElementoLimpiezaCreate(ElementoLimpiezaBase):
 
 
 class ElementoLimpiezaUpdate(BaseModel):
+    nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=20)]
     tipo_id: Annotated[Optional[int], Field(default=None)]
     sector_id: Annotated[Optional[int], Field(default=None)]
     equipo_id: Annotated[Optional[int], Field(default=None)]
@@ -63,6 +65,7 @@ class ElementoLimpiezaDelete(ElementoLimpiezaBase):
 
 class ElementoLimpieza(ElementoLimpiezaBase):
     id: int
+    codigo: str
     fecha_ultimo_recambio: Optional[datetime]
     tipo: TipoElementoLimpieza
     sector: Optional[Sector]

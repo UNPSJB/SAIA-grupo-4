@@ -5,6 +5,7 @@ export type SubmitResult =
   | { status: "error"; message: string };
 
 export interface ElementoLimpiezaPayload {
+  nombre: string;
   tipo_id: number;
   sector_id?: number | null;
   equipo_id?: number | null;
@@ -26,6 +27,7 @@ export const useElementoLimpiezaSubmit = ({ endpoint, method = "POST", id, body,
       setIsSubmitting(true);
       try {
         const payload = body ?? {
+          nombre: values?.nombre ?? "",
           tipo_id: values?.tipo_id,
           sector_id: values?.sector_id || null,
           equipo_id: values?.equipo_id || null,

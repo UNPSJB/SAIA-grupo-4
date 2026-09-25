@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.elementos_limpieza.models import ElementoLimpieza
@@ -38,15 +38,26 @@ def _validar_ubicacion_exclusiva(sector_id: int | None, equipo_id: int | None) -
 
 
 def crear_elemento_limpieza(db: Session, elemento: schemas.ElementoLimpiezaCreate) -> schemas.ElementoLimpieza:
-    _validar_tipo(db, elemento.tipo_id)
     _validar_ubicacion_exclusiva(elemento.sector_id, elemento.equipo_id)
+
+    db_tipo = db.scalar(select(TipoElementoLimpieza).where(TipoElementoLimpieza.id == elemento.tipo_id))
+    if db_tipo is None or not db_tipo.activo:
+        raise exceptions.TipoInvalido()
 
     if elemento.sector_id is not None:
         _validar_sector(db, elemento.sector_id)
     if elemento.equipo_id is not None:
         _validar_equipo(db, elemento.equipo_id)
 
-    db_elemento = ElementoLimpieza(**elemento.model_dump())
+    # Contamos cuántos elementos de este tipo existen (activos e inactivos)
+    # para calcular el siguiente correlativo
+    cantidad_existente = db.scalar(
+        select(func.count()).select_from(ElementoLimpieza).where(ElementoLimpieza.tipo_id == elemento.tipo_id)
+    )
+    siguiente_correlativo = cantidad_existente + 1
+    codigo_generado = f"{db_tipo.prefijo}-{siguiente_correlativo:04d}"
+
+    db_elemento = ElementoLimpieza(**elemento.model_dump(), codigo=codigo_generado)
     db.add(db_elemento)
     try:
         db.commit()

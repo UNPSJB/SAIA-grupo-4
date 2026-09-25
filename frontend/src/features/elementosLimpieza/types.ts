@@ -1,6 +1,7 @@
 export interface TipoElementoLimpieza {
     id: number;
     nombre: string;
+    prefijo: string;
     activo: boolean;
 }
 
@@ -18,6 +19,8 @@ export interface Equipo {
 
 export interface ElementoLimpieza {
     id: number;
+    codigo: string;
+    nombre: string;
     tipo_id: number;
     tipo: TipoElementoLimpieza;
     sector_id?: number | null;

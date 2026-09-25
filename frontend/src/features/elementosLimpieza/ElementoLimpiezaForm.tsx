@@ -23,13 +23,14 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
     const esModoModificar = modo === "modificar";
 
     const defaultValues: ElementoLimpiezaFormInput = esModoModificar || esModoVer
-        ? {
-              tipo_id: elemento!.tipo_id,
-              sector_id: elemento!.sector_id ?? "",
-              equipo_id: elemento!.equipo_id ?? "",
-              frecuencia_recambio_dias: elemento!.frecuencia_recambio_dias ?? "",
-          }
-        : { tipo_id: 0, sector_id: "", equipo_id: "", frecuencia_recambio_dias: "" };
+    ? {
+        nombre: elemento!.nombre,
+        tipo_idpo_id: elemento!.tipo_id,
+        sector_id: elemento!.sector_id ?? "",
+        equipo_id: elemento!.equipo_id ?? "",
+        frecuencia_recambio_dias: elemento!.frecuencia_recambio_dias ?? "",
+        }
+        : { nombre: "", tipo_id: 0, sector_id: "", equipo_id: "", frecuencia_recambio_dias: "" };
 
     const { register, handleSubmit, formState: { errors, isSubmitting }, setError, clearErrors, reset } =
         useForm<ElementoLimpiezaFormInput, unknown, ElementoLimpiezaFormValues>({
@@ -61,6 +62,7 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
         setSuccess(false);
         clearErrors("root");
         const payload: ElementoLimpiezaPayload = {
+            nombre: values.nombre,
             tipo_id: values.tipo_id,
             sector_id: values.sector_id === "" ? null : Number(values.sector_id),
             equipo_id: values.equipo_id === "" ? null : Number(values.equipo_id),
@@ -79,6 +81,12 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
             />
             <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
                 <VStack gap={4}>
+                    <TextField
+                        label="Nombre"
+                        disabled={esModoVer}
+                        error={errors.nombre?.message}
+                        {...register("nombre")}
+                    />
                     <SelectField
                         label="Tipo"
                         placeholder="Seleccioná un tipo"

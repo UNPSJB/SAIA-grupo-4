@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const elementoLimpiezaSchema = z.object({
+    nombre: z.string().min(1, "El nombre es obligatorio").max(20, "Máximo 20 caracteres"),
     tipo_id: z.coerce.number().min(1, "Debe seleccionar un tipo"),
     sector_id: z.union([z.coerce.number().min(1), z.literal("")]).optional(),
     equipo_id: z.union([z.coerce.number().min(1), z.literal("")]).optional(),

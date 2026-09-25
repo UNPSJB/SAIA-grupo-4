@@ -25,3 +25,6 @@ class NombreDuplicadoInactivo(Conflict):
             "tipo_id": tipo_id,
         }
         super().__init__(headers={"X-Tipo-Id": str(tipo_id)})
+
+class PrefijoDuplicado(BadRequest):
+    DETAIL = ErrorCode.PREFIJO_DUPLICADO

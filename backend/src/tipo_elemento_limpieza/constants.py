@@ -5,6 +5,7 @@ class ErrorCode:
     TIPO_ACTIVO = "El tipo de elemento ya esta activo"
     TIPO_BAJA = "El tipo de elemento ya esta dado de baja"
     ERROR_INESPERADO = "Ocurrio un error inesperado"
+    PREFIJO_DUPLICADO = "Ya existe un tipo de elemento con ese prefijo"
 
 class Constantes:
     pass
