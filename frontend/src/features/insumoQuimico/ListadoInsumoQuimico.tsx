@@ -55,6 +55,19 @@ export const ListadoInsumosQuimicos = ({
       render: (insumoQuimico) => insumoQuimico.nombre,
     },
     {
+      key: "asociacion",
+      label: "Asociado a",
+      render: (insumoQuimico) => {
+        if (insumoQuimico.equipo) {
+          return `Equipo: ${insumoQuimico.equipo.nombre}`;
+        }
+        if (insumoQuimico.sector) {
+          return `Sector: ${insumoQuimico.sector.nombre}`;
+        }
+        return "-";
+      },
+    },
+    {
       key: "unidad_medida",
       label: "Unidad de medida",
       render: (insumoQuimico) =>
