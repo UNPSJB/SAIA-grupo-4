@@ -1,56 +1,57 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
-import { InsumoForm } from "../features/insumo/InsumoForm";
-import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
-import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
+import { InsumoQuimicoForm } from "../features/insumoQuimico/InsumoQuimicoForm";
+import { InsumoQuimicoDetalle } from "../features/insumoQuimico/InsumoQuimicoDetalle";
+import { ListadoInsumosQuimicos } from "../features/insumoQuimico/ListadoInsumoQuimico";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
-import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
-import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
-import type { Insumo } from "../features/insumo/types";
+import { handleDelete } from "../features/insumoQuimico/hooks/useInsumoQuimicoDelete";
+import { useInsumoQuimicoSubmit } from "../features/insumoQuimico/hooks/useInsumoQuimicoSubmit";
+import type { InsumoQuimico } from "../features/insumoQuimico/types";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
-export default function InsumoPage() {
+export default function InsumoQuimicoPage() {
   const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>("listado");
-  const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
+  const [insumoQuimicoSeleccionado, setInsumoQuimicoSeleccionado] = useState<InsumoQuimico | null>(
     null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [insumoEliminar, setInsumoEliminar] = useState<Insumo | null>(null);
+  const [insumoQuimicoEliminar, setInsumoQuimicoEliminar] = useState<InsumoQuimico | null>(null);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
-  const [insumoAlta, setInsumoAlta] = useState<Insumo | null>(null);
+  const [insumoQuimicoAlta, setInsumoQuimicoAlta] = useState<InsumoQuimico | null>(null);
   const [altaAbierto, setAltaAbierto] = useState(false);
   const [refescar, setRefrescar] = useState(0);
+
   const confirmarEliminar = () => {
     handleDelete({
-      insumo: insumoEliminar,
+      insumoQuimico: insumoQuimicoEliminar,
       setLoading,
       setError,
       onSuccess: () => {
         setEliminarAbierto(false);
-        setInsumoEliminar(null);
+        setInsumoQuimicoEliminar(null);
         setRefrescar((r) => r + 1);
       },
     });
   };
 
-  const reactivar = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+  const reactivar = useInsumoQuimicoSubmit({
+    endpoint: "http://127.0.0.1:8000/insumos-quimicos/",
     method: "PUT",
-    id: insumoAlta?.id,
-    body: { disponible: true },
+    id: insumoQuimicoAlta?.id,
+    body: { activo: true },
     onSuccess: () => {
       setAltaAbierto(false);
-      setInsumoAlta(null);
+      setInsumoQuimicoAlta(null);
       setRefrescar((r) => r + 1);
     },
   });
 
   const confirmarAlta = async () => {
-    if (!insumoAlta) return;
+    if (!insumoQuimicoAlta) return;
     setError("");
     const res = await reactivar.submit();
     if (res.status === "error") {
@@ -60,41 +61,40 @@ export default function InsumoPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      <ListadoInsumos
+      <ListadoInsumosQuimicos
         key={refescar}
         onVerUnidades={() => navigate("/unidades-de-medida")}
         onCrear={() => {
           setError("");
           setVista("crear");
         }}
-        onModificar={(insumo) => {
+        onModificar={(insumoQuimico) => {
           setError("");
-          setInsumoSeleccionado(insumo);
+          setInsumoQuimicoSeleccionado(insumoQuimico);
           setVista("modificar");
         }}
-        onEliminar={(insumo) => {
+        onEliminar={(insumoQuimico) => {
           setError("");
-          setInsumoEliminar(insumo);
+          setInsumoQuimicoEliminar(insumoQuimico);
           setEliminarAbierto(true);
         }}
-        onVer={(insumo) => {
+        onVer={(insumoQuimico) => {
           setError("");
-          setInsumoSeleccionado(insumo);
+          setInsumoQuimicoSeleccionado(insumoQuimico);
           setVista("ver");
         }}
-        onDarAlta={(insumo) => {
+        onDarAlta={(insumoQuimico) => {
           setError("");
-          setInsumoAlta(insumo);
+          setInsumoQuimicoAlta(insumoQuimico);
           setAltaAbierto(true);
         }}
       />
-      {vista === "ver" && insumoSeleccionado && (
-        <InsumoDetalle
-          insumo={insumoSeleccionado}
-          onCerrar={() => setVista("listado")}
+      {vista === "ver" && insumoQuimicoSeleccionado && (
+        <InsumoQuimicoDetalle
+          insumoQuimico={insumoQuimicoSeleccionado}
+          onCancelar={() => setVista("listado")}
         />
       )}
-
       {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
@@ -104,7 +104,7 @@ export default function InsumoPage() {
           }}
         >
           {vista === "crear" && (
-            <InsumoForm
+            <InsumoQuimicoForm
               modo='crear'
               onCancelar={() => setVista("listado")}
               onGuardado={() => {
@@ -114,11 +114,10 @@ export default function InsumoPage() {
               enModal
             />
           )}
-
-          {vista === "modificar" && insumoSeleccionado && (
-            <InsumoForm
+          {vista === "modificar" && insumoQuimicoSeleccionado && (
+            <InsumoQuimicoForm
               modo='modificar'
-              insumo={insumoSeleccionado}
+              insumoQuimico={insumoQuimicoSeleccionado}
               onCancelar={() => setVista("listado")}
               onGuardado={() => {
                 setVista("listado");
@@ -132,7 +131,7 @@ export default function InsumoPage() {
 
       <AlertDelete
         open={eliminarAbierto}
-        name={insumoEliminar?.nombre ?? null}
+        name={insumoQuimicoEliminar?.nombre ?? null}
         loading={loading}
         error={error}
         onConfirm={confirmarEliminar}
@@ -145,7 +144,7 @@ export default function InsumoPage() {
       <AlertConfirm
         open={altaAbierto}
         title='Dar de Alta'
-        message={`¿Esta seguro que quiere dar de alta a ${insumoAlta?.nombre}?`}
+        message={`¿Esta seguro que quiere dar de alta a ${insumoQuimicoAlta?.nombre}?`}
         loading={reactivar.isSubmitting}
         error={error}
         onConfirm={confirmarAlta}

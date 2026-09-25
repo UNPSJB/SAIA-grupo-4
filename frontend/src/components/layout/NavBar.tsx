@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { ElementType, ReactNode } from "react";
-import { FaRuler } from "react-icons/fa";
 import {
   Box,
   Button,
@@ -26,13 +25,23 @@ import {
   FiThermometer,
   FiUser,
   FiMap,
+  FiDroplet,
 } from "react-icons/fi";
+import { FaRuler } from "react-icons/fa";
 
-interface NavItem {
+interface LinkNavItem {
   to: string;
   label: string;
   icon: ElementType;
 }
+
+interface ParentNavItem {
+  label: string;
+  icon: ElementType;
+  children: LinkNavItem[];
+}
+
+type NavItem = LinkNavItem | ParentNavItem;
 
 interface NavBarProps {
   title?: string;
@@ -45,9 +54,16 @@ interface NavBarProps {
 
 const defaultItems: NavItem[] = [
   { to: "/equipos", label: "Equipos", icon: FiThermometer },
-  { to: "/insumos", label: "Insumos", icon: FiPackage },
   { to: "/personal", label: "Personal", icon: FiUser },
   { to: "/sectores", label: "Sectores", icon: FiMap },
+  {
+    label: "Insumos",
+    icon: FiPackage,
+    children: [
+      { to: "/insumos", label: "Insumos", icon: FiPackage },
+      { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
+    ],
+  },
   { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
 ];
 
@@ -95,12 +111,10 @@ const NavSection = ({
   onCollapsedClick,
 }: NavSectionProps) => {
   const { pathname } = useLocation();
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   return (
-    <Collapsible.Root
-      open={open}
-      onOpenChange={(e) => onOpenChange(e.open)}
-    >
+    <Collapsible.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}>
       <Collapsible.Trigger asChild>
         {isCollapsed ? (
           <NavTooltip label={label}>
@@ -139,10 +153,102 @@ const NavSection = ({
       <Collapsible.Content>
         <VStack align='stretch' gap={1} mt={2}>
           {items.map((item) => {
+            if ("children" in item) {
+              const submenuOpen =
+                openSubmenus[item.label] ??
+                item.children.some((child) =>
+                  isActiveRoute(pathname, child.to),
+                );
+
+              return (
+                <Collapsible.Root
+                  key={item.label}
+                  open={submenuOpen}
+                  onOpenChange={(event) =>
+                    setOpenSubmenus((current) => ({
+                      ...current,
+                      [item.label]: event.open,
+                    }))
+                  }
+                >
+                  <Collapsible.Trigger asChild>
+                    <Button
+                      variant='plain'
+                      color='white'
+                      w='100%'
+                      justifyContent={isCollapsed ? "center" : "space-between"}
+                      _hover={{ bg: "whiteAlpha.200" }}
+                    >
+                      <Flex align='center' gap={2}>
+                        <Icon as={item.icon} flexShrink={0} />
+                        {!isCollapsed && item.label}
+                      </Flex>
+                      {!isCollapsed && (
+                        <Icon
+                          as={FiChevronRight}
+                          transform={
+                            submenuOpen ? "rotate(90deg)" : "rotate(0deg)"
+                          }
+                          transition='transform 0.2s'
+                        />
+                      )}
+                    </Button>
+                  </Collapsible.Trigger>
+
+                  <Collapsible.Content>
+                    <VStack align='stretch' gap={1} pl={isCollapsed ? 0 : 4}>
+                      {item.children.map((child) => {
+                        const childActive = isActiveRoute(pathname, child.to);
+                        const childButton = (
+                          <Button
+                            asChild
+                            w='100%'
+                            justifyContent={
+                              isCollapsed ? "center" : "flex-start"
+                            }
+                            variant='ghost'
+                            bg={childActive ? "white" : undefined}
+                            color={childActive ? "green.700" : "white"}
+                            focusRing='outside'
+                            _hover={
+                              childActive
+                                ? { bg: "green.50" }
+                                : { bg: "whiteAlpha.200" }
+                            }
+                            transition='background 0.15s ease, color 0.15s ease'
+                          >
+                            <NavLink
+                              to={child.to}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                width: "100%",
+                              }}
+                            >
+                              <Icon as={child.icon} flexShrink={0} />
+                              {!isCollapsed && child.label}
+                            </NavLink>
+                          </Button>
+                        );
+
+                        return isCollapsed ? (
+                          <NavTooltip key={child.to} label={child.label}>
+                            {childButton}
+                          </NavTooltip>
+                        ) : (
+                          <Fragment key={child.to}>{childButton}</Fragment>
+                        );
+                      })}
+                    </VStack>
+                  </Collapsible.Content>
+                </Collapsible.Root>
+              );
+            }
+
             const active = isActiveRoute(pathname, item.to);
             const navButton = (
               <Button
-                key={item.to}
                 asChild
                 w='100%'
                 justifyContent={isCollapsed ? "center" : "flex-start"}
@@ -153,9 +259,7 @@ const NavSection = ({
                 borderLeft='4px solid'
                 borderLeftColor={active ? "green.400" : "transparent"}
                 focusRing='outside'
-                _hover={
-                  active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }
-                }
+                _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
                 transition='background 0.15s ease, color 0.15s ease'
               >
                 <NavLink

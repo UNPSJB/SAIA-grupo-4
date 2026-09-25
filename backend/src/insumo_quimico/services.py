@@ -4,11 +4,49 @@ from sqlalchemy.orm import Session
 
 from typing import List
 
+from src.exceptions import BadRequest
+
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumo_quimico import schemas, exceptions
 
 from src.unidad_medida.models import UnidadMedida
 from src.unidad_medida.exceptions import UnidadMedidaReactivar, UnidadMedidaNoEncontrada
+
+from src.equipos.models import Equipo
+from src.equipos.exceptions import EquipoNoEncontrado, EquipoInactivo
+
+from src.sectores.models import Sector
+from src.sectores.exceptions import SectorNoEncontrado, SectorInactivo
+
+def validar_asociacion(
+    db: Session,
+    equipo_id: int | None,
+    sector_id: int | None,
+):
+    if equipo_id is not None and sector_id is not None:
+        raise exceptions.InsumoQuimicoConSectorYEquipo()
+
+    if equipo_id is not None:
+        equipo = db.scalar(
+            select(Equipo).where(Equipo.id == equipo_id)
+        )
+
+        if equipo is None:
+            raise EquipoNoEncontrado()
+
+        if not equipo.activo:
+            raise EquipoInactivo()
+
+    if sector_id is not None:
+        sector = db.scalar(
+            select(Sector).where(Sector.id == sector_id,)
+        )
+
+        if sector is None:
+            raise SectorNoEncontrado()
+
+        if not sector.activo:
+            raise SectorInactivo()
 
 def crear_insumo_quimico(db: Session, insumo_quimico: schemas.InsumoQuimicoCreate) -> schemas.InsumoQuimico:
     unidad_medida = db.scalar(
@@ -39,6 +77,12 @@ def crear_insumo_quimico(db: Session, insumo_quimico: schemas.InsumoQuimicoCreat
 
         raise exceptions.InsumoQuimicoDuplicado()
 
+    validar_asociacion(
+        db,
+        insumo_quimico.equipo_id,
+        insumo_quimico.sector_id
+    )
+
     _insumo_quimico = InsumoQuimico(**insumo_quimico.model_dump(), activo=True)
 
     db.add(_insumo_quimico)
@@ -53,8 +97,30 @@ def crear_insumo_quimico(db: Session, insumo_quimico: schemas.InsumoQuimicoCreat
 
     return _insumo_quimico
 
-def listar_insumos_quimicos(db: Session) -> List[InsumoQuimico]:
-    return db.scalars(select(InsumoQuimico)).all()
+def listar_insumos_quimicos(
+    db: Session,
+    sector_id: int | None = None,
+    equipo_id: int | None = None,
+) -> List[InsumoQuimico]:
+    if sector_id is not None and equipo_id is not None:
+        raise BadRequest(
+            detail="No se puede filtrar por sector y equipo al mismo tiempo."
+        )
+
+    query = select(InsumoQuimico)
+
+    if sector_id is not None:
+        query = query.where(
+            InsumoQuimico.sector_id == sector_id,
+            InsumoQuimico.activo.is_(True),
+        )
+    elif equipo_id is not None:
+        query = query.where(
+            InsumoQuimico.equipo_id == equipo_id,
+            InsumoQuimico.activo.is_(True),
+        )
+
+    return db.scalars(query).all()
 
 def leer_insumo_quimico(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
     db_insumo_quimico = db.scalar(
@@ -108,6 +174,18 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
                 "unidad_medida_id",
                 db_insumo_quimico.unidad_medida_id
             )
+
+            equipo_id = update_data.get(
+                "equipo_id",
+                db_insumo_quimico.equipo_id,
+            )
+            
+            sector_id = update_data.get(
+                "sector_id",
+                db_insumo_quimico.sector_id,
+            )
+            
+            validar_asociacion(db, equipo_id, sector_id)
 
             insumo_quimico_existente = db.scalar(
                 select(InsumoQuimico).where(

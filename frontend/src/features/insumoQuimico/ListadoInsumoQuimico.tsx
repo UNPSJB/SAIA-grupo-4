@@ -1,10 +1,10 @@
 import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
-  FiBox,
   FiEdit2,
+  FiEye,
   FiTrash2,
   FiCheckCircle,
-  FiEye,
+  FiDroplet,
   FiPlus,
 } from "react-icons/fi";
 import { FaRuler } from "react-icons/fa";
@@ -18,54 +18,72 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import type { Insumo } from "./types";
+import type { InsumoQuimico } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
-interface ListadoInsumosProps {
+interface ListadoInsumosQuimicosProps {
   onCrear?: () => void;
-  onModificar?: (insumo: Insumo) => void;
-  onEliminar?: (insumo: Insumo) => void;
-  onVer?: (insumo: Insumo) => void;
-  onDarAlta?: (insumo: Insumo) => void;
+  onModificar?: (insumoQuimico: InsumoQuimico) => void;
+  onEliminar?: (insumoQuimico: InsumoQuimico) => void;
+  onVer?: (insumoQuimico: InsumoQuimico) => void;
+  onDarAlta?: (insumoQuimico: InsumoQuimico) => void;
   onVerUnidades?: () => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/insumos/";
+const ENDPOINT = "http://127.0.0.1:8000/insumos-quimicos/";
 const ITEMS_POR_PAGINA = 5;
 
-export const ListadoInsumos = ({
+const formatearConsumo = (consumo: number) =>
+  Number(consumo).toLocaleString("es-AR", {
+    maximumFractionDigits: 3,
+  });
+
+export const ListadoInsumosQuimicos = ({
   onCrear,
   onModificar,
   onEliminar,
   onVer,
   onDarAlta,
   onVerUnidades,
-}: ListadoInsumosProps) => {
+}: ListadoInsumosQuimicosProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
-    useListadoData<Insumo>({
+    useListadoData<InsumoQuimico>({
       endpoint: ENDPOINT,
       pageSize: ITEMS_POR_PAGINA,
-      errorMessage: "No se pudo cargar la lista de insumos.",
+      errorMessage: "No se pudo cargar la lista de insumos químicos.",
     });
 
-  const columnas: ColumnDef<Insumo>[] = [
+  const columnas: ColumnDef<InsumoQuimico>[] = [
     {
       key: "nombre",
       label: "Nombre",
-      render: (insumo) => insumo.nombre,
+      render: (insumoQuimico) => insumoQuimico.nombre,
+    },
+    {
+      key: "asociacion",
+      label: "Asociado a",
+      render: (insumoQuimico) => {
+        if (insumoQuimico.equipo) {
+          return `Equipo: ${insumoQuimico.equipo.nombre}`;
+        }
+        if (insumoQuimico.sector) {
+          return `Sector: ${insumoQuimico.sector.nombre}`;
+        }
+        return "Sin asignar";
+      },
     },
     {
       key: "unidad_medida",
-      label: "Unidad de medida",
-      render: (insumo) =>
-        `${insumo.unidad_medida.nombre} (${insumo.unidad_medida.simbolo})`,
+      label: "Consumo",
+      render: (insumoQuimico) =>
+        `${formatearConsumo(insumoQuimico.consumo)} ${insumoQuimico.unidad_medida.simbolo}`,
     },
     {
-      key: "disponible",
-      label: "Disponible",
-      render: (insumo) => (
-        <Badge colorPalette={insumo.disponible ? "green" : "red"}>
-          {insumo.disponible ? "Activo" : "Inactivo"}
+      key: "activo",
+      label: "Activo",
+      render: (insumoQuimico) => (
+        <Badge colorPalette={insumoQuimico.activo ? "green" : "red"}>
+          {insumoQuimico.activo ? "Activo" : "Inactivo"}
         </Badge>
       ),
     },
@@ -73,34 +91,34 @@ export const ListadoInsumos = ({
       key: "acciones",
       label: "Acciones",
       align: "end",
-      render: (insumo) => (
+      render: (insumoQuimico) => (
         <RowActions>
           <RowActionButton
             icon={FiEdit2}
             label='Modificar'
             colorPalette='blue'
-            onClick={() => onModificar?.(insumo)}
-            visible={insumo.disponible}
+            onClick={() => onModificar?.(insumoQuimico)}
+            visible={insumoQuimico.activo}
           />
           <RowActionButton
             icon={FiEye}
             label='Ver'
             colorPalette='yellow'
-            onClick={() => onVer?.(insumo)}
+            onClick={() => onVer?.(insumoQuimico)}
           />
           <RowActionButton
             icon={FiTrash2}
             label='Eliminar'
             colorPalette='red'
-            onClick={() => onEliminar?.(insumo)}
-            visible={insumo.disponible}
+            onClick={() => onEliminar?.(insumoQuimico)}
+            visible={insumoQuimico.activo}
           />
           <RowActionButton
             icon={FiCheckCircle}
             label='Dar de alta'
             colorPalette='green'
-            onClick={() => onDarAlta?.(insumo)}
-            visible={!insumo.disponible}
+            onClick={() => onDarAlta?.(insumoQuimico)}
+            visible={!insumoQuimico.activo}
           />
         </RowActions>
       ),
@@ -110,7 +128,7 @@ export const ListadoInsumos = ({
   return (
     <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title="Insumos" icon={FiBox} />
+        <ListadoHeader title="Insumos Químicos" icon={FiDroplet} />
         <HStack gap={2}>
           <Button
             variant="outline"
@@ -120,17 +138,17 @@ export const ListadoInsumos = ({
             <FaRuler /> Unidades de medida
           </Button>
           <Button colorPalette="green" onClick={onCrear}>
-            <FiPlus /> Nuevo insumo
+            <FiPlus /> Nuevo insumo químico
           </Button>
         </HStack>
       </HStack>
-
-      {loading && <LoadingState message='Cargando insumos...' />}
+      
+      {loading && <LoadingState message='Cargando insumos químicos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type='info' message='Todavía no hay insumos cargados.' />
+        <AlertMessage type='info' message='Todavía no hay insumos químicos cargados.' />
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -138,7 +156,7 @@ export const ListadoInsumos = ({
           <DataTable
             items={itemsPaginados}
             columns={columnas}
-            getRowKey={(insumo) => insumo.id}
+            getRowKey={(insumoQuimico) => insumoQuimico.id}
           />
 
           <TablePagination
@@ -146,8 +164,8 @@ export const ListadoInsumos = ({
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
-            labelSingular='insumo'
-            labelPlural='insumos'
+            labelSingular='insumo químico'
+            labelPlural='insumos químicos'
           />
         </>
       )}

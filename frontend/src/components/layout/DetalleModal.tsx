@@ -25,7 +25,13 @@ export const DetalleModal = ({
   secciones,
   icon,
 }: DetalleModalProps) => (
-  <FormModal open={open} title={title} titleIcon={icon} onClose={onClose}>
+  <FormModal
+    open={open}
+    title={title}
+    titleIcon={icon}
+    showClose
+    onClose={onClose}
+  >
     <VStack gap={4} align='stretch'>
       {secciones.map((seccion) => (
         <DetalleSection

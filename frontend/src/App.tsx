@@ -15,6 +15,7 @@ import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
 import CapacidadPage from "./pages/CapacidadPage";
+import InsumoQuimicoPage from "./pages/InsumoQuimicoPage";
 import PlanPage from "./pages/PlanPage";
 import NuevoPlanPage from "./pages/NuevoPlanPage";
 import HistorialPlanesPage from "./pages/HistorialPlanesPage";
@@ -88,6 +89,15 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            <Route
+              path='/insumos-quimicos'
+              element={
+                <RequireAuth>
+                  <InsumoQuimicoPage />
+                </RequireAuth>
+              }
+            />
+
             <Route
               path='/personal'
               element={
