@@ -195,6 +195,80 @@ def test_listar_insumos_quimicos():
     assert res.status_code == 200
     assert isinstance(res.json(), list)
 
+def test_listar_insumos_quimicos_por_sector_solo_activos():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector(nombre="Sector filtrado")
+    otro_sector_id = crear_sector(nombre="Otro sector")
+
+    insumo_asociado = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo del sector",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+        },
+    ).json()
+    insumo_inactivo = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo inactivo del sector",
+            "tipo": "desinfectante",
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+        },
+    ).json()
+    client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo de otro sector",
+            "tipo": "desengrasante",
+            "unidad_medida_id": unidad_id,
+            "sector_id": otro_sector_id,
+        },
+    )
+    client.delete(f"/insumos-quimicos/{insumo_inactivo['id']}")
+
+    response = client.get(f"/insumos-quimicos/?sector_id={sector_id}")
+
+    assert response.status_code == 200
+    assert [insumo["id"] for insumo in response.json()] == [insumo_asociado["id"]]
+
+def test_listar_insumos_quimicos_por_equipo_solo_activos():
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector(nombre="Sector del equipo")
+    equipo_id = crear_equipo(sector_id, nro_serie="EQUIPO-FILTRO")
+
+    insumo_asociado = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo del equipo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": equipo_id,
+        },
+    ).json()
+    insumo_inactivo = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo inactivo del equipo",
+            "tipo": "desinfectante",
+            "unidad_medida_id": unidad_id,
+            "equipo_id": equipo_id,
+        },
+    ).json()
+    client.delete(f"/insumos-quimicos/{insumo_inactivo['id']}")
+
+    response = client.get(f"/insumos-quimicos/?equipo_id={equipo_id}")
+
+    assert response.status_code == 200
+    assert [insumo["id"] for insumo in response.json()] == [insumo_asociado["id"]]
+
+def test_no_permitir_filtrar_insumos_quimicos_por_sector_y_equipo():
+    response = client.get("/insumos-quimicos/?sector_id=1&equipo_id=1")
+
+    assert response.status_code == 400
+
 def test_obtener_insumo_quimico_por_id():
     unidad_id = crear_unidad_medida(nombre="Kilogramo")
     res_post = client.post(

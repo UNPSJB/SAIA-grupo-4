@@ -10,8 +10,12 @@ def create_insumo_quimico(insumo_quimico: schemas.InsumoQuimicoCreate, db: Sessi
     return services.crear_insumo_quimico(db, insumo_quimico)
 
 @router.get("/", response_model=list[schemas.InsumoQuimico])
-def read_insumos_quimicos(db: Session = Depends(get_db)):
-    return services.listar_insumos_quimicos(db)
+def read_insumos_quimicos(
+    sector_id: int | None = None,
+    equipo_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    return services.listar_insumos_quimicos(db, sector_id, equipo_id)
 
 @router.get("/{insumo_quimico_id}", response_model=schemas.InsumoQuimico)
 def read_insumo_quimico(insumo_quimico_id: int, db: Session = Depends(get_db)):

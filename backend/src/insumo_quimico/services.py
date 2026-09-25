@@ -97,8 +97,30 @@ def crear_insumo_quimico(db: Session, insumo_quimico: schemas.InsumoQuimicoCreat
 
     return _insumo_quimico
 
-def listar_insumos_quimicos(db: Session) -> List[InsumoQuimico]:
-    return db.scalars(select(InsumoQuimico)).all()
+def listar_insumos_quimicos(
+    db: Session,
+    sector_id: int | None = None,
+    equipo_id: int | None = None,
+) -> List[InsumoQuimico]:
+    if sector_id is not None and equipo_id is not None:
+        raise BadRequest(
+            detail="No se puede filtrar por sector y equipo al mismo tiempo."
+        )
+
+    query = select(InsumoQuimico)
+
+    if sector_id is not None:
+        query = query.where(
+            InsumoQuimico.sector_id == sector_id,
+            InsumoQuimico.activo.is_(True),
+        )
+    elif equipo_id is not None:
+        query = query.where(
+            InsumoQuimico.equipo_id == equipo_id,
+            InsumoQuimico.activo.is_(True),
+        )
+
+    return db.scalars(query).all()
 
 def leer_insumo_quimico(db: Session, insumo_quimico_id: int) -> InsumoQuimico:
     db_insumo_quimico = db.scalar(
