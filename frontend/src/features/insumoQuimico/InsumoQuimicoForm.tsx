@@ -83,19 +83,45 @@ export const InsumoQuimicoForm = ({
     return opciones;
   }, [unidades, esModoModificar, esModoVer, insumoQuimico]);
 
-  const opcionesSectores = useMemo(() =>
-      sectores
-        .filter((s) => s.activo)
-        .map((s) => ({ label: s.nombre, value: String(s.id) })),
-    [sectores]
-  );
+  const opcionesSectores = useMemo(() => {
+    const activos = sectores.filter((s) => s.activo);
+    const opciones = activos.map((s) => ({ 
+      label: s.nombre, 
+      value: String(s.id) 
+    }));
+    
+    const sectorActual =
+      esModoModificar || esModoVer ? insumoQuimico?.sector : undefined;
 
-  const opcionesEquipos = useMemo(() =>
-      equipos
-        .filter((e) => e.activo)
-        .map((e) => ({ label: e.nombre, value: String(e.id) })),
-    [equipos]
-  );
+    if (sectorActual && !activos.some((s) => s.id === sectorActual.id)) {
+      opciones.unshift({
+        label: sectorActual.nombre,
+        value: String(sectorActual.id)
+      });
+    }
+
+    return opciones;
+  }, [sectores, esModoModificar, esModoVer, insumoQuimico]);
+
+  const opcionesEquipos = useMemo(() => {
+    const activos = equipos.filter((e) => e.activo);
+    const opciones = activos.map((e) => ({
+      label: e.nombre,
+      value: String(e.id),
+    }));
+
+    const equipoActual =
+      esModoModificar || esModoVer ? insumoQuimico?.equipo : undefined;
+
+    if (equipoActual && !activos.some((e) => e.id === equipoActual.id)) {
+      opciones.unshift({
+        label: equipoActual.nombre,
+        value: String(equipoActual.id)
+      });
+    }
+
+    return opciones;
+  }, [equipos, esModoModificar, esModoVer, insumoQuimico]);
 
   const defaultValues: InsumoQuimicoFormValues =
     esModoModificar || esModoVer
