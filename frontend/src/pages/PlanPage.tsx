@@ -4,7 +4,7 @@ import { usePlanData } from "../features/planes/hooks/usePlanData";
 import { PlanWorkspace } from "../features/planes/PlanWorkspace";
 
 export default function PlanPage() {
-  const { loading, planVigente, tareasVigentes } = usePlanData();
+  const { loading, error, planVigente, reload } = usePlanData();
 
   return (
     <Box p={10} bg='gray.100' minH='100vh'>
@@ -16,7 +16,7 @@ export default function PlanPage() {
         <PlanWorkspace
           key={planVigente.id}
           initialPlan={planVigente}
-          initialTareas={tareasVigentes}
+          onCambio={reload}
         />
       ) : (
         <VStack
@@ -30,10 +30,14 @@ export default function PlanPage() {
           bg='white'
           gap={4}
         >
-          <AlertMessage
-            type='info'
-            message='No hay un plan vigente en el sistema.'
-          />
+          {error ? (
+            <AlertMessage type='error' message={error} />
+          ) : (
+            <AlertMessage
+              type='info'
+              message='No hay un plan vigente en el sistema.'
+            />
+          )}
         </VStack>
       )}
     </Box>

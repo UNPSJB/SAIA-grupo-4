@@ -21,8 +21,8 @@ export const tareaSchema = z
       .string()
       .trim()
       .min(1, "Cargá la guía paso a paso (un paso por línea)"),
-    quimicos: z.array(z.string()).default([]),
-    elementos: z.array(z.string()).default([]),
+    insumos_quimicos: z.array(z.coerce.number().int()).default([]),
+    elementos_limpieza: z.array(z.coerce.number().int()).default([]),
   })
   .superRefine((val, ctx) => {
     if (val.destino_tipo === "equipo" && !val.equipo_id) {
@@ -63,13 +63,21 @@ export const tareaSchema = z
         message: "Seleccioná al menos un día de la semana",
       });
     }
+    if (val.insumos_quimicos.length === 0 && val.elementos_limpieza.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["elementos_limpieza"],
+        message:
+          "La tarea debe incluir al menos un insumo químico o un elemento de limpieza.",
+      });
+    }
   });
 
 export type TareaFormInput = z.input<typeof tareaSchema>;
 export type TareaFormValues = z.output<typeof tareaSchema>;
 
 export const planSchema = z.object({
-  nombre_plan: z
+  nombre: z
     .string()
     .trim()
     .min(1, "El nombre del plan es obligatorio")
@@ -77,13 +85,8 @@ export const planSchema = z.object({
       /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()/-]+$/,
       "El nombre solo puede contener letras, números y espacios",
     ),
-  version: z
-    .string()
-    .trim()
-    .min(1, "La versión es obligatoria")
-    .regex(/^v?\d+\.\d+$/, "Formato esperado, por ejemplo: v1.2 o 1.2"),
   objetivo: z.string().optional(),
-  descripcion: z.string().optional(),
+  elaborado_por_id: z.coerce.number().int().optional(),
 });
 
 export type PlanFormInput = z.input<typeof planSchema>;

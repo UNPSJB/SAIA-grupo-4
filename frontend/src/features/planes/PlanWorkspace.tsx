@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, VStack } from "@chakra-ui/react";
 import { FiClock } from "react-icons/fi";
 import {
   AlertConfirm,
   AlertDelete,
-  FormModal,
   AlertMessage,
+  FormModal,
 } from "../../components/ui";
 import { ListadoTareas } from "./ListadoTareas";
 import { TareaForm } from "./TareaForm";
 import { TareaDetalle } from "./TareaDetalle";
 import { PlanForm } from "./PlanForm";
-import type { PlanPoe, TareaLimpieza } from "./types";
+import type { PlanPOES, TareaPOES } from "./types";
+import { usePlanCatalogs } from "./hooks/usePlanCatalogs";
+import { planesApi } from "./hooks/planApi";
 
 type Vista =
   | "listado"
@@ -21,46 +23,73 @@ type Vista =
   | "verTarea"
   | "modificarPlan";
 
-const clonarTarea = (t: TareaLimpieza): TareaLimpieza => ({
-  ...t,
-  pasos: [...t.pasos],
-  dias: [...t.dias],
-  quimicos: [...t.quimicos],
-  elementos: [...t.elementos],
-});
-
 interface PlanWorkspaceProps {
-  initialPlan: PlanPoe;
-  initialTareas: TareaLimpieza[];
+  initialPlan: PlanPOES;
   esBorrador?: boolean;
-  onPromover?: (plan: PlanPoe, tareas: TareaLimpieza[]) => void;
+  onPromovido?: () => void;
+  onCambio?: () => void;
 }
 
 export const PlanWorkspace = ({
   initialPlan,
-  initialTareas,
   esBorrador = false,
-  onPromover,
+  onPromovido,
+  onCambio,
 }: PlanWorkspaceProps) => {
   const navigate = useNavigate();
 
-  const [plan, setPlan] = useState<PlanPoe | null>(initialPlan);
-  const [tareas, setTareas] = useState<TareaLimpieza[]>(() =>
-    initialTareas.map(clonarTarea),
-  );
+  const {
+    catalogs,
+    loading: cargandoCatalogs,
+    error: errorCatalogos,
+  } = usePlanCatalogs();
+
+  const [plan, setPlan] = useState<PlanPOES | null>(initialPlan);
+  const [tareas, setTareas] = useState<TareaPOES[]>([]);
+  const [cargandoTareas, setCargandoTareas] = useState(true);
+  const [errorTareas, setErrorTareas] = useState("");
 
   const [vista, setVista] = useState<Vista>("listado");
-  const [tareaSeleccionada, setTareaSeleccionada] = useState<TareaLimpieza | null>(null);
+  const [tareaSeleccionada, setTareaSeleccionada] =
+    useState<TareaPOES | null>(null);
 
-  const [tareaBaja, setTareaBaja] = useState<TareaLimpieza | null>(null);
+  const [tareaBaja, setTareaBaja] = useState<TareaPOES | null>(null);
   const [bajaTareaAbierto, setBajaTareaAbierto] = useState(false);
 
-  const [tareaAlta, setTareaAlta] = useState<TareaLimpieza | null>(null);
+  const [tareaAlta, setTareaAlta] = useState<TareaPOES | null>(null);
   const [altaTareaAbierto, setAltaTareaAbierto] = useState(false);
 
   const [bajaPlanAbierto, setBajaPlanAbierto] = useState(false);
-
   const [altaPlanAbierto, setAltaPlanAbierto] = useState(false);
+
+  const [cargandoAccion, setCargandoAccion] = useState(false);
+  const [errorAccion, setErrorAccion] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    planesApi
+      .obtenerTareas(initialPlan.id)
+      .then((ts) => {
+        if (active) {
+          setTareas(ts);
+          setCargandoTareas(false);
+          setErrorTareas("");
+        }
+      })
+      .catch((e) => {
+        if (active) {
+          setErrorTareas(
+            e instanceof Error
+              ? e.message
+              : "No se pudieron cargar las tareas.",
+          );
+          setCargandoTareas(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialPlan.id]);
 
   if (!plan) {
     return (
@@ -77,46 +106,109 @@ export const PlanWorkspace = ({
       >
         <AlertMessage
           type='info'
-          message='No hay un plan vigente. El plan fue dado de baja.'
+          message={
+            esBorrador
+              ? "El borrador fue descartado."
+              : "No hay un plan vigente. El plan fue dado de baja."
+          }
         />
-        <Button colorPalette='green' onClick={() => navigate("/historial-planes")}>
-          <FiClock /> Ver historial de planes
-        </Button>
+        {!esBorrador && (
+          <Button
+            colorPalette='green'
+            onClick={() => navigate("/historial-planes")}
+          >
+            <FiClock /> Ver historial de planes
+          </Button>
+        )}
       </VStack>
     );
   }
 
-  const confirmarBajaTarea = () => {
+  const confirmarBajaTarea = async () => {
     if (!tareaBaja) return;
-    setTareas((prev) =>
-      prev.map((t) => (t.id === tareaBaja.id ? { ...t, activo: false } : t)),
-    );
-    setBajaTareaAbierto(false);
-    setTareaBaja(null);
+    setCargandoAccion(true);
+    setErrorAccion("");
+    try {
+      const actualizada = await planesApi.modificarTarea(tareaBaja.id, {
+        activo: false,
+      });
+      setTareas((prev) =>
+        prev.map((t) => (t.id === actualizada.id ? actualizada : t)),
+      );
+      setBajaTareaAbierto(false);
+      setTareaBaja(null);
+    } catch (e) {
+      setErrorAccion(
+        e instanceof Error ? e.message : "No se pudo dar de baja la tarea.",
+      );
+    } finally {
+      setCargandoAccion(false);
+    }
   };
 
-  const confirmarAltaTarea = () => {
+  const confirmarAltaTarea = async () => {
     if (!tareaAlta) return;
-    setTareas((prev) =>
-      prev.map((t) => (t.id === tareaAlta.id ? { ...t, activo: true } : t)),
-    );
-    setAltaTareaAbierto(false);
-    setTareaAlta(null);
+    setCargandoAccion(true);
+    setErrorAccion("");
+    try {
+      const actualizada = await planesApi.modificarTarea(tareaAlta.id, {
+        activo: true,
+      });
+      setTareas((prev) =>
+        prev.map((t) => (t.id === actualizada.id ? actualizada : t)),
+      );
+      setAltaTareaAbierto(false);
+      setTareaAlta(null);
+    } catch (e) {
+      setErrorAccion(
+        e instanceof Error ? e.message : "No se pudo dar de alta la tarea.",
+      );
+    } finally {
+      setCargandoAccion(false);
+    }
   };
 
-  const confirmarBajaPlan = () => {
-    setPlan(null);
-    setTareas([]);
-    setBajaPlanAbierto(false);
-  };
-
-  const confirmarAltaPlan = () => {
+  const confirmarBajaPlan = async () => {
     if (!plan) return;
-    onPromover?.(plan, tareas);
-    setAltaPlanAbierto(false);
+    setCargandoAccion(true);
+    setErrorAccion("");
+    try {
+      if (esBorrador) {
+        await planesApi.descartarBorrador(plan.id);
+      } else {
+        await planesApi.archivarPlan(plan.id);
+      }
+      setBajaPlanAbierto(false);
+      setPlan(null);
+      setTareas([]);
+      onCambio?.();
+    } catch (e) {
+      setErrorAccion(
+        e instanceof Error ? e.message : "No se pudo dar de baja el plan.",
+      );
+    } finally {
+      setCargandoAccion(false);
+    }
   };
 
-  const guardarTarea = (tarea: TareaLimpieza) => {
+  const confirmarAltaPlan = async () => {
+    if (!plan) return;
+    setCargandoAccion(true);
+    setErrorAccion("");
+    try {
+      await planesApi.activarPlan(plan.id);
+      setAltaPlanAbierto(false);
+      onPromovido?.();
+    } catch (e) {
+      setErrorAccion(
+        e instanceof Error ? e.message : "No se pudo dar de alta el plan.",
+      );
+    } finally {
+      setCargandoAccion(false);
+    }
+  };
+
+  const guardarTarea = (tarea: TareaPOES) => {
     setTareas((prev) => {
       const existe = prev.some((t) => t.id === tarea.id);
       return existe
@@ -127,7 +219,7 @@ export const PlanWorkspace = ({
     setTareaSeleccionada(null);
   };
 
-  const guardarPlan = (planActualizado: PlanPoe) => {
+  const guardarPlan = (planActualizado: PlanPOES) => {
     setPlan(planActualizado);
     setVista("listado");
   };
@@ -137,6 +229,8 @@ export const PlanWorkspace = ({
       <ListadoTareas
         plan={plan}
         tareas={tareas}
+        catalogs={catalogs}
+        loading={cargandoTareas}
         esBorrador={esBorrador}
         onAgregarTarea={() => setVista("crearTarea")}
         onModificarTarea={(tarea) => {
@@ -158,12 +252,28 @@ export const PlanWorkspace = ({
         onHistorial={() => navigate("/historial-planes")}
         onModificarPlan={() => setVista("modificarPlan")}
         onDarBajaPlan={() => setBajaPlanAbierto(true)}
-        onDarAltaPlan={esBorrador ? () => setAltaPlanAbierto(true) : undefined}
+        onDarAltaPlan={
+          esBorrador ? () => setAltaPlanAbierto(true) : undefined
+        }
       />
+
+      {(errorTareas || errorCatalogos) && (
+        <VStack maxW='7xl' mx='auto' mt={4} gap={2}>
+          {errorTareas && <AlertMessage type='error' message={errorTareas} />}
+          {errorCatalogos && (
+            <AlertMessage type='error' message={errorCatalogos} />
+          )}
+        </VStack>
+      )}
+
+      {(cargandoCatalogs || cargandoTareas) && (
+        <VStack maxW='7xl' mx='auto' mt={4} gap={2} />
+      )}
 
       {vista === "verTarea" && tareaSeleccionada && (
         <TareaDetalle
           tarea={tareaSeleccionada}
+          catalogs={catalogs}
           onCerrar={() => setVista("listado")}
         />
       )}
@@ -179,6 +289,7 @@ export const PlanWorkspace = ({
           {vista === "crearTarea" && (
             <TareaForm
               modo='crear'
+              planId={plan.id}
               onCancelar={() => setVista("listado")}
               onGuardado={guardarTarea}
               enModal
@@ -211,11 +322,13 @@ export const PlanWorkspace = ({
         open={bajaTareaAbierto}
         title='Baja de tarea'
         name={tareaBaja?.nombre ?? null}
-        loading={false}
+        loading={cargandoAccion}
+        error={errorAccion}
         onConfirm={confirmarBajaTarea}
         onCancel={() => {
           setBajaTareaAbierto(false);
           setTareaBaja(null);
+          setErrorAccion("");
         }}
       />
 
@@ -223,28 +336,45 @@ export const PlanWorkspace = ({
         open={altaTareaAbierto}
         title='Dar de Alta'
         message={`¿Estás seguro que querés dar de alta la tarea "${tareaAlta?.nombre}"?`}
+        loading={cargandoAccion}
+        error={errorAccion}
         onConfirm={confirmarAltaTarea}
         onCancel={() => {
           setAltaTareaAbierto(false);
           setTareaAlta(null);
+          setErrorAccion("");
         }}
       />
 
       <AlertConfirm
         open={bajaPlanAbierto}
-        title='Dar de baja el plan'
-        message={`¿Estás seguro que querés dar de baja el plan "${plan.nombre_plan}" ${plan.version}? Esta acción no se puede deshacer.`}
+        title={esBorrador ? "Descartar borrador" : "Dar de baja el plan"}
+        message={
+          esBorrador
+            ? `¿Estás seguro que querés descartar el borrador "${plan.nombre}"? Se eliminará definitivamente.`
+            : `¿Estás seguro que querés dar de baja el plan "${plan.nombre}"? Pasará a ser histórico.`
+        }
+        loading={cargandoAccion}
+        error={errorAccion}
         onConfirm={confirmarBajaPlan}
-        onCancel={() => setBajaPlanAbierto(false)}
+        onCancel={() => {
+          setBajaPlanAbierto(false);
+          setErrorAccion("");
+        }}
       />
 
       {esBorrador && (
         <AlertConfirm
           open={altaPlanAbierto}
           title='Dar de alta el plan'
-          message={`¿Estás seguro que querés dar de alta el plan "${plan.nombre_plan}" ${plan.version}? Pasara a ser el plan vigente.`}
+          message={`¿Estás seguro que querés dar de alta el plan "${plan.nombre}" como plan vigente? Debe tener al menos una tarea.`}
+          loading={cargandoAccion}
+          error={errorAccion}
           onConfirm={confirmarAltaPlan}
-          onCancel={() => setAltaPlanAbierto(false)}
+          onCancel={() => {
+            setAltaPlanAbierto(false);
+            setErrorAccion("");
+          }}
         />
       )}
     </>

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Heading, HStack, Icon } from "@chakra-ui/react";
-import { FiArrowLeft, FiClock, FiCopy, FiEye } from "react-icons/fi";
+import { FiArrowLeft, FiClock, FiEye, FiUser } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -17,49 +17,113 @@ import {
   type SeccionDetalle,
 } from "../components/layout";
 import { usePlanData } from "../features/planes/hooks/usePlanData";
-import type { PlanPoe } from "../features/planes/types";
-import { formatFrecuencia, formatMomento } from "../features/planes/utils";
+import { usePlanCatalogs } from "../features/planes/hooks/usePlanCatalogs";
+import { planesApi } from "../features/planes/hooks/planApi";
+import type { PlanPOES, TareaPOES } from "../features/planes/types";
+import {
+  colorFrecuencia,
+  derivarEstado,
+  formatFecha,
+  formatFrecuencia,
+  formatMomento,
+} from "../features/planes/utils";
 
 const ITEMS_POR_PAGINA = 5;
 
+const labelsEstado = {
+  borrador: { texto: "Borrador", color: "orange" },
+  vigente: { texto: "Vigente", color: "green" },
+  archivado: { texto: "Archivado", color: "red" },
+} as const;
+
 export default function HistorialPlanesPage() {
   const navigate = useNavigate();
-  const { loading, planes, getTareasDePlan } = usePlanData();
+  const { loading, error: errorPlanes, planes } = usePlanData();
+  const { catalogs, error: errorCatalogos } = usePlanCatalogs();
 
   const [page, setPage] = useState(1);
-  const [planVer, setPlanVer] = useState<PlanPoe | null>(null);
+  const [planVer, setPlanVer] = useState<PlanPOES | null>(null);
+  const [tareasPlanVer, setTareasPlanVer] = useState<TareaPOES[]>([]);
+  const [cargandoTareasModal, setCargandoTareasModal] = useState(false);
+  const [tareasPorPlan, setTareasPorPlan] = useState<
+    Record<number, TareaPOES[]>
+  >({});
+
+  useEffect(() => {
+    let active = true;
+    if (planes.length === 0) return;
+    (async () => {
+      const mapa: Record<number, TareaPOES[]> = {};
+      await Promise.all(
+        planes.map(async (p) => {
+          try {
+            mapa[p.id] = await planesApi.obtenerTareas(p.id);
+          } catch {
+            mapa[p.id] = [];
+          }
+        }),
+      );
+      if (active) setTareasPorPlan(mapa);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [planes]);
 
   const itemsPaginados = useMemo(() => {
     const inicio = (page - 1) * ITEMS_POR_PAGINA;
     return planes.slice(inicio, inicio + ITEMS_POR_PAGINA);
   }, [planes, page]);
 
-  const columnas: ColumnDef<PlanPoe>[] = [
-    { key: "nombre", label: "Nombre", render: (plan) => plan.nombre_plan },
+  const verPlan = async (plan: PlanPOES) => {
+    setPlanVer(plan);
+    setCargandoTareasModal(true);
+    setTareasPlanVer([]);
+    try {
+      const ts = await planesApi.obtenerTareas(plan.id);
+      setTareasPlanVer(ts);
+    } catch {
+      setTareasPlanVer([]);
+    } finally {
+      setCargandoTareasModal(false);
+    }
+  };
+
+  const columnas: ColumnDef<PlanPOES>[] = [
+    { key: "nombre", label: "Nombre", render: (plan) => plan.nombre },
     {
-      key: "fecha_alta",
-      label: "Fecha de alta",
-      render: (plan) => plan.fecha_alta,
+      key: "autor",
+      label: "Elaborado por",
+      render: (plan) => {
+        const autor = catalogs.personas.find(
+          (p) => p.id === plan.elaborado_por_id,
+        );
+        return autor ? `${autor.nombre} ${autor.apellido}` : "—";
+      },
     },
     {
-      key: "fecha_baja",
-      label: "Fecha de baja",
-      render: (plan) => plan.fecha_baja ?? "—",
+      key: "fecha_emision",
+      label: "Fecha de emisión",
+      render: (plan) => formatFecha(plan.fecha_emision),
+    },
+    {
+      key: "fecha_hasta",
+      label: "Fecha hasta",
+      render: (plan) => formatFecha(plan.fecha_hasta) ?? "—",
     },
     {
       key: "tareas",
       label: "Tareas",
       align: "center",
-      render: (plan) => getTareasDePlan(plan.id).length,
+      render: (plan) => tareasPorPlan[plan.id]?.length ?? "—",
     },
     {
       key: "estado",
       label: "Estado",
-      render: (plan) => (
-        <Badge colorPalette={plan.estado === "vigente" ? "green" : "red"}>
-          {plan.estado === "vigente" ? "Vigente" : "Dado de baja"}
-        </Badge>
-      ),
+      render: (plan) => {
+        const estado = labelsEstado[derivarEstado(plan)];
+        return <Badge colorPalette={estado.color}>{estado.texto}</Badge>;
+      },
     },
     {
       key: "acciones",
@@ -68,16 +132,10 @@ export default function HistorialPlanesPage() {
       render: (plan) => (
         <RowActions>
           <RowActionButton
-            icon={FiCopy}
-            label='Ver'
-            colorPalette='blue'
-            onClick={() => {}}
-          />
-          <RowActionButton
             icon={FiEye}
             label='Ver'
             colorPalette='yellow'
-            onClick={() => setPlanVer(plan)}
+            onClick={() => verPlan(plan)}
           />
         </RowActions>
       ),
@@ -90,31 +148,51 @@ export default function HistorialPlanesPage() {
           titulo: "Datos del Plan",
           icono: FiClock,
           items: [
-            { label: "Nombre", valor: planVer.nombre_plan },
-            { label: "Versión", valor: planVer.version },
+            { label: "Nombre", valor: planVer.nombre },
+            {
+              label: "Elaborado por",
+              valor: (() => {
+                const autor = catalogs.personas.find(
+                  (p) => p.id === planVer.elaborado_por_id,
+                );
+                return autor ? `${autor.nombre} ${autor.apellido}` : "—";
+              })(),
+            },
             {
               label: "Estado",
-              valor: (
-                <Badge
-                  colorPalette={planVer.estado === "vigente" ? "green" : "red"}
-                >
-                  {planVer.estado === "vigente" ? "Vigente" : "Dado de baja"}
-                </Badge>
-              ),
+              valor: (() => {
+                const estado = labelsEstado[derivarEstado(planVer)];
+                return (
+                  <Badge colorPalette={estado.color}>{estado.texto}</Badge>
+                );
+              })(),
             },
-            { label: "Fecha de alta", valor: planVer.fecha_alta },
-            { label: "Fecha de baja", valor: planVer.fecha_baja ?? "—" },
-            { label: "Descripción", valor: planVer.descripcion || "—" },
+            {
+              label: "Fecha de emisión",
+              valor: formatFecha(planVer.fecha_emision),
+            },
+            {
+              label: "Fecha de baja",
+              valor: formatFecha(planVer.fecha_hasta) ?? "—",
+            },
+            { label: "Objetivo", valor: planVer.objetivo || "—" },
           ],
         },
         {
           titulo: "Tareas del Plan",
-          icono: FiClock,
+          icono: FiUser,
           items:
-            getTareasDePlan(planVer.id).length > 0
-              ? getTareasDePlan(planVer.id).map((t) => ({
+            cargandoTareasModal || tareasPlanVer.length > 0
+              ? tareasPlanVer.map((t) => ({
                   label: t.nombre,
-                  valor: `${formatMomento(t.momento)} · ${formatFrecuencia(t)}`,
+                  valor: (
+                    <HStack gap={2} flexWrap='wrap'>
+                      {formatMomento(t.tipo_poes)} ·{" "}
+                      <Badge colorPalette={colorFrecuencia[t.frecuencia]}>
+                        {formatFrecuencia(t)}
+                      </Badge>
+                    </HStack>
+                  ),
                 }))
               : [{ label: "Sin tareas", valor: "—" }],
         },
@@ -149,6 +227,10 @@ export default function HistorialPlanesPage() {
         </Button>
       </HStack>
 
+      {(errorPlanes || errorCatalogos) && (
+        <AlertMessage type='error' message={errorPlanes || errorCatalogos} />
+      )}
+
       {loading && <LoadingState message='Cargando historial...' />}
 
       {!loading && planes.length === 0 && (
@@ -181,7 +263,7 @@ export default function HistorialPlanesPage() {
       {planVer && (
         <DetalleModal
           open
-          title={`Plan ${planVer.version}`}
+          title={planVer.nombre}
           icon={FiEye}
           onClose={() => setPlanVer(null)}
           secciones={secciones}

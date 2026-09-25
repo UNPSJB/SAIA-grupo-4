@@ -1,29 +1,42 @@
 import { Badge } from "@chakra-ui/react";
 import { FiCalendar, FiEye, FiList, FiTag, FiTool } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
-import type { TareaLimpieza } from "./types";
+import type { PlanCatalogs, TareaPOES } from "./types";
 import {
+  colorFrecuencia,
   formatFrecuencia,
   formatMomento,
   getDestinoDetalle,
   getDestinoLabel,
+  getElementosLabel,
+  getInsumosLabel,
+  labelsDias,
+  parsearDetalleFrecuencia,
 } from "./utils";
-import { DIAS_SEMANA } from "./constants";
 
 interface TareaDetalleProps {
-  tarea: TareaLimpieza;
+  tarea: TareaPOES;
+  catalogs: PlanCatalogs;
   onCerrar: () => void;
 }
 
-export const TareaDetalle = ({ tarea, onCerrar }: TareaDetalleProps) => {
+export const TareaDetalle = ({ tarea, catalogs, onCerrar }: TareaDetalleProps) => {
+  const detalle = parsearDetalleFrecuencia(
+    tarea.frecuencia,
+    tarea.detalle_frecuencia,
+  );
+
   const secciones: SeccionDetalle[] = [
     {
       titulo: "Identificación y Destino",
       icono: FiTag,
       items: [
         { label: "Nombre", valor: tarea.nombre },
-        { label: "Destino", valor: getDestinoLabel(tarea) },
-        { label: "Detalle del destino", valor: getDestinoDetalle(tarea) },
+        { label: "Destino", valor: getDestinoLabel(tarea, catalogs) },
+        {
+          label: "Detalle del destino",
+          valor: getDestinoDetalle(tarea, catalogs),
+        },
         {
           label: "Estado",
           valor: (
@@ -38,22 +51,26 @@ export const TareaDetalle = ({ tarea, onCerrar }: TareaDetalleProps) => {
       titulo: "Momento Operativo y Frecuencia",
       icono: FiCalendar,
       items: [
-        { label: "Momento", valor: formatMomento(tarea.momento) },
-        { label: "Frecuencia", valor: formatFrecuencia(tarea) },
-        ...(tarea.periodicidad === "semanal" ||
-        tarea.periodicidad === "dias-especificos"
+        { label: "Momento", valor: formatMomento(tarea.tipo_poes) },
+        {
+          label: "Frecuencia",
+          valor: (
+            <Badge colorPalette={colorFrecuencia[tarea.frecuencia]}>
+              {formatFrecuencia(tarea)}
+            </Badge>
+          ),
+        },
+        ...(tarea.frecuencia === "semanal" ||
+        tarea.frecuencia === "dias_especificos"
           ? [
               {
                 label: "Día(s)",
-                valor:
-                  tarea.dias
-                    .map((d) => DIAS_SEMANA.find((x) => x.value === d)?.label ?? d)
-                    .join(", ") || "—",
+                valor: labelsDias(detalle.dias),
               },
             ]
           : []),
-        ...(tarea.periodicidad === "mensual" && tarea.dia_mes
-          ? [{ label: "Día del mes", valor: String(tarea.dia_mes) }]
+        ...(tarea.frecuencia === "mensual" && detalle.dia_mes
+          ? [{ label: "Día del mes", valor: String(detalle.dia_mes) }]
           : []),
       ],
     },
@@ -61,11 +78,11 @@ export const TareaDetalle = ({ tarea, onCerrar }: TareaDetalleProps) => {
       titulo: "Guía y Procedimiento",
       icono: FiList,
       items:
-        tarea.pasos.length > 0
-          ? tarea.pasos.map((paso, i) => ({
-              label: `Paso ${i + 1}`,
-              valor: paso,
-            }))
+        tarea.metodo.split("\n").filter(Boolean).length > 0
+          ? tarea.metodo
+              .split("\n")
+              .filter(Boolean)
+              .map((paso, i) => ({ label: `Paso ${i + 1}`, valor: paso }))
           : [{ label: "Sin pasos", valor: "—" }],
     },
     {
@@ -74,11 +91,11 @@ export const TareaDetalle = ({ tarea, onCerrar }: TareaDetalleProps) => {
       items: [
         {
           label: "Insumos químicos",
-          valor: tarea.quimicos.join(", ") || "—",
+          valor: getInsumosLabel(tarea, catalogs),
         },
         {
           label: "Elementos de limpieza",
-          valor: tarea.elementos.join(", ") || "—",
+          valor: getElementosLabel(tarea, catalogs),
         },
       ],
     },

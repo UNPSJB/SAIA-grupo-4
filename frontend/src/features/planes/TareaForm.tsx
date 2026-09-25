@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Box, Heading, HStack, Text, VStack } from "@chakra-ui/react";
+import { Box, Heading, HStack, Input, Text, VStack } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import {
   FiEdit2,
@@ -24,12 +24,23 @@ import {
   TextAreaField,
   TextField,
 } from "../../components/ui";
-import { tareaSchema, type TareaFormInput, type TareaFormValues } from "./validationSchema";
-import type { DestinoTipo, TareaLimpieza } from "./types";
-import type { Equipo } from "../equipos/types";
-import type { Sector } from "../sectores/types";
-import { nextTareaId } from "./mockData";
-import { DIAS_SEMANA, ELEMENTOS_DISPONIBLES, QUIMICOS_DISPONIBLES } from "./constants";
+import {
+  tareaSchema,
+  type TareaFormInput,
+  type TareaFormValues,
+} from "./validationSchema";
+import type { DestinoTipo, TareaPOES } from "./types";
+import {
+  DIAS_COMPLETOS,
+  frecuenciaToPeriodicidad,
+  momentoToTipoPOES,
+  parsearDetalleFrecuencia,
+  periodicidadToFrecuencia,
+  tipoPOESToMomento,
+} from "./utils";
+import { usePlanCatalogs } from "./hooks/usePlanCatalogs";
+import { planesApi, type TareaPOESCreatePayload } from "./hooks/planApi";
+import { DIAS_SEMANA } from "./constants";
 
 const Seccion = ({
   numero,
@@ -64,16 +75,79 @@ const Seccion = ({
   </Box>
 );
 
+const tareaAFormulario = (tarea: TareaPOES): TareaFormInput => {
+  const periodicidad = frecuenciaToPeriodicidad[tarea.frecuencia];
+  const detalle = parsearDetalleFrecuencia(
+    tarea.frecuencia,
+    tarea.detalle_frecuencia,
+  );
+  return {
+    nombre: tarea.nombre,
+    destino_tipo: tarea.equipo_id ? "equipo" : "sector",
+    equipo_id: tarea.equipo_id,
+    sector_id: tarea.sector_id,
+    momento: tipoPOESToMomento[tarea.tipo_poes],
+    periodicidad,
+    dias: detalle.dias,
+    dia_mes: detalle.dia_mes,
+    pasos: tarea.metodo,
+    insumos_quimicos: tarea.insumos_quimicos.map((iq) => iq.insumo_quimico_id),
+    elementos_limpieza: tarea.elementos_limpieza.map(
+      (el) => el.elemento_limpieza_id,
+    ),
+  };
+};
+
+const armarPayload = (
+  values: TareaFormValues,
+  consumos: Record<string, string>,
+): TareaPOESCreatePayload => {
+  const frecuencia = periodicidadToFrecuencia[values.periodicidad];
+
+  let detalle_frecuencia: string | undefined;
+  if (frecuencia === "semanal" && values.dias.length) {
+    detalle_frecuencia = DIAS_COMPLETOS[values.dias[0]];
+  } else if (frecuencia === "mensual" && values.dia_mes) {
+    detalle_frecuencia = String(values.dia_mes);
+  } else if (frecuencia === "dias_especificos" && values.dias.length) {
+    detalle_frecuencia = values.dias.join(",");
+  }
+
+  return {
+    nombre: values.nombre.trim(),
+    tipo_poes: momentoToTipoPOES[values.momento],
+    frecuencia,
+    detalle_frecuencia,
+    equipo_id: values.destino_tipo === "equipo" ? values.equipo_id : undefined,
+    sector_id: values.destino_tipo === "sector" ? values.sector_id : undefined,
+    metodo: values.pasos.trim(),
+    insumos_quimicos: (values.insumos_quimicos ?? []).map((id) => {
+      const consumo = Number((consumos[String(id)] ?? "").trim());
+      return {
+        insumo_quimico_id: id,
+        dosis_sugerida:
+          Number.isFinite(consumo) && consumo > 0 ? consumo : undefined,
+      };
+    }),
+    elementos_limpieza: (values.elementos_limpieza ?? []).map((id) => ({
+      elemento_limpieza_id: id,
+      cantidad_requerida: 1,
+    })),
+  };
+};
+
 type TareaFormProps = {
   modo: "crear" | "modificar" | "ver";
-  tarea?: TareaLimpieza;
+  planId?: number;
+  tarea?: TareaPOES;
   onCancelar?: () => void;
-  onGuardado?: (tarea: TareaLimpieza) => void;
+  onGuardado?: (tarea: TareaPOES) => void;
   enModal?: boolean;
 };
 
 export const TareaForm = ({
   modo,
+  planId,
   tarea,
   onCancelar,
   onGuardado,
@@ -83,21 +157,15 @@ export const TareaForm = ({
   const esModoCrear = modo === "crear";
   const esModoModificar = modo === "modificar";
 
-  const defaultValues: TareaFormValues =
+  const {
+    catalogs,
+    loading: catalogosCargando,
+    error: errorCatalogos,
+  } = usePlanCatalogs();
+
+  const defaultValues: TareaFormInput =
     esModoModificar || esModoVer
-      ? {
-          nombre: tarea!.nombre,
-          destino_tipo: tarea!.destino_tipo,
-          equipo_id: tarea?.equipo ? tarea.equipo.id : undefined,
-          sector_id: tarea?.sector ? tarea.sector.id : undefined,
-          momento: tarea!.momento,
-          periodicidad: tarea!.periodicidad,
-          dias: tarea?.dias ?? [],
-          dia_mes: tarea?.dia_mes,
-          pasos: (tarea?.pasos ?? []).join("\n"),
-          quimicos: tarea?.quimicos ?? [],
-          elementos: tarea?.elementos ?? [],
-        }
+      ? tareaAFormulario(tarea!)
       : {
           nombre: "",
           destino_tipo: "equipo",
@@ -108,8 +176,8 @@ export const TareaForm = ({
           dias: [],
           dia_mes: undefined,
           pasos: "",
-          quimicos: [],
-          elementos: [],
+          insumos_quimicos: [],
+          elementos_limpieza: [],
         };
 
   const {
@@ -117,8 +185,9 @@ export const TareaForm = ({
     handleSubmit,
     control,
     setValue,
-    formState: { errors, isSubmitting },
+    setError,
     clearErrors,
+    formState: { errors, isSubmitting },
   } = useForm<TareaFormInput, unknown, TareaFormValues>({
     resolver: zodResolver(tareaSchema),
     defaultValues,
@@ -126,144 +195,134 @@ export const TareaForm = ({
 
   const [success, setSuccess] = useState(false);
 
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [sectores, setSectores] = useState<Sector[]>([]);
-  const [equiposCargados, setEquiposCargados] = useState(false);
-  const [sectoresCargados, setSectoresCargados] = useState(false);
-  const [errorEquipos, setErrorEquipos] = useState("");
-  const [errorSectores, setErrorSectores] = useState("");
+  const [consumos, setConsumos] = useState<Record<string, string>>(() =>
+    esModoModificar || esModoVer
+      ? Object.fromEntries(
+          (tarea?.insumos_quimicos ?? [])
+            .filter(
+              (iq) =>
+                iq.dosis_sugerida !== undefined && iq.dosis_sugerida !== null,
+            )
+            .map((iq) => [
+              String(iq.insumo_quimico_id),
+              String(iq.dosis_sugerida),
+            ]),
+        )
+      : {},
+  );
+  const [erroresConsumo, setErroresConsumo] = useState<Record<string, string>>(
+    {},
+  );
+
+  const actualizarConsumo = (id: number, texto: string) => {
+    setConsumos((prev) => ({ ...prev, [String(id)]: texto }));
+    setErroresConsumo((prev) => {
+      const next = { ...prev };
+      delete next[String(id)];
+      return next;
+    });
+  };
 
   const destinoTipo = useWatch({ control, name: "destino_tipo" });
-
-  const cargandoEquipos = destinoTipo === "equipo" && !equiposCargados;
-  const cargandoSectores = destinoTipo === "sector" && !sectoresCargados;
-
-  useEffect(() => {
-    let activo = true;
-
-    if (destinoTipo === "equipo" && !equiposCargados) {
-      fetch("http://127.0.0.1:8000/equipos/")
-        .then((res) => {
-          if (!res.ok) throw new Error(`Error ${res.status}`);
-          return res.json();
-        })
-        .then((json: Equipo[]) => {
-          if (activo) setEquipos(json);
-        })
-        .catch(() => {
-          if (activo) setErrorEquipos("No se pudieron cargar los equipos activos.");
-        })
-        .finally(() => {
-          if (activo) {
-            setEquiposCargados(true);
-          }
-        });
-    }
-
-    if (destinoTipo === "sector" && !sectoresCargados) {
-      fetch("http://127.0.0.1:8000/sectores/")
-        .then((res) => {
-          if (!res.ok) throw new Error(`Error ${res.status}`);
-          return res.json();
-        })
-        .then((json: Sector[]) => {
-          if (activo) setSectores(json);
-        })
-        .catch(() => {
-          if (activo) setErrorSectores("No se pudieron cargar los sectores activos.");
-        })
-        .finally(() => {
-          if (activo) {
-            setSectoresCargados(true);
-          }
-        });
-    }
-
-    return () => {
-      activo = false;
-    };
-  }, [destinoTipo, equiposCargados, sectoresCargados]);
-
-  const equiposActivos = equipos.filter((e) => e.activo);
-  const sectoresActivos = sectores.filter((s) => s.activo);
-
-  const periodicidad = useWatch({ control, name: "periodicidad" });
-  const dias = useWatch({ control, name: "dias" }) ?? [];
-  const quimicos = useWatch({ control, name: "quimicos" }) ?? [];
-  const elementos = useWatch({ control, name: "elementos" }) ?? [];
+  const periodicidad = useWatch({ control, name: "periodicidad" }) as
+    | TareaFormValues["periodicidad"]
+    | undefined;
+  const dias = (useWatch({ control, name: "dias" }) ?? []) as string[];
+  const insumosSeleccionados = (useWatch({
+    control,
+    name: "insumos_quimicos",
+  }) ?? []) as number[];
+  const elementosSeleccionados = (useWatch({
+    control,
+    name: "elementos_limpieza",
+  }) ?? []) as number[];
   const pasosRaw: string = useWatch({ control, name: "pasos" }) ?? "";
-  const pasosVista = pasosRaw.split("\n").map((p) => p.trim()).filter(Boolean);
+  const pasosVista = pasosRaw
+    .split("\n")
+    .map((p) => p.trim())
+    .filter(Boolean);
 
-  const opcionesEquipos = [
-    ...equiposActivos.map((e) => ({
+  const opcionesEquipos = catalogs.equipos
+    .filter(
+      (e) =>
+        e.activo ||
+        ((esModoModificar || esModoVer) && tarea?.equipo_id === e.id),
+    )
+    .map((e) => ({
       label: `${e.nombre} (${e.sector?.nombre ?? "Sin sector"}${e.ubicacion ? " / " + e.ubicacion : ""})`,
       value: String(e.id),
-    })),
-    ...(esModoModificar || esModoVer
-      ? tarea?.equipo && !equiposActivos.some((e) => e.id === tarea.equipo!.id)
-        ? [
-            {
-              label: `${tarea.equipo.nombre} (${tarea.equipo.sector?.nombre ?? "Sin sector"})`,
-              value: String(tarea.equipo.id),
-            },
-          ]
-        : []
-      : []),
-  ];
+    }));
 
-  const opcionesSectores = [
-    ...sectoresActivos.map((s) => ({
-      label: s.nombre,
-      value: String(s.id),
-    })),
-    ...(esModoModificar || esModoVer
-      ? tarea?.sector && !sectoresActivos.some((s) => s.id === tarea.sector!.id)
-        ? [
-            {
-              label: tarea.sector.nombre,
-              value: String(tarea.sector.id),
-            },
-          ]
-        : []
-      : []),
-  ];
+  const opcionesSectores = catalogs.sectores
+    .filter(
+      (s) =>
+        s.activo ||
+        ((esModoModificar || esModoVer) && tarea?.sector_id === s.id),
+    )
+    .map((s) => ({ label: s.nombre, value: String(s.id) }));
+
+  const opcionesInsumos = catalogs.insumosQuimicos
+    .filter(
+      (i) =>
+        i.activo ||
+        ((esModoModificar || esModoVer) &&
+          tarea?.insumos_quimicos.some((iq) => iq.insumo_quimico_id === i.id)),
+    )
+    .map((i) => ({ label: i.nombre, value: String(i.id) }));
+
+  const opcionesElementos = catalogs.elementosLimpieza
+    .filter(
+      (el) =>
+        el.activo ||
+        ((esModoModificar || esModoVer) &&
+          tarea?.elementos_limpieza.some(
+            (te) => te.elemento_limpieza_id === el.id,
+          )),
+    )
+    .map((el) => ({ label: el.nombre, value: String(el.id) }));
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors("root");
-    const tareaGuardada: TareaLimpieza = {
-      id: esModoModificar ? tarea!.id : nextTareaId(),
-      nombre: values.nombre.trim(),
-      destino_tipo: values.destino_tipo,
-      equipo:
-        values.destino_tipo === "equipo"
-          ? equipos.find((e) => e.id === values.equipo_id) ??
-            (esModoModificar ? tarea?.equipo : undefined)
-          : undefined,
-      sector:
-        values.destino_tipo === "sector"
-          ? sectores.find((s) => s.id === values.sector_id) ??
-            (esModoModificar ? tarea?.sector : undefined)
-          : undefined,
-      momento: values.momento,
-      periodicidad: values.periodicidad,
-      dias:
-        values.periodicidad === "semanal"
-          ? (values.dias as TareaLimpieza["dias"]).slice(0, 1)
-          : values.periodicidad === "dias-especificos"
-            ? (values.dias as TareaLimpieza["dias"])
-            : [],
-      dia_mes:
-        values.periodicidad === "mensual" ? values.dia_mes : undefined,
-      pasos: values.pasos
-        .split("\n")
-        .map((p) => p.trim())
-        .filter(Boolean),
-      quimicos: values.quimicos,
-      elementos: values.elementos,
-      activo: esModoModificar ? tarea!.activo : true,
-    };
-    setSuccess(true);
-    onGuardado?.(tareaGuardada);
+    const idsSeleccionados = values.insumos_quimicos ?? [];
+    const errores: Record<string, string> = {};
+    idsSeleccionados.forEach((id) => {
+      const texto = (consumos[String(id)] ?? "").trim();
+      const numero = Number(texto);
+      if (!texto || !Number.isFinite(numero) || numero <= 0) {
+        errores[String(id)] =
+          "El consumo es obligatorio y debe ser un número mayor a 0.";
+      }
+    });
+    if (Object.keys(errores).length > 0) {
+      setErroresConsumo(errores);
+      return;
+    }
+    setErroresConsumo({});
+    try {
+      const payload = armarPayload(values, consumos);
+      if (esModoCrear) {
+        if (!planId) {
+          setError("root", {
+            message: "No se pudo determinar el plan de la tarea.",
+          });
+          return;
+        }
+        const creada = await planesApi.crearTarea(planId, payload);
+        setSuccess(true);
+        onGuardado?.(creada);
+      } else if (tarea) {
+        const actualizada = await planesApi.modificarTarea(tarea.id, payload);
+        setSuccess(true);
+        onGuardado?.(actualizada);
+      }
+    } catch (e) {
+      setError("root", {
+        message:
+          e instanceof Error
+            ? e.message
+            : "Ocurrió un error al guardar la tarea.",
+      });
+    }
   });
 
   return (
@@ -296,7 +355,11 @@ export const TareaForm = ({
               label='Destino de la Tarea'
               disabled={esModoVer}
               value={destinoTipo}
-              onChange={(value) => setValue("destino_tipo", value as DestinoTipo, { shouldValidate: true })}
+              onChange={(value) =>
+                setValue("destino_tipo", value as DestinoTipo, {
+                  shouldValidate: true,
+                })
+              }
               options={[
                 { label: "Equipo de Maestro", value: "equipo" },
                 { label: "Sector / Área Física", value: "sector" },
@@ -309,19 +372,22 @@ export const TareaForm = ({
                   label='Seleccionar Equipo'
                   placeholder='Seleccione un equipo'
                   readOnly={esModoVer}
-                  disabled={!esModoVer && cargandoEquipos}
+                  disabled={!esModoVer && catalogosCargando}
                   onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
                   onClick={esModoVer ? (e) => e.preventDefault() : undefined}
                   options={
-                    cargandoEquipos
+                    catalogosCargando
                       ? [{ label: "Cargando equipos...", value: "" }]
                       : opcionesEquipos
                   }
                   error={errors.equipo_id?.message?.toString()}
                   {...register("equipo_id")}
                 />
-                {errorEquipos && !esModoVer && (
-                  <AlertMessage type='error' message={errorEquipos} />
+                {!catalogosCargando && opcionesEquipos.length === 0 && (
+                  <AlertMessage
+                    type='warning'
+                    message='No hay equipos cargados en el sistema. Cargá un equipo para poder asignar un destino.'
+                  />
                 )}
               </>
             ) : (
@@ -330,21 +396,27 @@ export const TareaForm = ({
                   label='Seleccionar Sector / Área'
                   placeholder='Seleccione un sector'
                   readOnly={esModoVer}
-                  disabled={!esModoVer && cargandoSectores}
+                  disabled={!esModoVer && catalogosCargando}
                   onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
                   onClick={esModoVer ? (e) => e.preventDefault() : undefined}
                   options={
-                    cargandoSectores
+                    catalogosCargando
                       ? [{ label: "Cargando sectores...", value: "" }]
                       : opcionesSectores
                   }
                   error={errors.sector_id?.message?.toString()}
                   {...register("sector_id")}
                 />
-                {errorSectores && !esModoVer && (
-                  <AlertMessage type='error' message={errorSectores} />
+                {!catalogosCargando && opcionesSectores.length === 0 && (
+                  <AlertMessage
+                    type='warning'
+                    message='No hay sectores cargados en el sistema. Cargá un sector para poder asignar un destino.'
+                  />
                 )}
               </>
+            )}
+            {errorCatalogos && !esModoVer && (
+              <AlertMessage type='error' message={errorCatalogos} />
             )}
           </Seccion>
 
@@ -359,7 +431,10 @@ export const TareaForm = ({
                   value={field.value}
                   onChange={(value) =>
                     field.onChange(
-                      value as "pre-operacional" | "operacional" | "post-operacional",
+                      value as
+                        | "pre-operacional"
+                        | "operacional"
+                        | "post-operacional",
                     )
                   }
                   options={[
@@ -393,8 +468,13 @@ export const TareaForm = ({
                 disabled={esModoVer}
                 seleccionUnica
                 value={dias.slice(-1)}
-                onChange={(selected) => setValue("dias", selected, { shouldValidate: true })}
-                options={DIAS_SEMANA.map((d) => ({ label: d.label, value: d.value }))}
+                onChange={(selected) =>
+                  setValue("dias", selected, { shouldValidate: true })
+                }
+                options={DIAS_SEMANA.map((d) => ({
+                  label: d.label,
+                  value: d.value,
+                }))}
                 error={errors.dias?.message?.toString()}
               />
             )}
@@ -419,8 +499,13 @@ export const TareaForm = ({
                 label='Días de la semana'
                 disabled={esModoVer}
                 value={dias}
-                onChange={(selected) => setValue("dias", selected, { shouldValidate: true })}
-                options={DIAS_SEMANA.map((d) => ({ label: d.label, value: d.value }))}
+                onChange={(selected) =>
+                  setValue("dias", selected, { shouldValidate: true })
+                }
+                options={DIAS_SEMANA.map((d) => ({
+                  label: d.label,
+                  value: d.value,
+                }))}
                 error={errors.dias?.message?.toString()}
               />
             )}
@@ -433,12 +518,20 @@ export const TareaForm = ({
               defaultValue={
                 esModoModificar || esModoVer ? defaultValues.pasos : undefined
               }
-              placeholder={"Ej.\n1. Desconectar energía eléctrica.\n2. Retirar residuos sólidos."}
+              placeholder={
+                "Ej.\n1. Desconectar energía eléctrica.\n2. Retirar residuos sólidos."
+              }
               error={errors.pasos?.message}
               {...register("pasos")}
             />
             {pasosVista.length > 0 && (
-              <Box w='100%' bg='gray.50' borderWidth='1px' borderRadius='md' p={3}>
+              <Box
+                w='100%'
+                bg='gray.50'
+                borderWidth='1px'
+                borderRadius='md'
+                p={3}
+              >
                 <Text fontSize='sm' fontWeight='semibold' mb={2}>
                   Vista previa del procedimiento
                 </Text>
@@ -460,17 +553,111 @@ export const TareaForm = ({
             <CheckboxGroupField
               label='Insumos Químicos'
               disabled={esModoVer}
-              value={quimicos}
-              onChange={(selected) => setValue("quimicos", selected)}
-              options={QUIMICOS_DISPONIBLES.map((q) => ({ label: q, value: q }))}
+              value={insumosSeleccionados.map(String)}
+              onChange={(selected) => {
+                const ids = selected.map(Number);
+                setValue("insumos_quimicos", ids);
+                setConsumos((prev) => {
+                  const next: Record<string, string> = {};
+                  ids.forEach((id) => {
+                    if (prev[String(id)] !== undefined) {
+                      next[String(id)] = prev[String(id)];
+                    }
+                  });
+                  return next;
+                });
+                setErroresConsumo({});
+              }}
+              options={opcionesInsumos}
             />
+
+            {insumosSeleccionados.length > 0 && (
+              <Box
+                w='100%'
+                borderWidth='1px'
+                borderColor='border.subtle'
+                borderRadius='md'
+                p={3}
+              >
+                <Text fontSize='sm' fontWeight='semibold' mb={2}>
+                  Consumo estimado por insumo seleccionado
+                </Text>
+                <VStack align='stretch' gap={3}>
+                  {insumosSeleccionados.map((id) => {
+                    const insumo = catalogs.insumosQuimicos.find(
+                      (i) => i.id === id,
+                    );
+                    const unidad =
+                      insumo?.unidad_medida?.simbolo ??
+                      insumo?.unidad_medida?.nombre;
+                    const error = erroresConsumo[String(id)];
+                    return (
+                      <Box key={id}>
+                        <HStack gap={2} align='center' flexWrap='wrap'>
+                          <Text flex='1' fontWeight='medium'>
+                            {insumo?.nombre ?? `Insumo ${id}`}
+                          </Text>
+                          <HStack gap={2}>
+                            <Text fontSize='sm' color='gray.600'>
+                              Consumo
+                            </Text>
+                            <Input
+                              type='number'
+                              min='0'
+                              step='any'
+                              disabled={esModoVer}
+                              value={consumos[String(id)] ?? ""}
+                              onChange={(e) =>
+                                actualizarConsumo(id, e.target.value)
+                              }
+                              placeholder='0'
+                              w={32}
+                              size='sm'
+                            />
+                            <Text fontSize='sm' color='gray.600' minW={8}>
+                              {unidad ?? ""}
+                            </Text>
+                          </HStack>
+                        </HStack>
+                        {error && (
+                          <Text color='red.500' fontSize='sm' mt={1}>
+                            {error}
+                          </Text>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </VStack>
+              </Box>
+            )}
+
+            {!opcionesInsumos.length && (
+              <AlertMessage
+                type='error'
+                message='No hay insumos quimicos cargados'
+              />
+            )}
+
             <CheckboxGroupField
               label='Elementos de Limpieza'
               disabled={esModoVer}
-              value={elementos}
-              onChange={(selected) => setValue("elementos", selected)}
-              options={ELEMENTOS_DISPONIBLES.map((u) => ({ label: u, value: u }))}
+              value={elementosSeleccionados.map(String)}
+              onChange={(selected) =>
+                setValue("elementos_limpieza", selected.map(Number))
+              }
+              options={opcionesElementos}
+              error={
+                !opcionesElementos.length
+                  ? undefined
+                  : errors.elementos_limpieza?.message?.toString()
+              }
             />
+            {!opcionesElementos.length && (
+              <AlertMessage
+                type='error'
+                message='No hay elementos de limpieza cargados'
+              />
+            )}
           </Seccion>
 
           <FormActions>

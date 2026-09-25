@@ -2,27 +2,35 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { FiTool } from "react-icons/fi";
-import { AlertMessage, FormModal } from "../components/ui";
+import {
+  AlertMessage,
+  FormModal,
+  LoadingState,
+} from "../components/ui";
 import { ListadoContainer, ListadoHeader } from "../components/layout";
 import { PlanForm } from "../features/planes/PlanForm";
 import { PlanWorkspace } from "../features/planes/PlanWorkspace";
-import { setPlanVigente } from "../features/planes/mockData";
-import type { PlanPoe, TareaLimpieza } from "../features/planes/types";
+import { usePlanData } from "../features/planes/hooks/usePlanData";
 
 export default function NuevoPlanPage() {
   const navigate = useNavigate();
-  const [borrador, setBorrador] = useState<PlanPoe | null>(null);
+  const { loading, error, borrador, reload } = usePlanData();
   const [crearAbierto, setCrearAbierto] = useState(false);
 
-  const guardarBorrador = (plan: PlanPoe) => {
-    setBorrador(plan);
+  const guardarBorrador = () => {
     setCrearAbierto(false);
+    reload();
   };
 
-  const promover = (plan: PlanPoe, tareas: TareaLimpieza[]) => {
-    setPlanVigente(plan, tareas);
-    navigate("/plan-poes");
-  };
+  if (loading) {
+    return (
+      <Box p={10} bg='gray.100' minH='100vh'>
+        <Box maxW='7xl' mx='auto' mt={20}>
+          <LoadingState message='Cargando nuevo plan...' />
+        </Box>
+      </Box>
+    );
+  }
 
   if (borrador) {
     return (
@@ -30,9 +38,9 @@ export default function NuevoPlanPage() {
         <PlanWorkspace
           key={borrador.id}
           initialPlan={borrador}
-          initialTareas={[]}
           esBorrador
-          onPromover={promover}
+          onPromovido={() => navigate("/plan-poes")}
+          onCambio={reload}
         />
       </Box>
     );
@@ -46,6 +54,8 @@ export default function NuevoPlanPage() {
         buttonLabel='Crear plan'
         onCrear={() => setCrearAbierto(true)}
       />
+
+      {error && <AlertMessage type='error' message={error} />}
 
       <AlertMessage
         type='info'

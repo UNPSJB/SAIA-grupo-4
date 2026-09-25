@@ -14,6 +14,7 @@ import type { ElementType } from "react";
 import {
   FiActivity,
   FiCheckCircle,
+  FiClipboard,
   FiClock,
   FiEdit2,
   FiEdit3,
@@ -33,27 +34,28 @@ import {
   type ColumnDef,
 } from "../../components/ui";
 import { ListadoContainer } from "../../components/layout";
-import type { PlanPoe, TareaLimpieza } from "./types";
+import type { PlanCatalogs, PlanPOES, TareaPOES } from "./types";
 import {
+  colorFrecuencia,
   formatFrecuencia,
   formatMomento,
   getDestinoLabel,
-  getRecursosLabel,
 } from "./utils";
 
 interface ListadoTareasProps {
-  plan: PlanPoe;
-  tareas: TareaLimpieza[];
+  plan: PlanPOES;
+  tareas: TareaPOES[];
+  catalogs: PlanCatalogs;
   loading?: boolean;
+  esBorrador?: boolean;
   onAgregarTarea?: () => void;
-  onModificarTarea?: (tarea: TareaLimpieza) => void;
-  onVerTarea?: (tarea: TareaLimpieza) => void;
-  onDarBajaTarea?: (tarea: TareaLimpieza) => void;
-  onDarAltaTarea?: (tarea: TareaLimpieza) => void;
+  onModificarTarea?: (tarea: TareaPOES) => void;
+  onVerTarea?: (tarea: TareaPOES) => void;
+  onDarBajaTarea?: (tarea: TareaPOES) => void;
+  onDarAltaTarea?: (tarea: TareaPOES) => void;
   onHistorial?: () => void;
   onModificarPlan?: () => void;
   onDarBajaPlan?: () => void;
-  esBorrador?: boolean;
   onDarAltaPlan?: () => void;
 }
 
@@ -85,6 +87,7 @@ const Chip = ({
 export const ListadoTareas = ({
   plan,
   tareas,
+  catalogs,
   loading = false,
   esBorrador = false,
   onAgregarTarea,
@@ -104,7 +107,9 @@ export const ListadoTareas = ({
     return tareas.slice(inicio, inicio + ITEMS_POR_PAGINA);
   }, [tareas, page]);
 
-  const columnas: ColumnDef<TareaLimpieza>[] = [
+  const autor = catalogs.personas.find((p) => p.id === plan.elaborado_por_id);
+
+  const columnas: ColumnDef<TareaPOES>[] = [
     {
       key: "nombre",
       label: "Tarea de Limpieza",
@@ -112,23 +117,22 @@ export const ListadoTareas = ({
     },
     {
       key: "destino",
-      label: "Destino (Objeto)",
-      render: (tarea) => getDestinoLabel(tarea),
+      label: "Destino",
+      render: (tarea) => getDestinoLabel(tarea, catalogs),
     },
     {
       key: "momento",
       label: "Momento",
-      render: (tarea) => formatMomento(tarea.momento),
+      render: (tarea) => formatMomento(tarea.tipo_poes),
     },
     {
       key: "frecuencia",
       label: "Frecuencia",
-      render: (tarea) => formatFrecuencia(tarea),
-    },
-    {
-      key: "recursos",
-      label: "Insumos Químicos",
-      render: (tarea) => getRecursosLabel(tarea),
+      render: (tarea) => (
+        <Badge colorPalette={colorFrecuencia[tarea.frecuencia]}>
+          {formatFrecuencia(tarea)}
+        </Badge>
+      ),
     },
     {
       key: "estado",
@@ -194,8 +198,8 @@ export const ListadoTareas = ({
             alignItems='center'
             gap={2}
           >
-            <Icon as={FiTool} />
-            Plan de Limpieza y Sanitización (POES)
+            <Icon as={FiClipboard} />
+            {plan.nombre}
           </Heading>
           <HStack gap={2} flexWrap='wrap'>
             <Button
@@ -231,7 +235,7 @@ export const ListadoTareas = ({
           />
           <Chip
             icon={FiUser}
-            texto={`Elaborado por: Santiago Breczko`}
+            texto={`Elaborado por: ${autor ? `${autor.nombre} ${autor.apellido}` : "—"}`}
             colorPalette='orange'
           />
         </HStack>
