@@ -33,6 +33,7 @@ type InsumoQuimicoFormProps = {
   insumoQuimico?: InsumoQuimico;
   onCancelar?: () => void;
   onGuardado?: (insumoQuimico: InsumoQuimico) => void;
+  enModal?: boolean;
 };
 
 export const InsumoQuimicoForm = ({
@@ -40,6 +41,7 @@ export const InsumoQuimicoForm = ({
   insumoQuimico,
   onCancelar,
   onGuardado,
+  enModal = false,
 }: InsumoQuimicoFormProps) => {
   const esModoVer = modo === "ver";
   const esModoCrear = modo === "crear";
@@ -181,7 +183,7 @@ export const InsumoQuimicoForm = ({
     endpoint: "http://127.0.0.1:8000/insumos-quimicos/",
     method: "PUT",
     id: insumoQuimicoInactivoId ?? undefined,
-    body: { disponible: true },
+    body: { activo: true },
     onSuccess: () => {
       setConfirmAltaAbierto(false);
       setInsumoQuimicoInactivoId(null);
@@ -211,7 +213,7 @@ export const InsumoQuimicoForm = ({
   });
 
   return (
-    <FormContainer>
+    <FormContainer modal={enModal}>
       <FormHeader
         title={
           esModoVer

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { InsumoQuimicoForm } from "../features/insumoQuimico/InsumoQuimicoForm";
+import { InsumoQuimicoDetalle } from "../features/insumoQuimico/InsumoQuimicoDetalle";
 import { ListadoInsumosQuimicos } from "../features/insumoQuimico/ListadoInsumoQuimico";
-import { AlertDelete, AlertConfirm } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/insumoQuimico/hooks/useInsumoQuimicoDelete";
 import { useInsumoQuimicoSubmit } from "../features/insumoQuimico/hooks/useInsumoQuimicoSubmit";
 import type { InsumoQuimico } from "../features/insumoQuimico/types";
@@ -60,57 +61,72 @@ export default function InsumoQuimicoPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      {vista === "listado" && (
-        <ListadoInsumosQuimicos
-          key={refescar}
-          onVerUnidades={() => navigate("/unidades-de-medida")}
-          onCrear={() => {
-            setError("");
-            setVista("crear");
-          }}
-          onModificar={(insumoQuimico) => {
-            setError("");
-            setInsumoQuimicoSeleccionado(insumoQuimico);
-            setVista("modificar");
-          }}
-          onEliminar={(insumoQuimico) => {
-            setError("");
-            setInsumoQuimicoEliminar(insumoQuimico);
-            setEliminarAbierto(true);
-          }}
-          onVer={(insumoQuimico) => {
-            setError("");
-            setInsumoQuimicoSeleccionado(insumoQuimico);
-            setVista("ver");
-          }}
-          onDarAlta={(insumoQuimico) => {
-            setError("");
-            setInsumoQuimicoAlta(insumoQuimico);
-            setAltaAbierto(true);
-          }}
-        />
-      )}
+      <ListadoInsumosQuimicos
+        key={refescar}
+        onVerUnidades={() => navigate("/unidades-de-medida")}
+        onCrear={() => {
+          setError("");
+          setVista("crear");
+        }}
+        onModificar={(insumoQuimico) => {
+          setError("");
+          setInsumoQuimicoSeleccionado(insumoQuimico);
+          setVista("modificar");
+        }}
+        onEliminar={(insumoQuimico) => {
+          setError("");
+          setInsumoQuimicoEliminar(insumoQuimico);
+          setEliminarAbierto(true);
+        }}
+        onVer={(insumoQuimico) => {
+          setError("");
+          setInsumoQuimicoSeleccionado(insumoQuimico);
+          setVista("ver");
+        }}
+        onDarAlta={(insumoQuimico) => {
+          setError("");
+          setInsumoQuimicoAlta(insumoQuimico);
+          setAltaAbierto(true);
+        }}
+      />
       {vista === "ver" && insumoQuimicoSeleccionado && (
-        <InsumoQuimicoForm
-          modo='ver'
+        <InsumoQuimicoDetalle
           insumoQuimico={insumoQuimicoSeleccionado}
           onCancelar={() => setVista("listado")}
         />
       )}
-      {vista === "crear" && (
-        <InsumoQuimicoForm
-          modo='crear'
-          onCancelar={() => setVista("listado")}
-          onGuardado={() => setVista("listado")}
-        />
-      )}
-      {vista === "modificar" && insumoQuimicoSeleccionado && (
-        <InsumoQuimicoForm
-          modo='modificar'
-          insumoQuimico={insumoQuimicoSeleccionado}
-          onCancelar={() => setVista("listado")}
-          onGuardado={() => setVista("listado")}
-        />
+      {(vista === "crear" || vista === "modificar") && (
+        <FormModal
+          open
+          onClose={() => {
+            setError("");
+            setVista("listado");
+          }}
+        >
+          {vista === "crear" && (
+            <InsumoQuimicoForm
+              modo='crear'
+              onCancelar={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
+              enModal
+            />
+          )}
+          {vista === "modificar" && insumoQuimicoSeleccionado && (
+            <InsumoQuimicoForm
+              modo='modificar'
+              insumoQuimico={insumoQuimicoSeleccionado}
+              onCancelar={() => setVista("listado")}
+              onGuardado={() => {
+                setVista("listado");
+                setRefrescar((r) => r + 1);
+              }}
+              enModal
+            />
+          )}
+        </FormModal>
       )}
 
       <AlertDelete

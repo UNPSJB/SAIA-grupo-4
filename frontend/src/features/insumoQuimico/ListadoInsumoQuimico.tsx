@@ -33,6 +33,11 @@ interface ListadoInsumosQuimicosProps {
 const ENDPOINT = "http://127.0.0.1:8000/insumos-quimicos/";
 const ITEMS_POR_PAGINA = 5;
 
+const formatearConsumo = (consumo: number) =>
+  Number(consumo).toLocaleString("es-AR", {
+    maximumFractionDigits: 3,
+  });
+
 export const ListadoInsumosQuimicos = ({
   onCrear,
   onModificar,
@@ -64,14 +69,14 @@ export const ListadoInsumosQuimicos = ({
         if (insumoQuimico.sector) {
           return `Sector: ${insumoQuimico.sector.nombre}`;
         }
-        return "-";
+        return "Sin asignar";
       },
     },
     {
       key: "unidad_medida",
-      label: "Unidad de medida",
+      label: "Consumo",
       render: (insumoQuimico) =>
-        `${insumoQuimico.unidad_medida.nombre} (${insumoQuimico.unidad_medida.simbolo})`,
+        `${formatearConsumo(insumoQuimico.consumo)} ${insumoQuimico.unidad_medida.simbolo}`,
     },
     {
       key: "activo",
