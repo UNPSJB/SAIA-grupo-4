@@ -49,7 +49,7 @@ export default function ChecklistPage() {
     setModalFotoAbierto(false);
   };
 
-  const handleCompletarTarea = (tareaId: number, consumos: string[]) => {
+ const handleCompletarTarea = (tareaId: number, consumos: string[], observacion?: string) => {
     const ahora = new Date();
     const horaStr = ahora.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " hs";
     const fechaStr = ahora.toLocaleDateString("es-AR");
@@ -69,6 +69,7 @@ export default function ChecklistPage() {
             consumoRegistrado: consumos.length > 0 ? consumos : ["Sin consumo químico registrado"],
             fotoNombre: fotoAdjunta ? fotoAdjunta.name : undefined,
             fotoUrl: fotoAdjunta ? URL.createObjectURL(fotoAdjunta) : undefined,
+            observacion: observacion || "Sin observaciones",
           },
         };
       })
@@ -101,7 +102,7 @@ export default function ChecklistPage() {
         </Container>
       </Box>
 
-      {/* Contenido principal */}
+      {/* contenido principal */}
       <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
         <Container maxW="container.lg" px={0}>
           <ChecklistHeader

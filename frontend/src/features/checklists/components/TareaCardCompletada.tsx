@@ -16,6 +16,7 @@ import {
   FiDroplet,
   FiLock,
   FiImage,
+  FiFileText,
 } from "react-icons/fi";
 import type { TareaChecklist } from "../types";
 
@@ -96,6 +97,16 @@ export function TareaCardCompletada({ tarea }: TareaCardCompletadaProps) {
                 </HStack>
               )}
 
+              {/* Preview de la observación si fue ingresada */}
+              {(auditoria as any)?.observacion && (auditoria as any).observacion !== "Sin observaciones" && (
+                <HStack gap={1.5} align="flex-start">
+                  <Box pt="2px"><FiFileText color="#38A169" /></Box>
+                  <Text wordBreak="break-word">
+                    Observación: <em>"{(auditoria as any).observacion}"</em>
+                  </Text>
+                </HStack>
+              )}
+                
               {auditoria.fotoNombre && (
                 <HStack gap={1.5}>
                   <FiImage color="#38A169" />
