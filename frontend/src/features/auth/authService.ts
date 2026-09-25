@@ -19,10 +19,9 @@ const esUsuarioValido = (u: unknown): u is UsuarioLogueado => {
   );
 };
 
-// Inicia sesión validando el DNI contra el listado real de personal.
-export const ingresarConDocumento = async (
-  dni: string,
-): Promise<UsuarioLogueado> => {
+// Paso 1 de la doble verificación: busca a la persona por DNI y valida que
+// esté activa. NO persiste sesión (eso ocurre solo al confirmar el ingreso).
+export const verificarDocumento = async (dni: string): Promise<Persona> => {
   const res = await fetch(ENDPOINT_PERSONAL);
   if (!res.ok) {
     throw new Error("No se pudo conectar con el servidor.");
@@ -38,20 +37,24 @@ export const ingresarConDocumento = async (
     throw new Error("El personal está dado de baja.");
   }
 
-  const usuario: UsuarioLogueado = {
-    personaId: persona.id,
-    dni: persona.dni,
-    nombre: persona.nombre,
-    apellido: persona.apellido,
-    legajo: persona.legajo,
-    capacidades: persona.capacidades
-      .filter((pc) => pc.activo)
-      .map((pc) => pc.capacidad),
-  };
+  return persona;
+};
 
-  // Se persiste en localStorage (sobrevive al refrescar).
+// Convierte una persona verificada en la sesión del usuario.
+export const construirUsuario = (persona: Persona): UsuarioLogueado => ({
+  personaId: persona.id,
+  dni: persona.dni,
+  nombre: persona.nombre,
+  apellido: persona.apellido,
+  legajo: persona.legajo,
+  capacidades: persona.capacidades
+    .filter((pc) => pc.activo)
+    .map((pc) => pc.capacidad),
+});
+
+// Persiste la sesión en localStorage (sobrevive al refrescar).
+export const guardarSesion = (usuario: UsuarioLogueado) => {
   localStorage.setItem(CLAVE_SESION, JSON.stringify(usuario));
-  return usuario;
 };
 
 // Lee la sesión guardada (o null si no hay o es inválida).

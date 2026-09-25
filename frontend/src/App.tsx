@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { NavBar } from "./components/layout";
+import { AlertConfirm } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
 import { esAdministrador } from "./features/auth/roles";
@@ -16,6 +18,7 @@ import CapacidadPage from "./pages/CapacidadPage";
 
 function AppContent() {
   const { usuario, logout } = useAuth();
+  const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
 
   // RAMA SIN SESIÓN: solo existe la vista de login. Cualquier otra URL
   // redirige a "/". No se renderiza el NavBar ni contenido de gestión.
@@ -32,25 +35,38 @@ function AppContent() {
   // Cualquier ruta de gestión queda bloqueada y redirige a /operador.
   if (!esAdministrador(usuario)) {
     return (
-      <Routes>
-        <Route path='/' element={<Navigate to='/operador' replace />} />
-        <Route path='/operador' element={<OperadorPage />} />
-        <Route path='*' element={<Navigate to='/operador' replace />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path='/' element={<Navigate to='/operador' replace />} />
+          <Route path='/operador' element={<OperadorPage />} />
+          <Route path='*' element={<Navigate to='/operador' replace />} />
+        </Routes>
+        <AlertConfirm
+          open={cerrarSesionAbierto}
+          title='Cerrar sesión'
+          message='¿Estás seguro de que querés cerrar tu sesión?'
+          onConfirm={() => {
+            setCerrarSesionAbierto(false);
+            logout();
+          }}
+          onCancel={() => setCerrarSesionAbierto(false)}
+        />
+      </>
     );
   }
 
   // RAMA ADMINISTRADOR: layout completo (NavBar + rutas protegidas).
   return (
-    <Flex minH='100vh' w='100%'>
-      <NavBar
-        username={`${usuario.nombre} ${usuario.apellido}`}
-        onLogout={logout}
-      />
-      <Box bg='gray.100' flex='1' minW='0'>
-        <Routes>
-          {/* La raíz, estando logueado, va a /equipos */}
-          <Route path='/' element={<Navigate to='/equipos' replace />} />
+    <>
+      <Flex minH='100vh' w='100%'>
+        <NavBar
+          username={`${usuario.nombre} ${usuario.apellido}`}
+          onLogout={() => setCerrarSesionAbierto(true)}
+        />
+        <Box bg='gray.100' flex='1' minW='0'>
+          <Routes>
+            {/* La raíz, estando logueado, va a /equipos */}
+            <Route path='/' element={<Navigate to='/equipos' replace />} />
 
           {/* Rutas activas (con guardia de autenticación) */}
           <Route
@@ -113,7 +129,18 @@ function AppContent() {
           />
         </Routes>
       </Box>
-    </Flex>
+      </Flex>
+      <AlertConfirm
+        open={cerrarSesionAbierto}
+        title='Cerrar sesión'
+        message='¿Estás seguro de que querés cerrar tu sesión?'
+        onConfirm={() => {
+          setCerrarSesionAbierto(false);
+          logout();
+        }}
+        onCancel={() => setCerrarSesionAbierto(false)}
+      />
+    </>
   );
 }
 

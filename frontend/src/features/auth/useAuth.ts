@@ -1,9 +1,11 @@
 import { createContext, useContext } from "react";
+import type { Persona } from "../personal/types";
 import type { UsuarioLogueado } from "./types";
 
 export interface AuthContextValue {
   usuario: UsuarioLogueado | null; // null = sin sesión
-  login: (documento: string) => Promise<UsuarioLogueado>;
+  // Recibe la persona ya verificada (paso 2 del login) y inicia la sesión.
+  login: (persona: Persona) => UsuarioLogueado;
   logout: () => void;
 }
 

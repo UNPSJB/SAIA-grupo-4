@@ -2,10 +2,12 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import {
   cerrarSesion,
-  ingresarConDocumento,
+  construirUsuario,
+  guardarSesion,
   obtenerSesion,
 } from "./authService";
 import { AuthContext } from "./useAuth";
+import type { Persona } from "../personal/types";
 import type { UsuarioLogueado } from "./types";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -15,8 +17,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     () => obtenerSesion(),
   );
 
-  const login = async (documento: string) => {
-    const nuevoUsuario = await ingresarConDocumento(documento); // valida + persiste
+  const login = (persona: Persona) => {
+    const nuevoUsuario = construirUsuario(persona); // mapea la persona a sesión
+    guardarSesion(nuevoUsuario); // persiste en localStorage
     setUsuario(nuevoUsuario); // React re-renderiza App → muestra NavBar y rutas
     return nuevoUsuario;
   };
