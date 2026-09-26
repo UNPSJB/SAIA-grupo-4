@@ -25,7 +25,7 @@ import type { TareaChecklist } from "../types";
 interface TareaCardPendienteProps {
   tarea: TareaChecklist;
   onAbrirModalFoto: (tarea: TareaChecklist) => void;
-  onCompletarTarea: (tareaId: number, consumos: string[]) => void;
+  onCompletarTarea: (tareaId: number, consumos: string[], observacion?: string) => void;
   fotoSeleccionada?: File | null;
 }
 
@@ -36,8 +36,8 @@ export function TareaCardPendiente({
   fotoSeleccionada,
 }: TareaCardPendienteProps) {
   const [poesAbierto, setPoesAbierto] = useState(false);
+  const [observacion, setObservacion] = useState(""); 
 
-  // Mapeamos los consumos por ID de insumo químico
   const [consumos, setConsumos] = useState<{ [id: number]: string }>(() => {
     const inicial: { [id: number]: string } = {};
     tarea.quimicosSugeridos.forEach((q) => {
@@ -55,7 +55,7 @@ export function TareaCardPendiente({
       const cantidad = consumos[q.id] || "0";
       return `${cantidad} ${q.unidad} de ${q.nombre}`;
     });
-    onCompletarTarea(tarea.id, listaConsumos);
+    onCompletarTarea(tarea.id, listaConsumos, observacion);
   };
 
   return (
@@ -181,7 +181,25 @@ export function TareaCardPendiente({
           </Box>
         )}
 
-        <Flex direction={{ base: "column", sm: "row" }} gap={2} w="100%" justify="flex-end" pt={1}>
+        {/* Barra de acciones: Observación + Adjuntar Foto + Marcar Realizada */}
+        <Flex direction={{ base: "column", sm: "row" }} gap={2} w="100%" justify="flex-end" align={{ sm: "center" }} pt={1}>
+          {/* Campo de texto de observación (al lado del botón de foto) */}
+          <Input
+            placeholder="Añadir observación (opcional)..."
+            size="sm"
+            fontSize="xs"
+            borderRadius="md"
+            value={observacion}
+            onChange={(e) => setObservacion(e.target.value)}
+            onKeyDown={(e) => {
+            if (e.key === "Enter") {
+            e.currentTarget.blur();
+            }
+            }}
+            w={{ base: "100%", sm: "240px" }}
+            bg="white"
+          />
+
           <Button
             size="sm"
             variant={fotoSeleccionada ? "solid" : "outline"}
