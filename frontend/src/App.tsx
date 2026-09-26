@@ -8,6 +8,7 @@ import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
 import CapacidadPage from "./pages/CapacidadPage";
 import ChecklistPage from "./pages/ChecklistPage";
+import HistorialChecklistPage from "./pages/HistorialChecklistPage";
 
 // Layout con la barra lateral verde para el mundo Administrador
 function AdminLayout() {
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/unidades-de-medida" element={<UnidadMedidaPage />} />
             <Route path="/personal" element={<PersonalPage />} />
             <Route path="/capacidades" element={<CapacidadPage />} />
+            <Route path="/historial" element={<HistorialChecklistPage />} />
           </Route>
 
           {/* 2. Vista del Operario: 100% Full Width, sin barra lateral */}

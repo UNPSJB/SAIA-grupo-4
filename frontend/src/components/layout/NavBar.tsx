@@ -24,6 +24,7 @@ import {
   FiUser,
   FiMap,
 } from "react-icons/fi";
+import { FiArchive } from "react-icons/fi";
 
 interface NavItem {
   to: string;
@@ -46,6 +47,7 @@ const defaultItems: NavItem[] = [
   { to: "/personal", label: "Personal", icon: FiUser },
   { to: "/sectores", label: "Sectores", icon: FiMap },
   { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
+  {to: "historial", label: "Historial Checklists", icon: FiArchive},
 ];
 
 const isActiveRoute = (pathname: string, to: string) =>
