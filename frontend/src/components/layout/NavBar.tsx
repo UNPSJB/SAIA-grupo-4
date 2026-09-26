@@ -64,7 +64,11 @@ const defaultItems: NavItem[] = [
       { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
     ],
   },
-  { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
+  {
+    to: "/elementos-limpieza",
+    label: "Elementos de limpieza",
+    icon: FiDroplet,
+  },
 ];
 
 const planItems: NavItem[] = [

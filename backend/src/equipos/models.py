@@ -17,6 +17,7 @@ class Equipo(ModeloBase):
     tareas_poes: Mapped[list["TareaPOES"]] = relationship(back_populates="equipo")
     
     insumos_quimicos: Mapped[list["InsumoQuimico"]] = relationship(back_populates="equipo")
+    elementos_limpieza: Mapped[list["ElementoLimpieza"]] = relationship(back_populates="equipo")
 
     __table_args__ = (
         UniqueConstraint(

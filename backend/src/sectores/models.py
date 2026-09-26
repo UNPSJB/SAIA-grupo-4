@@ -14,3 +14,4 @@ class Sector(ModeloBase):
 
     insumos_quimicos: Mapped[list["InsumoQuimico"]] = relationship(back_populates="sector")
     tareas_poes: Mapped[list["TareaPOES"]] = relationship(back_populates="sector")
+    elementos_limpieza: Mapped[list["ElementoLimpieza"]] = relationship(back_populates="sector")

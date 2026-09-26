@@ -15,6 +15,7 @@ import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
 import CapacidadPage from "./pages/CapacidadPage";
+import ElementosLimpiezaPage from "./pages/ElementosLimpiezaPage";
 import InsumoQuimicoPage from "./pages/InsumoQuimicoPage";
 import PlanPage from "./pages/PlanPage";
 import NuevoPlanPage from "./pages/NuevoPlanPage";
@@ -122,6 +123,16 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+
+            <Route
+              path='/elementos-limpieza'
+              element={
+                <RequireAuth>
+                  <ElementosLimpiezaPage />
+                </RequireAuth>
+              }
+            />
+
             <Route
               path='/capacidades'
               element={
