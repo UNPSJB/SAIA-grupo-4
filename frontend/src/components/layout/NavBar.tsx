@@ -27,7 +27,6 @@ import {
   FiMap,
   FiDroplet,
 } from "react-icons/fi";
-import { FaRuler } from "react-icons/fa";
 
 interface LinkNavItem {
   to: string;

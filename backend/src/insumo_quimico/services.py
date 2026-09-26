@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -109,15 +109,38 @@ def listar_insumos_quimicos(
 
     query = select(InsumoQuimico)
 
+    # Sin filtros se listan también los inactivos, para que las vistas
+    # histories puedan resolver el nombre de recursos dados de baja.
+    if sector_id is None and equipo_id is None:
+        return db.scalars(query).all()
+
+    query = query.where(InsumoQuimico.activo.is_(True))
+
+    # Condición base: Insumos generales de toda la planta
+    filtro_general = and_(
+        InsumoQuimico.sector_id.is_(None),
+        InsumoQuimico.equipo_id.is_(None),
+    )
+
     if sector_id is not None:
+        # Insumos del sector + Generales
         query = query.where(
-            InsumoQuimico.sector_id == sector_id,
-            InsumoQuimico.activo.is_(True),
+            or_(InsumoQuimico.sector_id == sector_id, filtro_general)
         )
-    elif equipo_id is not None:
+
+    else:
+        equipo = db.scalar(select(Equipo).where(Equipo.id == equipo_id))
+
+        if equipo is None:
+            raise EquipoNoEncontrado()
+
+        # Insumos del equipo + Insumos de su sector + Generales (HERENCIA)
         query = query.where(
-            InsumoQuimico.equipo_id == equipo_id,
-            InsumoQuimico.activo.is_(True),
+            or_(
+                InsumoQuimico.equipo_id == equipo_id,
+                InsumoQuimico.sector_id == equipo.sector_id,
+                filtro_general,
+            )
         )
 
     return db.scalars(query).all()

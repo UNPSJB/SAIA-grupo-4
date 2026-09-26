@@ -195,11 +195,41 @@ def test_listar_insumos_quimicos():
     assert res.status_code == 200
     assert isinstance(res.json(), list)
 
+def test_listar_insumos_quimicos_sin_filtro_incluye_inactivos():
+    unidad_id = crear_unidad_medida()
+
+    insumo_activo = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo activo",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+        },
+    ).json()
+
+    insumo_inactivo = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo dado de baja",
+            "tipo": "desinfectante",
+            "unidad_medida_id": unidad_id,
+        },
+    ).json()
+    client.delete(f"/insumos-quimicos/{insumo_inactivo['id']}")
+
+    res = client.get("/insumos-quimicos/")
+
+    assert res.status_code == 200
+    # Sin filtros se listan también los dados de baja, para que las vistas
+    # histories puedan resolver el nombre de recursos inactivos.
+    assert {i["id"] for i in res.json()} == {insumo_activo["id"], insumo_inactivo["id"]}
+
 def test_listar_insumos_quimicos_por_sector_solo_activos():
     unidad_id = crear_unidad_medida()
     sector_id = crear_sector(nombre="Sector filtrado")
     otro_sector_id = crear_sector(nombre="Otro sector")
 
+    # 1. Insumo del Sector
     insumo_asociado = client.post(
         "/insumos-quimicos/",
         json={
@@ -209,6 +239,18 @@ def test_listar_insumos_quimicos_por_sector_solo_activos():
             "sector_id": sector_id,
         },
     ).json()
+
+    # 2. Insumo Global (Sin sector ni equipo)
+    insumo_global = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo global",
+            "tipo": "desinfectante",
+            "unidad_medida_id": unidad_id,
+        },
+    ).json()
+
+    # 3. Insumo Inactivo (No debe venir)
     insumo_inactivo = client.post(
         "/insumos-quimicos/",
         json={
@@ -218,6 +260,9 @@ def test_listar_insumos_quimicos_por_sector_solo_activos():
             "sector_id": sector_id,
         },
     ).json()
+    client.delete(f"/insumos-quimicos/{insumo_inactivo['id']}")
+
+    # 4. Insumo de otro sector (No debe venir)
     client.post(
         "/insumos-quimicos/",
         json={
@@ -227,19 +272,22 @@ def test_listar_insumos_quimicos_por_sector_solo_activos():
             "sector_id": otro_sector_id,
         },
     )
-    client.delete(f"/insumos-quimicos/{insumo_inactivo['id']}")
 
     response = client.get(f"/insumos-quimicos/?sector_id={sector_id}")
 
     assert response.status_code == 200
-    assert [insumo["id"] for insumo in response.json()] == [insumo_asociado["id"]]
+    ids_obtenidos = [insumo["id"] for insumo in response.json()]
+
+    # Usamos set() para que no importe el orden en que los devuelve
+    assert set(ids_obtenidos) == {insumo_asociado["id"], insumo_global["id"]}
 
 def test_listar_insumos_quimicos_por_equipo_solo_activos():
     unidad_id = crear_unidad_medida()
     sector_id = crear_sector(nombre="Sector del equipo")
     equipo_id = crear_equipo(sector_id, nro_serie="EQUIPO-FILTRO")
 
-    insumo_asociado = client.post(
+    # 1. Insumo específico del Equipo
+    insumo_equipo = client.post(
         "/insumos-quimicos/",
         json={
             "nombre": "Insumo del equipo",
@@ -248,10 +296,33 @@ def test_listar_insumos_quimicos_por_equipo_solo_activos():
             "equipo_id": equipo_id,
         },
     ).json()
+
+    # 2. Insumo del Sector al que pertenece el equipo (HERENCIA)
+    insumo_sector = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo del sector",
+            "tipo": "detergente",
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+        },
+    ).json()
+
+    # 3. Insumo Global (De toda la planta)
+    insumo_global = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": "Insumo global",
+            "tipo": "desengrasante",
+            "unidad_medida_id": unidad_id,
+        },
+    ).json()
+
+    # 4. Insumo Inactivo del equipo (No debe venir)
     insumo_inactivo = client.post(
         "/insumos-quimicos/",
         json={
-            "nombre": "Insumo inactivo del equipo",
+            "nombre": "Insumo inactivo",
             "tipo": "desinfectante",
             "unidad_medida_id": unidad_id,
             "equipo_id": equipo_id,
@@ -262,7 +333,10 @@ def test_listar_insumos_quimicos_por_equipo_solo_activos():
     response = client.get(f"/insumos-quimicos/?equipo_id={equipo_id}")
 
     assert response.status_code == 200
-    assert [insumo["id"] for insumo in response.json()] == [insumo_asociado["id"]]
+    ids_obtenidos = [insumo["id"] for insumo in response.json()]
+
+    # Verificamos que trajo exactamente los 3 niveles permitidos
+    assert set(ids_obtenidos) == {insumo_equipo["id"], insumo_sector["id"], insumo_global["id"]}
 
 def test_no_permitir_filtrar_insumos_quimicos_por_sector_y_equipo():
     response = client.get("/insumos-quimicos/?sector_id=1&equipo_id=1")

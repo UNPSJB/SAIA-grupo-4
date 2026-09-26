@@ -73,14 +73,25 @@ def _validar_recursos_activos(
             raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.SECTOR, recurso_id=sector_id)
         tarea_sector_id = sector.id
 
-    # Closure para evaluar compatibilidad (Universal, por Equipo o por Sector)
-    def es_recurso_compatible(recurso_db) -> bool:
+    # Closure para evaluar compatibilidad con reglas de Herencia y Aislamiento
+    def es_recurso_compatible(recurso_db, es_insumo: bool) -> bool:
+        # 1. Recurso General (sin equipo ni sector)
         if getattr(recurso_db, 'sector_id', None) is None and getattr(recurso_db, 'equipo_id', None) is None:
             return True
+            
+        # 2. Recurso exclusivo del Equipo
         if getattr(recurso_db, 'equipo_id', None) is not None:
             return recurso_db.equipo_id == tarea_equipo_id
+            
+        # 3. Recurso del Sector
         if getattr(recurso_db, 'sector_id', None) is not None:
-            return recurso_db.sector_id == tarea_sector_id
+            if es_insumo:
+                # INSUMOS: Herencia. Si el equipo pertenece a este sector, puede usar el insumo.
+                return recurso_db.sector_id == tarea_sector_id
+            else:
+                # ELEMENTOS: Aislamiento. Solo si la tarea NO es de un equipo y es directa de ese sector.
+                return tarea_equipo_id is None and recurso_db.sector_id == tarea_sector_id
+                
         return False
 
     # Se validan Insumos Químicos
@@ -92,7 +103,7 @@ def _validar_recursos_activos(
             if not ins_db or not ins_db.activo:
                 raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.INSUMO_QUIMICO, recurso_id=insumo_id)
                 
-            if not es_recurso_compatible(ins_db):
+            if not es_recurso_compatible(ins_db, es_insumo=True):
                 raise exceptions.RecursoIncompatible(tipo_recurso=TipoRecurso.INSUMO_QUIMICO, recurso_id=insumo_id)
 
     # Se validan Elementos de Limpieza
@@ -104,7 +115,7 @@ def _validar_recursos_activos(
             if not elem_db or not elem_db.activo:
                 raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.ELEMENTO_LIMPIEZA, recurso_id=elemento_id)
             
-            if not es_recurso_compatible(elem_db):
+            if not es_recurso_compatible(elem_db, es_insumo=False):
                 raise exceptions.RecursoIncompatible(tipo_recurso=TipoRecurso.ELEMENTO_LIMPIEZA, recurso_id=elemento_id)
 
 # SERVICIOS DE PLAN POES
@@ -370,13 +381,29 @@ def modificar_tarea(db: Session, tarea_id: int, tarea_update: schemas.TareaPOESU
         if update_data.get("activo") is False:
             raise exceptions.BajaPorPatchNoPermitida()
 
-    # Se valida que solo uno de los dos campos (equipo_id o sector_id) esté presente
-    nuevo_equipo = update_data.get("equipo_id", tarea.equipo_id)
-    nuevo_sector = update_data.get("sector_id", tarea.sector_id)
-    
+    # Se resuelve el destino efectivo. El par equipo/sector es excluyente, así que
+    # enviar uno de los dos implica limpiar el contrario (salvo que se envíe explícitamente).
     if "equipo_id" in update_data or "sector_id" in update_data:
+        nuevo_equipo = update_data.get("equipo_id", tarea.equipo_id)
+        nuevo_sector = update_data.get("sector_id", tarea.sector_id)
+
+        if "equipo_id" in update_data and "sector_id" not in update_data:
+            nuevo_sector = None
+        elif "sector_id" in update_data and "equipo_id" not in update_data:
+            nuevo_equipo = None
+
         if bool(nuevo_equipo) == bool(nuevo_sector):
             raise exceptions.TareaAsignacionInvalida()
+
+        update_data["equipo_id"] = nuevo_equipo
+        update_data["sector_id"] = nuevo_sector
+    else:
+        nuevo_equipo = tarea.equipo_id
+        nuevo_sector = tarea.sector_id
+
+    cambio_de_destino = (
+        nuevo_equipo != tarea.equipo_id or nuevo_sector != tarea.sector_id
+    )
 
     # Se valida la frecuencia y si corresponde el detalle_frecuencia según la nueva frecuencia
     nueva_freq = update_data.get("frecuencia", tarea.frecuencia)
@@ -387,13 +414,24 @@ def modificar_tarea(db: Session, tarea_id: int, tarea_update: schemas.TareaPOESU
     elif nueva_freq != "diaria" and not nuevo_detalle:
         raise exceptions.FrecuenciaInvalida(motivo=f"La frecuencia '{nueva_freq}' requiere obligatoriamente que se envíe un detalle_frecuencia.")
     
-    # Se valida que los recursos estén activos (solo para los que se estén actualizando)
+    # Se valida que los recursos estén activos y sean compatibles con el destino.
+    # Si el destino cambió y no se reenvían las listas, se revalidan los recursos
+    # que la tarea ya tenía para no dejar asociaciones incompatibles.
+    insumos_a_validar = update_data.get("insumos_quimicos")
+    elementos_a_validar = update_data.get("elementos_limpieza")
+
+    if cambio_de_destino:
+        if insumos_a_validar is None:
+            insumos_a_validar = tarea.insumos_quimicos
+        if elementos_a_validar is None:
+            elementos_a_validar = tarea.elementos_limpieza
+
     _validar_recursos_activos(
         db=db,
-        equipo_id=update_data.get("equipo_id"),
-        sector_id=update_data.get("sector_id"),
-        insumos=update_data.get("insumos_quimicos"),
-        elementos=update_data.get("elementos_limpieza")
+        equipo_id=nuevo_equipo,
+        sector_id=nuevo_sector,
+        insumos=insumos_a_validar,
+        elementos=elementos_a_validar
     )
 
     # Se reemplazan los Insumos Químicos

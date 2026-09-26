@@ -166,6 +166,18 @@ export const planesApi = {
     request<InsumoQuimicoCatalogo[]>("/insumos-quimicos/"),
   obtenerElementosLimpieza: () =>
     request<ElementoLimpiezaCatalogo[]>("/elementos-limpieza/"),
+  obtenerInsumosPorSector: (sectorId: number) =>
+    request<InsumoQuimicoCatalogo[]>(`/insumos-quimicos/?sector_id=${sectorId}`),
+  obtenerInsumosPorEquipo: (equipoId: number) =>
+    request<InsumoQuimicoCatalogo[]>(`/insumos-quimicos/?equipo_id=${equipoId}`),
+  obtenerElementosPorSector: (sectorId: number) =>
+    request<ElementoLimpiezaCatalogo[]>(
+      `/elementos-limpieza/por-sector/${sectorId}`,
+    ),
+  obtenerElementosPorEquipo: (equipoId: number) =>
+    request<ElementoLimpiezaCatalogo[]>(
+      `/elementos-limpieza/por-equipo/${equipoId}`,
+    ),
 };
 
 export const obtenerBorradorOpcional = async (): Promise<PlanPOES | null> => {

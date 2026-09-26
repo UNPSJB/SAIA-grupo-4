@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Heading, HStack, Input, Text, VStack } from "@chakra-ui/react";
@@ -33,12 +33,14 @@ import type { DestinoTipo, TareaPOES } from "./types";
 import {
   DIAS_COMPLETOS,
   frecuenciaToPeriodicidad,
+  getOrigenRecurso,
   momentoToTipoPOES,
   parsearDetalleFrecuencia,
   periodicidadToFrecuencia,
   tipoPOESToMomento,
 } from "./utils";
 import { usePlanCatalogs } from "./hooks/usePlanCatalogs";
+import { useRecursosTarea } from "./hooks/useRecursosTarea";
 import { planesApi, type TareaPOESCreatePayload } from "./hooks/planApi";
 import { DIAS_SEMANA } from "./constants";
 
@@ -98,9 +100,15 @@ const tareaAFormulario = (tarea: TareaPOES): TareaFormInput => {
   };
 };
 
+type DetalleRecursos = {
+  consumos: Record<string, string>;
+  diluciones: Record<string, string>;
+  cantidades: Record<string, string>;
+};
+
 const armarPayload = (
   values: TareaFormValues,
-  consumos: Record<string, string>,
+  { consumos, diluciones, cantidades }: DetalleRecursos,
 ): TareaPOESCreatePayload => {
   const frecuencia = periodicidadToFrecuencia[values.periodicidad];
 
@@ -123,15 +131,21 @@ const armarPayload = (
     metodo: values.pasos.trim(),
     insumos_quimicos: (values.insumos_quimicos ?? []).map((id) => {
       const consumo = Number((consumos[String(id)] ?? "").trim());
+      const dilucion = (diluciones[String(id)] ?? "").trim();
       return {
         insumo_quimico_id: id,
         dosis_sugerida:
           Number.isFinite(consumo) && consumo > 0 ? consumo : undefined,
+        // La dilución es opcional: si el usuario no la completa, no se envía.
+        dilucion_especifica: dilucion.length > 0 ? dilucion : undefined,
       };
     }),
     elementos_limpieza: (values.elementos_limpieza ?? []).map((id) => ({
       elemento_limpieza_id: id,
-      cantidad_requerida: 1,
+      cantidad_requerida: Math.max(
+        1,
+        Number.parseInt(cantidades[String(id)] ?? "1", 10) || 1,
+      ),
     })),
   };
 };
@@ -213,6 +227,43 @@ export const TareaForm = ({
   const [erroresConsumo, setErroresConsumo] = useState<Record<string, string>>(
     {},
   );
+  // Dilución (texto, opcional) por insumo seleccionado.
+  const [diluciones, setDiluciones] = useState<Record<string, string>>(() =>
+    esModoModificar || esModoVer
+      ? Object.fromEntries(
+          (tarea?.insumos_quimicos ?? []).map((iq) => [
+            String(iq.insumo_quimico_id),
+            iq.dilucion_especifica ?? "",
+          ]),
+        )
+      : {},
+  );
+  // Cantidad requerida (entero >= 1) por elemento de limpieza seleccionado.
+  const [cantidades, setCantidades] = useState<Record<string, string>>(() =>
+    esModoModificar || esModoVer
+      ? Object.fromEntries(
+          (tarea?.elementos_limpieza ?? []).map((el) => [
+            String(el.elemento_limpieza_id),
+            String(el.cantidad_requerida ?? 1),
+          ]),
+        )
+      : {},
+  );
+  const [erroresCantidad, setErroresCantidad] = useState<
+    Record<string, string>
+  >({});
+
+  // Deja en el registro solo los ids que siguen seleccionados, para no
+  // conservar datos de recursos que el usuario deseleccionó.
+  const conservarSolo = (
+    prev: Record<string, string>,
+    ids: number[],
+  ): Record<string, string> => {
+    const permitidos = ids.map(String);
+    return Object.fromEntries(
+      Object.entries(prev).filter(([id]) => permitidos.includes(id)),
+    );
+  };
 
   const actualizarConsumo = (id: number, texto: string) => {
     setConsumos((prev) => ({ ...prev, [String(id)]: texto }));
@@ -223,7 +274,28 @@ export const TareaForm = ({
     });
   };
 
+  const actualizarDilucion = (id: number, texto: string) => {
+    setDiluciones((prev) => ({ ...prev, [String(id)]: texto }));
+  };
+
+  const actualizarCantidad = (id: number, texto: string) => {
+    setCantidades((prev) => ({ ...prev, [String(id)]: texto }));
+    setErroresCantidad((prev) => {
+      const next = { ...prev };
+      delete next[String(id)];
+      return next;
+    });
+  };
+
   const destinoTipo = useWatch({ control, name: "destino_tipo" });
+  const equipoId = useWatch({ control, name: "equipo_id" }) as
+    | number
+    | string
+    | undefined;
+  const sectorId = useWatch({ control, name: "sector_id" }) as
+    | number
+    | string
+    | undefined;
   const periodicidad = useWatch({ control, name: "periodicidad" }) as
     | TareaFormValues["periodicidad"]
     | undefined;
@@ -241,6 +313,37 @@ export const TareaForm = ({
     .split("\n")
     .map((p) => p.trim())
     .filter(Boolean);
+
+  const {
+    insumos: recursosInsumos,
+    elementos: recursosElementos,
+    loading: recursosCargando,
+    error: errorRecursos,
+  } = useRecursosTarea({
+    destinoTipo,
+    equipoId,
+    sectorId,
+    modo,
+    insumosSeleccionados,
+    elementosSeleccionados,
+  });
+
+  const claveDestino = `${destinoTipo ?? ""}:${
+    destinoTipo === "equipo" ? (equipoId ?? "") : (sectorId ?? "")
+  }`;
+  const claveDestinoPrevia = useRef(claveDestino);
+
+  useEffect(() => {
+    if (claveDestinoPrevia.current === claveDestino) return;
+    claveDestinoPrevia.current = claveDestino;
+    setValue("insumos_quimicos", []);
+    setValue("elementos_limpieza", []);
+    setConsumos({});
+    setErroresConsumo({});
+    setDiluciones({});
+    setCantidades({});
+    setErroresCantidad({});
+  }, [claveDestino, setValue]);
 
   const opcionesEquipos = catalogs.equipos
     .filter(
@@ -261,25 +364,17 @@ export const TareaForm = ({
     )
     .map((s) => ({ label: s.nombre, value: String(s.id) }));
 
-  const opcionesInsumos = catalogs.insumosQuimicos
-    .filter(
-      (i) =>
-        i.activo ||
-        ((esModoModificar || esModoVer) &&
-          tarea?.insumos_quimicos.some((iq) => iq.insumo_quimico_id === i.id)),
-    )
-    .map((i) => ({ label: i.nombre, value: String(i.id) }));
+  const opcionesInsumos = recursosInsumos.map((i) => ({
+    label: i.nombre,
+    value: String(i.id),
+    badge: getOrigenRecurso(i),
+  }));
 
-  const opcionesElementos = catalogs.elementosLimpieza
-    .filter(
-      (el) =>
-        el.activo ||
-        ((esModoModificar || esModoVer) &&
-          tarea?.elementos_limpieza.some(
-            (te) => te.elemento_limpieza_id === el.id,
-          )),
-    )
-    .map((el) => ({ label: el.nombre, value: String(el.id) }));
+  const opcionesElementos = recursosElementos.map((el) => ({
+    label: el.nombre,
+    value: String(el.id),
+    badge: getOrigenRecurso(el),
+  }));
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors("root");
@@ -298,8 +393,30 @@ export const TareaForm = ({
       return;
     }
     setErroresConsumo({});
+
+    // La cantidad de cada elemento de limpieza es obligatoria y debe ser un
+    // entero mayor o igual a 1 (lo que espera el backend).
+    const erroresCant: Record<string, string> = {};
+    (values.elementos_limpieza ?? []).forEach((id) => {
+      const texto = (cantidades[String(id)] ?? "").trim();
+      const numero = Number(texto);
+      if (!texto || !Number.isInteger(numero) || numero < 1) {
+        erroresCant[String(id)] =
+          "La cantidad es obligatoria y debe ser un número entero mayor o igual a 1.";
+      }
+    });
+    if (Object.keys(erroresCant).length > 0) {
+      setErroresCantidad(erroresCant);
+      return;
+    }
+    setErroresCantidad({});
+
     try {
-      const payload = armarPayload(values, consumos);
+      const payload = armarPayload(values, {
+        consumos,
+        diluciones,
+        cantidades,
+      });
       if (esModoCrear) {
         if (!planId) {
           setError("root", {
@@ -550,113 +667,195 @@ export const TareaForm = ({
           </Seccion>
 
           <Seccion numero={4} titulo='Recursos Requeridos'>
-            <CheckboxGroupField
-              label='Insumos Químicos'
-              disabled={esModoVer}
-              value={insumosSeleccionados.map(String)}
-              onChange={(selected) => {
-                const ids = selected.map(Number);
-                setValue("insumos_quimicos", ids);
-                setConsumos((prev) => {
-                  const next: Record<string, string> = {};
-                  ids.forEach((id) => {
-                    if (prev[String(id)] !== undefined) {
-                      next[String(id)] = prev[String(id)];
-                    }
-                  });
-                  return next;
-                });
-                setErroresConsumo({});
-              }}
-              options={opcionesInsumos}
-            />
-
-            {insumosSeleccionados.length > 0 && (
-              <Box
-                w='100%'
-                borderWidth='1px'
-                borderColor='border.subtle'
-                borderRadius='md'
-                p={3}
-              >
-                <Text fontSize='sm' fontWeight='semibold' mb={2}>
-                  Consumo estimado por insumo seleccionado
-                </Text>
-                <VStack align='stretch' gap={3}>
-                  {insumosSeleccionados.map((id) => {
-                    const insumo = catalogs.insumosQuimicos.find(
-                      (i) => i.id === id,
-                    );
-                    const unidad =
-                      insumo?.unidad_medida?.simbolo ??
-                      insumo?.unidad_medida?.nombre;
-                    const error = erroresConsumo[String(id)];
-                    return (
-                      <Box key={id}>
-                        <HStack gap={2} align='center' flexWrap='wrap'>
-                          <Text flex='1' fontWeight='medium'>
-                            {insumo?.nombre ?? `Insumo ${id}`}
-                          </Text>
-                          <HStack gap={2}>
-                            <Text fontSize='sm' color='gray.600'>
-                              Consumo
-                            </Text>
-                            <Input
-                              type='number'
-                              min='0'
-                              step='any'
-                              disabled={esModoVer}
-                              value={consumos[String(id)] ?? ""}
-                              onChange={(e) =>
-                                actualizarConsumo(id, e.target.value)
-                              }
-                              placeholder='0'
-                              w={32}
-                              size='sm'
-                            />
-                            <Text fontSize='sm' color='gray.600' minW={8}>
-                              {unidad ?? ""}
-                            </Text>
-                          </HStack>
-                        </HStack>
-                        {error && (
-                          <Text color='red.500' fontSize='sm' mt={1}>
-                            {error}
-                          </Text>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </VStack>
-              </Box>
+            {errorRecursos && (
+              <AlertMessage type='error' message={errorRecursos} />
             )}
 
-            {!opcionesInsumos.length && (
-              <AlertMessage
-                type='error'
-                message='No hay insumos quimicos cargados'
-              />
+            {recursosCargando && (
+              <Text fontSize='sm' color='gray.600'>
+                Cargando recursos del destino seleccionado...
+              </Text>
             )}
 
-            <CheckboxGroupField
-              label='Elementos de Limpieza'
-              disabled={esModoVer}
-              value={elementosSeleccionados.map(String)}
-              onChange={(selected) =>
-                setValue("elementos_limpieza", selected.map(Number))
-              }
-              options={opcionesElementos}
-              error={
-                !opcionesElementos.length
-                  ? undefined
-                  : errors.elementos_limpieza?.message?.toString()
-              }
-            />
-            {!opcionesElementos.length && (
-              <AlertMessage
-                type='error'
-                message='No hay elementos de limpieza cargados'
-              />
+            {!recursosCargando && !errorRecursos && (
+              <>
+                {!!opcionesInsumos.length && (
+                  <CheckboxGroupField
+                    label='Insumos Químicos'
+                    disabled={esModoVer}
+                    value={insumosSeleccionados.map(String)}
+                    onChange={(selected) => {
+                      const ids = selected.map(Number);
+                      setValue("insumos_quimicos", ids);
+                      setConsumos((prev) => conservarSolo(prev, ids));
+                      setDiluciones((prev) => conservarSolo(prev, ids));
+                      setErroresConsumo({});
+                    }}
+                    options={opcionesInsumos}
+                  />
+                )}
+
+                {insumosSeleccionados.length > 0 && (
+                  <Box
+                    w='100%'
+                    borderWidth='1px'
+                    borderColor='border.subtle'
+                    borderRadius='md'
+                    p={3}
+                  >
+                    <Text fontSize='sm' fontWeight='semibold' mb={2}>
+                      Consumo y dilución por insumo seleccionado
+                    </Text>
+                    <VStack align='stretch' gap={3}>
+                      {insumosSeleccionados.map((id) => {
+                        const insumo = recursosInsumos.find((i) => i.id === id);
+                        const unidad =
+                          insumo?.unidad_medida?.simbolo ??
+                          insumo?.unidad_medida?.nombre;
+                        const error = erroresConsumo[String(id)];
+                        return (
+                          <Box key={id}>
+                            <HStack gap={2} align='center' flexWrap='wrap'>
+                              <HStack gap={2} flex='1' minW={44}>
+                                <Text fontWeight='medium'>
+                                  {insumo?.nombre ?? `Insumo ${id}`}
+                                </Text>
+                              </HStack>
+                              <Text fontSize='sm' color='gray.600'>
+                                Consumo
+                              </Text>
+                              <Input
+                                textAlign='center'
+                                disabled={esModoVer}
+                                value={consumos[String(id)] ?? ""}
+                                onChange={(e) =>
+                                  actualizarConsumo(id, e.target.value)
+                                }
+                                placeholder='0'
+                                w='55px'
+                                size='xs'
+                              />
+                              <Text fontSize='sm' color='gray.600' minW={8}>
+                                {unidad ?? ""}
+                              </Text>
+                              <Text fontSize='sm' color='gray.600'>
+                                Dilución
+                              </Text>
+                              <Input
+                                type='text'
+                                disabled={esModoVer}
+                                value={diluciones[String(id)] ?? ""}
+                                onChange={(e) =>
+                                  actualizarDilucion(id, e.target.value)
+                                }
+                                placeholder='Ej. 1:10'
+                                maxLength={100}
+                                flex='1'
+                                w={20}
+                                size='sm'
+                              />
+                            </HStack>
+                            {error && (
+                              <Text color='red.500' fontSize='sm' mt={1}>
+                                {error}
+                              </Text>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </VStack>
+                  </Box>
+                )}
+
+                {!!opcionesElementos.length && (
+                  <CheckboxGroupField
+                    label='Elementos de Limpieza'
+                    disabled={esModoVer}
+                    value={elementosSeleccionados.map(String)}
+                    onChange={(selected) => {
+                      const ids = selected.map(Number);
+                      setValue("elementos_limpieza", ids);
+                      setCantidades((prev) => conservarSolo(prev, ids));
+                      setErroresCantidad({});
+                    }}
+                    options={opcionesElementos}
+                    error={errors.elementos_limpieza?.message?.toString()}
+                  />
+                )}
+
+                {elementosSeleccionados.length > 0 && (
+                  <Box
+                    w='100%'
+                    borderWidth='1px'
+                    borderColor='border.subtle'
+                    borderRadius='md'
+                    p={3}
+                  >
+                    <Text fontSize='sm' fontWeight='semibold' mb={2}>
+                      Cantidad requerida por elemento seleccionado
+                    </Text>
+                    <VStack align='stretch' gap={3}>
+                      {elementosSeleccionados.map((id) => {
+                        const elemento = recursosElementos.find(
+                          (el) => el.id === id,
+                        );
+                        const error = erroresCantidad[String(id)];
+                        return (
+                          <Box key={id}>
+                            <HStack gap={2} align='center' flexWrap='wrap'>
+                              <HStack gap={2} flex='1' minW={44}>
+                                <Text fontWeight='medium'>
+                                  {elemento?.nombre ?? `Elemento ${id}`}
+                                </Text>
+                              </HStack>
+                              <Text fontSize='sm' color='gray.600'>
+                                Cantidad
+                              </Text>
+                              <Input
+                                textAlign='center'
+                                disabled={esModoVer}
+                                value={cantidades[String(id)] ?? "1"}
+                                onChange={(e) =>
+                                  actualizarCantidad(id, e.target.value)
+                                }
+                                w='55px'
+                                size='xs'
+                              />
+                            </HStack>
+                            {error && (
+                              <Text color='red.500' fontSize='sm' mt={1}>
+                                {error}
+                              </Text>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </VStack>
+                  </Box>
+                )}
+
+                {!opcionesInsumos.length && !opcionesElementos.length ? (
+                  <AlertMessage
+                    type='warning'
+                    message='No hay insumos químicos ni elementos de limpieza disponibles para el destino seleccionado.'
+                  />
+                ) : (
+                  <>
+                    {!opcionesInsumos.length && (
+                      <AlertMessage
+                        type='warning'
+                        message='No hay insumos químicos disponibles para el destino seleccionado.'
+                      />
+                    )}
+                    {!opcionesElementos.length && (
+                      <AlertMessage
+                        type='warning'
+                        message='No hay elementos de limpieza disponibles para el destino seleccionado.'
+                      />
+                    )}
+                  </>
+                )}
+              </>
             )}
           </Seccion>
 

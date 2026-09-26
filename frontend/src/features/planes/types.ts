@@ -31,6 +31,8 @@ export interface InsumoQuimicoCatalogo {
   tipo: string;
   unidad_medida_id: number;
   unidad_medida?: UnidadMedida;
+  sector_id?: number | null;
+  equipo_id?: number | null;
   activo: boolean;
 }
 
@@ -38,6 +40,8 @@ export interface ElementoLimpiezaCatalogo {
   id: number;
   nombre: string;
   frecuencia_recambio_dias?: number;
+  sector_id?: number | null;
+  equipo_id?: number | null;
   activo: boolean;
 }
 

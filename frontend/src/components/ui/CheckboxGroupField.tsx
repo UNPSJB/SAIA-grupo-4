@@ -1,8 +1,20 @@
-import { Checkbox, Fieldset, HStack, Text } from "@chakra-ui/react";
+import {
+  Badge,
+  Checkbox,
+  Fieldset,
+  HStack,
+  Text,
+} from "@chakra-ui/react";
+
+export interface CheckboxGroupOption {
+  label: string;
+  value: string;
+  badge?: { texto: string; colorPalette?: string };
+}
 
 interface CheckboxGroupFieldProps {
   label: string;
-  options: Array<{ label: string; value: string }>;
+  options: CheckboxGroupOption[];
   value: string[];
   onChange: (selected: string[]) => void;
   seleccionUnica?: boolean;
@@ -35,7 +47,20 @@ export const CheckboxGroupField = ({
           <Checkbox.Root key={opt.value} value={opt.value} colorPalette='green'>
             <Checkbox.HiddenInput />
             <Checkbox.Control />
-            <Checkbox.Label>{opt.label}</Checkbox.Label>
+            <Checkbox.Label>
+              <HStack gap={2}>
+                <Text as='span'>{opt.label}</Text>
+                {opt.badge && (
+                  <Badge
+                    colorPalette={opt.badge.colorPalette}
+                    fontSize='2xs'
+                    px={2}
+                  >
+                    {opt.badge.texto}
+                  </Badge>
+                )}
+              </HStack>
+            </Checkbox.Label>
           </Checkbox.Root>
         ))}
       </HStack>

@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, func
+from sqlalchemy import and_, or_, select, update, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.elementos_limpieza.models import ElementoLimpieza
@@ -83,13 +83,25 @@ def listar_elementos_limpieza(
 ):
     query = select(ElementoLimpieza).where(ElementoLimpieza.activo == True)
 
+    # Condición base: Recursos generales de toda la planta
+    filtro_general = and_(
+        ElementoLimpieza.sector_id.is_(None),
+        ElementoLimpieza.equipo_id.is_(None),
+    )
+
     if sector_id is not None:
         leer_sector(db, sector_id)
-        query = query.where(ElementoLimpieza.sector_id == sector_id)
-        
+        # Elementos del sector + Generales
+        query = query.where(
+            or_(ElementoLimpieza.sector_id == sector_id, filtro_general)
+        )
+
     elif equipo_id is not None:
         leer_equipo(db, equipo_id)
-        query = query.where(ElementoLimpieza.equipo_id == equipo_id)
+        # Elementos del equipo + Generales (AISLAMIENTO: no trae los del sector)
+        query = query.where(
+            or_(ElementoLimpieza.equipo_id == equipo_id, filtro_general)
+        )
 
     return db.scalars(query).all()
 

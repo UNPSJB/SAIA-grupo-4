@@ -10,6 +10,7 @@ export { SubmitButton } from "./SubmitButton";
 export { TextField } from "./TextField";
 export { RadioGroupField } from "./RadioGroupField";
 export { CheckboxGroupField } from "./CheckboxGroupField";
+export type { CheckboxGroupOption } from "./CheckboxGroupField";
 export { TextAreaField } from "./TextAreaField";
 export { AlertDelete } from "./AlertDelete";
 export { LoadingState } from "./LoadingState";

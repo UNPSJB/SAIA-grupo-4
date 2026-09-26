@@ -20,7 +20,7 @@ export const tareaSchema = z
     pasos: z
       .string()
       .trim()
-      .min(1, "Cargá la guía paso a paso (un paso por línea)"),
+      .min(5, "Cargá la guía paso a paso (un paso por línea)"),
     insumos_quimicos: z.array(z.coerce.number().int()).default([]),
     elementos_limpieza: z.array(z.coerce.number().int()).default([]),
   })
@@ -63,7 +63,10 @@ export const tareaSchema = z
         message: "Seleccioná al menos un día de la semana",
       });
     }
-    if (val.insumos_quimicos.length === 0 && val.elementos_limpieza.length === 0) {
+    if (
+      val.insumos_quimicos.length === 0 &&
+      val.elementos_limpieza.length === 0
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["elementos_limpieza"],

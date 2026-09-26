@@ -191,6 +191,21 @@ export const getRecursosLabel = (tarea: TareaPOES, catalogs: PlanCatalogs) => {
   return partes.length ? partes.join(", ") : "—";
 };
 
+export type OrigenRecurso = { texto: string; colorPalette: string };
+
+export const getOrigenRecurso = (recurso: {
+  sector_id?: number | null;
+  equipo_id?: number | null;
+}): OrigenRecurso => {
+  if (recurso.equipo_id != null) {
+    return { texto: "Equipo", colorPalette: "purple" };
+  }
+  if (recurso.sector_id != null) {
+    return { texto: "Sector", colorPalette: "blue" };
+  }
+  return { texto: "General", colorPalette: "gray" };
+};
+
 export const getResumenTareas = (tareas: TareaPOES[]) => {
   const activas = tareas.filter((t) => t.activo).length;
   const diarias = tareas.filter(
