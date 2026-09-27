@@ -24,15 +24,34 @@ import {
   FiChevronDown,
   FiChevronUp,
 } from "react-icons/fi";
-import type { TareaHistorialItem } from "../types";
+import type { EjecucionTarea } from "../../checklists/types";
+import {
+  etiquetaTipoPoe,
+  formatearFecha,
+  formatearHora,
+  obtenerDestino,
+  obtenerDescripcionConsumos,
+  obtenerNombreEvidencia,
+  obtenerNombreOperador,
+  obtenerPasosPoes,
+  obtenerUrlEvidencia,
+} from "../../checklists/utils";
 
 interface TareaCardCompletadaHistorialProps {
-  tarea: TareaHistorialItem;
+  ejecucion: EjecucionTarea;
 }
 
-export function TareaCardCompletadaHistorial({ tarea }: TareaCardCompletadaHistorialProps) {
+export function TareaCardCompletadaHistorial({ ejecucion }: TareaCardCompletadaHistorialProps) {
   const [guiaAbierta, setGuiaAbierta] = useState(false);
-  const { auditoria } = tarea;
+
+  const { tarea } = ejecucion;
+  const pasosPoes = obtenerPasosPoes(tarea.metodo);
+  const consumos = obtenerDescripcionConsumos(ejecucion);
+  const urlEvidencia = obtenerUrlEvidencia(ejecucion.foto_url);
+  const nombreEvidencia = obtenerNombreEvidencia(ejecucion.foto_url);
+  const elementos = tarea.elementos_limpieza.map(
+    (e) => `${e.cantidad_requerida} ${e.elemento_limpieza.nombre}`,
+  );
 
   return (
     <Box
@@ -58,8 +77,8 @@ export function TareaCardCompletadaHistorial({ tarea }: TareaCardCompletadaHisto
             </HStack>
           </Badge>
           <Text color="gray.400" fontSize="xs">|</Text>
-          <Badge colorPalette="gray" variant="outline" px={2} py={0.5} borderRadius="md" textTransform="uppercase" fontSize="2xs">
-            {tarea.tipo}
+          <Badge colorPalette="gray" variant="outline" px={2} py={0.5} borderRadius="md" fontSize="2xs">
+            {etiquetaTipoPoe(tarea.tipo_poes)}
           </Badge>
         </HStack>
 
@@ -79,20 +98,20 @@ export function TareaCardCompletadaHistorial({ tarea }: TareaCardCompletadaHisto
         <VStack align="stretch" gap={2} fontSize="xs">
           <HStack color="gray.700" gap={1.5} align="flex-start">
             <Box pt="2px"><FiMapPin size={13} color="#718096" /></Box>
-            <Text>Destino: <strong>{tarea.destino}</strong></Text>
+            <Text>Destino: <strong>{obtenerDestino(tarea)}</strong></Text>
           </HStack>
 
-          {tarea.elementosLimpieza && tarea.elementosLimpieza.length > 0 && (
+          {elementos.length > 0 && (
             <HStack color="gray.700" gap={1.5} align="flex-start">
               <Box pt="2px"><FiTool size={13} color="#718096" /></Box>
               <Text>
-                Usar: <strong>{tarea.elementosLimpieza.join(", ")}</strong>
+                Usar: <strong>{elementos.join(", ")}</strong>
               </Text>
             </HStack>
           )}
 
           {/* Guía POES paso a paso desplegable */}
-          {tarea.procedimiento && tarea.procedimiento.length > 0 && (
+          {pasosPoes.length > 0 && (
             <Box pt={1}>
               <Button
                 variant="ghost"
@@ -113,7 +132,7 @@ export function TareaCardCompletadaHistorial({ tarea }: TareaCardCompletadaHisto
                 <Collapsible.Content>
                   <Box mt={2} pl={3} borderLeft="2px solid" borderColor="blue.200" bg="blue.50" p={2} borderRadius="md">
                     <VStack align="stretch" gap={1} fontSize="2xs" color="gray.700">
-                      {tarea.procedimiento.map((paso, idx) => (
+                      {pasosPoes.map((paso, idx) => (
                         <Text key={idx}>{idx + 1}. {paso}</Text>
                       ))}
                     </VStack>
@@ -126,71 +145,70 @@ export function TareaCardCompletadaHistorial({ tarea }: TareaCardCompletadaHisto
       </Box>
 
       {/* Bloque inferior: Registro de Auditoría (Ejecución real) */}
-      {auditoria && (
-        <Box bg="white" p={3.5} borderRadius="lg" border="1px solid" borderColor="green.100">
-          <Flex direction={{ base: "column", md: "row" }} justify="space-between" align={{ base: "flex-start", md: "center" }} gap={3}>
-            <VStack align="stretch" gap={1.5} fontSize="xs" color="gray.700" flex={1}>
-              {auditoria.realizadoPor && (
-                <HStack gap={1.5}>
-                  <FiUser color="#38A169" />
-                  <Text>
-                    Realizado por: <strong>{auditoria.realizadoPor}</strong>
-                    {auditoria.hora && (
-                      <Text as="span" color="gray.500" ml={1}>
-                        <FiClock style={{ display: "inline", verticalAlign: "middle", marginRight: 2 }} />
-                        a las {auditoria.hora}
-                      </Text>
-                    )}
-                  </Text>
-                </HStack>
-              )}
+      <Box bg="white" p={3.5} borderRadius="lg" border="1px solid" borderColor="green.100">
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify="space-between"
+          align={{ base: "flex-start", md: "center" }}
+          gap={3}
+        >
+          <VStack align="stretch" gap={1.5} fontSize="xs" color="gray.700" flex={1}>
+            <HStack gap={1.5}>
+              <FiUser color="#38A169" />
+              <Text>
+                Realizado por: <strong>{obtenerNombreOperador(ejecucion.operador)}</strong>
+                <Text as="span" color="gray.500" ml={1}>
+                  <FiClock style={{ display: "inline", verticalAlign: "middle", marginRight: 2 }} />
+                  a las {formatearHora(ejecucion.fecha_hora_ejecucion)}
+                </Text>
+              </Text>
+            </HStack>
 
-              <HStack gap={1.5}>
-                <FiCalendar color="#718096" />
-                <Text>Fecha: <strong>{auditoria.fecha}</strong></Text>
+            <HStack gap={1.5}>
+              <FiCalendar color="#718096" />
+              <Text>Fecha: <strong>{formatearFecha(ejecucion.fecha_programada)}</strong></Text>
+            </HStack>
+
+            {consumos.length > 0 && (
+              <HStack gap={1.5} align="flex-start">
+                <Box pt="2px"><FiDroplet color="#38A169" /></Box>
+                <Text>
+                  Consumo: <strong>{consumos.join(", ")}</strong>
+                </Text>
               </HStack>
-
-              {auditoria.consumoRegistrado && auditoria.consumoRegistrado.length > 0 && (
-                <HStack gap={1.5} align="flex-start">
-                  <Box pt="2px"><FiDroplet color="#38A169" /></Box>
-                  <Text>
-                    Consumo: <strong>{auditoria.consumoRegistrado.join(", ")}</strong>
-                  </Text>
-                </HStack>
-              )}
-
-              {auditoria.observacion && (
-                <HStack gap={1.5} align="flex-start">
-                  <Box pt="2px"><FiFileText color="#718096" /></Box>
-                  <Text color="gray.600">
-                    Observación: <em>"{auditoria.observacion}"</em>
-                  </Text>
-                </HStack>
-              )}
-
-              {auditoria.fotoNombre && (
-                <HStack gap={1.5} color="gray.500" fontSize="2xs">
-                  <FiImage />
-                  <Text>{auditoria.fotoNombre}</Text>
-                </HStack>
-              )}
-            </VStack>
-
-            {/* Foto de evidencia */}
-            {auditoria.fotoUrl && (
-              <Box flexShrink={0} borderRadius="md" overflow="hidden" border="1px solid" borderColor="gray.200" maxW={{ base: "100%", md: "110px" }}>
-                <Image
-                  src={auditoria.fotoUrl}
-                  alt="Evidencia fotográfica"
-                  objectFit="cover"
-                  w="110px"
-                  h="80px"
-                />
-              </Box>
             )}
-          </Flex>
-        </Box>
-      )}
+
+            {ejecucion.observaciones && (
+              <HStack gap={1.5} align="flex-start">
+                <Box pt="2px"><FiFileText color="#718096" /></Box>
+                <Text color="gray.600">
+                  Observación: <em>"{ejecucion.observaciones}"</em>
+                </Text>
+              </HStack>
+            )}
+
+            {nombreEvidencia && (
+              <HStack gap={1.5} color="gray.500" fontSize="2xs">
+                <FiImage />
+                <Text>{nombreEvidencia}</Text>
+              </HStack>
+            )}
+          </VStack>
+
+          {/* Foto de evidencia */}
+          {urlEvidencia && (
+            <Box flexShrink={0} borderRadius="md" overflow="hidden" border="1px solid" borderColor="gray.200" maxW={{ base: "100%", md: "110px" }}>
+              <Image
+                src={urlEvidencia}
+                alt="Evidencia fotográfica"
+                objectFit="cover"
+                w="110px"
+                h="80px"
+              />
+            </Box>
+          )}
+        </Flex>
+      </Box>
     </Box>
   );
 }

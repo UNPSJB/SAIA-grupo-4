@@ -1,16 +1,17 @@
 import { Box, Flex, Heading, Text, Badge, HStack, Progress } from "@chakra-ui/react";
 import { FiCheckSquare, FiUser, FiCalendar } from "react-icons/fi";
-import type { OperarioInfo } from "../types";
 
 interface ChecklistHeaderProps {
-  operario: OperarioInfo;
+  nombreOperario: string;
+  capacidades: string[];
   fechaStr: string;
   totalTareas: number;
   completadas: number;
 }
 
 export function ChecklistHeader({
-  operario,
+  nombreOperario,
+  capacidades,
   fechaStr,
   totalTareas,
   completadas,
@@ -35,14 +36,24 @@ export function ChecklistHeader({
               Checklist de Limpieza del Día
             </Heading>
           </HStack>
-          <HStack gap={2} color="gray.600" fontSize="sm">
+          <HStack gap={2} color="gray.600" fontSize="sm" wrap="wrap">
             <FiUser />
             <Text>
-              Operario: <strong>{operario.nombre}</strong>
+              Operario: <strong>{nombreOperario}</strong>
             </Text>
-            <Badge colorScheme="green" variant="subtle" fontSize="xs" px={2} borderRadius="full">
-              {operario.capacidad}
-            </Badge>
+            {capacidades.map((capacidad) => (
+              <Badge
+                key={capacidad}
+                colorScheme="green"
+                variant="subtle"
+                fontSize="xs"
+                px={2}
+                borderRadius="full"
+                textTransform="uppercase"
+              >
+                {capacidad}
+              </Badge>
+            ))}
           </HStack>
         </Box>
 

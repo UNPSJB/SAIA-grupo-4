@@ -1,17 +1,10 @@
 import { useState, useMemo } from "react";
-import {
-  Box,
-  Container,
-  VStack,
-  Text,
-  Center,
-  HStack,
-  Badge,
-} from "@chakra-ui/react";
-import { FiShield, FiInbox, FiArchive } from "react-icons/fi";
+import { Box, Button, Container, VStack, Text, Center, HStack } from "@chakra-ui/react";
+import { FiInbox, FiArchive } from "react-icons/fi";
 
-import type { MetricasCumplimiento, TareaHistorialItem } from "../features/historial/types";
-import { mockTareasHistorial } from "../features/historial/mockHistorial";
+import { AlertMessage, LoadingState } from "../components/ui";
+import type { MetricasCumplimiento } from "../features/historial/types";
+import { useHistorial } from "../features/historial/hooks/useHistorial";
 import { HistorialFiltros } from "../features/historial/components/HistorialFiltros";
 import { HistorialMetricas } from "../features/historial/components/HistorialMetricas";
 import { TareaCardIncumplida } from "../features/historial/components/TareaCardIncumplida";
@@ -28,40 +21,35 @@ const getFechaRelativa = (diasAtras: number): string => {
 };
 
 export default function HistorialChecklistPage() {
-  // Regla de Nico: el tope máximo de auditoría histórica es siempre el día de ayer
+  // El backend solo permite consultar fechas anteriores al día de hoy, así que el
+  // tope máximo del filtro es siempre ayer.
   const fechaAyer = useMemo(() => getFechaRelativa(1), []);
   const fechaHace7Dias = useMemo(() => getFechaRelativa(7), []);
 
   const [fechaDesde, setFechaDesde] = useState(fechaHace7Dias);
   const [fechaHasta, setFechaHasta] = useState(fechaAyer);
 
+  // El rango que se consulta al backend. Se separa del borrador para no pedir
+  // datos en cada tipeo del filtro.
   const [rangoAplicado, setRangoAplicado] = useState({
     desde: fechaHace7Dias,
     hasta: fechaAyer,
   });
 
-  const tareasFiltradas = useMemo(() => {
-    return mockTareasHistorial.filter((t) => {
-      return (
-        t.fechaProgramada >= rangoAplicado.desde &&
-        t.fechaProgramada <= rangoAplicado.hasta
-      );
-    });
-  }, [rangoAplicado]);
+  const { ejecuciones, loading, error, reload } = useHistorial({
+    desde: rangoAplicado.desde,
+    hasta: rangoAplicado.hasta,
+  });
 
   const metricas: MetricasCumplimiento = useMemo(() => {
-    const total = tareasFiltradas.length;
-    const completadas = tareasFiltradas.filter((t) => t.estado === "completada").length;
-    const incumplidas = tareasFiltradas.filter((t) => t.estado === "incumplida").length;
-    const porcentaje = total > 0 ? Math.round((completadas / total) * 100) : 0;
+    const totalTareas = ejecuciones.length;
+    const completadas = ejecuciones.filter((e) => e.estado === "COMPLETADA").length;
+    const incumplidas = ejecuciones.filter((e) => e.estado === "NO_REALIZADA").length;
+    const porcentajeCumplimiento =
+      totalTareas > 0 ? Math.round((completadas / totalTareas) * 100) : 0;
 
-    return {
-      totalTareas: total,
-      completadas,
-      incumplidas,
-      porcentajeCumplimiento: porcentaje,
-    };
-  }, [tareasFiltradas]);
+    return { totalTareas, completadas, incumplidas, porcentajeCumplimiento };
+  }, [ejecuciones]);
 
   // Si intentan poner una fecha posterior a ayer, se fuerza el tope en ayer
   const handleCambiarFechaHasta = (nuevaHasta: string) => {
@@ -94,29 +82,8 @@ export default function HistorialChecklistPage() {
 
   return (
     <Box bg="gray.50" minH="100vh">
-      {/* Barra superior institucional SAIA-4 - Vista Administrador */}
-      <Box bg="green.600" px={{ base: 4, md: 8 }} py={3} color="white" boxShadow="sm">
-        <Container maxW="container.lg" px={0}>
-          <HStack justify="space-between" align="center">
-            <HStack gap={2.5}>
-              <FiShield size={22} strokeWidth={2.5} />
-              <Text fontSize="lg" fontWeight="bold" letterSpacing="wide">
-                SAIA-4
-              </Text>
-            </HStack>
-            <HStack gap={2}>
-              <Badge colorPalette="green" bg="green.700" color="white" px={2} py={0.5} fontSize="2xs">
-                VISTA ADMINISTRADOR
-              </Badge>
-              <Text fontSize="xs" opacity={0.85} fontWeight="medium">
-                Auditoría y POES
-              </Text>
-            </HStack>
-          </HStack>
-        </Container>
-      </Box>
-
-      {/* Contenido principal */}
+      {/* Contenido principal. Esta vista solo se alcanza desde el NavBar, que ya
+          aporta la marca institucional, por eso no lleva barra propia. */}
       <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
         <Container maxW="container.lg" px={0}>
           {/* Título de la sección */}
@@ -142,48 +109,40 @@ export default function HistorialChecklistPage() {
             onAplicarFiltro={handleAplicarFiltro}
             onResetFiltro={handleResetFiltro}
             onSeleccionarRapido={handleSeleccionarRapido}
-            />
+          />
 
           {/* Tarjeta de Métricas y Cumplimiento % (CA2) */}
           <HistorialMetricas metricas={metricas} />
 
           {/* Listado de Tareas Históricas (CA3 y CA4) */}
-          {tareasFiltradas.length === 0 ? (
+          {loading && <LoadingState message="Cargando historial..." />}
+
+          {!loading && error && (
+            <>
+              <AlertMessage type="error" message={error} />
+              <Center mt={4}>
+                <Button onClick={reload}>Reintentar</Button>
+              </Center>
+            </>
+          )}
+
+          {!loading && !error && ejecuciones.length === 0 && (
             <Center py={16} flexDirection="column" color="gray.400" bg="white" borderRadius="xl" border="1px dashed" borderColor="gray.300">
               <FiInbox size={44} />
-              <Text mt={3} fontSize="sm" fontWeight="medium">
+              <Text mt={3} fontSize="sm" fontWeight="medium" textAlign="center">
                 No se encontraron checklists registrados en el período seleccionado.
               </Text>
             </Center>
-          ) : (
+          )}
+
+          {!loading && !error && ejecuciones.length > 0 && (
             <VStack align="stretch" gap={3} w="100%">
-              {tareasFiltradas.map((tarea: TareaHistorialItem) =>
-                tarea.estado === "completada" ? (
-                  <TareaCardCompletadaHistorial
-                    key={tarea.id}
-                    tarea={{
-                      ...tarea,
-                      estado: "completada",
-                      tipo: tarea.tipo,
-                      quimicosSugeridos: [],
-                      elementosLimpieza: tarea.elementosLimpieza || [],
-                      procedimiento: tarea.procedimiento || [],
-                      auditoria: tarea.auditoria
-                        ? {
-                            realizadoPor: tarea.auditoria.realizadoPor || "Operario",
-                            hora: tarea.auditoria.hora || "--:--",
-                            fecha: tarea.auditoria.fecha,
-                            consumoRegistrado: tarea.auditoria.consumoRegistrado || [],
-                            observacion: tarea.auditoria.observacion,
-                            fotoNombre: tarea.auditoria.fotoNombre,
-                            fotoUrl: tarea.auditoria.fotoUrl,
-                          }
-                        : undefined,
-                    } as any}
-                  />
+              {ejecuciones.map((ejecucion) =>
+                ejecucion.estado === "COMPLETADA" ? (
+                  <TareaCardCompletadaHistorial key={ejecucion.id} ejecucion={ejecucion} />
                 ) : (
-                  <TareaCardIncumplida key={tarea.id} tarea={tarea} />
-                )
+                  <TareaCardIncumplida key={ejecucion.id} ejecucion={ejecucion} />
+                ),
               )}
             </VStack>
           )}

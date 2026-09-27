@@ -17,14 +17,26 @@ import {
   FiChevronUp,
   FiCalendar,
 } from "react-icons/fi";
-import type { TareaHistorialItem } from "../types";
+import type { EjecucionTarea } from "../../checklists/types";
+import {
+  etiquetaTipoPoe,
+  formatearFecha,
+  obtenerDestino,
+  obtenerPasosPoes,
+} from "../../checklists/utils";
 
 interface TareaCardIncumplidaProps {
-  tarea: TareaHistorialItem;
+  ejecucion: EjecucionTarea;
 }
 
-export function TareaCardIncumplida({ tarea }: TareaCardIncumplidaProps) {
+export function TareaCardIncumplida({ ejecucion }: TareaCardIncumplidaProps) {
   const [guiaAbierta, setGuiaAbierta] = useState(false);
+
+  const { tarea } = ejecucion;
+  const pasosPoes = obtenerPasosPoes(tarea.metodo);
+  const elementos = tarea.elementos_limpieza.map(
+    (e) => `${e.cantidad_requerida} ${e.elemento_limpieza.nombre}`,
+  );
 
   return (
     <Box
@@ -45,18 +57,18 @@ export function TareaCardIncumplida({ tarea }: TareaCardIncumplidaProps) {
             <HStack gap={1}>
               <FiXCircle size={12} />
               <Text textTransform="uppercase" fontWeight="bold">
-                NO COMPLETADA
+                NO REALIZADA
               </Text>
             </HStack>
           </Badge>
           <Text color="gray.400" fontSize="xs">|</Text>
-          <Badge colorPalette="gray" variant="outline" px={2} py={0.5} borderRadius="md" textTransform="uppercase" fontSize="2xs">
-            {tarea.tipo}
+          <Badge colorPalette="gray" variant="outline" px={2} py={0.5} borderRadius="md" fontSize="2xs">
+            {etiquetaTipoPoe(tarea.tipo_poes)}
           </Badge>
         </HStack>
         <HStack color="red.700" fontSize="2xs" fontWeight="semibold">
           <FiCalendar size={12} />
-          <Text>Fecha de ejecución: {tarea.fechaProgramada}</Text>
+          <Text>Fecha programada: {formatearFecha(ejecucion.fecha_programada)}</Text>
         </HStack>
       </Flex>
 
@@ -70,20 +82,20 @@ export function TareaCardIncumplida({ tarea }: TareaCardIncumplidaProps) {
         <VStack align="stretch" gap={2} fontSize="xs">
           <HStack color="gray.700" gap={1.5} align="flex-start">
             <Box pt="2px"><FiMapPin size={13} color="#718096" /></Box>
-            <Text>Destino: <strong>{tarea.destino}</strong></Text>
+            <Text>Destino: <strong>{obtenerDestino(tarea)}</strong></Text>
           </HStack>
 
-          {tarea.elementosLimpieza && tarea.elementosLimpieza.length > 0 && (
+          {elementos.length > 0 && (
             <HStack color="gray.700" gap={1.5} align="flex-start">
               <Box pt="2px"><FiTool size={13} color="#718096" /></Box>
               <Text>
-                Elementos requeridos: <strong>{tarea.elementosLimpieza.join(", ")}</strong>
+                Elementos requeridos: <strong>{elementos.join(", ")}</strong>
               </Text>
             </HStack>
           )}
 
           {/* Guía POES paso a paso */}
-          {tarea.procedimiento && tarea.procedimiento.length > 0 && (
+          {pasosPoes.length > 0 && (
             <Box pt={1}>
               <Button
                 variant="ghost"
@@ -104,7 +116,7 @@ export function TareaCardIncumplida({ tarea }: TareaCardIncumplidaProps) {
                 <Collapsible.Content>
                   <Box mt={2} pl={3} borderLeft="2px solid" borderColor="blue.200" bg="blue.50" p={2} borderRadius="md">
                     <VStack align="stretch" gap={1} fontSize="2xs" color="gray.700">
-                      {tarea.procedimiento.map((paso, idx) => (
+                      {pasosPoes.map((paso, idx) => (
                         <Text key={idx}>{idx + 1}. {paso}</Text>
                       ))}
                     </VStack>
@@ -117,7 +129,7 @@ export function TareaCardIncumplida({ tarea }: TareaCardIncumplidaProps) {
       </Box>
 
       <Text fontSize="2xs" color="red.600" fontStyle="italic">
-        * Tarea finalizada automáticamente por el sistema al final de la jornada al no registrarse su ejecución.
+        * Tarea marcada automáticamente como no realizada al vencer su fecha programada sin ejecución registrada.
       </Text>
     </Box>
   );

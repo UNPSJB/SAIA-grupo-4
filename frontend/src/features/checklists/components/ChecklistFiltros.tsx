@@ -1,15 +1,20 @@
 import { HStack, Button, Badge } from "@chakra-ui/react";
-import type { TipoMomento } from "../types";
+import type { TipoPoes } from "../types";
+
+export type FiltroChecklist = "todos" | TipoPoes;
 
 interface ChecklistFiltrosProps {
-  filtroActual: "todos" | TipoMomento;
-  onCambiarFiltro: (filtro: "todos" | TipoMomento) => void;
-  conteo: {
-    todos: number;
-    preOperacional: number;
-    operacional: number;
-  };
+  filtroActual: FiltroChecklist;
+  onCambiarFiltro: (filtro: FiltroChecklist) => void;
+  conteo: Record<FiltroChecklist, number>;
 }
+
+const FILTROS: Array<{ valor: FiltroChecklist; label: string }> = [
+  { valor: "todos", label: "Todos" },
+  { valor: "pre_operacional", label: "Pre-operacional" },
+  { valor: "operacional", label: "Operacional" },
+  { valor: "post_operacional", label: "Post-operacional" },
+];
 
 export function ChecklistFiltros({
   filtroActual,
@@ -18,47 +23,31 @@ export function ChecklistFiltros({
 }: ChecklistFiltrosProps) {
   return (
     <HStack gap={2} mb={6} overflowX="auto" pb={1}>
-      <Button
-        size="sm"
-        variant={filtroActual === "todos" ? "solid" : "outline"}
-        colorScheme={filtroActual === "todos" ? "green" : "gray"}
-        onClick={() => onCambiarFiltro("todos")}
-        borderRadius="full"
-        px={4}
-      >
-        Todos
-        <Badge ml={2} colorScheme={filtroActual === "todos" ? "whiteAlpha" : "gray"} borderRadius="full">
-          {conteo.todos}
-        </Badge>
-      </Button>
+      {FILTROS.map(({ valor, label }) => {
+        const activo = filtroActual === valor;
 
-      <Button
-        size="sm"
-        variant={filtroActual === "pre-operacional" ? "solid" : "outline"}
-        colorScheme={filtroActual === "pre-operacional" ? "green" : "gray"}
-        onClick={() => onCambiarFiltro("pre-operacional")}
-        borderRadius="full"
-        px={4}
-      >
-        Pre-operacional
-        <Badge ml={2} colorScheme={filtroActual === "pre-operacional" ? "whiteAlpha" : "gray"} borderRadius="full">
-          {conteo.preOperacional}
-        </Badge>
-      </Button>
-
-      <Button
-        size="sm"
-        variant={filtroActual === "operacional" ? "solid" : "outline"}
-        colorScheme={filtroActual === "operacional" ? "green" : "gray"}
-        onClick={() => onCambiarFiltro("operacional")}
-        borderRadius="full"
-        px={4}
-      >
-        Operacional
-        <Badge ml={2} colorScheme={filtroActual === "operacional" ? "whiteAlpha" : "gray"} borderRadius="full">
-          {conteo.operacional}
-        </Badge>
-      </Button>
+        return (
+          <Button
+            key={valor}
+            size="sm"
+            variant={activo ? "solid" : "outline"}
+            colorScheme={activo ? "green" : "gray"}
+            onClick={() => onCambiarFiltro(valor)}
+            borderRadius="full"
+            px={4}
+            whiteSpace="nowrap"
+          >
+            {label}
+            <Badge
+              ml={2}
+              colorScheme={activo ? "whiteAlpha" : "gray"}
+              borderRadius="full"
+            >
+              {conteo[valor]}
+            </Badge>
+          </Button>
+        );
+      })}
     </HStack>
   );
 }

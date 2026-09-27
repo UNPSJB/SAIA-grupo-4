@@ -1,41 +1,67 @@
 import { useState, useMemo } from "react";
-import { Box, Container, VStack, Text, Center, HStack } from "@chakra-ui/react";
-import { FiInbox, FiShield } from "react-icons/fi";
+import { Box, Button, Container, VStack, Text, Center, HStack, Icon } from "@chakra-ui/react";
+import { FiInbox, FiLogOut, FiShield } from "react-icons/fi";
 
-import type { TareaChecklist, TipoMomento } from "../features/checklists/types";
-import { mockOperario, mockTareasIniciales } from "../features/checklists/mockData";
+import { useAuth } from "../features/auth/useAuth";
+import { AlertConfirm, AlertMessage, LoadingState } from "../components/ui";
+import type { EjecucionTarea, RegistroConsumoQuimico } from "../features/checklists/types";
+import { useChecklistHoy } from "../features/checklists/hooks/useChecklistHoy";
+import { useCompletarTarea } from "../features/checklists/hooks/useCompletarTarea";
 import { ChecklistHeader } from "../features/checklists/components/ChecklistHeader";
-import { ChecklistFiltros } from "../features/checklists/components/ChecklistFiltros";
+import {
+  ChecklistFiltros,
+  type FiltroChecklist,
+} from "../features/checklists/components/ChecklistFiltros";
 import { TareaCardPendiente } from "../features/checklists/components/TareaCardPendiente";
 import { TareaCardCompletada } from "../features/checklists/components/TareaCardCompletada";
 import { EvidenciaModal } from "../features/checklists/EvidenciaModal";
 
-export default function ChecklistPage() {
-  const [tareas, setTareas] = useState<TareaChecklist[]>(mockTareasIniciales);
-  const [filtro, setFiltro] = useState<"todos" | TipoMomento>("todos");
+interface ChecklistPageProps {
+  // El operador entra sin NavBar, así que esta vista imprime su propia barra
+  // institucional. El admin ya tiene el NavBar y la barra sería un duplicado.
+  mostrarBarraInstitucional?: boolean;
+}
 
-  const [tareaSeleccionadaParaFoto, setTareaSeleccionadaParaFoto] = useState<TareaChecklist | null>(null);
-  const [fotosPorTarea, setFotosPorTarea] = useState<{ [id: number]: File | null }>({});
+export default function ChecklistPage({
+  mostrarBarraInstitucional = true,
+}: ChecklistPageProps) {
+  const { usuario, logout } = useAuth();
+  const { ejecuciones, loading, error, reload } = useChecklistHoy();
+  const { completarTarea, isSubmitting } = useCompletarTarea({
+    operadorId: usuario?.personaId ?? 0,
+  });
+
+  const [filtro, setFiltro] = useState<FiltroChecklist>("todos");
+  const [mensaje, setMensaje] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
+  const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
+
+  const [tareaSeleccionadaParaFoto, setTareaSeleccionadaParaFoto] = useState<EjecucionTarea | null>(null);
+  const [fotosPorTarea, setFotosPorTarea] = useState<Record<number, File | null>>({});
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
 
-  const totalTareas = tareas.length;
-  const completadas = tareas.filter((t) => t.estado === "completada").length;
+  const completadas = ejecuciones.filter((e) => e.estado === "COMPLETADA").length;
 
   const conteo = useMemo(() => {
+    const porTipo = (tipo: FiltroChecklist) =>
+      tipo === "todos"
+        ? ejecuciones.length
+        : ejecuciones.filter((e) => e.tarea.tipo_poes === tipo).length;
+
     return {
-      todos: tareas.length,
-      preOperacional: tareas.filter((t) => t.tipo === "pre-operacional").length,
-      operacional: tareas.filter((t) => t.tipo === "operacional").length,
+      todos: porTipo("todos"),
+      pre_operacional: porTipo("pre_operacional"),
+      operacional: porTipo("operacional"),
+      post_operacional: porTipo("post_operacional"),
     };
-  }, [tareas]);
+  }, [ejecuciones]);
 
-  const tareasFiltradas = useMemo(() => {
-    if (filtro === "todos") return tareas;
-    return tareas.filter((t) => t.tipo === filtro);
-  }, [tareas, filtro]);
+  const ejecucionesFiltradas = useMemo(() => {
+    if (filtro === "todos") return ejecuciones;
+    return ejecuciones.filter((e) => e.tarea.tipo_poes === filtro);
+  }, [ejecuciones, filtro]);
 
-  const handleAbrirModalFoto = (tarea: TareaChecklist) => {
-    setTareaSeleccionadaParaFoto(tarea);
+  const handleAbrirModalFoto = (ejecucion: EjecucionTarea) => {
+    setTareaSeleccionadaParaFoto(ejecucion);
     setModalFotoAbierto(true);
   };
 
@@ -49,31 +75,29 @@ export default function ChecklistPage() {
     setModalFotoAbierto(false);
   };
 
- const handleCompletarTarea = (tareaId: number, consumos: string[], observacion?: string) => {
-    const ahora = new Date();
-    const horaStr = ahora.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " hs";
-    const fechaStr = ahora.toLocaleDateString("es-AR");
-    const fotoAdjunta = fotosPorTarea[tareaId];
+  const handleCompletarEjecucion = async (
+    ejecucionId: number,
+    consumos: RegistroConsumoQuimico[],
+    observacion: string,
+  ) => {
+    setMensaje(null);
 
-    setTareas((prev) =>
-      prev.map((t) => {
-        if (t.id !== tareaId) return t;
-
-        return {
-          ...t,
-          estado: "completada",
-          auditoria: {
-            realizadoPor: mockOperario.nombre,
-            hora: horaStr,
-            fecha: fechaStr,
-            consumoRegistrado: consumos.length > 0 ? consumos : ["Sin consumo químico registrado"],
-            fotoNombre: fotoAdjunta ? fotoAdjunta.name : undefined,
-            fotoUrl: fotoAdjunta ? URL.createObjectURL(fotoAdjunta) : undefined,
-            observacion: observacion || "Sin observaciones",
-          },
-        };
-      })
+    const res = await completarTarea(
+      ejecucionId,
+      consumos,
+      observacion,
+      fotosPorTarea[ejecucionId] ?? null,
     );
+
+    if (res.status === "error") {
+      setMensaje({ tipo: "error", texto: res.message });
+      return;
+    }
+
+    setMensaje({ tipo: "success", texto: "Tarea registrada exitosamente." });
+    // El backend genera ejecuciones faltantes y cierra vencidas en cada GET, así
+    // que se recarga para quedar sincronizados con el servidor.
+    reload();
   };
 
   const fechaHoyStr = new Date().toLocaleDateString("es-AR", {
@@ -86,68 +110,108 @@ export default function ChecklistPage() {
   return (
     <Box bg="gray.50" minH="100vh">
       {/* Barra superior institucional SAIA-4 */}
-      <Box bg="green.600" px={{ base: 4, md: 8 }} py={3} color="white" boxShadow="sm">
-        <Container maxW="container.lg" px={0}>
-          <HStack justify="space-between" align="center">
-            <HStack gap={2.5}>
-              <FiShield size={22} strokeWidth={2.5} />
-              <Text fontSize="lg" fontWeight="bold" letterSpacing="wide">
-                SAIA-4
-              </Text>
+      {mostrarBarraInstitucional && (
+        <Box bg="green.600" px={{ base: 4, md: 8 }} py={3} color="white" boxShadow="sm">
+          <Container maxW="container.lg" px={0}>
+            <HStack justify="space-between" align="center">
+              <HStack gap={2.5}>
+                <FiShield size={22} strokeWidth={2.5} />
+                <Text fontSize="lg" fontWeight="bold" letterSpacing="wide">
+                  SAIA-4
+                </Text>
+              </HStack>
+              <Button
+                variant="ghost"
+                color="white"
+                size="sm"
+                onClick={() => setCerrarSesionAbierto(true)}
+                _hover={{ bg: "whiteAlpha.200" }}
+              >
+                <Icon as={FiLogOut} />
+                Cerrar sesión
+              </Button>
             </HStack>
-            <Text fontSize="xs" opacity={0.85} fontWeight="medium">
-              Módulo Operario
-            </Text>
-          </HStack>
-        </Container>
-      </Box>
+          </Container>
+        </Box>
+      )}
 
       {/* contenido principal */}
       <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
         <Container maxW="container.lg" px={0}>
           <ChecklistHeader
-            operario={mockOperario}
+            nombreOperario={usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : ""}
+            capacidades={usuario?.capacidades.map((c) => c.nombre) ?? []}
             fechaStr={fechaHoyStr}
-            totalTareas={totalTareas}
+            totalTareas={ejecuciones.length}
             completadas={completadas}
           />
 
-          <ChecklistFiltros
-            filtroActual={filtro}
-            onCambiarFiltro={setFiltro}
-            conteo={conteo}
-          />
+          {mensaje && (
+            <AlertMessage
+              type={mensaje.tipo}
+              message={mensaje.texto}
+            />
+          )}
 
-          {tareasFiltradas.length === 0 ? (
-            <Center py={16} flexDirection="column" color="gray.400">
-              <FiInbox size={48} />
-              <Text mt={3} fontSize="md" fontWeight="medium">
-                No hay tareas en esta categoría para el día de hoy.
-              </Text>
-            </Center>
-          ) : (
-            <VStack align="stretch" gap={3} w="100%">
-              {tareasFiltradas.map((tarea) =>
-                tarea.estado === "completada" ? (
-                  <TareaCardCompletada key={tarea.id} tarea={tarea} />
-                ) : (
-                  <TareaCardPendiente
-                    key={tarea.id}
-                    tarea={tarea}
-                    onAbrirModalFoto={handleAbrirModalFoto}
-                    onCompletarTarea={handleCompletarTarea}
-                    fotoSeleccionada={fotosPorTarea[tarea.id]}
-                  />
-                )
+          {loading && <LoadingState message="Cargando checklist del día..." />}
+
+          {!loading && error && (
+            <AlertMessage type="error" message={error} />
+          )}
+
+          {!loading && !error && (
+            <>
+              <ChecklistFiltros
+                filtroActual={filtro}
+                onCambiarFiltro={setFiltro}
+                conteo={conteo}
+              />
+
+              {ejecucionesFiltradas.length === 0 ? (
+                <Center py={16} flexDirection="column" color="gray.400">
+                  <FiInbox size={48} />
+                  <Text mt={3} fontSize="md" fontWeight="medium" textAlign="center">
+                    No hay tareas en esta categoría para el día de hoy.
+                  </Text>
+                </Center>
+              ) : (
+                <VStack align="stretch" gap={3} w="100%">
+                  {ejecucionesFiltradas.map((ejecucion) =>
+                    ejecucion.estado === "COMPLETADA" ? (
+                      <TareaCardCompletada key={ejecucion.id} ejecucion={ejecucion} />
+                    ) : (
+                      <TareaCardPendiente
+                        key={ejecucion.id}
+                        ejecucion={ejecucion}
+                        onAbrirModalFoto={handleAbrirModalFoto}
+                        onCompletarEjecucion={handleCompletarEjecucion}
+                        fotoSeleccionada={fotosPorTarea[ejecucion.id]}
+                        isSubmitting={isSubmitting}
+                      />
+                    ),
+                  )}
+                </VStack>
               )}
-            </VStack>
+            </>
           )}
 
           <EvidenciaModal
             open={modalFotoAbierto}
-            tareaNombre={tareaSeleccionadaParaFoto?.nombre || "Tarea"}
+            tareaNombre={tareaSeleccionadaParaFoto?.tarea.nombre || "Tarea"}
+            loading={isSubmitting}
             onConfirm={handleConfirmarFoto}
             onCancel={() => setModalFotoAbierto(false)}
+          />
+
+          <AlertConfirm
+            open={cerrarSesionAbierto}
+            title='Cerrar sesión'
+            message='¿Estás seguro de que querés cerrar tu sesión?'
+            onConfirm={() => {
+              setCerrarSesionAbierto(false);
+              logout();
+            }}
+            onCancel={() => setCerrarSesionAbierto(false)}
           />
         </Container>
       </Box>

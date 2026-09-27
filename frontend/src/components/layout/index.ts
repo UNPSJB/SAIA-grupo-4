@@ -1,4 +1,4 @@
-export { NavBar } from "./NavBar";
+export { NavBar, type NavItem } from "./NavBar";
 export { FormHeader } from "./FormHeader";
 export { FormContainer } from "./FormContainer";
 export { FormModal } from "./FormModal";
