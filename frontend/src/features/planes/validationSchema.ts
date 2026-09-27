@@ -16,10 +16,13 @@ export const tareaSchema = z
     momento: z.enum(["pre-operacional", "operacional", "post-operacional"]),
     periodicidad: z.enum(["diaria", "semanal", "mensual", "dias-especificos"]),
     dias: z.array(z.string()).default([]),
-    dia_mes: z.coerce
+    dia_mes: z
       .string()
-      .regex(/^\d+$/, "Solo números")
-      .transform((val) => Number(val)),
+      .optional()
+      .transform((val) => {
+        const parsed = parseInt(val || "", 10);
+        return isNaN(parsed) ? undefined : parsed;
+      }),
     pasos: z
       .string()
       .trim()

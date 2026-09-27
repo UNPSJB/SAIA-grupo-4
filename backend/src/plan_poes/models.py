@@ -49,6 +49,8 @@ class TareaPOES(ModeloBase):
         back_populates="tarea",
         cascade="all, delete-orphan"
     )
+    
+    ejecuciones: Mapped[list["EjecucionTarea"]] = relationship("EjecucionTarea", back_populates="tarea")
   
 class TareaInsumoQuimico(ModeloBase):
     __tablename__ = "tareas_insumos_quimicos"

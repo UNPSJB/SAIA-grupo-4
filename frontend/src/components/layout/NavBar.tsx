@@ -26,6 +26,7 @@ import {
   FiUser,
   FiMap,
   FiDroplet,
+  FiCheckSquare,
 } from "react-icons/fi";
 
 interface LinkNavItem {
@@ -46,6 +47,8 @@ interface NavBarProps {
   title?: string;
   brandIcon?: ElementType;
   items?: NavItem[];
+  checklistItems?: NavItem[];
+  checklistColapsable?: boolean;
   version?: string;
   username?: string;
   onLogout?: () => void;
@@ -93,6 +96,57 @@ const NavTooltip = ({
     </Tooltip.Positioner>
   </Tooltip.Root>
 );
+
+const SingleNavLink = ({
+  item,
+  isCollapsed,
+  pathname,
+  isSubItem = false,
+}: {
+  item: LinkNavItem;
+  isCollapsed: boolean;
+  pathname: string;
+  isSubItem?: boolean;
+}) => {
+  const active = isActiveRoute(pathname, item.to);
+  const navButton = (
+    <Button
+      asChild
+      w='100%'
+      justifyContent={isCollapsed ? "center" : "flex-start"}
+      px={isCollapsed ? 0 : undefined}
+      variant='ghost'
+      bg={active ? "white" : undefined}
+      color={active ? "green.700" : "white"}
+      borderLeft={!isSubItem ? "4px solid" : undefined}
+      borderLeftColor={!isSubItem ? (active ? "green.400" : "transparent") : undefined}
+      focusRing='outside'
+      _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
+      transition='background 0.15s ease, color 0.15s ease'
+    >
+      <NavLink
+        to={item.to}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          width: "100%",
+        }}
+      >
+        <Icon as={item.icon} flexShrink={0} />
+        {!isCollapsed && item.label}
+      </NavLink>
+    </Button>
+  );
+
+  return isCollapsed && !isSubItem ? (
+    <NavTooltip label={item.label}>{navButton}</NavTooltip>
+  ) : isCollapsed && isSubItem ? (
+    <NavTooltip label={item.label}>{navButton}</NavTooltip>
+  ) : (
+    navButton
+  );
+};
 
 interface NavSectionProps {
   label: string;
@@ -200,92 +254,29 @@ const NavSection = ({
 
                   <Collapsible.Content>
                     <VStack align='stretch' gap={1} pl={isCollapsed ? 0 : 4}>
-                      {item.children.map((child) => {
-                        const childActive = isActiveRoute(pathname, child.to);
-                        const childButton = (
-                          <Button
-                            asChild
-                            w='100%'
-                            justifyContent={
-                              isCollapsed ? "center" : "flex-start"
-                            }
-                            variant='ghost'
-                            bg={childActive ? "white" : undefined}
-                            color={childActive ? "green.700" : "white"}
-                            focusRing='outside'
-                            _hover={
-                              childActive
-                                ? { bg: "green.50" }
-                                : { bg: "whiteAlpha.200" }
-                            }
-                            transition='background 0.15s ease, color 0.15s ease'
-                          >
-                            <NavLink
-                              to={child.to}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                width: "100%",
-                              }}
-                            >
-                              <Icon as={child.icon} flexShrink={0} />
-                              {!isCollapsed && child.label}
-                            </NavLink>
-                          </Button>
-                        );
-
-                        return isCollapsed ? (
-                          <NavTooltip key={child.to} label={child.label}>
-                            {childButton}
-                          </NavTooltip>
-                        ) : (
-                          <Fragment key={child.to}>{childButton}</Fragment>
-                        );
-                      })}
+                      {item.children.map((child) => (
+                        <Fragment key={child.to}>
+                          <SingleNavLink
+                            item={child}
+                            isCollapsed={isCollapsed}
+                            pathname={pathname}
+                            isSubItem={true}
+                          />
+                        </Fragment>
+                      ))}
                     </VStack>
                   </Collapsible.Content>
                 </Collapsible.Root>
               );
             }
 
-            const active = isActiveRoute(pathname, item.to);
-            const navButton = (
-              <Button
-                asChild
-                w='100%'
-                justifyContent={isCollapsed ? "center" : "flex-start"}
-                px={isCollapsed ? 0 : undefined}
-                variant='ghost'
-                bg={active ? "white" : undefined}
-                color={active ? "green.700" : "white"}
-                borderLeft='4px solid'
-                borderLeftColor={active ? "green.400" : "transparent"}
-                focusRing='outside'
-                _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
-                transition='background 0.15s ease, color 0.15s ease'
-              >
-                <NavLink
-                  to={item.to}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    width: "100%",
-                  }}
-                >
-                  <Icon as={item.icon} flexShrink={0} />
-                  {!isCollapsed && item.label}
-                </NavLink>
-              </Button>
-            );
-
-            return isCollapsed ? (
-              <NavTooltip key={item.to} label={item.label}>
-                {navButton}
-              </NavTooltip>
-            ) : (
-              navButton
+            return (
+              <SingleNavLink
+                key={item.to}
+                item={item}
+                isCollapsed={isCollapsed}
+                pathname={pathname}
+              />
             );
           })}
         </VStack>
@@ -298,16 +289,22 @@ export const NavBar = ({
   title = "SAIA-4",
   brandIcon = FiShield,
   items = defaultItems,
+  checklistItems = [],
+  checklistColapsable = true,
   version = "v0.1.0",
   username = "Usuario",
   onLogout,
 }: NavBarProps) => {
+  const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
   const [planOpen, setPlanOpen] = useState(true);
+  const [checklistOpen, setChecklistOpen] = useState(true);
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const planAccordionOpen = isCollapsed ? true : planOpen;
+  const checklistAccordionOpen = isCollapsed ? true : checklistOpen;
+  
   const sidebarW = isCollapsed ? "64px" : "260px";
 
   const handleOpenChange = (open: boolean) => {
@@ -316,6 +313,10 @@ export const NavBar = ({
 
   const handlePlanOpenChange = (open: boolean) => {
     if (!isCollapsed) setPlanOpen(open);
+  };
+
+  const handleChecklistOpenChange = (open: boolean) => {
+    if (!isCollapsed) setChecklistOpen(open);
   };
 
   return (
@@ -421,6 +422,42 @@ export const NavBar = ({
         onCollapsedClick={() => setIsCollapsed(false)}
       />
 
+      {checklistItems.length > 0 && (
+        <>
+          {!isCollapsed && (
+            <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+              Checklists
+            </Text>
+          )}
+
+          {checklistColapsable ? (
+            <NavSection
+              label='Checklist'
+              icon={FiCheckSquare}
+              items={checklistItems}
+              isCollapsed={isCollapsed}
+              open={checklistAccordionOpen}
+              onOpenChange={handleChecklistOpenChange}
+              onCollapsedClick={() => setIsCollapsed(false)}
+            />
+          ) : (
+            <VStack align='stretch' gap={1}>
+              {checklistItems.map((item) => {
+                if ("children" in item) return null;
+                return (
+                  <SingleNavLink
+                    key={item.to}
+                    item={item}
+                    isCollapsed={isCollapsed}
+                    pathname={pathname}
+                  />
+                );
+              })}
+            </VStack>
+          )}
+        </>
+      )}
+
       <Box mt='auto' pt={3} borderTop='1px solid' borderColor='whiteAlpha.300'>
         <VStack align='stretch' gap={2}>
           <Flex
@@ -478,3 +515,5 @@ export const NavBar = ({
     </VStack>
   );
 };
+
+export type { NavItem };

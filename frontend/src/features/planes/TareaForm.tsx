@@ -376,71 +376,86 @@ export const TareaForm = ({
     badge: getOrigenRecurso(el),
   }));
 
-  const onSubmit = handleSubmit(async (values) => {
-    clearErrors("root");
-    const idsSeleccionados = values.insumos_quimicos ?? [];
-    const errores: Record<string, string> = {};
-    idsSeleccionados.forEach((id) => {
-      const texto = (consumos[String(id)] ?? "").trim();
-      const numero = Number(texto);
-      if (!texto || !Number.isFinite(numero) || numero <= 0) {
-        errores[String(id)] =
-          "El consumo es obligatorio y debe ser un número mayor a 0.";
-      }
-    });
-    if (Object.keys(errores).length > 0) {
-      setErroresConsumo(errores);
-      return;
-    }
-    setErroresConsumo({});
-
-    // La cantidad de cada elemento de limpieza es obligatoria y debe ser un
-    // entero mayor o igual a 1 (lo que espera el backend).
-    const erroresCant: Record<string, string> = {};
-    (values.elementos_limpieza ?? []).forEach((id) => {
-      const texto = (cantidades[String(id)] ?? "").trim();
-      const numero = Number(texto);
-      if (!texto || !Number.isInteger(numero) || numero < 1) {
-        erroresCant[String(id)] =
-          "La cantidad es obligatoria y debe ser un número entero mayor o igual a 1.";
-      }
-    });
-    if (Object.keys(erroresCant).length > 0) {
-      setErroresCantidad(erroresCant);
-      return;
-    }
-    setErroresCantidad({});
-
-    try {
-      const payload = armarPayload(values, {
-        consumos,
-        diluciones,
-        cantidades,
-      });
-      if (esModoCrear) {
-        if (!planId) {
-          setError("root", {
-            message: "No se pudo determinar el plan de la tarea.",
-          });
-          return;
+  const onSubmit = handleSubmit(
+    // Caso de ÉXITO (Zod aprobó todo)
+    async (values) => {
+      clearErrors("root");
+      
+      // Se validan los consumos
+      const idsSeleccionados = values.insumos_quimicos ?? [];
+      const errores: Record<string, string> = {};
+      idsSeleccionados.forEach((id) => {
+        const texto = (consumos[String(id)] ?? "").trim();
+        const numero = Number(texto);
+        if (!texto || !Number.isFinite(numero) || numero <= 0) {
+          errores[String(id)] =
+            "El consumo es obligatorio y debe ser un número mayor a 0.";
         }
-        const creada = await planesApi.crearTarea(planId, payload);
-        setSuccess(true);
-        onGuardado?.(creada);
-      } else if (tarea) {
-        const actualizada = await planesApi.modificarTarea(tarea.id, payload);
-        setSuccess(true);
-        onGuardado?.(actualizada);
+      });
+      if (Object.keys(errores).length > 0) {
+        setErroresConsumo(errores);
+        // Se avisa globalmente para que el usuario no se pierda
+        setError("root", { type: "manual", message: "Falta indicar el consumo en los insumos químicos seleccionados." });
+        return;
       }
-    } catch (e) {
+      setErroresConsumo({});
+
+      // Se validan las cantidades
+      const erroresCant: Record<string, string> = {};
+      (values.elementos_limpieza ?? []).forEach((id) => {
+        const texto = (cantidades[String(id)] ?? "1").trim();
+        const numero = Number(texto);
+        if (!texto || !Number.isInteger(numero) || numero < 1) {
+          erroresCant[String(id)] =
+            "La cantidad es obligatoria y debe ser un número entero mayor o igual a 1.";
+        }
+      });
+      if (Object.keys(erroresCant).length > 0) {
+        setErroresCantidad(erroresCant);
+        // Se avisa globalmente
+        setError("root", { type: "manual", message: "Falta indicar la cantidad en los elementos de limpieza seleccionados." });
+        return;
+      }
+      setErroresCantidad({});
+
+      try {
+        const payload = armarPayload(values, {
+          consumos,
+          diluciones,
+          cantidades,
+        });
+        if (esModoCrear) {
+          if (!planId) {
+            setError("root", {
+              message: "No se pudo determinar el plan de la tarea.",
+            });
+            return;
+          }
+          const creada = await planesApi.crearTarea(planId, payload);
+          setSuccess(true);
+          onGuardado?.(creada);
+        } else if (tarea) {
+          const actualizada = await planesApi.modificarTarea(tarea.id, payload);
+          setSuccess(true);
+          onGuardado?.(actualizada);
+        }
+      } catch (e) {
+        setError("root", {
+          message:
+            e instanceof Error
+              ? e.message
+              : "Ocurrió un error al guardar la tarea.",
+        });
+      }
+    },
+    (erroresZod) => {
+      console.log("Errores atrapados por Zod:", erroresZod);
       setError("root", {
-        message:
-          e instanceof Error
-            ? e.message
-            : "Ocurrió un error al guardar la tarea.",
+        type: "manual",
+        message: "Hay campos incompletos o incorrectos. Por favor, revisá las secciones marcadas en rojo más arriba.",
       });
     }
-  });
+  );
 
   return (
     <FormContainer modal={enModal}>
@@ -686,7 +701,9 @@ export const TareaForm = ({
                     value={insumosSeleccionados.map(String)}
                     onChange={(selected) => {
                       const ids = selected.map(Number);
-                      setValue("insumos_quimicos", ids);
+                      setValue("insumos_quimicos", ids, { shouldValidate: true });
+                      clearErrors("root");
+                      clearErrors("elementos_limpieza");
                       setConsumos((prev) => conservarSolo(prev, ids));
                       setDiluciones((prev) => conservarSolo(prev, ids));
                       setErroresConsumo({});
@@ -731,7 +748,7 @@ export const TareaForm = ({
                                 onChange={(e) =>
                                   actualizarConsumo(id, e.target.value)
                                 }
-                                placeholder='0'
+                                placeholder='Ej. 1'
                                 w='55px'
                                 size='xs'
                               />
@@ -774,8 +791,19 @@ export const TareaForm = ({
                     value={elementosSeleccionados.map(String)}
                     onChange={(selected) => {
                       const ids = selected.map(Number);
-                      setValue("elementos_limpieza", ids);
-                      setCantidades((prev) => conservarSolo(prev, ids));
+                      setValue("elementos_limpieza", ids, { shouldValidate: true });
+                      clearErrors("root");
+                      clearErrors("elementos_limpieza");
+                      setCantidades((prev) => {
+                        const nuevoEstado = conservarSolo(prev, ids);
+                        // A los elementos que recién se tildan, se les asigna "1" por defecto
+                        ids.forEach(id => {
+                          if (!nuevoEstado[String(id)]) {
+                            nuevoEstado[String(id)] = "1";
+                          }
+                        });
+                        return nuevoEstado;
+                      });
                       setErroresCantidad({});
                     }}
                     options={opcionesElementos}

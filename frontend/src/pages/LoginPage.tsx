@@ -64,7 +64,7 @@ export default function LoginPage() {
   const confirmarIngreso = () => {
     if (!personaVerificada) return;
     const usuario = login(personaVerificada);
-    navigate(esAdministrador(usuario) ? "/equipos" : "/operador", {
+    navigate(esAdministrador(usuario) ? "/plan-poes" : "/operador", {
       replace: true,
     });
   };
@@ -117,9 +117,7 @@ export default function LoginPage() {
               <FormHeader title='Verificar identidad' icon={FiUserCheck} />
 
               <VStack gap={4} align='stretch'>
-                <Text color='gray.500'>
-                  Se encontró la siguiente persona:
-                </Text>
+                <Text color='gray.500'>Se encontró la siguiente persona:</Text>
                 <Text fontWeight='bold' fontSize='lg'>
                   {personaVerificada.nombre} {personaVerificada.apellido}
                 </Text>
