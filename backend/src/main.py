@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from src.database import engine
 from src.models import ModeloBase
@@ -41,8 +43,15 @@ async def db_creation_lifespan(app: FastAPI):
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
 
+# Se expone la carpeta de evidencias de los checklists para que el frontend pueda
+# mostrar las fotos. La misma carpeta donde escribe src/checklists/services.py.
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 origins = [
     "http://localhost:5173", # para recibir requests desde app React (puerto: 5173)
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(

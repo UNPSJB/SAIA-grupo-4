@@ -2,6 +2,7 @@ import os
 import shutil
 from decimal import Decimal
 from datetime import date, datetime
+from pathlib import Path
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from fastapi import UploadFile
@@ -16,9 +17,16 @@ from src.checklists.constants import EstadoEjecucion
 from src.checklists import exceptions
 from src.checklists import schemas
 
-# carpeta local
-UPLOAD_DIR = "uploads/evidencias"
+# Carpeta local de evidencias. Se resuelve desde la raíz del proyecto (no desde el
+# CWD) para que el servidor escriba siempre en el mismo lugar, sin importar desde
+# dónde se levante uvicorn/fastapi dev.
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+UPLOAD_DIR = BASE_DIR / "uploads" / "evidencias"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Prefijo con el que se expone la carpeta en la app (ver src/main.py). Es lo que
+# se guarda en la columna foto_url, para no persistir rutas absolutas de la máquina.
+UPLOAD_URL_PREFIX = "uploads/evidencias"
 
 def _cerrar_tareas_vencidas(db: Session, fecha: date) -> None:
     """Pasa a NO_REALIZADA todas las tareas pendientes de días anteriores."""
@@ -120,17 +128,16 @@ def _registrar_consumo(db: Session, ejecucion_id: int, insumo_id: int, cantidad:
     )
     
 def _guardar_foto_local(ejecucion_id: int, foto: UploadFile) -> str:
-    """Guarda el archivo en el disco y devuelve la ruta."""
+    """Guarda el archivo en la carpeta de evidencias y devuelve la ruta relativa servida por la API."""
     # nombre unico con la fecha y hora
     hora_actual = datetime.now() 
     timestamp = hora_actual.strftime("%Y%m%d_%H%M%S")
     nombre_archivo = f"tarea_{ejecucion_id}_{timestamp}_{foto.filename}"
-    ruta_foto = os.path.join(UPLOAD_DIR, nombre_archivo)
-    
-    with open(ruta_foto, "wb") as buffer:
+
+    with open(UPLOAD_DIR / nombre_archivo, "wb") as buffer:
         shutil.copyfileobj(foto.file, buffer)
         
-    return ruta_foto
+    return f"{UPLOAD_URL_PREFIX}/{nombre_archivo}"
 
 
 def obtener_tareas_del_dia(db: Session, fecha: date = None) -> List[EjecucionTarea]:
