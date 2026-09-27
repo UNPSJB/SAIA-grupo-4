@@ -327,3 +327,5 @@ sketch
 backend/database.db
 *.db
 levantar-proyecto.bat
+
+uploads/
