@@ -111,15 +111,58 @@ def test_crear_plan_borrador_exitoso(datos_base):
     data = response.json()
     assert data["nombre"] == payload["nombre"]
     assert data["activo"] is False
-    assert data["fecha_emision"] is None
+    assert data["fecha_emision"] is not None
 
-def test_crear_segundo_borrador_falla_por_conflicto(datos_base):
-    payload = {"nombre": "Plan 1", "elaborado_por_id": datos_base["persona_id"]}
-    client.post("/planes-poes/", json=payload)
+def test_permitir_multiples_borradores(datos_base):
+    # Primer borrador
+    payload1 = {"nombre": "Plan 1", "elaborado_por_id": datos_base["persona_id"]}
+    res1 = client.post("/planes-poes/", json=payload1)
+    assert res1.status_code == 201
     
-    response = client.post("/planes-poes/", json={"nombre": "Plan 2", "elaborado_por_id": datos_base["persona_id"]})
-    assert response.status_code == 409
-    assert response.json()["detail"] == ErrorCode.BORRADOR_YA_EXISTENTE
+    # Segundo borrador (ahora DEBE pasar y no tirar 409)
+    payload2 = {"nombre": "Plan 2", "elaborado_por_id": datos_base["persona_id"]}
+    res2 = client.post("/planes-poes/", json=payload2)
+    assert res2.status_code == 201
+    
+def test_retomar_borrador_viejo(datos_base):
+    # Se crea un borrador (quedará "viejo" en la línea de tiempo)
+    res_viejo = client.post("/planes-poes/", json={"nombre": "Borrador Viejo", "elaborado_por_id": datos_base["persona_id"]})
+    plan_viejo_id = res_viejo.json()["id"]
+    
+    # SE crea un segundo borrador (este pasa a ser el principal automáticamente)
+    client.post("/planes-poes/", json={"nombre": "Borrador Nuevo", "elaborado_por_id": datos_base["persona_id"]})
+    
+    # Se retoma el borrador viejo
+    res_retomar = client.post(f"/planes-poes/{plan_viejo_id}/retomar")
+    assert res_retomar.status_code == 200
+    
+    # Se verifica que el endpoint general de borrador ahora traiga el que retomamos
+    res_borrador_actual = client.get("/planes-poes/borrador")
+    assert res_borrador_actual.json()["id"] == plan_viejo_id
+
+
+def test_clonar_plan_activo_directamente(datos_base):
+    # Se crea y activa un plan
+    res_plan = client.post("/planes-poes/", json={"nombre": "Plan Producción", "elaborado_por_id": datos_base["persona_id"]})
+    plan_id = res_plan.json()["id"]
+    
+    client.post(f"/planes-poes/{plan_id}/tareas", json={
+        "nombre": "Limpieza", "tipo_poes": "operacional", "frecuencia": "diaria",
+        "sector_id": datos_base["sector_id"], "metodo": "Fregar",
+        "elementos_limpieza": [{"elemento_limpieza_id": datos_base["elemento_id"]}]
+    })
+    
+    client.post(f"/planes-poes/{plan_id}/activar")
+    
+    # Se clona el plan MIENTRAS está activo
+    res_clon = client.post(f"/planes-poes/{plan_id}/clonar?elaborado_por_id={datos_base['persona_id']}")
+    assert res_clon.status_code == 201
+    
+    clon_data = res_clon.json()
+    assert clon_data["id"] != plan_id
+    assert clon_data["nombre"] == "Plan Producción"
+    assert clon_data["activo"] is False
+    assert clon_data["fecha_emision"] is not None
 
 def test_activar_plan_sin_tareas_falla(datos_base):
     res_plan = client.post("/planes-poes/", json={"nombre": "Plan Vacío", "elaborado_por_id": datos_base["persona_id"]})

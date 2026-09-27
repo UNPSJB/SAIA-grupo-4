@@ -126,10 +126,11 @@ def obtener_plan_activo(db: Session) -> Optional[PlanPOES]:
 
 def obtener_plan_borrador(db: Session) -> Optional[PlanPOES]:
     """Retorna el plan en preparación (activo = False, fecha_hasta = None)."""
-    return db.scalar(select(PlanPOES).where(
-        PlanPOES.activo == False, 
-        PlanPOES.fecha_hasta.is_(None)
-    ))
+    return db.scalar(
+        select(PlanPOES)
+        .where(PlanPOES.activo == False, PlanPOES.fecha_hasta.is_(None))
+        .order_by(PlanPOES.fecha_emision.desc())
+    )
     
 def obtener_plan_por_id(db: Session, plan_id: int) -> PlanPOES:
     """Retorna un plan específico o lanza 404."""
@@ -140,21 +141,18 @@ def obtener_plan_por_id(db: Session, plan_id: int) -> PlanPOES:
 
 def listar_planes(db: Session) -> List[PlanPOES]:
     """Lista todos los planes ordenados del más reciente al más antiguo."""
-    # Ordenamos por ID descendente ya que el borrador no tiene fecha_emision
-    return list(db.scalars(select(PlanPOES).order_by(PlanPOES.id.desc())).all())
+    return list(db.scalars(select(PlanPOES).order_by(PlanPOES.fecha_emision.desc())).all())
 
 def crear_plan_borrador(db: Session, plan: schemas.PlanPOESCreate) -> PlanPOES:
-    """Crea un nuevo borrador. Solo puede haber uno a la vez."""
-    if obtener_plan_borrador(db):
-        raise exceptions.BorradorYaExistente()
-
+    """Crea un nuevo borrador. Pasa a ser el principal automáticamente."""
+    
     _validar_autor(db, plan.elaborado_por_id)
 
     nuevo_plan = PlanPOES(
         nombre=plan.nombre,
         objetivo=plan.objetivo,
         elaborado_por_id=plan.elaborado_por_id,
-        fecha_emision=None,  # El borrador nace sin fecha de emisión
+        fecha_emision=datetime.now(),
         activo=False         # El borrador nace inactivo
     )
     
@@ -255,21 +253,14 @@ def archivar_plan(db: Session, plan_id: int) -> PlanPOES:
     
     return plan_activo
 
-def clonar_plan_historico(db: Session, plan_id: int, elaborado_por_id: int) -> PlanPOES:
-    """Copia la estructura de un plan archivado y genera un nuevo borrador."""
-    plan_historico = obtener_plan_por_id(db, plan_id)
-    
-    es_historico = (plan_historico.activo == False and plan_historico.fecha_hasta is not None)
-    if not es_historico:
-         raise exceptions.PlanNoArchivado()
-         
-    if obtener_plan_borrador(db):
-        raise exceptions.BorradorYaExistente()
+def clonar_plan_existente(db: Session, plan_id: int, elaborado_por_id: int) -> PlanPOES:
+    """Copia la estructura de un plan (Histórico o Vigente) y genera un nuevo borrador."""
+    plan_origen = obtener_plan_por_id(db, plan_id)
         
     _validar_autor(db, elaborado_por_id)
     
     # Se filtran las tareas activas y se valida que sus recursos sigan activos HOY
-    tareas_activas = [t for t in plan_historico.tareas if t.activo]
+    tareas_activas = [t for t in plan_origen.tareas if t.activo]
     for tarea in tareas_activas:
         _validar_recursos_activos(
             db=db,
@@ -281,10 +272,10 @@ def clonar_plan_historico(db: Session, plan_id: int, elaborado_por_id: int) -> P
     
     # Se crea el plan inyectándole las tareas copiadas directamente
     nuevo_borrador = PlanPOES(
-        nombre=plan_historico.nombre,
-        objetivo=plan_historico.objetivo,
+        nombre=plan_origen.nombre,
+        objetivo=plan_origen.objetivo,
         elaborado_por_id=elaborado_por_id,
-        fecha_emision=None,
+        fecha_emision=datetime.now(),   # Pasa a ser el borrador principal
         activo=False,
         tareas=[_clonar_tarea(t) for t in tareas_activas]
     )
@@ -299,6 +290,30 @@ def clonar_plan_historico(db: Session, plan_id: int, elaborado_por_id: int) -> P
         raise exceptions.Conflict(detail="Error al clonar el plan histórico.")
         
     return nuevo_borrador
+
+def retomar_borrador(db: Session, plan_id: int) -> PlanPOES:
+    """Actualiza la fecha de emisión de un borrador viejo para convertirlo en el principal de trabajo."""
+    plan_borrador = obtener_plan_por_id(db, plan_id)
+    
+    es_borrador = (plan_borrador.activo == False and plan_borrador.fecha_hasta is None)
+    if not es_borrador:
+        raise exceptions.PlanNoEsBorrador()
+
+    borrador_principal = obtener_plan_borrador(db)
+    if borrador_principal and borrador_principal.id == plan_id:
+        return plan_borrador
+    
+    # Pisamos la fecha vieja con la actual. Al hacer eso, pasa a ser el borrador que se va a mostrar al obtener borrador
+    plan_borrador.fecha_emision = datetime.now()
+    
+    try:
+        db.commit()
+        db.refresh(plan_borrador)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error al intentar retomar el borrador.")
+        
+    return plan_borrador
 
 
 # SERVICIOS DE TAREAS POES

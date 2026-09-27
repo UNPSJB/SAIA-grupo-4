@@ -19,7 +19,7 @@ def obtener_plan_activo(db: Session = Depends(get_db)):
 
 @router.get("/borrador", response_model=schemas.PlanPOES)
 def obtener_plan_borrador(db: Session = Depends(get_db)):
-    """Devuelve el plan que se encuentra en estado borrador (si existe)."""
+    """Devuelve el plan que se encuentra en estado borrador mas reciente (si existe)."""
     plan = services.obtener_plan_borrador(db)
     if not plan:
         raise exceptions.PlanPOESNoEncontrado()
@@ -57,6 +57,11 @@ def archivar_plan(plan_id: int, db: Session = Depends(get_db)):
     """Archiva el plan activo actual."""
     return services.archivar_plan(db, plan_id)
 
+@router.post("/{plan_id}/retomar", response_model=schemas.PlanPOES)
+def retomar_borrador(plan_id: int, db: Session = Depends(get_db)):
+    """Actualiza la fecha de emisión de un borrador viejo para convertirlo en el principal."""
+    return services.retomar_borrador(db, plan_id)
+
 @router.delete("/{plan_id}/descartar", status_code=204)
 def descartar_borrador(plan_id: int, db: Session = Depends(get_db)):
     """Elimina físicamente un plan en estado borrador."""
@@ -64,13 +69,13 @@ def descartar_borrador(plan_id: int, db: Session = Depends(get_db)):
     return None
 
 @router.post("/{plan_id}/clonar", response_model=schemas.PlanPOES, status_code=201)
-def clonar_plan_historico(
+def clonar_plan_existente(
     plan_id: int, 
     elaborado_por_id: int = Query(..., description="ID del usuario que elabora el nuevo borrador"),
     db: Session = Depends(get_db)
 ):
-    """Clona un plan histórico para generar un nuevo borrador."""
-    return services.clonar_plan_historico(db, plan_id, elaborado_por_id)
+    """Clona un plan (histórico o vigente) para generar un nuevo borrador."""
+    return services.clonar_plan_existente(db, plan_id, elaborado_por_id)
 
 
 # RUTAS DE TAREAS POES
