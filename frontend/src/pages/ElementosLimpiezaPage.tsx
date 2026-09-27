@@ -107,7 +107,7 @@ export default function ElementosLimpiezaPage() {
 
             <AlertDelete
                 open={eliminarAbierto}
-                name={elementoEliminar?.tipo?.nombre ?? null}
+                name={elementoEliminar?.nombre ?? null}
                 loading={loading}
                 error={error}
                 onConfirm={confirmarEliminar}
@@ -117,7 +117,7 @@ export default function ElementosLimpiezaPage() {
             <AlertConfirm
                 open={altaAbierto}
                 title="Dar de Alta"
-                message={`¿Estás seguro que querés dar de alta este elemento (${elementoAlta?.tipo?.nombre})?`}
+                message={`¿Estás seguro que querés dar de alta este elemento (${elementoAlta?.nombre})?`}
                 loading={reactivar.isSubmitting}
                 error={error}
                 onConfirm={confirmarAlta}

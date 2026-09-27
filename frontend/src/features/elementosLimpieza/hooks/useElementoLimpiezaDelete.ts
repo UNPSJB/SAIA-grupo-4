@@ -13,7 +13,7 @@ export const handleDelete = async ({ elemento, setLoading, setError, onSuccess }
   setError("");
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/elementos-limpieza/${elemento.id}`, {
+    const res = await fetch(`http://127.0.0.1:8000/elementos-limpieza/${elemento.id}/`, {
       method: "DELETE",
     });
 
@@ -21,7 +21,7 @@ export const handleDelete = async ({ elemento, setLoading, setError, onSuccess }
       let bodyRes: any = null;
       try { bodyRes = await res.json(); } catch {}
 
-      let mensajeError = "No se pudo eliminar el elemento.";
+      let mensajeError = "No se pudo dar de baja el elemento.";
       if (bodyRes?.detail) {
         if (typeof bodyRes.detail === "string") mensajeError = bodyRes.detail;
         else if (typeof bodyRes.detail.code === "string") mensajeError = bodyRes.detail.code;
