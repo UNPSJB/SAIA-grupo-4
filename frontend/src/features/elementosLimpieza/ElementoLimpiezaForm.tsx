@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HStack, VStack } from "@chakra-ui/react";
 import { FiTrash2, FiEdit2, FiSave, FiXCircle, FiEye, FiPlus } from "react-icons/fi";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useElementoLimpiezaSubmit, type ElementoLimpiezaPayload } from "./hooks/useElementoLimpiezaSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { elementoLimpiezaSchema, type ElementoLimpiezaFormInput, type ElementoLimpiezaFormValues } from "./validationSchema";
@@ -39,13 +39,25 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
             defaultValues,
         });
 
-    const { data: tiposIniciales, reload: reloadTipos } = useListadoData<TipoElementoLimpieza>({ endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/" });
-    const { data: sectores } = useListadoData<Sector>({ endpoint: "http://127.0.0.1:8000/sectores/" });
-    const { data: equipos } = useListadoData<Equipo>({ endpoint: "http://127.0.0.1:8000/equipos/" });
+    const { data: tiposIniciales, loading: loadingTipos, reload: reloadTipos } = useListadoData<TipoElementoLimpieza>({ endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/" });
+    const { data: sectores, loading: loadingSectores } = useListadoData<Sector>({ endpoint: "http://127.0.0.1:8000/sectores/" });
+    const { data: equipos, loading: loadingEquipos } = useListadoData<Equipo>({ endpoint: "http://127.0.0.1:8000/equipos/" });
 
     const tiposActivos = tiposIniciales.filter((t) => t.activo);
     const sectoresActivos = sectores.filter((s) => s.activo);
     const equiposActivos = equipos.filter((e) => e.activo);
+
+    // Una vez que terminan de cargar los 3 listados, resincronizamos el
+    // formulario para que el select "encuentre" la opción correcta
+    // (al montarse, las opciones todavía no existían y quedaba en el placeholder).
+    const yaInicializado = useRef(false);
+    useEffect(() => {
+        if (!yaInicializado.current && !loadingTipos && !loadingSectores && !loadingEquipos) {
+            reset(defaultValues);
+            yaInicializado.current = true;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadingTipos, loadingSectores, loadingEquipos]);
 
     const [success, setSuccess] = useState(false);
     const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
@@ -70,6 +82,9 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
             equipo_id: values.equipo_id === "" ? null : Number(values.equipo_id),
             frecuencia_recambio_dias: values.frecuencia_recambio_dias === "" ? null : Number(values.frecuencia_recambio_dias),
         };
+        if (!esModoCrear) {
+            delete (payload as Partial<ElementoLimpiezaPayload>).tipo_id;
+        }
         const res = await submit(payload);
         if (res.status === "error") setError("root", { message: res.message });
         else if (res.status === "success" && esModoCrear) reset();
@@ -96,10 +111,10 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
                             placeholder="Seleccioná un tipo"
                             options={tiposActivos.map((t) => ({ label: t.nombre, value: String(t.id) }))}
                             error={errors.tipo_id?.message}
-                            disabled={esModoVer}
+                            disabled={esModoVer || esModoModificar}
                             {...register("tipo_id")}
                         />
-                        {!esModoVer && (
+                        {esModoCrear && (
                             <RowActionButton
                                 icon={FiPlus}
                                 label="Crear tipo"
