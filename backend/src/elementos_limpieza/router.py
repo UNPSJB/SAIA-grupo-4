@@ -19,8 +19,11 @@ def leer_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
     return services.leer_elemento_limpieza(db, elemento_id)
 
 @router.get("/", response_model=list[schemas.ElementoLimpieza])
-def listar_elementos_limpieza(db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db)
+def listar_elementos_limpieza(
+    activo: bool | None = None,
+    db: Session = Depends(get_db)
+):
+    return services.listar_elementos_limpieza(db, activo=activo)
 
 @router.delete("/{elemento_id}", response_model=schemas.ElementoLimpieza)
 def eliminar_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):

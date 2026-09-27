@@ -76,22 +76,28 @@ def leer_elemento_limpieza(db: Session, elemento_id: int) -> schemas.ElementoLim
         raise exceptions.ElementoNoExiste()
     return db_elemento
 
+
 def listar_elementos_limpieza(
-    db: Session, 
-    sector_id: int | None = None, 
-    equipo_id: int | None = None
+    db: Session,
+    sector_id: int | None = None,
+    equipo_id: int | None = None,
+    activo: bool | None = None,
 ):
-    query = select(ElementoLimpieza).where(ElementoLimpieza.activo == True)
+    query = select(ElementoLimpieza)
+
+    if activo is not None:
+        query = query.where(ElementoLimpieza.activo == activo)
 
     if sector_id is not None:
         leer_sector(db, sector_id)
         query = query.where(ElementoLimpieza.sector_id == sector_id)
-        
+
     elif equipo_id is not None:
         leer_equipo(db, equipo_id)
         query = query.where(ElementoLimpieza.equipo_id == equipo_id)
 
     return db.scalars(query).all()
+
 
 def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate) -> schemas.ElementoLimpiezaUpdate:
     db_elemento = leer_elemento_limpieza(db, elemento_id)

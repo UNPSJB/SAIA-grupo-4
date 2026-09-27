@@ -1,13 +1,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
-import { FiTrash2, FiEdit2, FiSave, FiXCircle, FiEye } from "react-icons/fi";
-import { useState } from "react";
+import { HStack, VStack } from "@chakra-ui/react";
+import { FiTrash2, FiEdit2, FiSave, FiXCircle, FiEye, FiPlus } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
 import { useElementoLimpiezaSubmit, type ElementoLimpiezaPayload } from "./hooks/useElementoLimpiezaSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { elementoLimpiezaSchema, type ElementoLimpiezaFormInput, type ElementoLimpiezaFormValues } from "./validationSchema";
 import type { ElementoLimpieza, TipoElementoLimpieza, Sector, Equipo } from "./types";
-import { FormContainer, FormHeader, TextField, SelectField, FormActions, SubmitButton, CancelButton, AlertMessage } from "../../components/ui";
+import { FormContainer, FormHeader, TextField, SelectField, FormActions, SubmitButton, CancelButton, AlertMessage, FormModal, RowActionButton } from "../../components/ui";
+import { TipoElementoLimpiezaForm } from "./TipoElementoLimpiezaForm";
 
 type ElementoLimpiezaFormProps = {
     modo: "crear" | "modificar" | "ver";
@@ -25,7 +26,7 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
     const defaultValues: ElementoLimpiezaFormInput = esModoModificar || esModoVer
     ? {
         nombre: elemento!.nombre,
-        tipo_idpo_id: elemento!.tipo_id,
+        tipo_id: elemento!.tipo_id,
         sector_id: elemento!.sector_id ?? "",
         equipo_id: elemento!.equipo_id ?? "",
         frecuencia_recambio_dias: elemento!.frecuencia_recambio_dias ?? "",
@@ -38,15 +39,28 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
             defaultValues,
         });
 
-    const { data: tiposIniciales } = useListadoData<TipoElementoLimpieza>({ endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/" });
-    const { data: sectores } = useListadoData<Sector>({ endpoint: "http://127.0.0.1:8000/sectores/" });
-    const { data: equipos } = useListadoData<Equipo>({ endpoint: "http://127.0.0.1:8000/equipos/" });
+    const { data: tiposIniciales, loading: loadingTipos, reload: reloadTipos } = useListadoData<TipoElementoLimpieza>({ endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/" });
+    const { data: sectores, loading: loadingSectores } = useListadoData<Sector>({ endpoint: "http://127.0.0.1:8000/sectores/" });
+    const { data: equipos, loading: loadingEquipos } = useListadoData<Equipo>({ endpoint: "http://127.0.0.1:8000/equipos/" });
 
     const tiposActivos = tiposIniciales.filter((t) => t.activo);
     const sectoresActivos = sectores.filter((s) => s.activo);
     const equiposActivos = equipos.filter((e) => e.activo);
 
+    // Una vez que terminan de cargar los 3 listados, resincronizamos el
+    // formulario para que el select "encuentre" la opción correcta
+    // (al montarse, las opciones todavía no existían y quedaba en el placeholder).
+    const yaInicializado = useRef(false);
+    useEffect(() => {
+        if (!yaInicializado.current && !loadingTipos && !loadingSectores && !loadingEquipos) {
+            reset(defaultValues);
+            yaInicializado.current = true;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadingTipos, loadingSectores, loadingEquipos]);
+
     const [success, setSuccess] = useState(false);
+    const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
 
     const { submit } = useElementoLimpiezaSubmit({
         endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
@@ -68,6 +82,9 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
             equipo_id: values.equipo_id === "" ? null : Number(values.equipo_id),
             frecuencia_recambio_dias: values.frecuencia_recambio_dias === "" ? null : Number(values.frecuencia_recambio_dias),
         };
+        if (!esModoCrear) {
+            delete (payload as Partial<ElementoLimpiezaPayload>).tipo_id;
+        }
         const res = await submit(payload);
         if (res.status === "error") setError("root", { message: res.message });
         else if (res.status === "success" && esModoCrear) reset();
@@ -87,18 +104,28 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
                         error={errors.nombre?.message}
                         {...register("nombre")}
                     />
-                    <SelectField
-                        label="Tipo"
-                        placeholder="Seleccioná un tipo"
-                        options={tiposActivos.map((t) => ({ label: t.nombre, value: String(t.id) }))}
-                        error={errors.tipo_id?.message}
-                        disabled={esModoVer}
-                        {...register("tipo_id")}
-                    />
+
+                    <HStack width="100%" align="end" gap={2}>
+                        <SelectField
+                            label="Tipo"
+                            placeholder="Seleccioná un tipo"
+                            options={tiposActivos.map((t) => ({ label: t.nombre, value: String(t.id) }))}
+                            error={errors.tipo_id?.message}
+                            disabled={esModoVer || esModoModificar}
+                            {...register("tipo_id")}
+                        />
+                        {esModoCrear && (
+                            <RowActionButton
+                                icon={FiPlus}
+                                label="Crear tipo"
+                                colorPalette="green"
+                                onClick={() => setTipoModalAbierto(true)}
+                            />
+                        )}
+                    </HStack>
 
                     <SelectField
                         label="Sector (Opcional)"
-                        placeholder="Sin asignar"
                         options={[{ label: "Sin asignar", value: "" }, ...sectoresActivos.map((s) => ({ label: s.nombre, value: String(s.id) }))]}
                         disabled={esModoVer}
                         {...register("sector_id")}
@@ -106,7 +133,6 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
 
                     <SelectField
                         label="Equipo (Opcional)"
-                        placeholder="Sin asignar"
                         options={[{ label: "Sin asignar", value: "" }, ...equiposActivos.map((e) => ({ label: e.nombre, value: String(e.id) }))]}
                         disabled={esModoVer}
                         {...register("equipo_id")}
@@ -142,6 +168,19 @@ export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, e
                     {success && !esModoVer && <AlertMessage type="success" message={esModoCrear ? "Elemento creado exitosamente." : "Elemento modificado exitosamente."} />}
                 </VStack>
             </form>
+
+            {tipoModalAbierto && (
+                <FormModal open onClose={() => setTipoModalAbierto(false)}>
+                    <TipoElementoLimpiezaForm
+                        modo="crear"
+                        onCancelar={() => setTipoModalAbierto(false)}
+                        onGuardado={() => {
+                            setTipoModalAbierto(false);
+                            reloadTipos();
+                        }}
+                    />
+                </FormModal>
+            )}
         </FormContainer>
     );
 };

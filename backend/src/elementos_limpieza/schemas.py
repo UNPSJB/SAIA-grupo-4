@@ -52,7 +52,6 @@ class ElementoLimpiezaCreate(ElementoLimpiezaBase):
 
 class ElementoLimpiezaUpdate(BaseModel):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=20)]
-    tipo_id: Annotated[Optional[int], Field(default=None)]
     sector_id: Annotated[Optional[int], Field(default=None)]
     equipo_id: Annotated[Optional[int], Field(default=None)]
     frecuencia_recambio_dias: Annotated[Optional[int], Field(default=None, gt=0)]
