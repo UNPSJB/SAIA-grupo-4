@@ -5,7 +5,7 @@ export const tareaSchema = z
     nombre: z
       .string()
       .trim()
-      .min(1, "El nombre de la tarea es obligatorio")
+      .min(3, "El nombre de la tarea debe tener minimo 3 caracteres.")
       .regex(
         /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.,()/-]+$/,
         "Solo puede contener letras, números, espacios y estos signos: . , ( ) / -",
@@ -16,7 +16,10 @@ export const tareaSchema = z
     momento: z.enum(["pre-operacional", "operacional", "post-operacional"]),
     periodicidad: z.enum(["diaria", "semanal", "mensual", "dias-especificos"]),
     dias: z.array(z.string()).default([]),
-    dia_mes: z.coerce.number().int().optional(),
+    dia_mes: z.coerce
+      .string()
+      .regex(/^\d+$/, "Solo números")
+      .transform((val) => Number(val)),
     pasos: z
       .string()
       .trim()

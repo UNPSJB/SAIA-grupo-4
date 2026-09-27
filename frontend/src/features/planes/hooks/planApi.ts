@@ -138,7 +138,8 @@ export const planesApi = {
       `/planes-poes/${id}/clonar?elaborado_por_id=${elaborado_por_id}`,
       { method: "POST" },
     ),
-
+  retomarBorrador: (id: number) =>
+    request<PlanPOES>(`/planes-poes/${id}/retomar`, { method: "POST" }),
   obtenerTareas: (planId: number) =>
     request<TareaPOES[]>(`/planes-poes/${planId}/tareas`),
   crearTarea: (planId: number, payload: TareaPOESCreatePayload) =>

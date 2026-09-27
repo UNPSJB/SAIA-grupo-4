@@ -13,6 +13,7 @@ import {
 import type { ElementType } from "react";
 import {
   FiActivity,
+  FiCalendar,
   FiCheckCircle,
   FiClipboard,
   FiClock,
@@ -57,6 +58,7 @@ interface ListadoTareasProps {
   onModificarPlan?: () => void;
   onDarBajaPlan?: () => void;
   onDarAltaPlan?: () => void;
+  onCrearPlan?: () => void;
 }
 
 const ITEMS_POR_PAGINA = 5;
@@ -84,6 +86,17 @@ const Chip = ({
   </Badge>
 );
 
+const formatFechaEmision = (fecha?: string) => {
+  if (!fecha) return "—";
+  const d = new Date(fecha);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 export const ListadoTareas = ({
   plan,
   tareas,
@@ -99,6 +112,7 @@ export const ListadoTareas = ({
   onModificarPlan,
   onDarBajaPlan,
   onDarAltaPlan,
+  onCrearPlan,
 }: ListadoTareasProps) => {
   const [page, setPage] = useState(1);
 
@@ -224,6 +238,15 @@ export const ListadoTareas = ({
             <Button variant='ghost' colorPalette='red' onClick={onDarBajaPlan}>
               <FiTrash2 /> Dar de baja
             </Button>
+            {esBorrador && (
+              <Button 
+                variant='solid' 
+                colorPalette='green'
+                onClick={onCrearPlan}
+              >
+                <FiPlus /> Nuevo Plan
+              </Button>
+            )}
           </HStack>
         </HStack>
 
@@ -237,6 +260,11 @@ export const ListadoTareas = ({
             icon={FiUser}
             texto={`Elaborado por: ${autor ? `${autor.nombre} ${autor.apellido}` : "—"}`}
             colorPalette='orange'
+          />
+          <Chip
+            icon={FiCalendar}
+            texto={`Fecha de emisión: ${formatFechaEmision(plan.fecha_emision)}`}
+            colorPalette='blue'
           />
         </HStack>
 

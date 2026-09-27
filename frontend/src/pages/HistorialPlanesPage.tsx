@@ -44,7 +44,7 @@ export default function HistorialPlanesPage() {
   const { usuario } = useAuth();
   const origen = (location.state as { origen?: string } | null)?.origen;
   const desdeNuevoPlan = origen === "nuevo-plan";
-  const { loading, error: errorPlanes, planes, borrador } = usePlanData();
+  const { loading, error: errorPlanes, planes } = usePlanData();
   const { catalogs, error: errorCatalogos } = usePlanCatalogs();
 
   const [page, setPage] = useState(1);
@@ -114,7 +114,7 @@ export default function HistorialPlanesPage() {
     setCopiando(true);
     setErrorCopiar("");
     try {
-      if (borrador) await planesApi.descartarBorrador(borrador.id);
+      // Se eliminó la línea que borraba el plan anterior
       await planesApi.clonarPlan(planCopiar.id, usuario.personaId);
       resetearCopia();
       navigate("/nuevo-plan");
@@ -124,6 +124,15 @@ export default function HistorialPlanesPage() {
       );
     } finally {
       setCopiando(false);
+    }
+  };
+
+  const ejecutarRetomar = async (plan: PlanPOES) => {
+    try {
+      await planesApi.retomarBorrador(plan.id); // Asegurate de agregar esto en planApi.ts
+      navigate("/nuevo-plan");
+    } catch (e) {
+      console.error("Error al retomar el borrador", e);
     }
   };
 
@@ -167,28 +176,39 @@ export default function HistorialPlanesPage() {
       key: "acciones",
       label: "Acciones",
       align: "end",
-      render: (plan) => (
-        <RowActions>
-          {derivarEstado(plan) === "archivado" && (
+      render: (plan) => {
+        const estado = derivarEstado(plan);
+        return (
+          <RowActions>
+            {(estado === "archivado" || estado === "vigente") && (
+              <RowActionButton
+                icon={FiCopy}
+                label='Copiar'
+                colorPalette='blue'
+                onClick={() => {
+                  setPlanCopiar(plan);
+                  setPasoCopiar("confirmar");
+                  setErrorCopiar("");
+                }}
+              />
+            )}
+            {estado === "borrador" && (
+              <RowActionButton
+                icon={FiCopy}
+                label='Retomar'
+                colorPalette='blue'
+                onClick={() => ejecutarRetomar(plan)}
+              />
+            )}
             <RowActionButton
-              icon={FiCopy}
-              label='Copiar'
-              colorPalette='blue'
-              onClick={() => {
-                setPlanCopiar(plan);
-                setPasoCopiar("confirmar");
-                setErrorCopiar("");
-              }}
+              icon={FiEye}
+              label='Ver'
+              colorPalette='yellow'
+              onClick={() => verPlan(plan)}
             />
-          )}
-          <RowActionButton
-            icon={FiEye}
-            label='Ver'
-            colorPalette='yellow'
-            onClick={() => verPlan(plan)}
-          />
-        </RowActions>
-      ),
+          </RowActions>
+        );
+      },
     },
   ];
 
@@ -315,7 +335,7 @@ export default function HistorialPlanesPage() {
 
       <AlertConfirm
         open={planCopiar !== null && pasoCopiar === "confirmar"}
-        title='Clonar plan histórico'
+        title='Clonar plan'
         message={
           planCopiar
             ? `Se clonará el plan "${planCopiar.nombre}" con todas sus tareas y se creará un nuevo borrador. ¿Continuar?`
@@ -323,25 +343,11 @@ export default function HistorialPlanesPage() {
         }
         loading={copiando}
         error={errorCopiar}
-        onConfirm={() =>
-          borrador ? setPasoCopiar("reemplazar") : void ejecutarCopia()
-        }
-        onCancel={resetearCopia}
-      />
-
-      <AlertConfirm
-        open={planCopiar !== null && pasoCopiar === "reemplazar"}
-        title='Reemplazar borrador existente'
-        message={
-          borrador
-            ? `Ya existe un borrador ("${borrador.nombre}"). Al copiar se eliminará definitivamente y quedará reemplazado por el clonado. ¿Continuar?`
-            : ""
-        }
-        loading={copiando}
-        error={errorCopiar}
         onConfirm={() => void ejecutarCopia()}
         onCancel={resetearCopia}
       />
+
+      {/* El segundo AlertConfirm de "reemplazar" SE BORRÓ COMPLETAMENTE */}
 
       {planVer && (
         <DetalleModal

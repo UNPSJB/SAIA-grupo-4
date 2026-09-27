@@ -29,6 +29,7 @@ interface PlanWorkspaceProps {
   historialOrigen?: "nuevo-plan";
   onPromovido?: () => void;
   onCambio?: () => void;
+  onCrearPlan?: () => void;
 }
 
 export const PlanWorkspace = ({
@@ -37,6 +38,7 @@ export const PlanWorkspace = ({
   historialOrigen,
   onPromovido,
   onCambio,
+  onCrearPlan,
 }: PlanWorkspaceProps) => {
   const navigate = useNavigate();
 
@@ -134,9 +136,7 @@ export const PlanWorkspace = ({
     setCargandoAccion(true);
     setErrorAccion("");
     try {
-      const actualizada = await planesApi.modificarTarea(tareaBaja.id, {
-        activo: false,
-      });
+      const actualizada = await planesApi.eliminarTarea(tareaBaja.id);
       setTareas((prev) =>
         prev.map((t) => (t.id === actualizada.id ? actualizada : t)),
       );
@@ -237,6 +237,7 @@ export const PlanWorkspace = ({
         catalogs={catalogs}
         loading={cargandoTareas}
         esBorrador={esBorrador}
+        onCrearPlan={onCrearPlan}
         onAgregarTarea={() => setVista("crearTarea")}
         onModificarTarea={(tarea) => {
           setTareaSeleccionada(tarea);

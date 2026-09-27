@@ -41,7 +41,17 @@ export default function NuevoPlanPage() {
           historialOrigen='nuevo-plan'
           onPromovido={() => navigate("/plan-poes")}
           onCambio={reload}
+          onCrearPlan={() => setCrearAbierto(true)}
         />
+
+        <FormModal open={crearAbierto} onClose={() => setCrearAbierto(false)}>
+          <PlanForm
+            modo='crear'
+            onCancelar={() => setCrearAbierto(false)}
+            onGuardado={guardarBorrador}
+            enModal
+          />
+        </FormModal>
       </Box>
     );
   }
