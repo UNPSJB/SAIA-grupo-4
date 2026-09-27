@@ -20,6 +20,7 @@ from src.insumos.router import router as insumos_router
 from src.unidad_medida.router import router as unidades_de_medidas_router
 from src.elementos_limpieza.router import router as elementos_limpieza_router
 from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_router
+from src.recambios.router import router as recambios_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -61,3 +62,4 @@ app.include_router(insumos_router)
 app.include_router(unidades_de_medidas_router)
 app.include_router(elementos_limpieza_router)
 app.include_router(tipo_elemento_limpieza_router)
+app.include_router(recambios_router)
