@@ -7,6 +7,7 @@ import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/elementosLimpieza/hooks/useElementoLimpiezaDelete";
 import { useElementoLimpiezaSubmit } from "../features/elementosLimpieza/hooks/useElementoLimpiezaSubmit";
 import type { ElementoLimpieza } from "../features/elementosLimpieza/types";
+import { RegistrarRecambioForm } from "../features/recambios/RegistrarRecambioForm";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
@@ -23,6 +24,8 @@ export default function ElementosLimpiezaPage() {
     const [altaAbierto, setAltaAbierto] = useState(false);
 
     const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
+
+    const [elementoRecambio, setElementoRecambio] = useState<ElementoLimpieza | null>(null);
 
     const [refrescar, setRefrescar] = useState(0);
 
@@ -68,6 +71,7 @@ export default function ElementosLimpiezaPage() {
                 onEliminar={(elemento) => { setError(""); setElementoEliminar(elemento); setEliminarAbierto(true); }}
                 onVer={(elemento) => { setError(""); setElementoSeleccionado(elemento); setVista("ver"); }}
                 onDarAlta={(elemento) => { setError(""); setElementoAlta(elemento); setAltaAbierto(true); }}
+                onRegistrarRecambio={(elemento) => setElementoRecambio(elemento)}
             />
 
             {(vista === "crear" || vista === "modificar" || vista === "ver") && (
@@ -96,6 +100,17 @@ export default function ElementosLimpiezaPage() {
                             onCancelar={() => setVista("listado")}
                         />
                     )}
+                </FormModal>
+            )}
+
+            {elementoRecambio && (
+                <FormModal open onClose={() => setElementoRecambio(null)}>
+                    <RegistrarRecambioForm
+                        elemento={elementoRecambio}
+                        onCancelar={() => setElementoRecambio(null)}
+                        onGuardado={() => { setElementoRecambio(null); setRefrescar((r) => r + 1); }}
+                        enModal
+                    />
                 </FormModal>
             )}
 

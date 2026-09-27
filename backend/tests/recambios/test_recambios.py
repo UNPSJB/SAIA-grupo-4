@@ -8,8 +8,7 @@ from tests.database import session
 client = TestClient(app)
 
 
-# Funciones auxiliares: no hay tests de elementos de limpieza, así que
-# armamos a mano el tipo y el elemento
+# Funciones auxiliares de elementos de limpieza
 def crear_tipo_auxiliar():
     res = client.post("/tipos-elemento-limpieza/", json={"nombre": "Escoba", "prefijo": "ESC"})
     return res.json()["id"]

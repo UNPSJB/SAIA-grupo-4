@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge, HStack, Button } from "@chakra-ui/react";
-import { FiTrash2, FiEdit2, FiEye, FiCheckCircle, FiPlus, FiSettings, FiDroplet } from "react-icons/fi";
+import { FiTrash2, FiEdit2, FiEye, FiCheckCircle, FiPlus, FiSettings, FiDroplet, FiRefreshCw } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination, SelectField } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { ElementoLimpieza } from "./types";
+import { ProximoRecambio } from "../recambios/ProximoRecambio";
+import type { AlertaRecambio } from "../recambios/types";
 import type { ColumnDef } from "../../components/ui";
 
 interface ListadoElementosLimpiezaProps {
@@ -14,6 +16,7 @@ interface ListadoElementosLimpiezaProps {
     onEliminar?: (elemento: ElementoLimpieza) => void;
     onVer?: (elemento: ElementoLimpieza) => void;
     onDarAlta?: (elemento: ElementoLimpieza) => void;
+    onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
 const PAGE_SIZE = 5;
@@ -34,7 +37,7 @@ const construirEndpoint = (filtroEstado: "todos" | "activos" | "inactivos") => {
     return base;
 };
 
-export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, onEliminar, onVer, onDarAlta }: ListadoElementosLimpiezaProps) => {
+export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, onEliminar, onVer, onDarAlta, onRegistrarRecambio }: ListadoElementosLimpiezaProps) => {
     const [filtroEstado, setFiltroEstado] = useState<"todos" | "activos" | "inactivos">("activos");
     const [page, setPage] = useState(1);
 
@@ -42,6 +45,16 @@ export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, on
         endpoint: construirEndpoint(filtroEstado),
         errorMessage: "No se pudo cargar la lista de elementos de limpieza.",
     });
+
+    // La próxima fecha y el semáforo los calcula el backend; se cruzan por id de elemento
+    const { data: alertas } = useListadoData<AlertaRecambio>({
+        endpoint: "http://127.0.0.1:8000/recambios/alertas",
+        errorMessage: "No se pudieron cargar las alertas de recambio.",
+    });
+    const alertaPorElemento = useMemo(
+        () => new Map(alertas.map((a) => [a.elemento.id, a])),
+        [alertas],
+    );
 
     const inicio = (page - 1) * PAGE_SIZE;
     const itemsPaginados = data.slice(inicio, inicio + PAGE_SIZE);
@@ -65,6 +78,7 @@ export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, on
         },
         { key: "frecuencia", label: "Frecuencia (días)", render: (e) => e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : "—" },
         { key: "ultimo_recambio", label: "Último Recambio", render: (e) => formatearFecha(e.fecha_ultimo_recambio) },
+        { key: "proximo_recambio", label: "Próximo Recambio", render: (e) => <ProximoRecambio alerta={alertaPorElemento.get(e.id)} /> },
         {
             key: "activo",
             label: "Estado",
@@ -80,6 +94,7 @@ export const ListadoElementosLimpieza = ({ onCrear, onCrearTipo, onModificar, on
             align: "end",
             render: (e) => (
                 <RowActions>
+                    <RowActionButton icon={FiRefreshCw} label="Registrar recambio" colorPalette="teal" onClick={() => onRegistrarRecambio?.(e)} visible={e.activo && !!e.frecuencia_recambio_dias} />
                     <RowActionButton icon={FiEdit2} label="Modificar" colorPalette="blue" onClick={() => onModificar?.(e)} visible={e.activo} />
                     <RowActionButton icon={FiEye} label="Ver" colorPalette="yellow" onClick={() => onVer?.(e)} />
                     <RowActionButton icon={FiTrash2} label="Eliminar" colorPalette="red" onClick={() => onEliminar?.(e)} visible={e.activo} />
