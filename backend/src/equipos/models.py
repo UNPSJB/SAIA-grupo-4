@@ -14,8 +14,11 @@ class Equipo(ModeloBase):
     ubicacion: Mapped[str | None] = mapped_column(String(100), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sector: Mapped["Sector"] = relationship(back_populates="equipos")
-    elementos_limpieza: Mapped[list["ElementoLimpieza"]] = relationship(back_populates="equipo")
+    tareas_poes: Mapped[list["TareaPOES"]] = relationship(back_populates="equipo")
     
+    insumos_quimicos: Mapped[list["InsumoQuimico"]] = relationship(back_populates="equipo")
+    elementos_limpieza: Mapped[list["ElementoLimpieza"]] = relationship(back_populates="equipo")
+
     __table_args__ = (
         UniqueConstraint(
             "nombre",

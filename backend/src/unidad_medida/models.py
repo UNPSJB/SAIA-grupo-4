@@ -15,3 +15,4 @@ class UnidadMedida(ModeloBase):
     disponible: Mapped[bool] = mapped_column(default=True)
 
     insumos: Mapped[List["src.Insumo"]] = relationship(back_populates="unidad_medida")
+    insumos_quimicos: Mapped[List["src.InsumoQuimico"]] = relationship(back_populates="unidad_medida")

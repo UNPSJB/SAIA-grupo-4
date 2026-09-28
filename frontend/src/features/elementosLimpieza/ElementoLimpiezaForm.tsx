@@ -1,186 +1,304 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HStack, VStack } from "@chakra-ui/react";
-import { FiTrash2, FiEdit2, FiSave, FiXCircle, FiEye, FiPlus } from "react-icons/fi";
-import { useEffect, useRef, useState } from "react";
-import { useElementoLimpiezaSubmit, type ElementoLimpiezaPayload } from "./hooks/useElementoLimpiezaSubmit";
+import {
+  FiTrash2,
+  FiEdit2,
+  FiSave,
+  FiXCircle,
+  FiEye,
+  FiPlus,
+} from "react-icons/fi";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useElementoLimpiezaSubmit,
+  type ElementoLimpiezaPayload,
+} from "./hooks/useElementoLimpiezaSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
-import { elementoLimpiezaSchema, type ElementoLimpiezaFormInput, type ElementoLimpiezaFormValues } from "./validationSchema";
-import type { ElementoLimpieza, TipoElementoLimpieza, Sector, Equipo } from "./types";
-import { FormContainer, FormHeader, TextField, SelectField, FormActions, SubmitButton, CancelButton, AlertMessage, FormModal, RowActionButton } from "../../components/ui";
+import {
+  elementoLimpiezaSchema,
+  type ElementoLimpiezaFormInput,
+  type ElementoLimpiezaFormValues,
+} from "./validationSchema";
+import type {
+  ElementoLimpieza,
+  TipoElementoLimpieza,
+  Sector,
+  Equipo,
+} from "./types";
+import {
+  FormContainer,
+  FormHeader,
+  TextField,
+  SelectField,
+  FormActions,
+  SubmitButton,
+  CancelButton,
+  AlertMessage,
+  FormModal,
+  RowActionButton,
+} from "../../components/ui";
 import { TipoElementoLimpiezaForm } from "./TipoElementoLimpiezaForm";
 
 type ElementoLimpiezaFormProps = {
-    modo: "crear" | "modificar" | "ver";
-    elemento?: ElementoLimpieza;
-    onCancelar?: () => void;
-    onGuardado?: (elemento: ElementoLimpieza) => void;
-    enModal?: boolean;
+  modo: "crear" | "modificar" | "ver";
+  elemento?: ElementoLimpieza;
+  onCancelar?: () => void;
+  onGuardado?: (elemento: ElementoLimpieza) => void;
+  enModal?: boolean;
 };
 
-export const ElementoLimpiezaForm = ({ modo, elemento, onCancelar, onGuardado, enModal = false }: ElementoLimpiezaFormProps) => {
-    const esModoVer = modo === "ver";
-    const esModoCrear = modo === "crear";
-    const esModoModificar = modo === "modificar";
+export const ElementoLimpiezaForm = ({
+  modo,
+  elemento,
+  onCancelar,
+  onGuardado,
+  enModal = false,
+}: ElementoLimpiezaFormProps) => {
+  const esModoVer = modo === "ver";
+  const esModoCrear = modo === "crear";
+  const esModoModificar = modo === "modificar";
 
-    const defaultValues: ElementoLimpiezaFormInput = esModoModificar || esModoVer
-    ? {
-        nombre: elemento!.nombre,
-        tipo_id: elemento!.tipo_id,
-        sector_id: elemento!.sector_id ?? "",
-        equipo_id: elemento!.equipo_id ?? "",
-        frecuencia_recambio_dias: elemento!.frecuencia_recambio_dias ?? "",
+  const defaultValues = useMemo<ElementoLimpiezaFormInput>(
+    () =>
+      esModoModificar || esModoVer
+        ? {
+            nombre: elemento!.nombre,
+            tipo_id: elemento!.tipo_id,
+            sector_id: elemento!.sector_id ?? "",
+            equipo_id: elemento!.equipo_id ?? "",
+            frecuencia_recambio_dias: elemento!.frecuencia_recambio_dias ?? "",
+          }
+        : {
+            nombre: "",
+            tipo_id: 0,
+            sector_id: "",
+            equipo_id: "",
+            frecuencia_recambio_dias: "",
+          },
+    [elemento, esModoModificar, esModoVer],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+    clearErrors,
+    reset,
+  } = useForm<ElementoLimpiezaFormInput, unknown, ElementoLimpiezaFormValues>({
+    resolver: zodResolver(elementoLimpiezaSchema),
+    defaultValues,
+  });
+
+  const {
+    data: tiposIniciales,
+    loading: loadingTipos,
+    reload: reloadTipos,
+  } = useListadoData<TipoElementoLimpieza>({
+    endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/",
+  });
+  const { data: sectores, loading: loadingSectores } = useListadoData<Sector>({
+    endpoint: "http://127.0.0.1:8000/sectores/",
+  });
+  const { data: equipos, loading: loadingEquipos } = useListadoData<Equipo>({
+    endpoint: "http://127.0.0.1:8000/equipos/",
+  });
+
+  const tiposActivos = tiposIniciales.filter((t) => t.activo);
+  const sectoresActivos = sectores.filter((s) => s.activo);
+  const equiposActivos = equipos.filter((e) => e.activo);
+
+  const [success, setSuccess] = useState(false);
+  const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
+  const yaInicializado = useRef(false);
+
+  useEffect(() => {
+    if (
+      !yaInicializado.current &&
+      !loadingTipos &&
+      !loadingSectores &&
+      !loadingEquipos
+    ) {
+      reset(defaultValues);
+      yaInicializado.current = true;
+    }
+  }, [defaultValues, loadingTipos, loadingSectores, loadingEquipos, reset]);
+
+  const { submit } = useElementoLimpiezaSubmit({
+    endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
+    method: esModoCrear ? "POST" : "PUT",
+    id: esModoModificar ? elemento!.id : undefined,
+    onSuccess: () => {
+      setSuccess(true);
+      onGuardado?.(elemento!);
+    },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
+    setSuccess(false);
+    clearErrors("root");
+    const payload: ElementoLimpiezaPayload = {
+      nombre: values.nombre,
+      tipo_id: values.tipo_id,
+      sector_id: values.sector_id === "" ? null : Number(values.sector_id),
+      equipo_id: values.equipo_id === "" ? null : Number(values.equipo_id),
+      frecuencia_recambio_dias: values.frecuencia_recambio_dias ?? null,
+    };
+    if (!esModoCrear) {
+      delete (payload as Partial<ElementoLimpiezaPayload>).tipo_id;
+    }
+    const res = await submit(payload);
+    if (res.status === "error") setError("root", { message: res.message });
+    else if (res.status === "success" && esModoCrear) reset();
+  });
+
+  return (
+    <FormContainer modal={enModal}>
+      <FormHeader
+        title={
+          esModoVer
+            ? "Ver Elemento de Limpieza"
+            : esModoCrear
+              ? "Nuevo Elemento de Limpieza"
+              : "Modificar Elemento de Limpieza"
         }
-        : { nombre: "", tipo_id: 0, sector_id: "", equipo_id: "", frecuencia_recambio_dias: "" };
-
-    const { register, handleSubmit, formState: { errors, isSubmitting }, setError, clearErrors, reset } =
-        useForm<ElementoLimpiezaFormInput, unknown, ElementoLimpiezaFormValues>({
-            resolver: zodResolver(elementoLimpiezaSchema),
-            defaultValues,
-        });
-
-    const { data: tiposIniciales, loading: loadingTipos, reload: reloadTipos } = useListadoData<TipoElementoLimpieza>({ endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/" });
-    const { data: sectores, loading: loadingSectores } = useListadoData<Sector>({ endpoint: "http://127.0.0.1:8000/sectores/" });
-    const { data: equipos, loading: loadingEquipos } = useListadoData<Equipo>({ endpoint: "http://127.0.0.1:8000/equipos/" });
-
-    const tiposActivos = tiposIniciales.filter((t) => t.activo);
-    const sectoresActivos = sectores.filter((s) => s.activo);
-    const equiposActivos = equipos.filter((e) => e.activo);
-
-    // Una vez que terminan de cargar los 3 listados, resincronizamos el
-    // formulario para que el select "encuentre" la opción correcta
-    // (al montarse, las opciones todavía no existían y quedaba en el placeholder).
-    const yaInicializado = useRef(false);
-    useEffect(() => {
-        if (!yaInicializado.current && !loadingTipos && !loadingSectores && !loadingEquipos) {
-            reset(defaultValues);
-            yaInicializado.current = true;
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loadingTipos, loadingSectores, loadingEquipos]);
-
-    const [success, setSuccess] = useState(false);
-    const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
-
-    const { submit } = useElementoLimpiezaSubmit({
-        endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
-        method: esModoCrear ? "POST" : "PUT",
-        id: esModoModificar ? elemento!.id : undefined,
-        onSuccess: () => {
-            setSuccess(true);
-            onGuardado?.(elemento!);
-        },
-    });
-
-    const onSubmit = handleSubmit(async (values) => {
-        setSuccess(false);
-        clearErrors("root");
-        const payload: ElementoLimpiezaPayload = {
-            nombre: values.nombre,
-            tipo_id: values.tipo_id,
-            sector_id: values.sector_id === "" ? null : Number(values.sector_id),
-            equipo_id: values.equipo_id === "" ? null : Number(values.equipo_id),
-            frecuencia_recambio_dias: values.frecuencia_recambio_dias === "" ? null : Number(values.frecuencia_recambio_dias),
-        };
-        if (!esModoCrear) {
-            delete (payload as Partial<ElementoLimpiezaPayload>).tipo_id;
-        }
-        const res = await submit(payload);
-        if (res.status === "error") setError("root", { message: res.message });
-        else if (res.status === "success" && esModoCrear) reset();
-    });
-
-    return (
-        <FormContainer modal={enModal}>
-            <FormHeader
-                title={esModoVer ? "Ver Elemento de Limpieza" : esModoCrear ? "Nuevo Elemento de Limpieza" : "Modificar Elemento de Limpieza"}
-                icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiTrash2}
+        icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiTrash2}
+      />
+      <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
+        <VStack gap={4}>
+          <TextField
+            label='Nombre'
+            disabled={esModoVer}
+            error={errors.nombre?.message}
+            {...register("nombre")}
+          />
+          <HStack width='100%' align='end' gap={2}>
+            <SelectField
+              label='Tipo'
+              placeholder='Seleccioná un tipo'
+              options={tiposActivos.map((t) => ({
+                label: t.nombre,
+                value: String(t.id),
+              }))}
+              error={errors.tipo_id?.message}
+              disabled={esModoVer || esModoModificar}
+              {...register("tipo_id")}
             />
-            <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-                <VStack gap={4}>
-                    <TextField
-                        label="Nombre"
-                        disabled={esModoVer}
-                        error={errors.nombre?.message}
-                        {...register("nombre")}
-                    />
-
-                    <HStack width="100%" align="end" gap={2}>
-                        <SelectField
-                            label="Tipo"
-                            placeholder="Seleccioná un tipo"
-                            options={tiposActivos.map((t) => ({ label: t.nombre, value: String(t.id) }))}
-                            error={errors.tipo_id?.message}
-                            disabled={esModoVer || esModoModificar}
-                            {...register("tipo_id")}
-                        />
-                        {esModoCrear && (
-                            <RowActionButton
-                                icon={FiPlus}
-                                label="Crear tipo"
-                                colorPalette="green"
-                                onClick={() => setTipoModalAbierto(true)}
-                            />
-                        )}
-                    </HStack>
-
-                    <SelectField
-                        label="Sector (Opcional)"
-                        options={[{ label: "Sin asignar", value: "" }, ...sectoresActivos.map((s) => ({ label: s.nombre, value: String(s.id) }))]}
-                        disabled={esModoVer}
-                        {...register("sector_id")}
-                    />
-
-                    <SelectField
-                        label="Equipo (Opcional)"
-                        options={[{ label: "Sin asignar", value: "" }, ...equiposActivos.map((e) => ({ label: e.nombre, value: String(e.id) }))]}
-                        disabled={esModoVer}
-                        {...register("equipo_id")}
-                    />
-
-                    <TextField
-                        label="Frecuencia de recambio en días (Opcional)"
-                        disabled={esModoVer}
-                        error={errors.frecuencia_recambio_dias?.message}
-                        {...register("frecuencia_recambio_dias")}
-                    />
-
-                    {esModoVer && (
-                        <TextField
-                            label="Último recambio"
-                            disabled
-                            value={elemento?.fecha_ultimo_recambio ? new Date(elemento.fecha_ultimo_recambio).toLocaleString("es-AR") : "—"}
-                        />
-                    )}
-
-                    <FormActions>
-                        {esModoVer ? (
-                            <CancelButton text="Cerrar" icon={FiXCircle} onClick={onCancelar} colorPalette="gray" />
-                        ) : (
-                            <>
-                                <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
-                                <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
-                            </>
-                        )}
-                    </FormActions>
-
-                    {errors.root?.message && <AlertMessage type="error" message={errors.root.message} />}
-                    {success && !esModoVer && <AlertMessage type="success" message={esModoCrear ? "Elemento creado exitosamente." : "Elemento modificado exitosamente."} />}
-                </VStack>
-            </form>
-
-            {tipoModalAbierto && (
-                <FormModal open onClose={() => setTipoModalAbierto(false)}>
-                    <TipoElementoLimpiezaForm
-                        modo="crear"
-                        onCancelar={() => setTipoModalAbierto(false)}
-                        onGuardado={() => {
-                            setTipoModalAbierto(false);
-                            reloadTipos();
-                        }}
-                    />
-                </FormModal>
+            {esModoCrear && (
+              <RowActionButton
+                icon={FiPlus}
+                label='Crear tipo'
+                colorPalette='green'
+                onClick={() => setTipoModalAbierto(true)}
+              />
             )}
-        </FormContainer>
-    );
+          </HStack>
+
+          <SelectField
+            label='Sector (Opcional)'
+            placeholder='Sin asignar'
+            options={[
+              { label: "Sin asignar", value: "" },
+              ...sectoresActivos.map((s) => ({
+                label: s.nombre,
+                value: String(s.id),
+              })),
+            ]}
+            disabled={esModoVer}
+            {...register("sector_id")}
+          />
+
+          <SelectField
+            label='Equipo (Opcional)'
+            placeholder='Sin asignar'
+            options={[
+              { label: "Sin asignar", value: "" },
+              ...equiposActivos.map((e) => ({
+                label: e.nombre,
+                value: String(e.id),
+              })),
+            ]}
+            disabled={esModoVer}
+            {...register("equipo_id")}
+          />
+
+          <TextField
+            label='Frecuencia de recambio en días (Opcional)'
+            disabled={esModoVer}
+            error={errors.frecuencia_recambio_dias?.message}
+            {...register("frecuencia_recambio_dias")}
+          />
+
+          {esModoVer && (
+            <TextField
+              label='Último recambio'
+              disabled
+              value={
+                elemento?.fecha_ultimo_recambio
+                  ? new Date(elemento.fecha_ultimo_recambio).toLocaleString(
+                      "es-AR",
+                    )
+                  : "—"
+              }
+            />
+          )}
+
+          <FormActions>
+            {esModoVer ? (
+              <CancelButton
+                text='Cerrar'
+                icon={FiXCircle}
+                onClick={onCancelar}
+                colorPalette='gray'
+              />
+            ) : (
+              <>
+                <SubmitButton
+                  text='Guardar'
+                  icon={FiSave}
+                  loading={isSubmitting}
+                  type='submit'
+                  colorPalette='green'
+                />
+                <CancelButton
+                  text='Cancelar'
+                  icon={FiXCircle}
+                  onClick={onCancelar}
+                  colorPalette='red'
+                  variant='outline'
+                />
+              </>
+            )}
+          </FormActions>
+
+          {errors.root?.message && (
+            <AlertMessage type='error' message={errors.root.message} />
+          )}
+          {success && !esModoVer && (
+            <AlertMessage
+              type='success'
+              message={
+                esModoCrear
+                  ? "Elemento creado exitosamente."
+                  : "Elemento modificado exitosamente."
+              }
+            />
+          )}
+        </VStack>
+      </form>
+      {tipoModalAbierto && (
+        <FormModal open onClose={() => setTipoModalAbierto(false)}>
+          <TipoElementoLimpiezaForm
+            modo='crear'
+            onCancelar={() => setTipoModalAbierto(false)}
+            onGuardado={() => {
+              setTipoModalAbierto(false);
+              reloadTipos();
+            }}
+          />
+        </FormModal>
+      )}
+    </FormContainer>
+  );
 };

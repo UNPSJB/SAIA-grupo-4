@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from src.database import engine
 from src.models import ModeloBase
@@ -19,8 +21,11 @@ from src.sectores.router import router as sectores_router
 from src.insumos.router import router as insumos_router
 from src.unidad_medida.router import router as unidades_de_medidas_router
 from src.elementos_limpieza.router import router as elementos_limpieza_router
+from src.insumo_quimico.router import router as insumo_quimico_router
+from src.plan_poes.router import router as plan_poes_router
 from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_router
 from src.recambios.router import router as recambios_router
+from src.checklists.router import router as checklists_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -40,8 +45,15 @@ async def db_creation_lifespan(app: FastAPI):
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
 
+# Se expone la carpeta de evidencias de los checklists para que el frontend pueda
+# mostrar las fotos. La misma carpeta donde escribe src/checklists/services.py.
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 origins = [
     "http://localhost:5173", # para recibir requests desde app React (puerto: 5173)
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
@@ -61,5 +73,8 @@ app.include_router(sectores_router)
 app.include_router(insumos_router)
 app.include_router(unidades_de_medidas_router)
 app.include_router(elementos_limpieza_router)
+app.include_router(insumo_quimico_router)
+app.include_router(plan_poes_router)
 app.include_router(tipo_elemento_limpieza_router)
 app.include_router(recambios_router)
+app.include_router(checklists_router)

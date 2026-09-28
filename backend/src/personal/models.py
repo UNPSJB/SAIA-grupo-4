@@ -17,6 +17,10 @@ class Persona(ModeloBase):
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     capacidades: Mapped[list["PersonaCapacidad"]] = relationship("PersonaCapacidad", back_populates="persona")
+    planes_elaborados: Mapped[list["PlanPOES"]] = relationship(
+        "PlanPOES", 
+        back_populates="elaborado_por"
+    )
 
 class PersonaCapacidad(ModeloBase):
     __tablename__ = "personal_capacidad"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
@@ -11,6 +12,7 @@ import type { Insumo } from "../features/insumo/types";
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
 export default function InsumoPage() {
+  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>("listado");
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
     null,
@@ -60,6 +62,7 @@ export default function InsumoPage() {
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       <ListadoInsumos
         key={refescar}
+        onVerUnidades={() => navigate("/unidades-de-medida")}
         onCrear={() => {
           setError("");
           setVista("crear");

@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { ElementType, ReactNode } from "react";
-import { FaRuler } from "react-icons/fa";
 import {
   Box,
   Button,
@@ -16,26 +15,40 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   FiChevronLeft,
   FiChevronRight,
+  FiClipboard,
+  FiClock,
   FiLogOut,
   FiMenu,
   FiPackage,
+  FiPlus,
   FiShield,
   FiThermometer,
   FiUser,
   FiMap,
   FiDroplet,
+  FiCheckSquare,
 } from "react-icons/fi";
 
-interface NavItem {
+interface LinkNavItem {
   to: string;
   label: string;
   icon: ElementType;
 }
 
+interface ParentNavItem {
+  label: string;
+  icon: ElementType;
+  children: LinkNavItem[];
+}
+
+type NavItem = LinkNavItem | ParentNavItem;
+
 interface NavBarProps {
   title?: string;
   brandIcon?: ElementType;
   items?: NavItem[];
+  checklistItems?: NavItem[];
+  checklistColapsable?: boolean;
   version?: string;
   username?: string;
   onLogout?: () => void;
@@ -43,11 +56,27 @@ interface NavBarProps {
 
 const defaultItems: NavItem[] = [
   { to: "/equipos", label: "Equipos", icon: FiThermometer },
-  { to: "/insumos", label: "Insumos", icon: FiPackage },
   { to: "/personal", label: "Personal", icon: FiUser },
   { to: "/sectores", label: "Sectores", icon: FiMap },
-  { to: "/unidades-de-medida", label: "Unidades de medida", icon: FaRuler },
-  { to: "/elementos-limpieza", label: "Elementos de limpieza", icon: FiDroplet },
+  {
+    label: "Insumos",
+    icon: FiPackage,
+    children: [
+      { to: "/insumos", label: "Insumos", icon: FiPackage },
+      { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
+    ],
+  },
+  {
+    to: "/elementos-limpieza",
+    label: "Elementos de limpieza",
+    icon: FiDroplet,
+  },
+];
+
+const planItems: NavItem[] = [
+  { to: "/nuevo-plan", label: "Nuevo Plan", icon: FiPlus },
+  { to: "/plan-poes", label: "Plan Vigente", icon: FiClipboard },
+  { to: "/historial-planes", label: "Historial", icon: FiClock },
 ];
 
 const isActiveRoute = (pathname: string, to: string) =>
@@ -68,10 +97,200 @@ const NavTooltip = ({
   </Tooltip.Root>
 );
 
+const SingleNavLink = ({
+  item,
+  isCollapsed,
+  pathname,
+  isSubItem = false,
+}: {
+  item: LinkNavItem;
+  isCollapsed: boolean;
+  pathname: string;
+  isSubItem?: boolean;
+}) => {
+  const active = isActiveRoute(pathname, item.to);
+  const navButton = (
+    <Button
+      asChild
+      w='100%'
+      justifyContent={isCollapsed ? "center" : "flex-start"}
+      px={isCollapsed ? 0 : undefined}
+      variant='ghost'
+      bg={active ? "white" : undefined}
+      color={active ? "green.700" : "white"}
+      borderLeft={!isSubItem ? "4px solid" : undefined}
+      borderLeftColor={!isSubItem ? (active ? "green.400" : "transparent") : undefined}
+      focusRing='outside'
+      _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
+      transition='background 0.15s ease, color 0.15s ease'
+    >
+      <NavLink
+        to={item.to}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          width: "100%",
+        }}
+      >
+        <Icon as={item.icon} flexShrink={0} />
+        {!isCollapsed && item.label}
+      </NavLink>
+    </Button>
+  );
+
+  return isCollapsed && !isSubItem ? (
+    <NavTooltip label={item.label}>{navButton}</NavTooltip>
+  ) : isCollapsed && isSubItem ? (
+    <NavTooltip label={item.label}>{navButton}</NavTooltip>
+  ) : (
+    navButton
+  );
+};
+
+interface NavSectionProps {
+  label: string;
+  icon: ElementType;
+  items: NavItem[];
+  isCollapsed: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCollapsedClick: () => void;
+}
+
+const NavSection = ({
+  label,
+  icon,
+  items,
+  isCollapsed,
+  open,
+  onOpenChange,
+  onCollapsedClick,
+}: NavSectionProps) => {
+  const { pathname } = useLocation();
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}>
+      <Collapsible.Trigger asChild>
+        {isCollapsed ? (
+          <NavTooltip label={label}>
+            <IconButton
+              aria-label={label}
+              variant='ghost'
+              color='white'
+              w='100%'
+              onClick={onCollapsedClick}
+              _hover={{ bg: "whiteAlpha.200" }}
+            >
+              <Icon as={icon} />
+            </IconButton>
+          </NavTooltip>
+        ) : (
+          <Button
+            variant='plain'
+            color='white'
+            w='100%'
+            justifyContent='space-between'
+            _hover={{ bg: "whiteAlpha.200" }}
+          >
+            <Flex align='center' gap={2}>
+              <Icon as={icon} />
+              {label}
+            </Flex>
+            <Icon
+              as={FiChevronRight}
+              transform={open ? "rotate(90deg)" : "rotate(0deg)"}
+              transition='transform 0.2s'
+            />
+          </Button>
+        )}
+      </Collapsible.Trigger>
+
+      <Collapsible.Content>
+        <VStack align='stretch' gap={1} mt={2}>
+          {items.map((item) => {
+            if ("children" in item) {
+              const submenuOpen =
+                openSubmenus[item.label] ??
+                item.children.some((child) =>
+                  isActiveRoute(pathname, child.to),
+                );
+
+              return (
+                <Collapsible.Root
+                  key={item.label}
+                  open={submenuOpen}
+                  onOpenChange={(event) =>
+                    setOpenSubmenus((current) => ({
+                      ...current,
+                      [item.label]: event.open,
+                    }))
+                  }
+                >
+                  <Collapsible.Trigger asChild>
+                    <Button
+                      variant='plain'
+                      color='white'
+                      w='100%'
+                      justifyContent={isCollapsed ? "center" : "space-between"}
+                      _hover={{ bg: "whiteAlpha.200" }}
+                    >
+                      <Flex align='center' gap={2}>
+                        <Icon as={item.icon} flexShrink={0} />
+                        {!isCollapsed && item.label}
+                      </Flex>
+                      {!isCollapsed && (
+                        <Icon
+                          as={FiChevronRight}
+                          transform={
+                            submenuOpen ? "rotate(90deg)" : "rotate(0deg)"
+                          }
+                          transition='transform 0.2s'
+                        />
+                      )}
+                    </Button>
+                  </Collapsible.Trigger>
+
+                  <Collapsible.Content>
+                    <VStack align='stretch' gap={1} pl={isCollapsed ? 0 : 4}>
+                      {item.children.map((child) => (
+                        <Fragment key={child.to}>
+                          <SingleNavLink
+                            item={child}
+                            isCollapsed={isCollapsed}
+                            pathname={pathname}
+                            isSubItem={true}
+                          />
+                        </Fragment>
+                      ))}
+                    </VStack>
+                  </Collapsible.Content>
+                </Collapsible.Root>
+              );
+            }
+
+            return (
+              <SingleNavLink
+                key={item.to}
+                item={item}
+                isCollapsed={isCollapsed}
+                pathname={pathname}
+              />
+            );
+          })}
+        </VStack>
+      </Collapsible.Content>
+    </Collapsible.Root>
+  );
+};
+
 export const NavBar = ({
   title = "SAIA-4",
   brandIcon = FiShield,
   items = defaultItems,
+  checklistItems = [],
+  checklistColapsable = true,
   version = "v0.1.0",
   username = "Usuario",
   onLogout,
@@ -79,12 +298,25 @@ export const NavBar = ({
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
+  const [planOpen, setPlanOpen] = useState(true);
+  const [checklistOpen, setChecklistOpen] = useState(true);
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
+  const planAccordionOpen = isCollapsed ? true : planOpen;
+  const checklistAccordionOpen = isCollapsed ? true : checklistOpen;
+  
   const sidebarW = isCollapsed ? "64px" : "260px";
 
   const handleOpenChange = (open: boolean) => {
     if (!isCollapsed) setNavigationOpen(open);
+  };
+
+  const handlePlanOpenChange = (open: boolean) => {
+    if (!isCollapsed) setPlanOpen(open);
+  };
+
+  const handleChecklistOpenChange = (open: boolean) => {
+    if (!isCollapsed) setChecklistOpen(open);
   };
 
   return (
@@ -170,93 +402,61 @@ export const NavBar = ({
         </Text>
       )}
 
-      <Collapsible.Root
+      <NavSection
+        label='Navegación'
+        icon={FiMenu}
+        items={items}
+        isCollapsed={isCollapsed}
         open={accordionOpen}
-        onOpenChange={(e) => handleOpenChange(e.open)}
-      >
-        <Collapsible.Trigger asChild>
-          {isCollapsed ? (
-            <NavTooltip label='Navegación'>
-              <IconButton
-                aria-label='Navegación'
-                variant='ghost'
-                color='white'
-                w='100%'
-                onClick={() => setIsCollapsed(false)}
-                _hover={{ bg: "whiteAlpha.200" }}
-              >
-                <Icon as={FiMenu} />
-              </IconButton>
-            </NavTooltip>
-          ) : (
-            <Button
-              variant='plain'
-              color='white'
-              w='100%'
-              justifyContent='space-between'
-              _hover={{ bg: "whiteAlpha.200" }}
-            >
-              <Flex align='center' gap={2}>
-                <Icon as={FiMenu} />
-                Navegación
-              </Flex>
-              <Icon
-                as={FiChevronRight}
-                transform={accordionOpen ? "rotate(90deg)" : "rotate(0deg)"}
-                transition='transform 0.2s'
-              />
-            </Button>
+        onOpenChange={handleOpenChange}
+        onCollapsedClick={() => setIsCollapsed(false)}
+      />
+
+      <NavSection
+        label='Plan POE'
+        icon={FiClipboard}
+        items={planItems}
+        isCollapsed={isCollapsed}
+        open={planAccordionOpen}
+        onOpenChange={handlePlanOpenChange}
+        onCollapsedClick={() => setIsCollapsed(false)}
+      />
+
+      {checklistItems.length > 0 && (
+        <>
+          {!isCollapsed && (
+            <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+              Checklists
+            </Text>
           )}
-        </Collapsible.Trigger>
 
-        <Collapsible.Content>
-          <VStack align='stretch' gap={1} mt={2}>
-            {items.map((item) => {
-              const active = isActiveRoute(pathname, item.to);
-              const navButton = (
-                <Button
-                  key={item.to}
-                  asChild
-                  w='100%'
-                  justifyContent={isCollapsed ? "center" : "flex-start"}
-                  px={isCollapsed ? 0 : undefined}
-                  variant='ghost'
-                  bg={active ? "white" : undefined}
-                  color={active ? "green.700" : "white"}
-                  borderLeft='4px solid'
-                  borderLeftColor={active ? "green.400" : "transparent"}
-                  focusRing='outside'
-                  _hover={
-                    active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }
-                  }
-                  transition='background 0.15s ease, color 0.15s ease'
-                >
-                  <NavLink
-                    to={item.to}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      width: "100%",
-                    }}
-                  >
-                    <Icon as={item.icon} flexShrink={0} />
-                    {!isCollapsed && item.label}
-                  </NavLink>
-                </Button>
-              );
-
-              return isCollapsed ? (
-                <NavTooltip key={item.to} label={item.label}>
-                  {navButton}
-                </NavTooltip>
-              ) : (
-                navButton
-              );
-            })}
-          </VStack>
-        </Collapsible.Content>
-      </Collapsible.Root>
+          {checklistColapsable ? (
+            <NavSection
+              label='Checklist'
+              icon={FiCheckSquare}
+              items={checklistItems}
+              isCollapsed={isCollapsed}
+              open={checklistAccordionOpen}
+              onOpenChange={handleChecklistOpenChange}
+              onCollapsedClick={() => setIsCollapsed(false)}
+            />
+          ) : (
+            <VStack align='stretch' gap={1}>
+              {checklistItems.map((item) => {
+                if ("children" in item) return null;
+                return (
+                  <SingleNavLink
+                    key={item.to}
+                    item={item}
+                    isCollapsed={isCollapsed}
+                    pathname={pathname}
+                  />
+                );
+              })}
+            </VStack>
+          )}
+        </>
+      )}
 
       <Box mt='auto' pt={3} borderTop='1px solid' borderColor='whiteAlpha.300'>
         <VStack align='stretch' gap={2}>
@@ -315,3 +515,5 @@ export const NavBar = ({
     </VStack>
   );
 };
+
+export type { NavItem };

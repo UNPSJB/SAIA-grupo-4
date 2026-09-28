@@ -11,4 +11,7 @@ class Sector(ModeloBase):
     nombre: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     equipos: Mapped[list["Equipo"]] = relationship(back_populates="sector")
+
+    insumos_quimicos: Mapped[list["InsumoQuimico"]] = relationship(back_populates="sector")
+    tareas_poes: Mapped[list["TareaPOES"]] = relationship(back_populates="sector")
     elementos_limpieza: Mapped[list["ElementoLimpieza"]] = relationship(back_populates="sector")
