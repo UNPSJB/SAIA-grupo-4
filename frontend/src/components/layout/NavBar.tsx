@@ -28,7 +28,7 @@ import {
   FiDroplet,
   FiCheckSquare,
 } from "react-icons/fi";
-
+import { MdOutlineCleaningServices } from 'react-icons/md';
 interface LinkNavItem {
   to: string;
   label: string;
@@ -69,7 +69,7 @@ const defaultItems: NavItem[] = [
   {
     to: "/elementos-limpieza",
     label: "Elementos de limpieza",
-    icon: FiDroplet,
+    icon: MdOutlineCleaningServices,
   },
 ];
 

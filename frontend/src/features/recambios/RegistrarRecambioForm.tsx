@@ -47,7 +47,7 @@ export const RegistrarRecambioForm = ({ elemento, onCancelar, onGuardado, enModa
                 <TextField label="Elemento" value={`${elemento.codigo} — ${elemento.nombre}`} disabled />
                 <Field.Root>
                     <Field.Label fontSize="md" fontFamily="sans-serif">Fecha del recambio</Field.Label>
-                    <Input type="date" value={fecha} max={hoyLocal()} onChange={(e) => setFecha(e.target.value)} />
+                    <Input type="date" value={fecha} min={hoyLocal()} max={hoyLocal()} onChange={(e) => setFecha(e.target.value)} />
                     {errorFecha && <Text color="red.500" fontSize="sm">{errorFecha}</Text>}
                 </Field.Root>
                 <TextField

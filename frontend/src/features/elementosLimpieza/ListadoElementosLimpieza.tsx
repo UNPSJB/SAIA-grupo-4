@@ -10,6 +10,7 @@ import {
   FiDroplet,
   FiRefreshCw,
 } from "react-icons/fi";
+import { MdOutlineCleaningServices } from 'react-icons/md';
 import {
   AlertMessage,
   DataTable,
@@ -214,7 +215,7 @@ export const ListadoElementosLimpieza = ({
   return (
     <ListadoContainer>
       <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Elementos de Limpieza' icon={FiDroplet} />
+        <ListadoHeader title='Elementos de Limpieza' icon={MdOutlineCleaningServices} />
         <HStack gap={2}>
           <SelectField
             label=''
