@@ -363,14 +363,24 @@ export const TareaForm = ({
         ((esModoModificar || esModoVer) && tarea?.sector_id === s.id),
     )
     .map((s) => ({ label: s.nombre, value: String(s.id) }));
-
-  const opcionesInsumos = recursosInsumos.map((i) => ({
+  
+  // Se filtran los insumos duplicados por ID usando Map
+  const insumosUnicos = Array.from(
+    new Map(recursosInsumos.map((i) => [i.id, i])).values()
+  );
+  
+  const opcionesInsumos = insumosUnicos.map((i) => ({
     label: i.nombre,
     value: String(i.id),
     badge: getOrigenRecurso(i),
   }));
 
-  const opcionesElementos = recursosElementos.map((el) => ({
+  // Se filtran los elementos duplicados por ID usando Map
+  const elementosUnicos = Array.from(
+    new Map(recursosElementos.map((el) => [el.id, el])).values()
+  );
+
+  const opcionesElementos = elementosUnicos.map((el) => ({
     label: el.nombre,
     value: String(el.id),
     badge: getOrigenRecurso(el),

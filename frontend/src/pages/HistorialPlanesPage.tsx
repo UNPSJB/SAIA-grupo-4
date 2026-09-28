@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/useAuth";
-import { Badge, Box, Button, Heading, HStack, Icon } from "@chakra-ui/react";
-import { FiArrowLeft, FiClock, FiCopy, FiEye, FiUser } from "react-icons/fi";
+import { FiArrowLeft, FiClock, FiCopy, FiEye, FiUser, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { Badge, Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import {
   AlertConfirm,
   AlertMessage,
@@ -26,8 +26,13 @@ import {
   colorFrecuencia,
   derivarEstado,
   formatFecha,
-  formatFrecuencia,
   formatMomento,
+  getDestinoDetalle,
+  getDestinoLabel,
+  getElementosLabel,
+  getInsumosLabel,
+  labelsDias,
+  parsearDetalleFrecuencia,
 } from "../features/planes/utils";
 
 const ITEMS_POR_PAGINA = 5;
@@ -37,6 +42,121 @@ const labelsEstado = {
   vigente: { texto: "Vigente", color: "green" },
   archivado: { texto: "Archivado", color: "red" },
 } as const;
+
+const TareaDesplegable = ({ tarea, catalogs }: { tarea: TareaPOES; catalogs: any }) => {
+  const [abierto, setAbierto] = useState(false);
+  const detalle = parsearDetalleFrecuencia(tarea.frecuencia, tarea.detalle_frecuencia);
+
+  // Diccionario para mostrar el nombre limpio en la etiqueta de color
+  const nombresFrecuenciaLimpia: Record<string, string> = {
+    diaria: "Diaria",
+    semanal: "Semanal",
+    mensual: "Mensual",
+    dias_especificos: "Días específicos",
+  };
+  
+  const etiquetaFrecuencia = nombresFrecuenciaLimpia[tarea.frecuencia] || tarea.frecuencia;
+
+  return (
+    <VStack align="stretch" w="full" gap={1}>
+      {/* Cabecera */}
+      <HStack
+        cursor="pointer"
+        onClick={() => setAbierto(!abierto)}
+        justify="space-between"
+        p={2}
+        borderRadius="md"
+        _hover={{ bg: "gray.100" }}
+        userSelect="none"
+      >
+        <Text fontWeight="semibold" fontSize="sm" color="gray.800">
+          {tarea.nombre}
+        </Text>
+        <HStack gap={2}>
+          <Text fontSize="xs" color="gray.500">
+            {abierto ? "Ocultar detalle" : "Ver detalle"}
+          </Text>
+          {abierto ? <FiChevronUp /> : <FiChevronDown />}
+        </HStack>
+      </HStack>
+
+      {/* Detalles desplegables */}
+      {abierto && (
+        <Box p={4} ml={4} bg="white" borderRadius="md" borderWidth="1px" borderColor="gray.200" boxShadow="sm">
+          <VStack align="stretch" gap={2}>
+            
+            {/* Estado */}
+            <HStack justify="space-between" borderBottomWidth="1px" pb={1}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.500">Estado:</Text>
+              <Badge colorPalette={tarea.activo ? "green" : "red"}>
+                {tarea.activo ? "Activa" : "Inactiva"}
+              </Badge>
+            </HStack>
+
+            {/* Destino */}
+            <HStack justify="space-between" borderBottomWidth="1px" pb={1}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.500">Destino:</Text>
+              <Text fontSize="sm" color="gray.700">
+                {getDestinoLabel(tarea, catalogs)} ({getDestinoDetalle(tarea, catalogs)})
+              </Text>
+            </HStack>
+
+            {/* Momento y Frecuencia con Badge de color */}
+            <HStack justify="space-between" borderBottomWidth="1px" pb={1}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.500">Momento / Frecuencia:</Text>
+              <HStack gap={2}>
+                <Text fontSize="sm" color="gray.700">{formatMomento(tarea.tipo_poes)}</Text>
+                <Badge colorPalette={colorFrecuencia[tarea.frecuencia]}>
+                  {etiquetaFrecuencia}
+                </Badge>
+              </HStack>
+            </HStack>
+
+            {/* Detalles condicionales: Día de la semana */}
+            {(tarea.frecuencia === "semanal" || tarea.frecuencia === "dias_especificos") && (
+              <HStack justify="space-between" borderBottomWidth="1px" pb={1}>
+                <Text fontSize="xs" fontWeight="bold" color="gray.500">Día(s):</Text>
+                <Text fontSize="sm" color="gray.700">{labelsDias(detalle.dias)}</Text>
+              </HStack>
+            )}
+
+            {/* Detalles condicionales: Día del mes */}
+            {tarea.frecuencia === "mensual" && detalle.dia_mes && (
+              <HStack justify="space-between" borderBottomWidth="1px" pb={1}>
+                <Text fontSize="xs" fontWeight="bold" color="gray.500">Día del mes:</Text>
+                <Text fontSize="sm" color="gray.700">{String(detalle.dia_mes)}</Text>
+              </HStack>
+            )}
+
+            {/* Método */}
+            <Box borderBottomWidth="1px" pb={1}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={1}>Procedimiento (Método):</Text>
+              <VStack align="stretch" gap={1} bg="gray.50" p={2} borderRadius="sm">
+                {tarea.metodo.split('\n').filter(Boolean).map((paso, index) => (
+                  <Text key={index} fontSize="sm" color="gray.700">
+                    <Text as="span" fontWeight="bold" mr={1}>{index + 1}.</Text>
+                    {paso.trim()}
+                  </Text>
+                ))}
+              </VStack>
+            </Box>
+
+            {/* Recursos */}
+            <VStack align="stretch" gap={1} pt={1}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.500">Recursos requeridos:</Text>
+              <Text fontSize="sm" color="gray.700">
+                • <strong>Insumos químicos:</strong> {getInsumosLabel(tarea, catalogs)}
+              </Text>
+              <Text fontSize="sm" color="gray.700">
+                • <strong>Elementos de limpieza:</strong> {getElementosLabel(tarea, catalogs)}
+              </Text>
+            </VStack>
+          </VStack>
+        </Box>
+      )}
+    </VStack>
+  );
+};
 
 export default function HistorialPlanesPage() {
   const navigate = useNavigate();
@@ -254,15 +374,8 @@ export default function HistorialPlanesPage() {
           items:
             cargandoTareasModal || tareasPlanVer.length > 0
               ? tareasPlanVer.map((t) => ({
-                  label: t.nombre,
-                  valor: (
-                    <HStack gap={2} flexWrap='wrap'>
-                      {formatMomento(t.tipo_poes)} ·{" "}
-                      <Badge colorPalette={colorFrecuencia[t.frecuencia]}>
-                        {formatFrecuencia(t)}
-                      </Badge>
-                    </HStack>
-                  ),
+                  label: "", // Dejamos el label vacío porque el nombre ya va dentro del desplegable ordenado
+                  valor: <TareaDesplegable tarea={t} catalogs={catalogs} />,
                 }))
               : [{ label: "Sin tareas", valor: "—" }],
         },
