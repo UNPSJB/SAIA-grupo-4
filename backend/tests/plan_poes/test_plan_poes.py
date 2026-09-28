@@ -489,3 +489,41 @@ def test_no_permitir_cambiar_destino_con_ambos_o_sin_destino(datos_base):
     })
     assert res_nulos.status_code == 400
     assert res_nulos.json()["detail"] == ErrorCode.ASIGNACION_TAREA_INVALIDA
+    
+def test_tarea_filtra_recursos_duplicados(datos_base):
+    # Se crea un plan base
+    res_plan = client.post("/planes-poes/", json={"nombre": "Plan Anti-Duplicados", "elaborado_por_id": datos_base["persona_id"]})
+    plan_id = res_plan.json()["id"]
+    
+    # Se prueba en la CREACIÓN (POST)
+    payload_crear = {
+        "nombre": "Tarea Prueba Duplicados", "tipo_poes": "operacional", "frecuencia": "diaria",
+        "sector_id": datos_base["sector_id"], "metodo": "Limpiar",
+        "insumos_quimicos": [
+            {"insumo_quimico_id": datos_base["insumo_id"]},
+            {"insumo_quimico_id": datos_base["insumo_id"]} # Duplicado intencional
+        ]
+    }
+    
+    res_tarea = client.post(f"/planes-poes/{plan_id}/tareas", json=payload_crear)
+    assert res_tarea.status_code == 201
+    
+    tarea_data = res_tarea.json()
+    # El backend debió filtrar el duplicado, guardando solo 1
+    assert len(tarea_data["insumos_quimicos"]) == 1
+    
+    tarea_id = tarea_data["id"]
+    
+    # Se prueba en la MODIFICACIÓN (PATCH)
+    payload_patch = {
+        "elementos_limpieza": [
+            {"elemento_limpieza_id": datos_base["elemento_id"]},
+            {"elemento_limpieza_id": datos_base["elemento_id"]} # Duplicado intencional
+        ]
+    }
+    
+    res_patch = client.patch(f"/planes-poes/tareas/{tarea_id}", json=payload_patch)
+    assert res_patch.status_code == 200
+    
+    # El backend debió filtrar el duplicado, dejando solo 1 elemento
+    assert len(res_patch.json()["elementos_limpieza"]) == 1

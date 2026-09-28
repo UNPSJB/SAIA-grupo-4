@@ -117,6 +117,28 @@ def _validar_recursos_activos(
             
             if not es_recurso_compatible(elem_db, es_insumo=False):
                 raise exceptions.RecursoIncompatible(tipo_recurso=TipoRecurso.ELEMENTO_LIMPIEZA, recurso_id=elemento_id)
+            
+def _filtrar_recursos_unicos(recursos, id_key: str, modelo_orm):
+    """
+    Recibe una lista de recursos, 
+    filtra los duplicados basándose en 'id_key' y retorna una lista de instancias ORM.
+    """
+    if not recursos:
+        return []
+        
+    unicos = []
+    vistos = set()
+    
+    for item in recursos:
+        # Se convierte a diccionario si viene como modelo Pydantic (caso crear)
+        data = item if isinstance(item, dict) else item.model_dump()
+        item_id = data[id_key]
+        
+        if item_id not in vistos:
+            unicos.append(modelo_orm(**data))
+            vistos.add(item_id)
+            
+    return unicos
 
 # SERVICIOS DE PLAN POES
 
@@ -326,11 +348,10 @@ def obtener_tarea_por_id(db: Session, tarea_id: int) -> TareaPOES:
     return tarea
 
 def listar_tareas_por_plan(db: Session, plan_id: int) -> List[TareaPOES]:
-    """Devuelve todas las tareas ACTIVAS asociadas a un plan específico."""
-    # Opcionalmente podrías validar primero si el plan_id existe
+    """Devuelve todas las tareas (activas e inactivas) asociadas a un plan específico."""
     return list(db.scalars(
         select(TareaPOES)
-        .where(TareaPOES.plan_id == plan_id, TareaPOES.activo == True)
+        .where(TareaPOES.plan_id == plan_id)
         .order_by(TareaPOES.id.asc())
     ).all())
     
@@ -349,7 +370,7 @@ def agregar_tarea_a_plan(db: Session, plan_id: int, tarea: schemas.TareaPOESCrea
         insumos=tarea.insumos_quimicos,
         elementos=tarea.elementos_limpieza
     )
-
+    
     # Se construye la tarea y sus relaciones en memoria
     nueva_tarea = TareaPOES(
         plan_id=plan.id,
@@ -361,12 +382,8 @@ def agregar_tarea_a_plan(db: Session, plan_id: int, tarea: schemas.TareaPOESCrea
         sector_id=tarea.sector_id,
         metodo=tarea.metodo,
         activo=True,
-        insumos_quimicos=[
-            TareaInsumoQuimico(**i.model_dump()) for i in tarea.insumos_quimicos
-        ],
-        elementos_limpieza=[
-            TareaElementoLimpieza(**e.model_dump()) for e in tarea.elementos_limpieza
-        ]
+        insumos_quimicos=_filtrar_recursos_unicos(tarea.insumos_quimicos, "insumo_quimico_id", TareaInsumoQuimico),
+        elementos_limpieza=_filtrar_recursos_unicos(tarea.elementos_limpieza, "elemento_limpieza_id", TareaElementoLimpieza)
     )
 
     db.add(nueva_tarea)
@@ -449,21 +466,23 @@ def modificar_tarea(db: Session, tarea_id: int, tarea_update: schemas.TareaPOESU
         elementos=elementos_a_validar
     )
 
-    # Se reemplazan los Insumos Químicos
+    # Se reemplazan los Insumos Químicos con validación anti-duplicados
     if "insumos_quimicos" in update_data:
         nuevos_insumos = update_data.pop("insumos_quimicos")
         tarea.insumos_quimicos.clear() # Aca se aplica lo de cascade="all, delete-orphan" en el modelo
         if nuevos_insumos:
-            for i in nuevos_insumos:
-                tarea.insumos_quimicos.append(TareaInsumoQuimico(**i))
+            tarea.insumos_quimicos.extend(
+                _filtrar_recursos_unicos(nuevos_insumos, "insumo_quimico_id", TareaInsumoQuimico)
+            )
 
-    # Se reemplazan los Elementos de Limpieza
+    # Se reemplazan los Elementos de Limpieza con validación anti-duplicados
     if "elementos_limpieza" in update_data:
         nuevos_elementos = update_data.pop("elementos_limpieza")
         tarea.elementos_limpieza.clear()
         if nuevos_elementos:
-            for e in nuevos_elementos:
-                tarea.elementos_limpieza.append(TareaElementoLimpieza(**e))
+            tarea.elementos_limpieza.extend(
+                _filtrar_recursos_unicos(nuevos_elementos, "elemento_limpieza_id", TareaElementoLimpieza)
+            )
 
     # Se valida que la tarea no haya quedado sin recursos tras la edición
     if not tarea.insumos_quimicos and not tarea.elementos_limpieza:
