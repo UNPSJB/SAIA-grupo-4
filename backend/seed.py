@@ -307,7 +307,7 @@ def _detalle_frecuencia(frecuencia, hoy):
 def _metodo(fake, nombre_tarea, tipo_poes):
     pasos = [f"Verificar condiciones de {tipo_poes.replace('_', ' ')} para: {nombre_tarea}."]
     pasos.extend(fake.random.sample(PASOS_POR_TIPO[tipo_poes], k=3))
-    return "\n".join(f"{pos + 1}. {paso}" for pos, paso in enumerate(pasos))
+    return "\n".join(pasos)
 
 
 # --------------------------------------------------------------------------
