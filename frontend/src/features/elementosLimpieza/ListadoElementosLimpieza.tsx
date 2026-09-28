@@ -98,11 +98,24 @@ export const ListadoElementosLimpieza = ({
   };
 
   const columnas: ColumnDef<ElementoLimpieza>[] = [
-    { key: "codigo", label: "Código", render: (e) => e.codigo },
-    { key: "nombre", label: "Nombre", render: (e) => e.nombre },
+    {
+      key: "codigo",
+      label: "Código",
+      w: "110px",
+      truncate: true,
+      render: (e) => e.codigo,
+    },
+    {
+      key: "nombre",
+      label: "Nombre",
+      w: "220px",
+      truncate: true,
+      render: (e) => e.nombre,
+    },
     {
       key: "asociado_a",
       label: "Asociado a",
+      w: "160px",
       render: (e) => {
         if (e.sector)
           return (
@@ -126,22 +139,26 @@ export const ListadoElementosLimpieza = ({
     {
       key: "frecuencia",
       label: "Frecuencia (días)",
+      w: "130px",
       render: (e) =>
         e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : "—",
     },
     {
       key: "ultimo_recambio",
       label: "Último Recambio",
+      w: "140px",
       render: (e) => formatearFecha(e.fecha_ultimo_recambio),
     },
     {
       key: "proximo_recambio",
       label: "Próximo Recambio",
+      w: "150px",
       render: (e) => <ProximoRecambio alerta={alertaPorElemento.get(e.id)} />,
     },
     {
       key: "activo",
       label: "Estado",
+      w: "100px",
       render: (e) => (
         <Badge colorPalette={e.activo ? "green" : "red"}>
           {e.activo ? "Activo" : "Inactivo"}
@@ -152,6 +169,7 @@ export const ListadoElementosLimpieza = ({
       key: "acciones",
       label: "Acciones",
       align: "end",
+      w: "200px",
       render: (e) => (
         <RowActions>
           <RowActionButton
@@ -235,6 +253,7 @@ export const ListadoElementosLimpieza = ({
             items={itemsPaginados}
             columns={columnas}
             getRowKey={(e) => e.id}
+            minW="1210px"
           />
           <TablePagination
             count={data.length}

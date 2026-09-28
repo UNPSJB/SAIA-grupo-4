@@ -428,13 +428,11 @@ export default function HistorialPlanesPage() {
 
       {!loading && planes.length > 0 && (
         <>
-          <Box overflowX='auto'>
-            <DataTable
-              items={itemsPaginados}
-              columns={columnas}
-              getRowKey={(plan) => plan.id}
-            />
-          </Box>
+          <DataTable
+            items={itemsPaginados}
+            columns={columnas}
+            getRowKey={(plan) => plan.id}
+          />
           <TablePagination
             count={planes.length}
             page={page}

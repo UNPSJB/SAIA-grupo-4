@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   Badge,
-  Box,
   Button,
   Flex,
   HStack,
@@ -310,15 +309,14 @@ export const ListadoTareas = ({
           />
         )}
 
-        {!loading && tareas.length > 0 && (
-          <>
-            <Box overflowX='auto'>
-              <DataTable
-                items={itemsPaginados}
-                columns={columnas}
-                getRowKey={(tarea) => tarea.id}
-              />
-            </Box>
+      {!loading && tareas.length > 0 && (
+        <>
+          <DataTable
+            items={itemsPaginados}
+            columns={columnas}
+            getRowKey={(tarea) => tarea.id}
+          />
+
             <TablePagination
               count={tareas.length}
               page={page}
