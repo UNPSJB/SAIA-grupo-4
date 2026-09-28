@@ -48,12 +48,12 @@ export const EvidenciaModal = ({
         <Dialog.Positioner>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Completar Tarea</Dialog.Title>
+              <Dialog.Title>Adjuntar Evidencia (Opcional)</Dialog.Title>
             </Dialog.Header>
             
             <Dialog.Body>
-              <Text mb={4}>
-                ¿Confirmás que realizaste la tarea: <strong>{tareaNombre}</strong>?
+              <Text mb={4} fontSize="sm">
+                Podés adjuntar una fotografía para respaldar la ejecución de la tarea: <strong>{tareaNombre}</strong>.
               </Text>
               
               {/* Zona de subida de imagen con borde punteado */}
@@ -89,7 +89,7 @@ export const EvidenciaModal = ({
 
             <Dialog.Footer>
               <HStack gap={2}>
-                <Button variant="outline" onClick={onCancel} disabled={loading}>
+                <Button variant="outline" colorPalette="red" onClick={onCancel}>
                   <FiXCircle style={{ display: 'inline', marginRight: 4 }} /> Cancelar
                 </Button>
                 <Button 
@@ -98,7 +98,7 @@ export const EvidenciaModal = ({
                   loading={loading}
                   loadingText="Guardando..."
                 >
-                  <FiCheck style={{ display: 'inline', marginRight: 4 }} /> Confirmar tarea
+                  <FiCheck style={{ display: 'inline', marginRight: 4 }} /> Confirmar
                 </Button>
               </HStack>
             </Dialog.Footer>

@@ -39,6 +39,14 @@ export default function ChecklistPage({
   const [fotosPorTarea, setFotosPorTarea] = useState<Record<number, File | null>>({});
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
 
+  const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
+  const [datosPorConfirmar, setDatosPorConfirmar] = useState<{
+    ejecucionId: number;
+    consumos: RegistroConsumoQuimico[];
+    observacion: string;
+    nombreTarea: string;
+  } | null>(null);
+
   const completadas = ejecuciones.filter((e) => e.estado === "COMPLETADA").length;
 
   const conteo = useMemo(() => {
@@ -75,28 +83,46 @@ export default function ChecklistPage({
     setModalFotoAbierto(false);
   };
 
-  const handleCompletarEjecucion = async (
+  // Esta función ahora solo abre el modal (se la pasamos a las tarjetas)
+  const handleCompletarEjecucion = (
     ejecucionId: number,
     consumos: RegistroConsumoQuimico[],
     observacion: string,
   ) => {
-    setMensaje(null);
-
-    const res = await completarTarea(
+    const ejecucionTarget = ejecuciones.find(e => e.id === ejecucionId);
+    
+    setDatosPorConfirmar({
       ejecucionId,
       consumos,
       observacion,
-      fotosPorTarea[ejecucionId] ?? null,
+      nombreTarea: ejecucionTarget?.tarea.nombre || "Tarea",
+    });
+    setConfirmacionAbierta(true);
+  };
+
+  // Esta función es la que realmente habla con el backend (la llama el modal)
+  const ejecutarCompletadoFinal = async () => {
+    if (!datosPorConfirmar) return;
+
+    setMensaje(null);
+    const res = await completarTarea(
+      datosPorConfirmar.ejecucionId,
+      datosPorConfirmar.consumos,
+      datosPorConfirmar.observacion,
+      fotosPorTarea[datosPorConfirmar.ejecucionId] ?? null,
     );
 
     if (res.status === "error") {
       setMensaje({ tipo: "error", texto: res.message });
+      setConfirmacionAbierta(false);
+      setDatosPorConfirmar(null);
       return;
     }
 
     setMensaje({ tipo: "success", texto: "Tarea registrada exitosamente." });
-    // El backend genera ejecuciones faltantes y cierra vencidas en cada GET, así
-    // que se recarga para quedar sincronizados con el servidor.
+    setConfirmacionAbierta(false);
+    setDatosPorConfirmar(null);
+    
     reload();
   };
 
@@ -201,6 +227,19 @@ export default function ChecklistPage({
             loading={isSubmitting}
             onConfirm={handleConfirmarFoto}
             onCancel={() => setModalFotoAbierto(false)}
+          />
+
+          {/* Modal de Doble Confirmación para Completar Tarea */}
+          <AlertConfirm
+            open={confirmacionAbierta}
+            title="Completar Tarea"
+            message={`¿Confirmás que realizaste la tarea: "${datosPorConfirmar?.nombreTarea}" con los consumos indicados?`}
+            loading={isSubmitting}
+            onConfirm={ejecutarCompletadoFinal}
+            onCancel={() => {
+              setConfirmacionAbierta(false);
+              setDatosPorConfirmar(null);
+            }}
           />
 
           <AlertConfirm

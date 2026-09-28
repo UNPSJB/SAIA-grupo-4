@@ -211,6 +211,14 @@ export function TareaCardPendiente({
                       bg="white"
                       borderRadius="md"
                       disabled={isSubmitting}
+                      css={{
+                        "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
+                          display: "none",
+                        },
+                        "&": {
+                          MozAppearance: "textfield",
+                        },
+                      }}
                     />
                     <Text fontSize="xs" color="gray.600">
                       [{item.insumo_quimico.unidad_medida.simbolo}]
