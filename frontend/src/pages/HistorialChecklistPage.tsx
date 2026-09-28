@@ -61,9 +61,18 @@ export default function HistorialChecklistPage() {
   };
 
   const handleAplicarFiltro = () => {
+    // Tope máximo: Hasta no puede superar el día de ayer
     const hastaSegura = fechaHasta > fechaAyer ? fechaAyer : fechaHasta;
+    
+    //Tope mínimo: Desde no puede superar a la fecha Hasta
+    const desdeSegura = fechaDesde > hastaSegura ? hastaSegura : fechaDesde;
+
+    // Se actualizan los inputs visuales para reflejar la corrección
     setFechaHasta(hastaSegura);
-    setRangoAplicado({ desde: fechaDesde, hasta: hastaSegura });
+    setFechaDesde(desdeSegura);
+    
+    // Se aplica el rango validado para disparar la consulta al backend
+    setRangoAplicado({ desde: desdeSegura, hasta: hastaSegura });
   };
 
   const handleResetFiltro = () => {

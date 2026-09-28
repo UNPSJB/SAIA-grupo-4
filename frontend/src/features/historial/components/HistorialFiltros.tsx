@@ -247,6 +247,7 @@ export function HistorialFiltros({
                 ref={pickerDesdeRef}
                 type="date"
                 value={fechaDesde}
+                max={fechaHasta}
                 onChange={(e) => {
                   if (e.target.value) {
                     onCambiarFechaDesde(e.target.value);
@@ -372,7 +373,8 @@ export function HistorialFiltros({
               <input
                 ref={pickerHastaRef}
                 type="date"
-                max={fechaHasta}
+                min={fechaDesde}
+                max={fechaMax}
                 value={fechaHasta}
                 onChange={(e) => {
                   if (e.target.value) {
