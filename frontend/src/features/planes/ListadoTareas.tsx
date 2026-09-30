@@ -60,7 +60,7 @@ interface ListadoTareasProps {
   onCrearPlan?: () => void;
 }
 
-const ITEMS_POR_PAGINA = 5;
+const ITEMS_POR_PAGINA = 7;
 
 const Chip = ({
   icon,
@@ -238,8 +238,8 @@ export const ListadoTareas = ({
               <FiTrash2 /> Dar de baja
             </Button>
             {esBorrador && (
-              <Button 
-                variant='solid' 
+              <Button
+                variant='solid'
                 colorPalette='green'
                 onClick={onCrearPlan}
               >
@@ -309,13 +309,13 @@ export const ListadoTareas = ({
           />
         )}
 
-      {!loading && tareas.length > 0 && (
-        <>
-          <DataTable
-            items={itemsPaginados}
-            columns={columnas}
-            getRowKey={(tarea) => tarea.id}
-          />
+        {!loading && tareas.length > 0 && (
+          <>
+            <DataTable
+              items={itemsPaginados}
+              columns={columnas}
+              getRowKey={(tarea) => tarea.id}
+            />
 
             <TablePagination
               count={tareas.length}

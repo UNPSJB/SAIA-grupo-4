@@ -7,7 +7,6 @@ import {
   FiCheckCircle,
   FiPlus,
   FiSettings,
-  FiDroplet,
   FiRefreshCw,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from 'react-icons/md';

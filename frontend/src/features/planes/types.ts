@@ -95,3 +95,15 @@ export interface PlanCatalogs {
   insumosQuimicos: InsumoQuimicoCatalogo[];
   elementosLimpieza: ElementoLimpiezaCatalogo[];
 }
+
+/**
+ * Opción de un desplegable de recurso (insumo químico o elemento de limpieza).
+ * La usa `useTareaCatalogs` para producirla y los selectores de
+ * `components/form` para consumirla. El badge informa de qué origen viene el
+ * recurso, para que el usuario entienda por qué aparece.
+ */
+export interface OpcionRecurso {
+  label: string;
+  value: string;
+  badge: { texto: string; colorPalette: string };
+}
