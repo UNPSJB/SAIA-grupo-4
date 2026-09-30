@@ -1,8 +1,8 @@
 import { VStack } from "@chakra-ui/react";
 import type { ElementType, ReactNode } from "react";
 import { FormModal } from "../layout/FormModal";
-import { DetalleItem } from "../ui/DetalleItem";
-import { DetalleSection } from "../ui/DetalleSection";
+import { DetalleItem } from "../ui/form/data-display/DetalleItem";
+import { DetalleSection } from "../ui/form/data-display/DetalleSection";
 
 export type SeccionDetalle = {
   titulo: string;
