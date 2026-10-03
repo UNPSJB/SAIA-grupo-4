@@ -2,7 +2,7 @@ from datetime import date
 from typing import Protocol
 from sqlalchemy.orm import Session
 from src.vencimientos import schemas
-from constants import CategoriaVencimiento
+from src.vencimientos.constants import CategoriaVencimiento
 
 
 # El contrato que personal / equipos / documentacion / elementos de limpieza deben cumplir
@@ -69,14 +69,12 @@ class _ProveedorElementosLimpieza:
 
 
 def _estado_de(dias_restantes: int):
-    # Import diferido para que constants no dependa de nada de este modulo.
-    from src.vencimientos.constants import Constantes, EstadoVencimiento
+    # Import diferido: services.py importa este modulo, asi que la importacion
+    # tiene que ser aca adentro para no cerrar un ciclo. La regla vive una sola
+    # vez, en services.calcular_estado.
+    from src.vencimientos.services import calcular_estado
 
-    if dias_restantes < 0:
-        return EstadoVencimiento.VENCIDO
-    if dias_restantes <= Constantes.DIAS_AVISO_PROXIMO:
-        return EstadoVencimiento.PROXIMO
-    return EstadoVencimiento.VIGENTE
+    return calcular_estado(dias_restantes)
 
 
 # Alta al importar el modulo. 

@@ -21,12 +21,19 @@ def calcular_estado(dias_restantes: int) -> EstadoVencimiento:
     return EstadoVencimiento.VIGENTE
 
 
+def _resolver_corte(
+    estado: EstadoVencimiento | None,
+    dias_max: int | None,
+) -> int | None:
+    if estado == EstadoVencimiento.VIGENTE:
+        return None
+    return dias_max
+
 # Consulta consolidada
 
 # Agrega lo que aporta cada provider. Cada provider ya viene ordenado por
 # urgencia desde su modulo, pero el orden final se redefine aca para que sea
 # global entre categorias.
-
 def listar_vencimientos(
     db: Session,
     estado: EstadoVencimiento | None = None,
@@ -42,8 +49,9 @@ def listar_vencimientos(
     for proveedor in providers.proveedores():
         vencimientos.extend(proveedor.listar(db, hoy))
 
-    if dias_max is not None:
-        vencimientos = [v for v in vencimientos if v.dias_restantes <= dias_max]
+    corte = _resolver_corte(estado, dias_max)
+    if corte is not None:
+        vencimientos = [v for v in vencimientos if v.dias_restantes <= corte]
 
     if categoria is not None:
         vencimientos = [v for v in vencimientos if v.categoria == categoria]

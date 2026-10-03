@@ -1,8 +1,8 @@
 from datetime import date
 from typing import Optional
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
-from constants import CategoriaVencimiento, EstadoVencimiento
+from typing import Annotated, Optional
+from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
 
 
 # Vencimiento: registro normalizado de la vista consolidada
