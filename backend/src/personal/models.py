@@ -21,6 +21,7 @@ class Persona(ModeloBase):
         "PlanPOES", 
         back_populates="elaborado_por"
     )
+    incidentes_reportados: Mapped[list["Incidente"]] = relationship("Incidente", back_populates="reportante") # Relacion con la tabla de incidentes
 
 class PersonaCapacidad(ModeloBase):
     __tablename__ = "personal_capacidad"
