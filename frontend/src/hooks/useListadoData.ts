@@ -16,10 +16,23 @@ export const useListadoData = <T>(
   }: ListadoDataOptions,
 ) => {
   const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Identidad de la petición: cambia cuando hay que volver a pedir los datos.
+  const clave = JSON.stringify([endpoint, refreshKey, reloadKey, errorMessage]);
+
+  // Clave del último request que terminó (con éxito o con error). Mientras no
+  // coincida con `clave` hay una petición en vuelo.
+  //
+  // `loading` se deriva de esta comparación en vez de setearse dentro del
+  // effect con `setLoading(true)`. Eso último dispara un render extra y React lo
+  // marca como anti-patrón (set-state-in-effect): con un filtro que pide datos
+  // al backend, hace falta que loading sea verdad desde el mismo render en que
+  // cambia la clave, no un render después.
+  const [claveResuelta, setClaveResuelta] = useState<string | null>(null);
+  const loading = claveResuelta !== clave;
 
   const reload = useCallback(() => {
     setReloadKey((k) => k + 1);
@@ -47,13 +60,13 @@ export const useListadoData = <T>(
       })
       .finally(() => {
         if (active) {
-          setLoading(false);
+          setClaveResuelta(clave);
         }
       });
     return () => {
       active = false;
     };
-  }, [endpoint, refreshKey, reloadKey, errorMessage]);
+  }, [clave, endpoint, errorMessage]);
 
   const itemsPaginados = useMemo(() => {
     const inicio = (page - 1) * pageSize;

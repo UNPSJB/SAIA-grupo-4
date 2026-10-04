@@ -212,7 +212,7 @@ export const ListadoElementosLimpieza = ({
   ];
 
   return (
-    <ListadoContainer maxW='6x1'>
+    <ListadoContainer maxW='6xl'>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader
           title='Elementos de Limpieza'

@@ -1,66 +1,66 @@
-import { Button, HStack } from "@chakra-ui/react";
-import { FiRefreshCw } from "react-icons/fi";
-import { SelectField } from "../../components/ui";
+import { FiltroSelect, FiltrosBar } from "../../components/ui";
+import { tieneFiltros, type FiltrosVencimientos } from "./filtrosVencimientos";
 import type { CategoriaDisponible, EstadoVencimiento } from "./types";
 
 const OPCIONES_ESTADO = [
-  { label: "Todos los estados", value: "" },
   { label: "Vencidos", value: "vencido" },
   { label: "Próximos a vencer", value: "proximo" },
   { label: "Vigentes", value: "vigente" },
 ];
 
 interface VencimientosFiltrosProps {
-  estado: EstadoVencimiento | "";
-  categoria: string;
+  filtros: FiltrosVencimientos;
   categorias: CategoriaDisponible[];
-  onEstadoChange: (valor: EstadoVencimiento | "") => void;
-  onCategoriaChange: (valor: string) => void;
+  onCambiar: (filtros: FiltrosVencimientos) => void;
+  onAplicar: () => void;
   onLimpiar: () => void;
+  loading?: boolean;
 }
 
-// Las categorias no se hardcodean: llegan de GET /vencimientos/categorias, que
-// solo devuelve las que tienen provider registrado. Cuando E3/E4/E5 mergeen,
-// este filtro las empieza a mostrar sin tocar el frontend.
+/**
+ * Barra de filtros del tablero.
+ *
+ * Los controles viven acá y el listado guarda el borrador, pero la consulta se
+ * dispara recién en "Filtrar": cambiar un desplegable no pide datos al backend
+ * hasta que el usuario confirma. Es el mismo criterio del historial de
+ * checklists.
+ */
 export const VencimientosFiltros = ({
-  estado,
-  categoria,
+  filtros,
   categorias,
-  onEstadoChange,
-  onCategoriaChange,
+  onCambiar,
+  onAplicar,
   onLimpiar,
-}: VencimientosFiltrosProps) => {
-  const hayFiltros = estado !== "" || categoria !== "";
+  loading = false,
+}: VencimientosFiltrosProps) => (
+  <FiltrosBar
+    onAplicar={onAplicar}
+    onLimpiar={onLimpiar}
+    hayFiltrosActivos={tieneFiltros(filtros)}
+    loading={loading}
+  >
+    <FiltroSelect
+      ariaLabel='Estado del vencimiento'
+      placeholder='Todos los estados'
+      options={OPCIONES_ESTADO}
+      value={filtros.estado}
+      onChange={(valor) =>
+        onCambiar({ ...filtros, estado: valor as EstadoVencimiento | "" })
+      }
+    />
 
-  return (
-    <HStack gap={3} align='flex-end' flexWrap='wrap'>
-      <SelectField
-        label='Estado'
-        options={OPCIONES_ESTADO}
-        value={estado}
-        onChange={(e) =>
-          onEstadoChange(e.target.value as EstadoVencimiento | "")
-        }
-      />
-
-      <SelectField
-        label='Categoría'
-        options={[
-          { label: "Todas las categorías", value: "" },
-          ...categorias.map((c) => ({
-            label: c.total > 0 ? `${c.nombre} (${c.total})` : c.nombre,
-            value: String(c.valor),
-          })),
-        ]}
-        value={categoria}
-        onChange={(e) => onCategoriaChange(e.target.value)}
-      />
-
-      {hayFiltros && (
-        <Button variant='outline' colorPalette='gray' onClick={onLimpiar}>
-          <FiRefreshCw /> Limpiar filtros
-        </Button>
-      )}
-    </HStack>
-  );
-};
+    <FiltroSelect
+      ariaLabel='Categoría del vencimiento'
+      placeholder='Todas las categorías'
+      options={categorias.map((c) => ({
+        // El total viene de GET /vencimientos/categorias, que solo expone las
+        // categorías con provider registrado. Cuando entren las demás, este
+        // filtro las empieza a mostrar sin tocar el frontend.
+        label: c.total > 0 ? `${c.nombre} (${c.total})` : c.nombre,
+        value: c.valor,
+      }))}
+      value={filtros.categoria}
+      onChange={(valor) => onCambiar({ ...filtros, categoria: valor })}
+    />
+  </FiltrosBar>
+);

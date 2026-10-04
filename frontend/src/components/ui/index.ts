@@ -27,3 +27,6 @@ export {
 export type { EstadoSemaforo } from "./form/data-display/estadoSemaforo";
 export { DetalleItem } from "./form/data-display/DetalleItem";
 export { DetalleSection } from "./form/data-display/DetalleSection";
+export { FiltrosBar } from "./form/filters/FiltrosBar";
+export { FiltroSelect } from "./form/filters/FiltroSelect";
+export { FiltroTexto } from "./form/filters/FiltroTexto";

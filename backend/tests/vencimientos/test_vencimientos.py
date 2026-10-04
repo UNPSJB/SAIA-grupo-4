@@ -491,3 +491,95 @@ def test_resolver_corte_mantiene_el_tope_en_el_resto_de_los_estados():
 def test_resolver_corte_respeta_un_tope_explicito():
     assert _resolver_corte(None, 3) == 3
     assert _resolver_corte(EstadoVencimiento.VENCIDO, 3) == 3
+
+
+# =============================================================================
+# Renovacion: un recambio registrado tiene que verse en la vista consolidada
+# =============================================================================
+# El tablero de vencimientos es read-only, pero la renovacion se dispara desde
+# el: el boton "Renovar vencimiento" hace POST /recambios/ y despues recarga.
+# estos tests fijan que ese ciclo efectivamente actualiza la proxima fecha.
+
+def _fila(elemento_id):
+    """Devuelve la fila consolidada de un elemento, o None si no esta."""
+    for v in client.get("/vencimientos/").json():
+        if v["id"] == f"elemento_limpieza:{elemento_id}":
+            return v
+    return None
+
+
+def test_renovar_refleja_el_nuevo_vencimiento():
+    elemento_id = crear_elemento_auxiliar("Escoba renovar", frecuencia=10)
+    registrar_recambio(elemento_id, 15)  # proxima = hoy - 5, vencido
+
+    antes = _fila(elemento_id)
+    assert antes["fecha_vencimiento"] == (date.today() - timedelta(days=5)).isoformat()
+    assert antes["estado"] == EstadoVencimiento.VENCIDO.value
+
+    res = client.post("/recambios/", json={"elemento_id": elemento_id})
+
+    assert res.status_code == 201
+
+    # fecha_vencimiento es la proxima fecha debida, no la del recambio: renovar
+    # hoy con frecuencia 10 corre el vencimiento 10 dias hacia adelante.
+    despues = _fila(elemento_id)
+    assert despues["fecha_vencimiento"] == (
+        date.today() + timedelta(days=10)
+    ).isoformat()
+    assert despues["dias_restantes"] == 10
+    assert despues["estado"] == EstadoVencimiento.PROXIMO.value
+
+
+def test_renovar_saca_el_vencimiento_del_corte_si_la_frecuencia_supera_el_aviso():
+    # Con frecuencia mayor a los 15 dias de aviso, renovar saca la fila de la
+    # ventana por defecto. Es el caso en que "renovar" hace desaparecer la fila.
+    elemento_id = crear_elemento_auxiliar("Escoba holgada", frecuencia=40)
+    registrar_recambio(elemento_id, 35)  # proxima = hoy + 5, proximo
+
+    assert _fila(elemento_id) is not None
+
+    client.post("/recambios/", json={"elemento_id": elemento_id})
+
+    assert _fila(elemento_id) is None
+
+
+def test_renovar_con_frecuencia_corta_mantiene_la_fila_en_la_ventana():
+    # Contraparte del anterior: con frecuencia <= 15 la fila sigue visible,
+    # pero con la fecha nueva. El tablero no oculta lo recien renovado.
+    elemento_id = crear_elemento_auxiliar("Escoba corta", frecuencia=10)
+    registrar_recambio(elemento_id, 10)
+
+    client.post("/recambios/", json={"elemento_id": elemento_id})
+
+    fila = _fila(elemento_id)
+    assert fila is not None
+    assert fila["fecha_vencimiento"] == (date.today() + timedelta(days=10)).isoformat()
+    assert fila["dias_restantes"] == 10
+
+
+def test_renovar_un_elemento_no_afecta_a_los_demas():
+    tipo_id = crear_tipo_auxiliar()
+    a = crear_con_urgencia("Escoba A", 3, tipo_id=tipo_id, frecuencia=30)
+    b = crear_con_urgencia("Escoba B", 4, tipo_id=tipo_id, frecuencia=30)
+
+    antes_b = _fila(b)
+
+    client.post("/recambios/", json={"elemento_id": a})
+
+    assert _fila(b) == antes_b
+
+
+def test_renovar_refleja_el_estado_vigente():
+    # Renovar un elemento con frecuencia holgada lo deja vigente, y el estado
+    # vigente levanta el corte: se sigue viendo si se pide explicitamente.
+    elemento_id = crear_elemento_auxiliar("Escoba vigente", frecuencia=40)
+    registrar_recambio(elemento_id, 39)  # proxima = hoy + 1, proximo
+
+    client.post("/recambios/", json={"elemento_id": elemento_id})
+
+    assert _fila(elemento_id) is None  # fuera de la ventana de 15 dias
+
+    vigente = client.get("/vencimientos/", params={"estado": "vigente"}).json()
+    fila = next(v for v in vigente if v["id"] == f"elemento_limpieza:{elemento_id}")
+    assert fila["estado"] == EstadoVencimiento.VIGENTE.value
+    assert fila["dias_restantes"] == 40

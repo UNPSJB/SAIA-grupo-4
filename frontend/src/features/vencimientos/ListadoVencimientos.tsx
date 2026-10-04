@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Badge } from "@chakra-ui/react";
-import { FiAlertCircle, FiEye, FiRefreshCw } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import { Badge, HStack } from "@chakra-ui/react";
+import { FiAlertCircle, FiEye } from "react-icons/fi";
 import {
   AlertMessage,
   COLOR_ESTADO,
@@ -16,48 +15,60 @@ import {
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import {
+  FILTROS_INICIALES,
+  type FiltrosVencimientos,
+} from "./filtrosVencimientos";
 import { VencimientosFiltros } from "./VencimientosFiltros";
+import { renovacionDe } from "./renovacionVencimientos";
 import { COLOR_CATEGORIA, construirEndpoint } from "./utils";
-import type {
-  CategoriaDisponible,
-  EstadoVencimiento,
-  Vencimiento,
-} from "./types";
+import type { CategoriaDisponible, Vencimiento } from "./types";
 
-export const ListadoVencimientos = () => {
-  const navigate = useNavigate();
-  const [estado, setEstado] = useState<EstadoVencimiento | "">("");
-  const [categoria, setCategoria] = useState("");
+type Props = {
+  /** Abre el detalle de una fila, en la misma vista. */
+  onVerDetalle: (vencimiento: Vencimiento) => void;
+  /** Abre la renovación. Solo se llama en categorías que la soportan. */
+  onRenovar: (vencimiento: Vencimiento) => void;
+  /** Se incrementa al guardar un recambio, para forzar la recarga. */
+  refreshKey: number;
+};
 
-  // El endpoint se rearma con los filtros: useListadoData vuelve a pedir los
-  // datos cada vez que la URL cambia, sin necesidad de un hook propio.
+export const ListadoVencimientos = ({
+  onVerDetalle,
+  onRenovar,
+  refreshKey,
+}: Props) => {
+  // Borrador: lo que el usuario está por aplicar. Aplicado: lo único que llega
+  // al endpoint. Separarlos evita pedir datos en cada cambio de un desplegable.
+  const [borrador, setBorrador] =
+    useState<FiltrosVencimientos>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] =
+    useState<FiltrosVencimientos>(FILTROS_INICIALES);
+
   const { data, loading, error, page, setPage, pageSize, itemsPaginados } =
     useListadoData<Vencimiento>({
-      endpoint: construirEndpoint(estado, categoria),
+      // El endpoint se rearma con los filtros aplicados: useListadoData vuelve a
+      // pedir los datos cada vez que la URL cambia.
+      endpoint: construirEndpoint(aplicados.estado, aplicados.categoria),
+      refreshKey,
       errorMessage: "No se pudo cargar la lista de vencimientos.",
     });
 
-  // Las categorías salen del servidor, no de una lista fija en el código.
   const { data: categorias } = useListadoData<CategoriaDisponible>({
     endpoint: "http://127.0.0.1:8000/vencimientos/categorias",
     errorMessage: "No se pudieron cargar las categorías de vencimientos.",
   });
 
-  // Cada cambio de filtro vuelve a la primera página: si no, se puede caer en
-  // una página vacía al filtrar sobre un resultado más corto.
-  const handleEstadoChange = (valor: EstadoVencimiento | "") => {
-    setEstado(valor);
+  // Cada aplicación vuelve a la primera página: si no, se puede caer en una
+  // página vacía al filtrar sobre un resultado más corto.
+  const aplicar = () => {
+    setAplicados(borrador);
     setPage(1);
   };
 
-  const handleCategoriaChange = (valor: string) => {
-    setCategoria(valor);
-    setPage(1);
-  };
-
-  const limpiarFiltros = () => {
-    setEstado("");
-    setCategoria("");
+  const limpiar = () => {
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
     setPage(1);
   };
 
@@ -114,43 +125,51 @@ export const ListadoVencimientos = () => {
       key: "acciones",
       label: "Acciones",
       align: "end",
-      w: "80px",
-      render: (v) => (
-        <RowActions>
-          <RowActionButton
-            icon={FiRefreshCw}
-            label='Aplicar cambios'
-            colorPalette='green'
-            title='Cambio'
-            onClick={() => navigate(v.ruta_detalle)}
-          />
-          {/* Criterio 3: el backend ya devuelve la ruta con el registro
-              seleccionado, así que el frontend no sabe de qué módulo viene
-              la fila. */}
-          <RowActionButton
-            icon={FiEye}
-            label='Ver detalle'
-            colorPalette='yellow'
-            title='Ver detalle'
-            onClick={() => navigate(v.ruta_detalle)}
-          />
-        </RowActions>
-      ),
+      w: "110px",
+      render: (v) => {
+        const renovacion = renovacionDe(v.categoria);
+
+        return (
+          <RowActions>
+            {/* El botón solo existe donde la categoría sabe renovarse. El
+                dispatcher decide el ícono y el texto, así que sumar una
+                categoría no obliga a tocar esta tabla. */}
+            {renovacion && (
+              <RowActionButton
+                icon={renovacion.icono}
+                label={renovacion.etiqueta}
+                colorPalette={renovacion.colorPalette}
+                title={renovacion.etiqueta}
+                onClick={() => onRenovar(v)}
+              />
+            )}
+            <RowActionButton
+              icon={FiEye}
+              label='Ver detalle'
+              colorPalette='yellow'
+              title='Ver detalle'
+              onClick={() => onVerDetalle(v)}
+            />
+          </RowActions>
+        );
+      },
     },
   ];
 
   return (
-    <ListadoContainer maxW='6x1'>
-      <ListadoHeader title='Vencimientos' icon={FiAlertCircle} />
+    <ListadoContainer maxW='6xl'>
+      <HStack justify='space-between' mb={6} align='center'>
+        <ListadoHeader title='Vencimientos' icon={FiAlertCircle} />
 
-      <VencimientosFiltros
-        estado={estado}
-        categoria={categoria}
-        categorias={categorias}
-        onEstadoChange={handleEstadoChange}
-        onCategoriaChange={handleCategoriaChange}
-        onLimpiar={limpiarFiltros}
-      />
+        <VencimientosFiltros
+          filtros={borrador}
+          categorias={categorias}
+          onCambiar={setBorrador}
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          loading={loading}
+        />
+      </HStack>
 
       {loading && <LoadingState message='Cargando vencimientos...' />}
       {!loading && error && <AlertMessage type='error' message={error} />}
