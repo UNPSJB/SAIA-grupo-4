@@ -22,6 +22,7 @@ import NuevoPlanPage from "./pages/NuevoPlanPage";
 import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
+import VencimientosPage from "./pages/VencimientosPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -170,6 +171,14 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            <Route
+              path='/vencimientos'
+              element={
+                <RequireAuth>
+                  <VencimientosPage />
+                </RequireAuth>
+              }
+            />
 
             {/* Checklists. El diario requiere "administrar" + "operar": quien solo
                 administra no lo ve en el NavBar y, si escribe la URL a mano, cae
@@ -184,7 +193,10 @@ function AppContent() {
                 }
               />
             ) : (
-              <Route path='/checklist' element={<Navigate to='/historial' replace />} />
+              <Route
+                path='/checklist'
+                element={<Navigate to='/historial' replace />}
+              />
             )}
             <Route
               path='/historial'

@@ -4,6 +4,9 @@ import type {
   TareaParaChecklist,
   TipoPoes,
 } from "./types";
+import { formatearFecha } from "../../utils/fecha";
+
+export { formatearFecha };
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
@@ -49,14 +52,8 @@ export const formatearHora = (fechaHora: string | null) => {
   });
 };
 
-export const formatearFecha = (fecha: string | null) => {
-  if (!fecha) return "—";
-  // El backend devuelve "YYYY-MM-DD"; se parsea como fecha local para no
-  // correr el día por el offset de zona horaria.
-  const [anio, mes, dia] = fecha.split("-").map(Number);
-  if (!anio || !mes || !dia) return fecha;
-  return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${anio}`;
-};
+// El formateo de fechas vive en src/utils/fecha.ts y se reexporta aca para no
+// cambiar los imports de los componentes de checklists que ya lo usaban.
 
 // Los consumos guardados solo traen el id del insumo y la cantidad. Para mostrar el
 // nombre y la unidad hay que cruzarlos contra los insumos de la tarea.

@@ -27,8 +27,9 @@ import {
   FiMap,
   FiDroplet,
   FiCheckSquare,
+  FiAlertCircle,
 } from "react-icons/fi";
-import { MdOutlineCleaningServices } from 'react-icons/md';
+import { MdOutlineCleaningServices } from "react-icons/md";
 interface LinkNavItem {
   to: string;
   label: string;
@@ -71,6 +72,7 @@ const defaultItems: NavItem[] = [
     label: "Elementos de limpieza",
     icon: MdOutlineCleaningServices,
   },
+  { to: "/vencimientos", label: "Vencimientos", icon: FiAlertCircle },
 ];
 
 const planItems: NavItem[] = [
@@ -119,7 +121,9 @@ const SingleNavLink = ({
       bg={active ? "white" : undefined}
       color={active ? "green.700" : "white"}
       borderLeft={!isSubItem ? "4px solid" : undefined}
-      borderLeftColor={!isSubItem ? (active ? "green.400" : "transparent") : undefined}
+      borderLeftColor={
+        !isSubItem ? (active ? "green.400" : "transparent") : undefined
+      }
       focusRing='outside'
       _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
       transition='background 0.15s ease, color 0.15s ease'
@@ -304,7 +308,7 @@ export const NavBar = ({
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const planAccordionOpen = isCollapsed ? true : planOpen;
   const checklistAccordionOpen = isCollapsed ? true : checklistOpen;
-  
+
   const sidebarW = isCollapsed ? "64px" : "260px";
 
   const handleOpenChange = (open: boolean) => {
@@ -425,7 +429,13 @@ export const NavBar = ({
       {checklistItems.length > 0 && (
         <>
           {!isCollapsed && (
-            <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+            <Text
+              fontSize='sm'
+              fontWeight='semibold'
+              color='white'
+              px={2}
+              mt={2}
+            >
               Checklists
             </Text>
           )}

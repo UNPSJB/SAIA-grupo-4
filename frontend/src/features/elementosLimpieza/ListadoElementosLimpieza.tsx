@@ -9,7 +9,7 @@ import {
   FiSettings,
   FiRefreshCw,
 } from "react-icons/fi";
-import { MdOutlineCleaningServices } from 'react-icons/md';
+import { MdOutlineCleaningServices } from "react-icons/md";
 import {
   AlertMessage,
   DataTable,
@@ -212,9 +212,12 @@ export const ListadoElementosLimpieza = ({
   ];
 
   return (
-    <ListadoContainer>
+    <ListadoContainer maxW='6x1'>
       <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Elementos de Limpieza' icon={MdOutlineCleaningServices} />
+        <ListadoHeader
+          title='Elementos de Limpieza'
+          icon={MdOutlineCleaningServices}
+        />
         <HStack gap={2}>
           <SelectField
             label=''
@@ -253,7 +256,7 @@ export const ListadoElementosLimpieza = ({
             items={itemsPaginados}
             columns={columnas}
             getRowKey={(e) => e.id}
-            minW="1210px"
+            minW='1210px'
           />
           <TablePagination
             count={data.length}

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { ElementoLimpiezaForm } from "../features/elementosLimpieza/ElementoLimpiezaForm";
 import { ListadoElementosLimpieza } from "../features/elementosLimpieza/ListadoElementosLimpieza";
@@ -32,6 +33,40 @@ export default function ElementosLimpiezaPage() {
   const [elementoRecambio, setElementoRecambio] =
     useState<ElementoLimpieza | null>(null);
   const [refrescar, setRefrescar] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detalleParam = searchParams.get("detalle");
+
+  useEffect(() => {
+    if (!detalleParam) return;
+    let activo = true;
+
+    fetch(`http://127.0.0.1:8000/elementos-limpieza/${detalleParam}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        return res.json();
+      })
+      .then((elemento: ElementoLimpieza) => {
+        if (!activo) return;
+        setError("");
+        setElementoSeleccionado(elemento);
+        setVista("ver");
+      })
+      .catch(() => {
+        if (activo) setError("No se pudo cargar el elemento de limpieza.");
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [detalleParam]);
+
+  // Limpia el parametro al cerrar el modal. Sin esto, volver a la pagina reabria
+  // el detalle otra vez.
+  const limpiarDetalleParam = () => {
+    if (!searchParams.get("detalle")) return;
+    searchParams.delete("detalle");
+    setSearchParams(searchParams, { replace: true });
+  };
 
   const confirmarEliminar = () => {
     handleDelete({
@@ -100,6 +135,7 @@ export default function ElementosLimpiezaPage() {
           onClose={() => {
             setError("");
             setVista("listado");
+            limpiarDetalleParam();
           }}
         >
           {vista === "crear" && (
