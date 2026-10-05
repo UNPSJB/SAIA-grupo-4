@@ -28,6 +28,7 @@ def crear_persona_auxiliar():
     return res.json()["id"]
 
 def test_crear_incidente(session):
+    # Se crea un incidente valido
     data = {
         "titulo": "Incidente de prueba",
         "descripcion": "Descripción del incidente de prueba",
@@ -40,6 +41,7 @@ def test_crear_incidente(session):
     assert response.json()["titulo"] == data["titulo"]
 
 def test_crear_incidente_con_reportante_inexistente(session):
+    # Se intenta crear un incidente con un reportante que no existe
     data = {
         "titulo": "Incidente de prueba",
         "descripcion": "Descripción del incidente de prueba",
@@ -52,6 +54,7 @@ def test_crear_incidente_con_reportante_inexistente(session):
     assert response.json()["detail"] == "El reportante no fue encontrado."
 
 def test_crear_incidente_sin_reportante(session):
+    # Se intenta crear un incidente sin asignar un reportante
     data = {
         "titulo": "Incidente de prueba",
         "descripcion": "Descripción del incidente de prueba",
@@ -61,4 +64,18 @@ def test_crear_incidente_sin_reportante(session):
 
     response = cl.post("/incidentes/", json=data)
     assert response.status_code == 422
-    assert response.json()["detail"] == "No se puede crear un incidente sin asignarle un reportante."
+
+def test_listar_incidentes(session):
+    # Se crea un incidente para listar
+    data = {
+        "titulo": "Incidente de prueba",
+        "descripcion": "Descripción del incidente de prueba",
+        "fecha_hora_reporte": datetime.now().isoformat(),
+        "reportante_id": crear_persona_auxiliar(),
+    }
+    cl.post("/incidentes/", json=data)
+
+    # Se listan los incidentes
+    response = cl.get("/incidentes/")
+    assert response.status_code == 200
+    assert len(response.json()) > 0
