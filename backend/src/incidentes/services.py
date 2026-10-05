@@ -9,6 +9,10 @@ from src.personal import schemas as p_schemas, exceptions as p_exceptions
 from src.personal.models import Persona
 
 def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incidente:
+
+    if incidente.reportante_id is None:
+        raise exceptions.ReportanteNoAsignado()
+    
     reportante = db.scalar(
         select(Persona).where(
             Persona.id == incidente.reportante_id
@@ -17,9 +21,6 @@ def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incident
 
     if reportante is None:
         raise exceptions.ReportanteNoEncontrado()
-
-    if incidente.reportante_id is None:
-        raise exceptions.ReportanteNoAsignado()
 
     _incidente = Incidente(**incidente.model_dump(), abierto=True)
 

@@ -39,7 +39,7 @@ def test_crear_incidente(session):
     assert response.status_code == 201
     assert response.json()["titulo"] == data["titulo"]
 
-def test_crear_incidente_con_persona_inexistente(session):
+def test_crear_incidente_con_reportante_inexistente(session):
     data = {
         "titulo": "Incidente de prueba",
         "descripcion": "Descripción del incidente de prueba",
@@ -50,3 +50,15 @@ def test_crear_incidente_con_persona_inexistente(session):
     response = cl.post("/incidentes/", json=data)
     assert response.status_code == 404
     assert response.json()["detail"] == "El reportante no fue encontrado."
+
+def test_crear_incidente_sin_reportante(session):
+    data = {
+        "titulo": "Incidente de prueba",
+        "descripcion": "Descripción del incidente de prueba",
+        "fecha_hora_reporte": datetime.now().isoformat(),
+        "reportante_id": None, # No se asigna reportante
+    }
+
+    response = cl.post("/incidentes/", json=data)
+    assert response.status_code == 422
+    assert response.json()["detail"] == "No se puede crear un incidente sin asignarle un reportante."
