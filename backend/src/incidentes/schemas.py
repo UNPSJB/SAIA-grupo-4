@@ -12,4 +12,9 @@ class IncidenteBase(BaseModel):
 class IncidenteCreate(IncidenteBase):
     pass
 
+
+class Incidente(IncidenteBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
 # Agregar los otros schemas

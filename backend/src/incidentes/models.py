@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean, String, DateTime, ForeignKey # Agregar mas si es necesario
 from sqlalchemy.orm import Mapped, mapped_column, relationship # Agregar mas si es necesario
 from src.models import ModeloBase
+from datetime import datetime
 
 class Incidente(ModeloBase):
     __tablename__ = "incidentes"
