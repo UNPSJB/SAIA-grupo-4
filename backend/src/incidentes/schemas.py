@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Annotated, Optional
+from src.personal.schemas import Persona
 
 class IncidenteBase(BaseModel):
     titulo: Annotated[str, Field(min_length=1, max_length=100)]
@@ -12,9 +13,10 @@ class IncidenteBase(BaseModel):
 class IncidenteCreate(IncidenteBase):
     pass
 
+# Agregar los otros schemas
 
 class Incidente(IncidenteBase):
     id: int
-
+    abierto: bool
+    reportante: Persona
     model_config = ConfigDict(from_attributes=True)
-# Agregar los otros schemas

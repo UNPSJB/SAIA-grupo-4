@@ -5,7 +5,22 @@ from sqlalchemy.orm import Session
 from src.incidentes import schemas, exceptions
 from src.incidentes.models import Incidente
 
+from src.personal import schemas as p_schemas, exceptions as p_exceptions
+from src.personal.models import Persona
+
 def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incidente:
+    reportante = db.scalar(
+        select(Persona).where(
+            Persona.id == incidente.reportante_id
+        )
+    )
+
+    if reportante is None:
+        raise exceptions.ReportanteNoEncontrado()
+
+    if incidente.reportante_id is None:
+        raise exceptions.ReportanteNoAsignado()
+
     _incidente = Incidente(**incidente.model_dump(), abierto=True)
 
     db.add(_incidente)
