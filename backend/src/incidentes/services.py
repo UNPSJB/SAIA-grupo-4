@@ -21,3 +21,5 @@ def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incident
 
 def listar_incidentes(db: Session) -> list[Incidente]:
     return db.scalars(select(Incidente)).all()
+
+# Agregar mas services para el resto de operaciones
