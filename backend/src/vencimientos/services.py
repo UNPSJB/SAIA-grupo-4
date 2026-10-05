@@ -25,6 +25,14 @@ def _resolver_corte(
     estado: EstadoVencimiento | None,
     dias_max: int | None,
 ) -> int | None:
+    """Dias hasta donde se recorta el listado, o None para no recortar.
+
+    Sin filtro de estado se respeta el `dias_max` que venga (y si no viene, no
+    se recorta). El corte por defecto ya no se aplica solo: `vigente` esta
+    definido como "vence despues de DIAS_AVISO_PROXIMO dias", asi que un corte
+    implicito en ese mismo umbral dejaba fuera justamente a los vigentes y
+    "Todos los estados" no podia mostrarlos. Acortar la ventana es explicito.
+    """
     if estado == EstadoVencimiento.VIGENTE:
         return None
     return dias_max
@@ -38,7 +46,7 @@ def listar_vencimientos(
     db: Session,
     estado: EstadoVencimiento | None = None,
     categoria: CategoriaVencimiento | None = None,
-    dias_max: int | None = Constantes.DIAS_AVISO_PROXIMO,
+    dias_max: int | None = None,
 ) -> list[schemas.Vencimiento]:
     hoy = date.today()
 
@@ -68,7 +76,7 @@ def listar_vencimientos(
 
 def listar_categorias(
     db: Session,
-    dias_max: int | None = Constantes.DIAS_AVISO_PROXIMO,
+    dias_max: int | None = None,
 ) -> list[schemas.CategoriaDisponible]:
     hoy = date.today()
     disponibles = []

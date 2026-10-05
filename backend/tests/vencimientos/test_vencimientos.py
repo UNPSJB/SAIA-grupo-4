@@ -103,20 +103,25 @@ def test_umbral_no_se_mezcla_con_el_de_recambios():
 
 
 # =============================================================================
-# Corte por defecto de 15 dias
+# Ventana de dias: sin parametro no se recorta
 # =============================================================================
+# El corte por defecto se elimino. `vigente` esta definido como "vence despues
+# de DIAS_AVISO_PROXIMO dias", asi que un tope implicito en ese mismo umbral
+# dejaba fuera justamente al tercer estado y "Todos los estados" no podia
+# mostrarlo. Acortar la ventana es ahora explicito, con `dias_max`.
 
-def test_lista_por_defecto_excluye_lo_que_vence_despues_de_15_dias():
+def test_lista_sin_filtro_incluye_los_tres_estados():
     tipo_id = crear_tipo_auxiliar()
-    crear_con_urgencia("Vigente", 29, tipo_id=tipo_id)
+    crear_con_urgencia("Vencido", -20, tipo_id=tipo_id)
     crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Vigente", 29, tipo_id=tipo_id)
 
     data = client.get("/vencimientos/").json()
 
-    assert [v["concepto"] for v in data] == ["Proximo"]
+    assert [v["estado"] for v in data] == ["vencido", "proximo", "vigente"]
 
 
-def test_lista_por_defecto_incluye_el_limite_exacto_de_15_dias():
+def test_lista_incluye_el_limite_exacto_de_15_dias():
     tipo_id = crear_tipo_auxiliar()
     crear_con_urgencia("Limite", Constantes.DIAS_AVISO_PROXIMO, tipo_id=tipo_id)
 
@@ -127,7 +132,7 @@ def test_lista_por_defecto_incluye_el_limite_exacto_de_15_dias():
     assert data[0]["estado"] == "proximo"
 
 
-def test_lista_por_defecto_incluye_vencidos():
+def test_lista_incluye_vencidos():
     tipo_id = crear_tipo_auxiliar()
     crear_con_urgencia("Vencido", -20, tipo_id=tipo_id)
 
@@ -142,7 +147,10 @@ def test_dias_max_explicito_estrecha_la_ventana():
     tipo_id = crear_tipo_auxiliar()
     crear_con_urgencia("Lejano", 29, tipo_id=tipo_id)
 
-    assert client.get("/vencimientos/").json() == []
+    # Sin `dias_max` no hay recorte: entra la fila que vence en 29 dias.
+    assert len(client.get("/vencimientos/").json()) == 1
+    # El corte ahora hay que pedirlo, y `dias_max=0` deja solo lo ya vencido.
+    assert client.get("/vencimientos/", params={"dias_max": 0}).json() == []
     assert len(client.get("/vencimientos/", params={"dias_max": 29}).json()) == 1
 
 
@@ -449,7 +457,7 @@ def test_categorias_endpoint_usa_la_etiqueta_legible():
     assert data[0]["nombre"] == "Elementos de limpieza"
 
 
-def test_categorias_endpoint_total_refleja_la_ventana():
+def test_categorias_endpoint_total_refleja_el_listado():
     tipo_id = crear_tipo_auxiliar()
     crear_con_urgencia("Vigente", 29, tipo_id=tipo_id)
     crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
@@ -457,8 +465,13 @@ def test_categorias_endpoint_total_refleja_la_ventana():
 
     data = client.get("/vencimientos/categorias").json()
 
-    # El vigente queda fuera de la ventana de 15 dias y no se cuenta.
-    assert data[0]["total"] == 2
+    # Sin corte por defecto, el total coincide con las tres filas del listado.
+    assert data[0]["total"] == 3
+    # Si el listado se acota, el total cuenta lo mismo que el listado: con
+    # dias_max=5 entran el proximo (5) y el vencido (-20), y no el vigente.
+    acotado = client.get("/vencimientos/categorias", params={"dias_max": 5}).json()
+    assert acotado[0]["total"] == 2
+    assert len(client.get("/vencimientos/", params={"dias_max": 5}).json()) == 2
 
 
 def test_categorias_endpoint_lista_vacia_sin_datos():
@@ -476,6 +489,10 @@ def test_categorias_endpoint_rechaza_dias_max_negativo():
 # =============================================================================
 
 def test_resolver_corte_sin_filtro_de_estado():
+    # Sin `dias_max` tampoco se recorta: "Todos los estados" tiene que poder
+    # devolver a los vigentes.
+    assert _resolver_corte(None, None) is None
+    # Si el cliente acota la ventana, se respeta lo que pidio.
     assert _resolver_corte(None, Constantes.DIAS_AVISO_PROXIMO) == 15
 
 
@@ -486,6 +503,8 @@ def test_resolver_corte_levanta_el_tope_con_estado_vigente():
 def test_resolver_corte_mantiene_el_tope_en_el_resto_de_los_estados():
     for estado in (EstadoVencimiento.VENCIDO, EstadoVencimiento.PROXIMO):
         assert _resolver_corte(estado, Constantes.DIAS_AVISO_PROXIMO) == 15
+        # Sin tope pedido, vencido y proximo abarcan toda la lista.
+        assert _resolver_corte(estado, None) is None
 
 
 def test_resolver_corte_respeta_un_tope_explicito():
@@ -530,17 +549,21 @@ def test_renovar_refleja_el_nuevo_vencimiento():
     assert despues["estado"] == EstadoVencimiento.PROXIMO.value
 
 
-def test_renovar_saca_el_vencimiento_del_corte_si_la_frecuencia_supera_el_aviso():
-    # Con frecuencia mayor a los 15 dias de aviso, renovar saca la fila de la
-    # ventana por defecto. Es el caso en que "renovar" hace desaparecer la fila.
+def test_renovar_con_frecuencia_larga_mantiene_la_fila_con_la_fecha_nueva():
+    # Con frecuencia mayor a los 15 dias de aviso, renovar dejaba la fila con
+    # estado "vigente". Antes el tablero la recortaba y "renovar" hacia
+    # desaparecerla; al no haber corte por defecto, se sigue viendo con la
+    # fecha nueva, que es lo que el usuario necesita confirmar.
     elemento_id = crear_elemento_auxiliar("Escoba holgada", frecuencia=40)
     registrar_recambio(elemento_id, 35)  # proxima = hoy + 5, proximo
 
-    assert _fila(elemento_id) is not None
-
     client.post("/recambios/", json={"elemento_id": elemento_id})
 
-    assert _fila(elemento_id) is None
+    fila = _fila(elemento_id)
+    assert fila is not None
+    assert fila["fecha_vencimiento"] == (date.today() + timedelta(days=40)).isoformat()
+    assert fila["dias_restantes"] == 40
+    assert fila["estado"] == EstadoVencimiento.VIGENTE.value
 
 
 def test_renovar_con_frecuencia_corta_mantiene_la_fila_en_la_ventana():
@@ -571,15 +594,13 @@ def test_renovar_un_elemento_no_afecta_a_los_demas():
 
 def test_renovar_refleja_el_estado_vigente():
     # Renovar un elemento con frecuencia holgada lo deja vigente, y el estado
-    # vigente levanta el corte: se sigue viendo si se pide explicitamente.
+    # vigente levanta cualquier corte: se sigue viendo sin pedir nada.
     elemento_id = crear_elemento_auxiliar("Escoba vigente", frecuencia=40)
     registrar_recambio(elemento_id, 39)  # proxima = hoy + 1, proximo
 
     client.post("/recambios/", json={"elemento_id": elemento_id})
 
-    assert _fila(elemento_id) is None  # fuera de la ventana de 15 dias
-
-    vigente = client.get("/vencimientos/", params={"estado": "vigente"}).json()
-    fila = next(v for v in vigente if v["id"] == f"elemento_limpieza:{elemento_id}")
+    fila = _fila(elemento_id)
+    assert fila is not None  # sigue en el listado, ahora vigente
     assert fila["estado"] == EstadoVencimiento.VIGENTE.value
     assert fila["dias_restantes"] == 40

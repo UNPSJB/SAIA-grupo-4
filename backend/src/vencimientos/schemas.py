@@ -28,4 +28,4 @@ class Vencimiento(BaseModel):
 class CategoriaDisponible(BaseModel):
     valor: CategoriaVencimiento
     nombre: str
-    total: Annotated[int, Field(description="Vencimientos en ventana para esta categoria")]
+    total: Annotated[int, Field(description="Vencimientos de esta categoria en el listado actual")]

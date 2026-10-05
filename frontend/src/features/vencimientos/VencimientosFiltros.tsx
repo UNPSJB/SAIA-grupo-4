@@ -1,4 +1,4 @@
-import { FiltroSelect, FiltrosBar } from "../../components/ui";
+import { FiltroNumero, FiltroSelect, FiltrosBar } from "../../components/ui";
 import { tieneFiltros, type FiltrosVencimientos } from "./filtrosVencimientos";
 import type { CategoriaDisponible, EstadoVencimiento } from "./types";
 
@@ -61,6 +61,16 @@ export const VencimientosFiltros = ({
       }))}
       value={filtros.categoria}
       onChange={(valor) => onCambiar({ ...filtros, categoria: valor })}
+    />
+
+    {/* Acota la ventana de fechas. Vacío es "sin límite", que es el estado por
+        defecto: sin esto no habría forma de volver a un recorte corto cuando
+        el listado crece. */}
+    <FiltroNumero
+      ariaLabel='Días hasta el vencimiento'
+      placeholder='Sin límite de días'
+      value={filtros.dias}
+      onChange={(valor) => onCambiar({ ...filtros, dias: valor })}
     />
   </FiltrosBar>
 );

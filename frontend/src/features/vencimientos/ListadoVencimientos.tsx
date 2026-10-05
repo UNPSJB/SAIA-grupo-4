@@ -49,7 +49,11 @@ export const ListadoVencimientos = ({
     useListadoData<Vencimiento>({
       // El endpoint se rearma con los filtros aplicados: useListadoData vuelve a
       // pedir los datos cada vez que la URL cambia.
-      endpoint: construirEndpoint(aplicados.estado, aplicados.categoria),
+      endpoint: construirEndpoint(
+        aplicados.estado,
+        aplicados.categoria,
+        aplicados.dias,
+      ),
       refreshKey,
       errorMessage: "No se pudo cargar la lista de vencimientos.",
     });

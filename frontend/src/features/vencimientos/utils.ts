@@ -5,17 +5,25 @@ export const BASE_URL = "http://127.0.0.1:8000";
 /**
  * Arma el endpoint de la vista consolidada.
  *
- * No se manda `dias_max`: el backend aplica su corte por defecto de 15 dias y lo
- * levanta automaticamente cuando estado=vigente. Mandarlo desde aca duplicaria
- * una regla que ya es del servidor.
+ * `dias_max` solo se manda si el usuario acota la ventana. No mandar nada
+ * significa "sin recorte": el backend devuelve vencidos, próximos y vigentes,
+ * y el semáforo sigue clasificando con su propio umbral de 15 días, que es otro
+ * concepto. Un valor negativo o con decimales se ignora en vez de mandarse a
+ * error: el filtro no debería poder romper la consulta.
  */
 export const construirEndpoint = (
   estado: EstadoVencimiento | "",
   categoria: string,
+  dias: string,
 ) => {
   const params = new URLSearchParams();
   if (estado) params.set("estado", estado);
   if (categoria) params.set("categoria", categoria);
+
+  const diasMax = Number(dias.trim());
+  if (dias.trim() !== "" && Number.isInteger(diasMax) && diasMax >= 0) {
+    params.set("dias_max", String(diasMax));
+  }
 
   const query = params.toString();
   return `${BASE_URL}/vencimientos/${query ? `?${query}` : ""}`;
