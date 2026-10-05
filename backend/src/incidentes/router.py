@@ -12,3 +12,25 @@ def create_incidente(incidente: schemas.IncidenteCreate, db: Session = Depends(g
 @router.get("/", response_model=list[schemas.Incidente])
 def read_incidentes(db: Session = Depends(get_db)):
     return services.listar_incidentes(db)
+
+# --- Novedades Cierre / Reapertura / Historial ---
+
+@router.post("/{incidente_id}/cierre", response_model=schemas.Incidente)
+def registrar_cierre(
+    incidente_id: int, 
+    datos: schemas.IncidenteCierreCreate, 
+    db: Session = Depends(get_db)
+):
+    return services.cerrar_incidente(db, incidente_id, datos)
+
+@router.post("/{incidente_id}/reapertura", response_model=schemas.Incidente)
+def reabrir_incidente(
+    incidente_id: int, 
+    datos: schemas.IncidenteReaperturaCreate, 
+    db: Session = Depends(get_db)
+):
+    return services.reabrir_incidente(db, incidente_id, datos)
+
+@router.get("/{incidente_id}/historial", response_model=list[schemas.HistorialIncidenteResponse])
+def obtener_historial(incidente_id: int, db: Session = Depends(get_db)):
+    return services.listar_historial_incidente(db, incidente_id)
