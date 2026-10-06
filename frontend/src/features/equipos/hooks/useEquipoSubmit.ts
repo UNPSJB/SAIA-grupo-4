@@ -1,18 +1,10 @@
 import { useCallback, useState } from "react";
+import type { EquipoPayload } from "../types";
 
 export type SubmitResult =
   | { status: "success" }
   | { status: "inactivo"; equipoId: number }
   | { status: "error"; message: string };
-
-export interface EquipoPayload {
-  nombre: string;
-  marca: string;
-  numero_serie: string;
-  categoria: string;
-  sector_id: number;
-  ubicacion?: string;
-}
 
 interface UseEquipoSubmitOptions {
   endpoint: string;
@@ -44,6 +36,9 @@ export const useEquipoSubmit = ({
           categoria: values?.categoria ?? "",
           sector_id: values?.sector_id,
           ubicacion: values?.ubicacion ?? "",
+          // Campos agregados para calibración (HU-16)
+          frecuencia_calibracion_dias: values?.frecuencia_calibracion_dias ?? null,
+          fecha_ultima_calibracion: values?.fecha_ultima_calibracion ?? null,
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
@@ -68,15 +63,18 @@ export const useEquipoSubmit = ({
           }
 
           let mensajeError = "Ocurrió un error inesperado";
-          
+
           // 2. Extraer el mensaje exacto que manda FastAPI
           if (bodyRes?.detail) {
             if (typeof bodyRes.detail === "string") {
-              // Excepciones estándar donde detail es un texto (ej: SectorInactivo)
+              // Excepciones estándar donde detail es un texto
               mensajeError = bodyRes.detail;
             } else if (typeof bodyRes.detail.code === "string") {
               // Excepciones personalizadas donde detail es un objeto con "code"
               mensajeError = bodyRes.detail.code;
+            } else if (Array.isArray(bodyRes.detail)) {
+              // Errores de validación de Pydantic (status 422)
+              mensajeError = bodyRes.detail.map((err: any) => err.msg).join(", ");
             }
           } else {
             // 3. Fallback genérico por si el servidor se cae y no manda JSON
@@ -97,7 +95,7 @@ export const useEquipoSubmit = ({
                 mensajeError = `Error ${res.status || "desconocido"}`;
             }
           }
-          
+
           return { status: "error", message: mensajeError };
         }
 

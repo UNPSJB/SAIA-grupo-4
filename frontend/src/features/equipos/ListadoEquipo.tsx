@@ -19,6 +19,28 @@ import { useListadoData } from "../../hooks/useListadoData";
 import type { Equipo } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
+const obtenerBadgeSemaforo = (equipo: Equipo) => {
+  if (!equipo.frecuencia_calibracion_dias || !equipo.fecha_ultima_calibracion) {
+    return <Badge colorPalette="gray">Sin plan</Badge>;
+  }
+
+  const ultima = new Date(equipo.fecha_ultima_calibracion);
+  const proxima = new Date(ultima);
+  proxima.setDate(proxima.getDate() + equipo.frecuencia_calibracion_dias);
+
+  const hoy = new Date();
+  const diffTiempo = proxima.getTime() - hoy.getTime();
+  const diasRestantes = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
+
+  if (diasRestantes < 0) {
+    return <Badge colorPalette="red">Vencido ({Math.abs(diasRestantes)}d)</Badge>;
+  }
+  if (diasRestantes <= 15) {
+    return <Badge colorPalette="yellow">Próximo ({diasRestantes}d)</Badge>;
+  }
+  return <Badge colorPalette="green">Al día ({diasRestantes}d)</Badge>;
+};
+
 interface ListadoEquiposProps {
     onCrear?: () => void;
     onModificar?: (equipo: Equipo) => void;
@@ -64,6 +86,11 @@ export const ListadoEquipos = ({
             key: "sector",
             label: "Sector",
             render: (equipo) => equipo.sector.nombre,
+        },
+        {
+            key: "calibracion",
+            label: "Calibración",
+            render: (equipo) => obtenerBadgeSemaforo(equipo),
         },
         {
             key: "activo",
