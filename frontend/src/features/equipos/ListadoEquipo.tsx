@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge } from "@chakra-ui/react";
 import {
     FiThermometer,
@@ -27,9 +28,7 @@ interface ListadoEquiposProps {
     onDarAlta?: (equipo: Equipo) => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/equipos/";
-const ITEMS_POR_PAGINA = 5;
-
+const ENDPOINT = `${BASE_URL}/equipos/`;
 export const ListadoEquipos = ({
     onCrear,
     onModificar,

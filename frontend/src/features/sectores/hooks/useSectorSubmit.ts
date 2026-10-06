@@ -1,3 +1,4 @@
+import { JSON_HEADERS } from "../../../config";
 import { useCallback, useState } from "react";
 
 export type SubmitResult =
@@ -39,7 +40,7 @@ export const useSectorSubmit = ({
         const url = id ? `${endpoint}${id}/` : endpoint;
         const res = await fetch(url, {
           method,
-          headers: { "Content-Type": "application/json" },
+          headers: JSON_HEADERS,
           body: JSON.stringify(payload),
         });
 

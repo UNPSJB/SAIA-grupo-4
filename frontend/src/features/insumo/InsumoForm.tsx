@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,8 +40,8 @@ export const InsumoForm = ({
   const esModoModificar = modo === "modificar";
 
   const { data: unidades } = useListadoData<UnidadMedida>({
-    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
-    pageSize: 100,
+    endpoint: `${BASE_URL}/unidades-de-medida/`,
+    pageSize: ITEMS_SELECT,
     errorMessage: "No se pudieron cargar las unidades de medida.",
   });
 
@@ -91,7 +92,7 @@ export const InsumoForm = ({
   const [nombreEnviado, setNombreEnviado] = useState("");
 
   const { submit } = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+    endpoint: `${BASE_URL}/insumos/`,
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? insumo!.id : undefined,
     onInactivo: (insumoId) => {
@@ -107,7 +108,7 @@ export const InsumoForm = ({
   });
 
   const reactivar = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+    endpoint: `${BASE_URL}/insumos/`,
     method: "PUT",
     id: insumoInactivoId ?? undefined,
     body: { disponible: true },

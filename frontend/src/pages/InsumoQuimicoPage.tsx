@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
@@ -39,7 +40,7 @@ export default function InsumoQuimicoPage() {
   };
 
   const reactivar = useInsumoQuimicoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos-quimicos/",
+    endpoint: `${BASE_URL}/insumos-quimicos/`,
     method: "PUT",
     id: insumoQuimicoAlta?.id,
     body: { activo: true },

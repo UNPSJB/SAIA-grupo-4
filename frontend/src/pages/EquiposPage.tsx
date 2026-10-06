@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { EquipoForm } from "../features/equipos/EquipoForm";
@@ -40,7 +41,7 @@ export default function EquiposPage() {
   };
 
   const reactivar = useEquipoSubmit({
-    endpoint: "http://127.0.0.1:8000/equipos/",
+    endpoint: `${BASE_URL}/equipos/`,
     method: "PUT",
     id: equipoAlta?.id,
     body: { activo: true },

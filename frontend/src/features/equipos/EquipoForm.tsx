@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,7 +73,7 @@ export const EquipoForm = ({
 
     // Carga dinámica de sectores para el dropdown
     const { data: sectores, loading: cargandoSectores, error: errorSectores } = useListadoData<Sector>({
-        endpoint: "http://127.0.0.1:8000/sectores/",
+        endpoint: `${BASE_URL}/sectores/`,
     });
 
     const opcionesSectores = useMemo(() => {
@@ -91,7 +92,7 @@ export const EquipoForm = ({
     const [nombreEnviado, setNombreEnviado] = useState("");
 
     const { submit } = useEquipoSubmit({
-        endpoint: "http://127.0.0.1:8000/equipos/",
+        endpoint: `${BASE_URL}/equipos/`,
         method: esModoCrear ? "POST" : "PUT",
         id: esModoModificar ? equipo!.id : undefined,
         onInactivo: (equipoId) => {
@@ -107,7 +108,7 @@ export const EquipoForm = ({
     });
 
     const reactivar = useEquipoSubmit({
-        endpoint: "http://127.0.0.1:8000/equipos/",
+        endpoint: `${BASE_URL}/equipos/`,
         method: "PUT",
         id: equipoInactivoId ?? undefined,
         body: { activo: true },

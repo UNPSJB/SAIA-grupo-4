@@ -1,3 +1,4 @@
+import { ITEMS_POR_PAGINA } from "../config";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/useAuth";
@@ -34,8 +35,6 @@ import {
   labelsDias,
   parsearDetalleFrecuencia,
 } from "../features/planes/utils";
-
-const ITEMS_POR_PAGINA = 5;
 
 const labelsEstado = {
   borrador: { texto: "Borrador", color: "orange" },

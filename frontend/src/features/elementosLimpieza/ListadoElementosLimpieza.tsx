@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { useMemo, useState } from "react";
 import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
@@ -36,8 +37,6 @@ interface ListadoElementosLimpiezaProps {
   onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
-const PAGE_SIZE = 5;
-
 const formatearFecha = (fechaStr?: string | null) => {
   if (!fechaStr) return "—";
   try {
@@ -52,7 +51,7 @@ const formatearFecha = (fechaStr?: string | null) => {
 };
 
 const construirEndpoint = (filtroEstado: "todos" | "activos" | "inactivos") => {
-  const base = "http://127.0.0.1:8000/elementos-limpieza/";
+  const base = `${BASE_URL}/elementos-limpieza/`;
   if (filtroEstado === "activos") return `${base}?activo=true`;
   if (filtroEstado === "inactivos") return `${base}?activo=false`;
   return base;
@@ -79,7 +78,7 @@ export const ListadoElementosLimpieza = ({
 
   // La próxima fecha y el semáforo los calcula el backend; se cruzan por id de elemento
   const { data: alertas } = useListadoData<AlertaRecambio>({
-    endpoint: "http://127.0.0.1:8000/recambios/alertas",
+    endpoint: `${BASE_URL}/recambios/alertas`,
     errorMessage: "No se pudieron cargar las alertas de recambio.",
   });
   const alertaPorElemento = useMemo(
@@ -87,8 +86,8 @@ export const ListadoElementosLimpieza = ({
     [alertas],
   );
 
-  const inicio = (page - 1) * PAGE_SIZE;
-  const itemsPaginados = data.slice(inicio, inicio + PAGE_SIZE);
+  const inicio = (page - 1) * ITEMS_POR_PAGINA;
+  const itemsPaginados = data.slice(inicio, inicio + ITEMS_POR_PAGINA);
 
   const handleCambiarFiltro = (
     nuevoFiltro: "todos" | "activos" | "inactivos",
@@ -261,7 +260,7 @@ export const ListadoElementosLimpieza = ({
           <TablePagination
             count={data.length}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
             labelSingular='elemento'
             labelPlural='elementos'

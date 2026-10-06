@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
+import { BASE_URL } from "../../../config";
 import type { EjecucionTarea, RegistroConsumoQuimico } from "../types";
 
-const BASE_URL = "http://127.0.0.1:8000/checklists";
+const CHECKLISTS_URL = `${BASE_URL}/checklists`;
 
 export type CompletarResultado =
   | { status: "success"; ejecucion: EjecucionTarea }
@@ -42,7 +43,7 @@ export const useCompletarTarea = ({
         if (foto) formData.append("foto", foto);
 
         // No se setea Content-Type: el browser agrega el boundary del multipart.
-        const res = await fetch(`${BASE_URL}/${ejecucionId}/completar`, {
+        const res = await fetch(`${CHECKLISTS_URL}/${ejecucionId}/completar`, {
           method: "PATCH",
           body: formData,
         });

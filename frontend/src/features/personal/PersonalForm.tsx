@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +41,7 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
         defaultValues,
     });
 
-    const { data: capacidades } = useListadoData<Capacidad>({ endpoint: "http://127.0.0.1:8000/capacidades/" });
+    const { data: capacidades } = useListadoData<Capacidad>({ endpoint: `${BASE_URL}/capacidades/` });
     const capacidadesActivas = useMemo(() => capacidades.filter((c) => c.activo), [capacidades]);
 
     const [success, setSuccess] = useState(false);
@@ -49,7 +50,7 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
     const [errorConfirmar, setErrorConfirmar] = useState("");
 
     const { submit } = usePersonalSubmit({
-        endpoint: "http://127.0.0.1:8000/personal/",
+        endpoint: `${BASE_URL}/personal/`,
         method: esModoCrear ? "POST" : "PUT",
         id: esModoModificar ? persona!.id : undefined,
         onInactivo: (pId) => {
@@ -65,7 +66,7 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
     });
 
     const reactivar = usePersonalSubmit({
-        endpoint: "http://127.0.0.1:8000/personal/",
+        endpoint: `${BASE_URL}/personal/`,
         method: "PUT",
         id: personaInactivaId ?? undefined,
         body: { activo: true },

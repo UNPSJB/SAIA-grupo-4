@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { Badge, HStack } from "@chakra-ui/react";
 import { FiAlertCircle, FiEye } from "react-icons/fi";
@@ -59,7 +60,7 @@ export const ListadoVencimientos = ({
     });
 
   const { data: categorias } = useListadoData<CategoriaDisponible>({
-    endpoint: "http://127.0.0.1:8000/vencimientos/categorias",
+    endpoint: `${BASE_URL}/vencimientos/categorias`,
     errorMessage: "No se pudieron cargar las categorías de vencimientos.",
   });
 

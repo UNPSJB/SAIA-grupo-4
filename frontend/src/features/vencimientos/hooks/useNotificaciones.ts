@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { BASE_URL } from "../../../config";
+import { BASE_URL, DIAS_AVISO_NOTIFICACIONES } from "../../../config";
 import { useListadoData } from "../../../hooks/useListadoData";
 import type { Vencimiento } from "../types";
 
@@ -15,7 +15,7 @@ import type { Vencimiento } from "../types";
  * Con eso se ahorran dos cosas: un endpoint nuevo en el backend y filtrar en
  * el cliente. Lo que llega ya es la lista de notificaciones.
  */
-const ENDPOINT = `${BASE_URL}/vencimientos/?dias_max=15`;
+const ENDPOINT = `${BASE_URL}/vencimientos/?dias_max=${DIAS_AVISO_NOTIFICACIONES}`;
 
 export const useNotificaciones = () => {
   const { data, loading, error, reload } = useListadoData<Vencimiento>({

@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../../config";
 import type { Capacidad } from "../types";
 
 interface HandleDeleteOptions {
@@ -13,7 +14,7 @@ export const handleDelete = async ({ capacidad, setLoading, setError, onSuccess 
   setError("");
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/capacidades/${capacidad.id}`, {
+    const res = await fetch(`${BASE_URL}/capacidades/${capacidad.id}`, {
       method: "DELETE",
     });
 

@@ -1,3 +1,4 @@
+import { JSON_HEADERS } from "../../../config";
 import { useCallback, useState } from "react";
 
 export type SubmitResult =
@@ -17,7 +18,7 @@ type FastApiError = {
 };
 
 interface UseInsumoSubmitOptions {
-  endpoint: string; // URL base (ej: "http://127.0.0.1:8000/insumos/")
+  endpoint: string; // URL base (ej: `${BASE_URL}/insumos/`)
   method?: "POST" | "PUT"; // método HTTP
   id?: number | string; // solo para PUT
   body?: Record<string, unknown>; // override del body (ej: { disponible: true })
@@ -54,7 +55,7 @@ export const useInsumoSubmit = ({
         const url = id ? `${endpoint}${id}/` : endpoint;
         const res = await fetch(url, {
           method,
-          headers: { "Content-Type": "application/json" },
+          headers: JSON_HEADERS,
           body: JSON.stringify(payload),
         });
 

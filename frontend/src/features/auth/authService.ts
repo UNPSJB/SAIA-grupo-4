@@ -1,8 +1,9 @@
+import { BASE_URL } from "../../config";
 import type { Persona } from "../personal/types";
 import type { UsuarioLogueado } from "./types";
 
 const CLAVE_SESION = "saia.usuario";
-const ENDPOINT_PERSONAL = "http://127.0.0.1:8000/personal/";
+const ENDPOINT_PERSONAL = `${BASE_URL}/personal/`;
 
 // Valida que la sesión guardada tenga la forma esperada.
 // Si quedó una sesión de un esquema anterior (solo documento), se descarta.

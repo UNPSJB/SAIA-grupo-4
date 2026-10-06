@@ -1,3 +1,4 @@
+import { ITEMS_POR_PAGINA } from "../../config";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -59,8 +60,6 @@ interface ListadoTareasProps {
   onDarAltaPlan?: () => void;
   onCrearPlan?: () => void;
 }
-
-const ITEMS_POR_PAGINA = 7;
 
 const Chip = ({
   icon,

@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { VStack } from "@chakra-ui/react";
 import { FiTag, FiSave, FiXCircle, FiEdit2 } from "react-icons/fi";
@@ -24,7 +25,7 @@ export const TipoElementoLimpiezaForm = ({ modo, tipo, onCancelar, onGuardado, e
     const [success, setSuccess] = useState(false);
 
     const { submit, isSubmitting } = useTipoElementoLimpiezaSubmit({
-        endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/",
+        endpoint: `${BASE_URL}/tipos-elemento-limpieza/`,
         method: esModoModificar ? "PUT" : "POST",
         id: esModoModificar ? tipo!.id : undefined,
         onSuccess: (tipoGuardado) => {

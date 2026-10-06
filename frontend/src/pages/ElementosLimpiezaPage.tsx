@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
@@ -40,7 +41,7 @@ export default function ElementosLimpiezaPage() {
     if (!detalleParam) return;
     let activo = true;
 
-    fetch(`http://127.0.0.1:8000/elementos-limpieza/${detalleParam}`)
+    fetch(`${BASE_URL}/elementos-limpieza/${detalleParam}`)
       .then((res) => {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         return res.json();
@@ -82,7 +83,7 @@ export default function ElementosLimpiezaPage() {
   };
 
   const reactivar = useElementoLimpiezaSubmit({
-    endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
+    endpoint: `${BASE_URL}/elementos-limpieza/`,
     method: "PUT",
     id: elementoAlta?.id,
     body: { activo: true },

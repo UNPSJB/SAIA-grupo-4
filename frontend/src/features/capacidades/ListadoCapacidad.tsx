@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge, Box } from "@chakra-ui/react";
 import { FiAward, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiLock } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
@@ -16,8 +17,8 @@ interface ListadoCapacidadesProps {
 
 export const ListadoCapacidades = ({ onCrear, onModificar, onEliminar, onVer, onDarAlta }: ListadoCapacidadesProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<Capacidad>({
-        endpoint: "http://127.0.0.1:8000/capacidades/",
-        pageSize: 5,
+        endpoint: `${BASE_URL}/capacidades/`,
+        pageSize: ITEMS_POR_PAGINA,
         errorMessage: "No se pudo cargar la lista de capacidades.",
     });
 
@@ -79,7 +80,7 @@ export const ListadoCapacidades = ({ onCrear, onModificar, onEliminar, onVer, on
             {!loading && !error && data.length > 0 && (
                 <>
                     <DataTable items={itemsPaginados} columns={columnas} getRowKey={(cap) => cap.id} />
-                    <TablePagination count={data.length} page={page} pageSize={5} onPageChange={setPage} labelSingular="capacidad" labelPlural="capacidades" />
+                    <TablePagination count={data.length} page={page} pageSize={ITEMS_POR_PAGINA} onPageChange={setPage} labelSingular="capacidad" labelPlural="capacidades" />
                 </>
             )}
         </ListadoContainer>

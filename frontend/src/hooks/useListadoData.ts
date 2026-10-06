@@ -1,3 +1,4 @@
+import { ITEMS_POR_PAGINA } from "../config";
 import { useState, useEffect, useMemo, useCallback } from "react";
 
 interface ListadoDataOptions {
@@ -10,7 +11,7 @@ interface ListadoDataOptions {
 export const useListadoData = <T>(
   {
     endpoint,
-    pageSize = 5,
+    pageSize = ITEMS_POR_PAGINA,
     refreshKey = 0,
     errorMessage = "No se pudo cargar la lista de datos.",
   }: ListadoDataOptions,

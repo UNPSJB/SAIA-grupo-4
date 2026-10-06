@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { UnidadMedidaForm } from "../features/unidadMedida/UnidadMedidaForm";
@@ -38,7 +39,7 @@ export default function UnidadMedidaPage() {
   };
 
   const reactivar = useUnidadMedidaSubmit({
-    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
+    endpoint: `${BASE_URL}/unidades-de-medida/`,
     method: "PUT",
     id: unidadAlta?.id,
     body: { disponible: true },

@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import type {
   EjecucionTarea,
   OperadorChecklist,
@@ -7,8 +8,6 @@ import type {
 import { formatearFecha } from "../../utils/fecha";
 
 export { formatearFecha };
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 export const ETIQUETA_TIPO_POE: Record<TipoPoes, string> = {
   pre_operacional: "Pre-operacional",
@@ -39,7 +38,7 @@ export const obtenerNombreOperador = (operador: OperadorChecklist | null) =>
 
 // El backend persiste la ruta relativa de la evidencia y la sirve desde /uploads.
 export const obtenerUrlEvidencia = (foto_url: string | null) =>
-  foto_url ? `${API_BASE_URL}/${foto_url}` : null;
+  foto_url ? `${BASE_URL}/${foto_url}` : null;
 
 export const obtenerNombreEvidencia = (foto_url: string | null) =>
   foto_url ? foto_url.split("/").pop() ?? foto_url : null;
