@@ -89,7 +89,7 @@ class Equipo(EquipoBase):
     sector: Sector
     model_config = ConfigDict(from_attributes=True)
 
-    class AlertaCalibracion(BaseModel):
+class AlertaCalibracion(BaseModel):
         entidad_id: int
         entidad: str
         tipo: str = "equipo"
