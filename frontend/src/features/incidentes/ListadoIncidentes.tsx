@@ -1,14 +1,12 @@
-import { HStack, Button, Badge } from "@chakra-ui/react";
-import { 
-    FiEye,
-} from "react-icons/fi"; // Importar otros íconos según sea necesario
+import { HStack, Badge } from "@chakra-ui/react";
+import { FiEye, FiCheckCircle, FiRotateCcw } from "react-icons/fi";
 import {
-    AlertMessage,
-    DataTable,
-    LoadingState,
-    RowActionButton,
-    RowActions,
-    TablePagination,
+  AlertMessage,
+  DataTable,
+  LoadingState,
+  RowActionButton,
+  RowActions,
+  TablePagination,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -16,8 +14,10 @@ import type { Incidente } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
 interface ListadoIncidentesProps {
-    onVer?: (incidente: Incidente) => void;
-    // Agregar las props del listado
+  onVer?: (incidente: Incidente) => void;
+  onCerrar?: (incidente: Incidente) => void;
+  onReabrir?: (incidente: Incidente) => void;
+  refreshKey?: number;
 }
 
 const ENDPOINT = "http://127.0.0.1:8000/incidentes/";
@@ -35,13 +35,16 @@ const formatearFecha = (fecha: string) => {
 };
 
 export const ListadoIncidentes = ({
-    onVer,
-    // Agregar las props del listado
+  onVer,
+  onCerrar,
+  onReabrir,
+  refreshKey
 }: ListadoIncidentesProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Incidente>({
       endpoint: ENDPOINT,
       pageSize: ITEMS_POR_PAGINA,
+      refreshKey,
       errorMessage: "No se pudo cargar la lista de incidentes.",
     });
 
@@ -65,8 +68,8 @@ export const ListadoIncidentes = ({
       key: "estado",
       label: "Estado",
       render: (incidente) => (
-        <Badge colorScheme={incidente.abierto ? "green" : "red"}>
-            {incidente.abierto ? "Abierto" : "Cerrado"}
+        <Badge colorPalette={incidente.abierto ? "green" : "red"}>
+          {incidente.abierto ? "Abierto" : "Cerrado"}
         </Badge>
       ),
     },
@@ -76,13 +79,27 @@ export const ListadoIncidentes = ({
       align: "end",
       render: (incidente) => (
         <RowActions>
-            <RowActionButton 
-              icon={FiEye}
-              label="Ver"
-              colorPalette="yellow"
-              onClick={() => onVer?.(incidente)} 
+          <RowActionButton
+            icon={FiEye}
+            label="Ver"
+            colorPalette="yellow"
+            onClick={() => onVer?.(incidente)}
+          />
+          {incidente.abierto ? (
+            <RowActionButton
+              icon={FiCheckCircle}
+              label="Cerrar"
+              colorPalette="green"
+              onClick={() => onCerrar?.(incidente)}
             />
-            // Agregar botones de acción según sea necesario
+          ) : (
+            <RowActionButton
+              icon={FiRotateCcw}
+              label="Reabrir"
+              colorPalette="orange"
+              onClick={() => onReabrir?.(incidente)}
+            />
+          )}
         </RowActions>
       ),
     },
@@ -93,7 +110,7 @@ export const ListadoIncidentes = ({
       <HStack justify="space-between" mb={6} align="center">
         <ListadoHeader title="Listado de Incidentes" />
       </HStack>
-    
+
       {loading && <LoadingState message="Cargando incidentes..." />}
 
       {!loading && error && <AlertMessage type="error" message={error} />}

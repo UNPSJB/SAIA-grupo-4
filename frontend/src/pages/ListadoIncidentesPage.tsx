@@ -1,36 +1,55 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { ListadoIncidentes } from "../features/incidentes/ListadoIncidentes";
 import { IncidenteDetalle } from "../features/incidentes/IncidenteDetalle";
-import { AlertConfirm, FormModal } from "../components/ui";
-import { useIncidentesSubmit } from "../features/incidentes/hooks/useIncidentesSubmit";
+import { AccionIncidenteDialog } from "../features/incidentes/AccionIncidenteDialog";
+import { useListadoData } from "../hooks/useListadoData";
 import type { Incidente } from "../features/incidentes/types";
+import type { Persona } from "../features/personal/types";
 
 type Vista = "listado" | "ver";
 
 export default function ListadoIncidentesPage() {
-  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>("listado");
   const [incidenteSeleccionado, setIncidenteSeleccionado] = useState<Incidente | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [refrescar, setRefrescar] = useState(0);
+  const [accion, setAccion] = useState<{
+    incidente: Incidente;
+    modo: "cierre" | "reapertura";
+  } | null>(null);
+
+  const { data: personas } = useListadoData<Persona>({
+    endpoint: "http://127.0.0.1:8000/personal/",
+    errorMessage: "No se pudo cargar el personal.",
+  });
+  const responsables = personas.filter((p) => p.activo);
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
       <ListadoIncidentes
-        key={refrescar}
+        refreshKey={refrescar}
         onVer={(incidente) => {
-          setError("");
           setIncidenteSeleccionado(incidente);
           setVista("ver");
         }}
+        onCerrar={(incidente) => setAccion({ incidente, modo: "cierre" })}
+        onReabrir={(incidente) => setAccion({ incidente, modo: "reapertura" })}
       />
+
       {vista === "ver" && incidenteSeleccionado && (
         <IncidenteDetalle
           incidente={incidenteSeleccionado}
           onCancelar={() => setVista("listado")}
+        />
+      )}
+
+      {accion && (
+        <AccionIncidenteDialog
+          incidente={accion.incidente}
+          modo={accion.modo}
+          personas={responsables}
+          onClose={() => setAccion(null)}
+          onSuccess={() => setRefrescar((k) => k + 1)}
         />
       )}
     </Box>
