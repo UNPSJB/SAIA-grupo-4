@@ -71,6 +71,11 @@ const defaultItems: NavItem[] = [
     label: "Elementos de limpieza",
     icon: MdOutlineCleaningServices,
   },
+  {
+    to: "/incidentes",
+    label: "Incidentes",
+    icon: FiMenu,
+  },
 ];
 
 const planItems: NavItem[] = [
