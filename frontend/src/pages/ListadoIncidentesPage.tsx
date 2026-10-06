@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { ListadoIncidentes } from "../features/incidentes/ListadoIncidentes";
+import { IncidenteDetalle } from "../features/incidentes/IncidenteDetalle";
 import { AlertConfirm, FormModal } from "../components/ui";
 import { useIncidentesSubmit } from "../features/incidentes/hooks/useIncidentesSubmit";
 import type { Incidente } from "../features/incidentes/types";
@@ -32,7 +33,6 @@ export default function ListadoIncidentesPage() {
           onCancelar={() => setVista("listado")}
         />
       )}
-      />
     </Box>
   );
 }
