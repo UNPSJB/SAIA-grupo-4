@@ -9,6 +9,13 @@ from src.sectores.models import Sector
 from src.equipos import schemas, exceptions
 from src.sectores import exceptions as sector_exceptions
 
+from datetime import date, timedelta
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+from src.equipos.models import Equipo, CalibracionEquipo
+from src.equipos.schemas import CalibracionEquipoCreate, AlertaCalibracion
+
+UMBRAL_DIAS_PROXIMO = 15
 
 def crear_equipo(db: Session, equipo: schemas.EquipoCreate) -> Equipo:
     sector = db.scalar(
@@ -177,3 +184,95 @@ def eliminar_equipo(db: Session, equipo_id: int) -> Equipo:
         )
 
     return db_equipo
+
+def calcular_semaforo_equipo(fecha_ultima: date, frecuencia_dias: int, fecha_ref: date | None = None) -> tuple[date, int, str]:
+    """Calcula la próxima fecha, días restantes y estado (vencido, proximo, al_dia)."""
+    proxima_fecha = fecha_ultima + timedelta(days=frecuencia_dias)
+    hoy = fecha_ref or date.today()
+    dias_restantes = (proxima_fecha - hoy).days
+
+    if dias_restantes < 0:
+        estado = "vencido"
+    elif dias_restantes <= UMBRAL_DIAS_PROXIMO:
+        estado = "proximo"
+    else:
+        estado = "al_dia"
+
+    return proxima_fecha, dias_restantes, estado
+
+
+def registrar_calibracion(db: Session, equipo_id: int, datos: CalibracionEquipoCreate) -> CalibracionEquipo:
+    equipo = db.query(Equipo).filter(Equipo.id == equipo_id, Equipo.activo.is_(True)).first()
+    if not equipo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Equipo no encontrado o inactivo",
+        )
+
+    if datos.fecha_calibracion > date.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La fecha de calibración no puede ser futura",
+        )
+
+    calibracion = CalibracionEquipo(
+        equipo_id=equipo_id,
+        fecha_calibracion=datos.fecha_calibracion,
+        observaciones=datos.observaciones,
+        certificado_url=datos.certificado_url,
+    )
+    db.add(calibracion)
+
+    # Actualiza la fecha de última calibración en el equipo
+    equipo.fecha_ultima_calibracion = datos.fecha_calibracion
+    db.commit()
+    db.refresh(calibracion)
+    return calibracion
+
+
+def listar_historial_calibraciones(db: Session, equipo_id: int) -> list[CalibracionEquipo]:
+    equipo = db.query(Equipo).filter(Equipo.id == equipo_id).first()
+    if not equipo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Equipo no encontrado",
+        )
+    return (
+        db.query(CalibracionEquipo)
+        .filter(CalibracionEquipo.equipo_id == equipo_id)
+        .order_by(CalibracionEquipo.fecha_calibracion.desc())
+        .all()
+    )
+
+
+def listar_alertas_calibracion(db: Session) -> list[AlertaCalibracion]:
+    equipos = (
+        db.query(Equipo)
+        .filter(
+            Equipo.activo.is_(True),
+            Equipo.frecuencia_calibracion_dias.isnot(None),
+            Equipo.frecuencia_calibracion_dias > 0,
+            Equipo.fecha_ultima_calibracion.isnot(None),
+        )
+        .all()
+    )
+
+    alertas: list[AlertaCalibracion] = []
+    for eq in equipos:
+        proxima, dias, estado = calcular_semaforo_equipo(
+            eq.fecha_ultima_calibracion, eq.frecuencia_calibracion_dias  # type: ignore
+        )
+        alertas.append(
+            AlertaCalibracion(
+                entidad_id=eq.id,
+                entidad=f"{eq.nombre} ({eq.marca} - {eq.numero_serie})",
+                tipo="equipo",
+                proxima_fecha=proxima,
+                dias_restantes=dias,
+                estado=estado,
+            )
+        )
+
+    # Ordenados por más urgente primero (menor cantidad de días restantes)
+    alertas.sort(key=lambda a: a.dias_restantes)
+    return alertas

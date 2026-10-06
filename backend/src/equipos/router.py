@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.equipos import schemas, services
@@ -24,3 +24,39 @@ def update_equipo(equipo_id: int, equipo: schemas.EquipoUpdate, db: Session = De
 @router.delete("/{equipo_id}", response_model=schemas.Equipo)
 def delete_equipo(equipo_id: int, db: Session = Depends(get_db)):
     return services.eliminar_equipo(db, equipo_id)
+
+@router.post(
+    "/{equipo_id}/calibraciones",
+    response_model=schemas.CalibracionEquipo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar calibración realizada en un equipo",
+)
+def registrar_calibracion_equipo(
+    equipo_id: int,
+    datos: schemas.CalibracionEquipoCreate,
+    db: Session = Depends(get_db),
+):
+    return services.registrar_calibracion(db, equipo_id, datos)
+
+
+@router.get(
+    "/{equipo_id}/calibraciones",
+    response_model=list[schemas.CalibracionEquipo],
+    summary="Listar historial de calibraciones de un equipo",
+)
+def listar_historial_calibraciones_equipo(
+    equipo_id: int,
+    db: Session = Depends(get_db),
+):
+    return services.listar_historial_calibraciones(db, equipo_id)
+
+
+@router.get(
+    "/alertas/calibracion",
+    response_model=list[schemas.AlertaCalibracion],
+    summary="Listar alertas y estados de calibración de equipos",
+)
+def listar_alertas_calibracion_equipos(
+    db: Session = Depends(get_db),
+):
+    return services.listar_alertas_calibracion(db)
