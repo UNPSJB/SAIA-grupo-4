@@ -1,6 +1,8 @@
+import { BASE_URL } from "../../config";
 import type { CategoriaVencimiento, EstadoVencimiento } from "./types";
 
-export const BASE_URL = "http://127.0.0.1:8000";
+// Reexportado porque el resto de `features/vencimientos` lo importa de acá.
+export { BASE_URL };
 
 /**
  * Arma el endpoint de la vista consolidada.

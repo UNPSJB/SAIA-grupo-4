@@ -5,6 +5,7 @@ import { ListadoVencimientos } from "../features/vencimientos/ListadoVencimiento
 import { RenovarVencimiento } from "../features/vencimientos/RenovarVencimiento";
 import { VencimientoDetalle } from "../features/vencimientos/VencimientoDetalle";
 import { useOrigenVencimiento } from "../features/vencimientos/hooks/useOrigenVencimiento";
+import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import type { Vencimiento } from "../features/vencimientos/types";
 
 // Dueña del estado de los modales, como el resto de las páginas del proyecto.
@@ -22,6 +23,10 @@ export default function VencimientosPage() {
   // Cada renovación guardada lo sube para que el listado vuelva a pedir los
   // vencimientos: la fila tiene que mostrar la fecha nueva.
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Lo mismo pero para el badge de la campana: no hay cambio de ruta que le
+  // avise, porque todo pasa dentro de esta pantalla.
+  const { notificarGuardado } = useRenovacion();
 
   return (
     <>
@@ -50,6 +55,7 @@ export default function VencimientosPage() {
               onGuardado={() => {
                 setARenovar(null);
                 setRefreshKey((k) => k + 1);
+                notificarGuardado();
               }}
             />
           )}
