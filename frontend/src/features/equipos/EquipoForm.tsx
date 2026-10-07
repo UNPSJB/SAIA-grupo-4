@@ -246,6 +246,7 @@ export const EquipoForm = ({
             type="date"
             disabled={esModoVer}
             defaultValue={defaultValues.fecha_ultima_calibracion ?? ""}
+            placeholder="AAAA-MM-DD (Ej. 2026-10-07)"
             error={errors.fecha_ultima_calibracion?.message}
             {...(register("fecha_ultima_calibracion") as any)}
           />
