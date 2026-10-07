@@ -18,9 +18,12 @@ class ResponsableNoEncontrado(NotFound):
     DETAIL = ErrorCode.RESPONSABLE_NO_ENCONTRADO
 
 
-class IncidenteYaCerrado(BadRequest):
+class IncidenteYaCerrado(Conflict):
     DETAIL = ErrorCode.INCIDENTE_YA_CERRADO
 
 
-class IncidenteYaAbierto(BadRequest):
+class IncidenteYaAbierto(Conflict):
     DETAIL = ErrorCode.INCIDENTE_YA_ABIERTO
+
+class IncidenteErrorIntegridad(Conflict):
+    DETAIL = ErrorCode.INCIDENTE_ERROR_INTEGRIDAD
