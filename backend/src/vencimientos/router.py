@@ -4,8 +4,11 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.vencimientos import schemas, services
 from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
+from src.auth.dependencies import requiere_administracion
 
-router = APIRouter(prefix="/vencimientos", tags=["vencimientos"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/vencimientos", tags=["vencimientos"], dependencies=[Depends(requiere_administracion)])
 
 # `dias_max` sin default: no mandar el parametro significa "sin corte", no
 # "15 dias". Con el default en 15, "Todos los estados" recortaba justamente a los

@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.equipos import schemas, services
+from src.auth.dependencies import requiere_administracion
 
-router = APIRouter(prefix="/equipos", tags=["equipos"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/equipos", tags=["equipos"], dependencies=[Depends(requiere_administracion)])
 
 @router.post("/", response_model=schemas.Equipo, status_code=201)
 def create_equipo(equipo: schemas.EquipoCreate, db: Session = Depends(get_db)):
