@@ -11,6 +11,9 @@ class Persona(ModeloBase):
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     dni: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     legajo: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    # Hash argon2 de la contraseña. Solo lo tiene el personal con capacidades
+    # habilitantes (administrar u operar); NULL para el resto del personal.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str | None] = mapped_column(String(150), nullable=True)
     telefono: Mapped[str | None] = mapped_column(String(50), nullable=True)
     fecha_alta: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
@@ -21,6 +24,13 @@ class Persona(ModeloBase):
         "PlanPOES", 
         back_populates="elaborado_por"
     )
+
+    # Indica si la persona tiene contraseña asignada. Se expone en el schema de
+    # respuesta (tiene_password) para que el frontend sepa si falta asignarla;
+    # el hash en sí nunca sale de la API.
+    @property
+    def tiene_password(self) -> bool:
+        return self.password_hash is not None
 
 class PersonaCapacidad(ModeloBase):
     __tablename__ = "personal_capacidad"
