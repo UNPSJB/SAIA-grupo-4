@@ -27,6 +27,7 @@ import {
   FiMap,
   FiDroplet,
   FiCheckSquare,
+  FiFileText,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from 'react-icons/md';
 interface LinkNavItem {
@@ -78,6 +79,15 @@ const planItems: NavItem[] = [
   { to: "/plan-poes", label: "Plan Vigente", icon: FiClipboard },
   { to: "/historial-planes", label: "Historial", icon: FiClock },
 ];
+
+// Acceso directo a Gestión Documental: se muestra como link simple bajo el
+// encabezado "Gestión", sin ser un desplegable (como Plan POE) ni parte de
+// la sección "Navegación".
+const documentosItem: LinkNavItem = {
+  to: "/documentos",
+  label: "Gestión documental",
+  icon: FiFileText,
+};
 
 const isActiveRoute = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`);
@@ -420,6 +430,13 @@ export const NavBar = ({
         open={planAccordionOpen}
         onOpenChange={handlePlanOpenChange}
         onCollapsedClick={() => setIsCollapsed(false)}
+      />
+
+      {/* Link directo (no desplegable) dentro de la sección "Gestión" */}
+      <SingleNavLink
+        item={documentosItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
       />
 
       {checklistItems.length > 0 && (

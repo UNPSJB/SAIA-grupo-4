@@ -22,6 +22,7 @@ import NuevoPlanPage from "./pages/NuevoPlanPage";
 import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
+import DocumentosPage from "./pages/DocumentosPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -191,6 +192,16 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <HistorialChecklistPage />
+                </RequireAuth>
+              }
+            />
+
+            {/* Rutas Documentos */}
+            <Route
+              path='/documentos'
+              element={
+                <RequireAuth>
+                  <DocumentosPage />
                 </RequireAuth>
               }
             />
