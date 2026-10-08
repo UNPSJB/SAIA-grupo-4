@@ -52,6 +52,8 @@ def test_crear_documento_con_archivo_y_autogeneracion_codigo(autor_base):
     assert data["version_vigente"] is not None
     assert data["version_vigente"]["version"] == "v1.0"
     assert data["version_vigente"]["es_vigente"] is True
+    # Nombre completo de la persona que subió la versión (fixture: "Doc Tester")
+    assert data["version_vigente"]["subido_por_nombre"] == "Doc Tester"
     assert len(data["versiones"]) == 1
 
 def test_crear_documento_sin_archivo_queda_pendiente(autor_base):
@@ -93,6 +95,33 @@ def test_crear_documento_codigo_duplicado_falla(autor_base):
     
     assert res_conflicto.status_code == 409
     assert res_conflicto.json()["detail"] == "El código asignado ya está siendo utilizado por otro documento."
+
+
+def test_crear_documento_codigo_duplicado_inactivo_ofrece_reactivacion(autor_base):
+    codigo_manual = generar_string_unico("MANUAL")
+    payload = {
+        "codigo": codigo_manual,
+        "titulo": "Doc Reactivable",
+        "tipo_documento": "MANUAL_BPM",
+        "creado_por_id": autor_base
+    }
+
+    # Alta exitosa y posterior baja lógica
+    res_post = client.post("/documentos/", data={"datos": json.dumps(payload)})
+    assert res_post.status_code == 201
+    doc_id = res_post.json()["id"]
+    res_del = client.delete(f"/documentos/{doc_id}")
+    assert res_del.status_code == 204
+
+    # Reintento con el mismo código: en lugar del error genérico de duplicado
+    # debe devolver el id para que el frontend ofrezca reactivarlo
+    payload["titulo"] = "Doc Nuevo"
+    res_conflicto = client.post("/documentos/", data={"datos": json.dumps(payload)})
+
+    assert res_conflicto.status_code == 409
+    detail = res_conflicto.json()["detail"]
+    assert detail["documento_id"] == doc_id
+    assert "code" in detail
 
 
 def test_eliminar_y_reactivar_documento(autor_base):
