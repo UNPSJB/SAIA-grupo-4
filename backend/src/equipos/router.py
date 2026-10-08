@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, UploadFile, File, Form
+from typing import Optional
+from datetime import date
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.equipos import schemas, services
@@ -29,15 +31,22 @@ def delete_equipo(equipo_id: int, db: Session = Depends(get_db)):
     "/{equipo_id}/calibraciones",
     response_model=schemas.CalibracionEquipo,
     status_code=status.HTTP_201_CREATED,
-    summary="Registrar calibración realizada en un equipo",
+    summary="Registrar calibración realizada en un equipo con certificado opcional",
 )
 def registrar_calibracion_equipo(
     equipo_id: int,
-    datos: schemas.CalibracionEquipoCreate,
+    fecha_calibracion: date = Form(..., description="Fecha en que se realizó la calibración (obligatoria)"),
+    observaciones: Optional[str] = Form(None, description="Observaciones opcionales"),
+    certificado: Optional[UploadFile] = File(None, description="Certificado en formato PDF, JPG, PNG o WebP"),
     db: Session = Depends(get_db),
 ):
-    return services.registrar_calibracion(db, equipo_id, datos)
-
+    return services.registrar_calibracion(
+        db=db,
+        equipo_id=equipo_id,
+        fecha_calibracion=fecha_calibracion,
+        observaciones=observaciones,
+        archivo=certificado,
+    )
 
 @router.get(
     "/{equipo_id}/calibraciones",
