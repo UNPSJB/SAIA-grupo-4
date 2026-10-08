@@ -26,7 +26,7 @@ interface ListadoTiposIncidenteProps {
   onDarAlta?: (tipo: TipoIncidente) => void;
 }
 
-export const ListadoIncidenteLimpieza = ({
+export const ListadoTiposIncidentes = ({
   onCrear,
   onModificar,
   onEliminar,
