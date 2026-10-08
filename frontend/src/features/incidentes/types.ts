@@ -1,3 +1,10 @@
+export interface TipoIncidente {
+    id: number;
+    nombre: string;
+    descripcion: string;
+    activo: boolean;
+}
+
 export interface Incidente {
     id: number;
     titulo: string;
@@ -10,5 +17,7 @@ export interface Incidente {
         nombre: string;
         apellido: string;
     }; // Información del usuario que reportó el incidente
+    tipo_id: number; // ID del tipo de incidente
+    tipo: TipoIncidente; // Objeto del tipo de incidente
     abierto: boolean;
 }
