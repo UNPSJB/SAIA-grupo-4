@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Annotated, Optional
 from pydantic import BaseModel, Field, ConfigDict
 from src.personal.schemas import Persona
+from src.tipo_incidente.schemas import TipoIncidente
 
 class IncidenteBase(BaseModel):
     titulo: Annotated[str, Field(min_length=1, max_length=100)]

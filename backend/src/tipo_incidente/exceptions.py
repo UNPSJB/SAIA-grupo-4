@@ -13,6 +13,9 @@ class TipoActivo(BadRequest):
 class TipoDadoBaja(BadRequest):
     DETAIL = ErrorCode.TIPO_DADO_BAJA
 
+class ErrorInesperado(BadRequest):
+    DETAIL = ErrorCode.ERROR_INESPERADO
+
 class NombreDuplicadoInactivo(Conflict):
     def __init__(self, tipo_id: int) -> None:
         self.tipo_id = tipo_id
