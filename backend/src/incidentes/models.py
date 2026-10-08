@@ -13,6 +13,7 @@ class Incidente(ModeloBase):
     foto_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     fecha_hora_reporte: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     reportante_id: Mapped[int] = mapped_column(ForeignKey("personal.id"), nullable=False)
+    tipo_id: Mapped[int] = mapped_column(ForeignKey("tipos_incidentes.id"), nullable=False)
 
     # Estado
     abierto: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -36,6 +37,10 @@ class Incidente(ModeloBase):
         "HistorialIncidente",
         back_populates="incidente",
         cascade="all, delete-orphan",
+    )
+    tipo: Mapped["TipoIncidente"] = relationship(
+        "TipoIncidente",
+        back_populates="incidentes"
     )
 
 
