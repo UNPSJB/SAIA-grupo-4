@@ -36,10 +36,12 @@ def eliminar_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
 def modificar_elemento_limpieza(elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate, db: Session = Depends(get_db)):
     return services.modificar_elemento_limpieza(db, elemento_id, elemento)
 
+# Los listados por sector/equipo se usan para asignar elementos (p. ej. en un
+# plan POES), por lo que nunca deben incluir elementos dados de baja.
 @router.get("/por-sector/{sector_id}", response_model=list[schemas.ElementoLimpieza])
 def listar_elementos_por_sector(sector_id: int, db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db, sector_id=sector_id)
+    return services.listar_elementos_limpieza(db, sector_id=sector_id, activo=True)
 
 @router.get("/por-equipo/{equipo_id}", response_model=list[schemas.ElementoLimpieza])
 def listar_elementos_por_equipo(equipo_id: int, db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db, equipo_id=equipo_id)
+    return services.listar_elementos_limpieza(db, equipo_id=equipo_id, activo=True)

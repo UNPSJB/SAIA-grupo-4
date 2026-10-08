@@ -136,18 +136,23 @@ def test_listar_elementos_limpieza_por_sector_excluye_los_del_equipo():
     assert res.json() == []
 
 
-def test_listar_elementos_limpieza_sin_filtro_solo_activos():
+def test_listar_elementos_limpieza_sin_filtro_trae_todos():
     tipo_id = crear_tipo()
     activo = crear_elemento(tipo_id, "Esponja Activa")
     inactivo = crear_elemento(tipo_id, "Esponja Inactiva")
     assert client.delete(f"/elementos-limpieza/{inactivo['id']}").status_code == 200
 
+    # Sin filtro (equivalente al filtro "Todos" del frontend) se listan ambos.
     res = client.get("/elementos-limpieza/")
-
     assert res.status_code == 200, res.text
-    # A diferencia de /insumos-quimicos/, acá el listado sin filtro
-    # también excluye los dados de baja.
-    assert {e["id"] for e in res.json()} == {activo["id"]}
+    assert {e["id"] for e in res.json()} == {activo["id"], inactivo["id"]}
+
+    # Filtros explícitos del frontend.
+    solo_activos = client.get("/elementos-limpieza/?activo=true")
+    assert {e["id"] for e in solo_activos.json()} == {activo["id"]}
+
+    solo_inactivos = client.get("/elementos-limpieza/?activo=false")
+    assert {e["id"] for e in solo_inactivos.json()} == {inactivo["id"]}
 
 
 def test_listar_elementos_limpieza_por_sector_inexistente():
