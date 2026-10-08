@@ -10,6 +10,7 @@ class IncidenteBase(BaseModel):
     foto_url: Annotated[Optional[str], Field(default=None, max_length=255)]
     fecha_hora_reporte: datetime
     reportante_id: Annotated[int, Field(gt=0)]
+    tipo_id: Annotated[int, Field(gt=0)]
 
 
 class IncidenteCreate(IncidenteBase):
@@ -47,6 +48,7 @@ class Incidente(IncidenteBase):
     id: int
     abierto: bool
     reportante: Persona
+    tipo: TipoIncidente
 
     # Nuevos campos de cierre opcionales
     accion_correctiva: Optional[str] = None

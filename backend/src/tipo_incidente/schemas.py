@@ -10,8 +10,8 @@ class TipoIncidenteCreate(TipoIncidenteBase):
     pass
 
 class TipoIncidenteUpdate(BaseModel):
-    nombre: Annotated[Optional[str], Field(min_length=1, max_length=50)]
-    descripcion: Annotated[Optional[str], Field(min_length=1, max_length=200)]
+    nombre: Annotated[Optional[str], Field(min_length=1, max_length=50, default=None)]
+    descripcion: Annotated[Optional[str], Field(min_length=1, max_length=200, default=None)]
     activo: Annotated[Optional[bool], Field(default=None)]
 
 class TipoIncidenteDelete(TipoIncidenteBase):

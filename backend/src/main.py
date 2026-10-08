@@ -27,6 +27,7 @@ from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_r
 from src.recambios.router import router as recambios_router
 from src.checklists.router import router as checklists_router
 from src.incidentes.router import router as incidentes_router
+from src.tipo_incidente.router import router as tipo_incidente_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -80,3 +81,4 @@ app.include_router(tipo_elemento_limpieza_router)
 app.include_router(recambios_router)
 app.include_router(checklists_router)
 app.include_router(incidentes_router)
+app.include_router(tipo_incidente_router)

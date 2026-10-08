@@ -10,8 +10,8 @@ class TipoNoExiste(NotFound):
 class TipoActivo(BadRequest):
     DETAIL = ErrorCode.TIPO_ACTIVO
 
-class TipoDadoBaja(BadRequest):
-    DETAIL = ErrorCode.TIPO_DADO_BAJA
+class TipoInactivo(BadRequest):
+    DETAIL = ErrorCode.TIPO_INACTIVO
 
 class ErrorInesperado(BadRequest):
     DETAIL = ErrorCode.ERROR_INESPERADO

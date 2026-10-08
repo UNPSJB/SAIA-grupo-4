@@ -6,8 +6,8 @@ from src.tipo_incidente import schemas, exceptions
 
 def crear_tipo(db: Session, tipo: schemas.TipoIncidenteCreate) -> schemas.TipoIncidente:
     tipo_existente = db.scalar(select(TipoIncidente).where(TipoIncidente.nombre == tipo.nombre))
-    if db_existente:
-        if db_existente.activo:
+    if tipo_existente:
+        if tipo_existente.activo:
             raise exceptions.NombreDuplicado()
         raise exceptions.NombreDuplicadoInactivo(tipo_id=tipo_existente.id)
 
@@ -44,7 +44,7 @@ def modificar_tipo(db: Session, tipo_id: int, tipo: schemas.TipoIncidenteUpdate)
             if tipo.activo:
                 raise exceptions.TipoActivo()
             else:
-                raise exceptions.TipoDadoBaja()
+                raise exceptions.TipoInactivo()
 
     if update_data:
         db.execute(update(TipoIncidente).where(TipoIncidente.id == tipo_id).values(**update_data))

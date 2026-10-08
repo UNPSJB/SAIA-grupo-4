@@ -1,15 +1,14 @@
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
-
+from sqlalchemy.exc import IntegrityError
 from src.incidentes import schemas, exceptions
 from src.incidentes.models import Incidente, HistorialIncidente
 from src.personal.models import Persona
+from src.tipo_incidente.models import TipoIncidente
+from src.tipo_incidente.exceptions import TipoNoExiste, TipoInactivo
 
-def crear_incidente(db: Sesion, incidente: schemas.IncidenteCreate) -> Incidente:
-
-    if incidente.reportante_id is None:
-        raise exceptions.ReportanteNoAsignado()
+def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incidente:
 
     reportante = db.scalar(
         select(Persona).where(
@@ -19,6 +18,18 @@ def crear_incidente(db: Sesion, incidente: schemas.IncidenteCreate) -> Incidente
 
     if reportante is None:
         raise exceptions.ReportanteNoEncontrado()
+
+    tipo = db.scalar(
+        select(TipoIncidente).where(
+            TipoIncidente.id == incidente.tipo_id
+        )
+    )
+
+    if tipo is None:
+        raise TipoNoExiste()
+
+    if not tipo.activo:
+        raise TipoInactivo()
 
     _incidente = Incidente(**incidente.model_dump(), abierto=True)
 
