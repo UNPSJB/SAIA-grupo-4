@@ -74,7 +74,6 @@ const defaultItems: NavItem[] = [
     label: "Elementos de limpieza",
     icon: MdOutlineCleaningServices,
   },
-  { to: "/vencimientos", label: "Vencimientos", icon: FiAlertCircle },
 ];
 
 const planItems: NavItem[] = [
@@ -82,6 +81,13 @@ const planItems: NavItem[] = [
   { to: "/plan-poes", label: "Plan Vigente", icon: FiClipboard },
   { to: "/historial-planes", label: "Historial", icon: FiClock },
 ];
+
+// Acceso directo ubicado debajo del grupo "Plan POE".
+const vencimientosItem: LinkNavItem = {
+  to: "/vencimientos",
+  label: "Vencimientos",
+  icon: FiAlertCircle,
+};
 
 const isActiveRoute = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`);
@@ -340,6 +346,11 @@ export const NavBar = ({
       flexShrink={0}
       overflowY='auto'
       overflowX='hidden'
+      css={{
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
+        "&::-webkit-scrollbar": { display: "none" },
+      }}
       transition='width 0.25s ease'
     >
       <Flex
@@ -429,7 +440,7 @@ export const NavBar = ({
       )}
 
       <NavSection
-        label='Navegación'
+        label='Datos Maestros'
         icon={FiMenu}
         items={items}
         isCollapsed={isCollapsed}
@@ -438,6 +449,11 @@ export const NavBar = ({
         onCollapsedClick={() => setIsCollapsed(false)}
       />
 
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Planes
+        </Text>
+      )}
       <NavSection
         label='Plan POE'
         icon={FiClipboard}
@@ -446,6 +462,18 @@ export const NavBar = ({
         open={planAccordionOpen}
         onOpenChange={handlePlanOpenChange}
         onCollapsedClick={() => setIsCollapsed(false)}
+      />
+
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Vencimientos
+        </Text>
+      )}
+
+      <SingleNavLink
+        item={vencimientosItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
       />
 
       {checklistItems.length > 0 && (
