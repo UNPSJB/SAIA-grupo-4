@@ -1,7 +1,7 @@
 import enum
 from datetime import date, datetime
 from typing import Optional
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.documentos.constants import TipoDocumentoEnum
 from src.models import ModeloBase
@@ -48,4 +48,11 @@ class VersionDocumento(ModeloBase):
 
     # Relaciones
     documento: Mapped["Documento"] = relationship("Documento", back_populates="versiones")
-    creado_por: Mapped["Persona"] = relationship("Persona") # Te permite hacer version.creado_por.nombre
+    # selectin: al serializar la respuesta se precarga la persona (evita N+1)
+    creado_por: Mapped["Persona"] = relationship("Persona", lazy="selectin")
+
+    @property
+    def subido_por_nombre(self) -> Optional[str]:
+        """Nombre completo de la persona que subió la versión (para el frontend)."""
+        persona = self.creado_por
+        return f"{persona.nombre} {persona.apellido}" if persona else None

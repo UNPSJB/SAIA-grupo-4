@@ -29,15 +29,20 @@ def _validar_autor(db: Session, persona_id: int):
     if not autor.activo:
         raise personal_exceptions.PersonaInactiva()
 
-def _validar_codigo_unico(db: Session, codigo: str, documento_id: int | None = None):
+def _validar_codigo_unico(db: Session, codigo: str, documento_id: int | None = None, ofrecer_reactivacion: bool = False):
     if not codigo:
         return
     query = select(Documento).where(Documento.codigo == codigo)
     if documento_id:
         query = query.where(Documento.id != documento_id)
-        
-    if db.scalar(query):
-        raise exceptions.CodigoDocumentoDuplicado()
+
+    existente = db.scalar(query)
+    if not existente:
+        return
+    # Si el código pertenece a un documento dado de baja no se bloquea, se ofrece reactivarlo
+    if ofrecer_reactivacion and not existente.activo:
+        raise exceptions.CodigoDocumentoRequiereReactivacion(existente.id)
+    raise exceptions.CodigoDocumentoDuplicado()
     
 def _generar_codigo_documento(db: Session, tipo: TipoDocumentoEnum) -> str:
     """Genera un código correlativo automático según el tipo de documento."""
@@ -98,7 +103,7 @@ def crear_documento(
     if not documento.codigo:
         documento.codigo = _generar_codigo_documento(db, documento.tipo_documento)
     else:
-        _validar_codigo_unico(db, documento.codigo)
+        _validar_codigo_unico(db, documento.codigo, ofrecer_reactivacion=True)
 
     # Se crea el contenedor excluyendo los campos de la versión
     datos_doc = documento.model_dump(

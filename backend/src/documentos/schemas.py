@@ -21,6 +21,7 @@ class VersionDocumento(VersionDocumentoBase):
     id: int
     documento_id: int
     creado_por_id: int  # Incorporado para auditoría
+    subido_por_nombre: str | None = None  # Nombre completo del que subió la versión
     archivo_url: str
     es_vigente: bool  # Calculado y gestionado por el Backend
     fecha_desde: date  # Fecha de entrada en vigencia

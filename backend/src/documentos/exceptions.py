@@ -10,6 +10,15 @@ class VersionNoEncontrada(NotFound):
 class CodigoDocumentoDuplicado(Conflict):
     DETAIL = ErrorCode.CODIGO_DUPLICADO
 
+class CodigoDocumentoRequiereReactivacion(Conflict):
+    def __init__(self, documento_id: int):
+        super().__init__(
+            detail={
+                "code": ErrorCode.CODIGO_DUPLICADO_INACTIVO,
+                "documento_id": documento_id,
+            }
+        )
+
 class DocumentoInactivo(Conflict):
     DETAIL = ErrorCode.DOCUMENTO_INACTIVO
 
