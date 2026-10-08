@@ -7,3 +7,4 @@ class ErrorCode:
     RESPONSABLE_NO_ENCONTRADO = "El responsable especificado no fue encontrado."
     INCIDENTE_YA_CERRADO = "El incidente ya se encuentra cerrado."
     INCIDENTE_YA_ABIERTO = "El incidente ya se encuentra abierto."
+    RANGO_FECHAS_INVALIDO = "El rango de fechas no es válido"

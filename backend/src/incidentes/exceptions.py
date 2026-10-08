@@ -24,3 +24,7 @@ class IncidenteYaCerrado(BadRequest):
 
 class IncidenteYaAbierto(BadRequest):
     DETAIL = ErrorCode.INCIDENTE_YA_ABIERTO
+
+
+class RangosFechasInvalido(BadRequest):
+    DETAIL = ErrorCode.RANGO_FECHAS_INVALIDO

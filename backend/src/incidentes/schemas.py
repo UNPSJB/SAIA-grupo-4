@@ -57,3 +57,8 @@ class Incidente(IncidenteBase):
     responsable_cierre: Optional[Persona] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class EstadisticaTipoIncidente(BaseModel):
+    tipo_id: int
+    tipo: str
+    cantidad: int

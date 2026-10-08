@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import select
+from datetime import datetime, date, timedelta
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from src.incidentes import schemas, exceptions
@@ -135,3 +135,52 @@ def listar_historial_incidente(db: Session, incidente_id: int) -> list[Historial
         .where(HistorialIncidente.incidente_id == incidente_id)
         .order_by(HistorialIncidente.fecha.desc())
     ).all()
+
+# ESTO ES DE LA ESTADÍSTICA DEL TIPO
+def _validar_rango(desde: date | None, hasta: date | None):
+    if desde and hasta and desde > hasta:
+        raise exceptions.RangoFechasInvalido()
+
+def _aplicar_rango(query, desde: date | None, hasta: date | None):
+    # fecha_hora_reporte es DateTime: "hasta" es inclusivo, por eso < hasta + 1 día
+    if desde:
+        query = query.where(Incidente.fecha_hora_reporte >= desde)
+    if hasta:
+        query = query.where(Incidente.fecha_hora_reporte < hasta + timedelta(days=1))
+    return query
+
+def listar_incidentes(
+    db: Session,
+    tipo_id: int | None = None,
+    desde: date | None = None,
+    hasta: date | None = None,
+) -> list[Incidente]:
+    _validar_rango(desde, hasta)
+
+    query = select(Incidente).options(selectinload(Incidente.tipo))
+    if tipo_id:
+        query = query.where(Incidente.tipo_id == tipo_id)
+    query = _aplicar_rango(query, desde, hasta)
+
+    return db.scalars(query).all()
+
+def obtener_estadisticas_por_tipo(
+    db: Session, desde: date | None = None, hasta: date | None = None
+) -> list[schemas.EstadisticaTipoIncidente]:
+    _validar_rango(desde, hasta)
+
+    cantidad = func.count(Incidente.id)
+    query = (
+        select(TipoIncidente.id, TipoIncidente.nombre, cantidad)
+        .join(Incidente, Incidente.tipo_id == TipoIncidente.id)
+    )
+    query = _aplicar_rango(query, desde, hasta)
+
+    filas = db.execute(
+        query.group_by(TipoIncidente.id, TipoIncidente.nombre).order_by(cantidad.desc())
+    ).all()
+
+    return [
+        schemas.EstadisticaTipoIncidente(tipo_id=i, tipo=n, cantidad=c)
+        for i, n, c in filas
+    ]
