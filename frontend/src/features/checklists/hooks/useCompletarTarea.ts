@@ -1,4 +1,6 @@
 import { useCallback, useState } from "react";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { EjecucionTarea, RegistroConsumoQuimico } from "../types";
 
@@ -43,7 +45,7 @@ export const useCompletarTarea = ({
         if (foto) formData.append("foto", foto);
 
         // No se setea Content-Type: el browser agrega el boundary del multipart.
-        const res = await fetch(`${CHECKLISTS_URL}/${ejecucionId}/completar`, {
+        const res = await apiFetch(`${CHECKLISTS_URL}/${ejecucionId}/completar`, {
           method: "PATCH",
           body: formData,
         });

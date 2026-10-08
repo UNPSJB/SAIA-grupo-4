@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { JSON_HEADERS } from "../../../config";
 import { useCallback, useState } from "react";
 
@@ -32,7 +33,7 @@ export const useCapacidadSubmit = ({ endpoint, method = "POST", id, body, onInac
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,
           body: JSON.stringify(payload),

@@ -1,4 +1,6 @@
 import { BASE_URL } from "../../../config";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { useCallback, useEffect, useState } from "react";
 import type { EjecucionTarea } from "../types";
 
@@ -20,7 +22,7 @@ export const useChecklistHoy = () => {
   useEffect(() => {
     let active = true;
 
-    fetch(ENDPOINT_CHECKLISTS_HOY)
+    apiFetch(ENDPOINT_CHECKLISTS_HOY)
       .then((res) => {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         return res.json();

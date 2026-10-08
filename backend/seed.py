@@ -91,6 +91,8 @@ from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
 from src.unidad_medida.models import UnidadMedida
 from src.vencimientos.constants import EstadoVencimiento
 from src.vencimientos.services import listar_vencimientos
+from src.auth.utils import get_password_hash
+from src.capacidades.constants import RolesSistema
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -745,6 +747,25 @@ def _crear_personas(db, fake, cantidad, hoy):
             "Personas activas sin capacidad vigente: " + ", ".join(faltantes)
         )
     db.add_all(vinculos + historicos)
+    db.flush()
+
+    # Asigna contrasena inicial = DNI solo a personal activo con capacidades
+    # habilitantes (administrar u operar). El resto no tiene contrasena.
+    CAPACIDADES_HABILITANTES = {RolesSistema.ADMINISTRAR, RolesSistema.OPERAR}
+    for persona in personas:
+        if not persona.activo:
+            persona.password_hash = None
+            continue
+        # Tiene alguna capacidad vigente habilitante?
+        tiene_habilitante = any(
+            vinculo.activo
+            and vinculo.capacidad.nombre in CAPACIDADES_HABILITANTES
+            for vinculo in persona.capacidades
+        )
+        if tiene_habilitante:
+            persona.password_hash = get_password_hash(persona.dni)
+        else:
+            persona.password_hash = None
     db.flush()
     return personas
 

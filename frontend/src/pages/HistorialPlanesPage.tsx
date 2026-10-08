@@ -234,7 +234,7 @@ export default function HistorialPlanesPage() {
     setErrorCopiar("");
     try {
       // Se eliminó la línea que borraba el plan anterior
-      await planesApi.clonarPlan(planCopiar.id, usuario.personaId);
+      await planesApi.clonarPlan(planCopiar.id, usuario.id);
       resetearCopia();
       navigate("/nuevo-plan");
     } catch (e) {

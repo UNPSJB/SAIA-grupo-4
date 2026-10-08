@@ -1,4 +1,6 @@
 import { BASE_URL, JSON_HEADERS } from "../../../config";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { useCallback, useState } from "react";
 
 export type SubmitResult =
@@ -25,7 +27,7 @@ export const useRecambioSubmit = ({ onSuccess }: UseRecambioSubmitOptions = {}) 
   const submit = useCallback(async (values: RecambioPayload): Promise<SubmitResult> => {
       setIsSubmitting(true);
       try {
-        const res = await fetch(ENDPOINT, {
+        const res = await apiFetch(ENDPOINT, {
           method: "POST",
           headers: JSON_HEADERS,
           body: JSON.stringify({

@@ -1,4 +1,6 @@
 import { BASE_URL, JSON_HEADERS } from "../../../config";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import type { Equipo } from "../../equipos/types";
 import type { Sector } from "../../sectores/types";
 import type { Persona } from "../../personal/types";
@@ -59,7 +61,7 @@ async function extraerMensaje(res: Response): Promise<string> {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${path}`, {
+    res = await apiFetch(`${BASE_URL}${path}`, {
       headers: init?.body ? JSON_HEADERS : undefined,
       ...init,
     });

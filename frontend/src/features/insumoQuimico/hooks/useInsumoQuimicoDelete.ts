@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { InsumoQuimico } from "../types";
 
@@ -23,7 +24,7 @@ export const handleDelete = async ({
   setError("");
 
   try {
-    const res = await fetch(`${BASE_URL}/insumos-quimicos/${insumoQuimico.id}`, {
+    const res = await apiFetch(`${BASE_URL}/insumos-quimicos/${insumoQuimico.id}`, {
       method: "DELETE",
     });
 

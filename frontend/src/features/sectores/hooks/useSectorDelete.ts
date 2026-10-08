@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { Sector } from "../types";
 
@@ -19,7 +20,7 @@ export const handleDelete = async ({
   setError("");
 
   try {
-    const res = await fetch(`${BASE_URL}/sectores/${sector.id}`, {
+    const res = await apiFetch(`${BASE_URL}/sectores/${sector.id}`, {
       method: "DELETE",
     });
 

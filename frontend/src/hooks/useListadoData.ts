@@ -1,3 +1,4 @@
+import { apiFetch } from "../features/auth/apiFetch";
 import { ITEMS_POR_PAGINA } from "../config";
 import { useState, useEffect, useMemo, useCallback } from "react";
 
@@ -41,7 +42,7 @@ export const useListadoData = <T>(
 
   useEffect(() => {
     let active = true;
-    fetch(endpoint)
+    apiFetch(endpoint)
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Error ${res.status}`);

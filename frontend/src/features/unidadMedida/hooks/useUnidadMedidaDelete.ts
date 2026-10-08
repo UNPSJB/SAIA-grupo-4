@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { UnidadMedida } from "../types";
 
@@ -23,7 +24,7 @@ export const handleDelete = async ({
   setError("");
 
   try {
-    const res = await fetch(
+    const res = await apiFetch(
       `${BASE_URL}/unidades-de-medida/${unidad.id}`,
       { method: "DELETE" },
     );

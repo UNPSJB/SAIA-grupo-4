@@ -1,8 +1,8 @@
 import { BASE_URL } from "../../config";
 import { useState, useMemo } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack, Text, Checkbox, Box } from "@chakra-ui/react";
+import { VStack, Text, Checkbox, Box, Button } from "@chakra-ui/react";
 import { usePersonalSubmit, type PersonalPayload } from "./hooks/usePersonalSubmit"; 
 import { useListadoData } from "../../hooks/useListadoData";
 import { personalSchema, type PersonalFormInput, type PersonalFormValues } from "./validationSchema";
@@ -10,6 +10,10 @@ import type { Persona } from "./types";
 import type { Capacidad } from "../capacidades/types";
 import { FormContainer, FormHeader, TextField, FormActions, SubmitButton, CancelButton, AlertMessage, AlertConfirm } from "../../components/ui";
 import { FiUser, FiEdit2, FiSave, FiXCircle, FiEye } from "react-icons/fi";
+
+// Capacidades que habilitan a iniciar sesion: solo para ese personal la
+// contraseña es obligatoria (y para el resto no está permitida).
+const CAPACIDADES_HABILITANTES = new Set(["administrar", "operar"]);
 
 type PersonalFormProps = {
     modo: "crear" | "modificar" | "ver";
@@ -33,8 +37,9 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
               email: persona!.email || "",
               telefono: persona!.telefono || "",
               capacidades_ids: persona!.capacidades.filter(c => c.activo).map(c => c.capacidad_id),
+              password: "",
           }
-        : { nombre: "", apellido: "", dni: "", legajo: "", email: "", telefono: "", capacidades_ids: [] };
+        : { nombre: "", apellido: "", dni: "", legajo: "", email: "", telefono: "", capacidades_ids: [], password: "" };
 
     const { register, handleSubmit, control, formState: { errors, isSubmitting }, setError, clearErrors, reset } = useForm<PersonalFormInput, unknown, PersonalFormValues>({
         resolver: zodResolver(personalSchema),
@@ -43,6 +48,21 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
 
     const { data: capacidades } = useListadoData<Capacidad>({ endpoint: `${BASE_URL}/capacidades/` });
     const capacidadesActivas = useMemo(() => capacidades.filter((c) => c.activo), [capacidades]);
+
+    // Determina si las capacidades seleccionadas incluyen alguna habilitante
+    // (administrar u operar) para decidir si la contraseña es obligatoria.
+    // useWatch (y no watch()) para que React Compiler pueda memoizar.
+    const capacidadesIdsSeleccionadas = useWatch({
+        control,
+        name: "capacidades_ids",
+    });
+    const requierePassword = useMemo(() => {
+        const ids = capacidadesIdsSeleccionadas ?? [];
+        const nombres = new Map(capacidadesActivas.map(c => [c.id, c.nombre.toLowerCase()]));
+        return ids.some(id => CAPACIDADES_HABILITANTES.has(nombres.get(id) ?? ""));
+    }, [capacidadesIdsSeleccionadas, capacidadesActivas]);
+
+    const [showPassword, setShowPassword] = useState(false);
 
     const [success, setSuccess] = useState(false);
     const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
@@ -87,7 +107,40 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
     const onSubmit = handleSubmit(async (values) => {
         setSuccess(false);
         clearErrors("root");
-        const res = await submit(values as PersonalPayload);
+
+        const password = (values.password ?? "").trim();
+
+        // Regla del backend: solo el personal con capacidades habilitantes
+        // tiene contraseña, y para ese es obligatoria. En modificar, si la
+        // persona ya tiene contraseña (tiene_password), se puede dejar vacío
+        // para no cambiarla.
+        if (requierePassword) {
+            const faltaPassword =
+                !password &&
+                (esModoCrear || persona?.tiene_password === false);
+            if (faltaPassword) {
+                setError("password", {
+                    message:
+                        "La contraseña es obligatoria para personal con capacidades habilitantes",
+                });
+                return;
+            }
+        }
+
+        // Solo se envía password si corresponde: vacío = no modificar (PUT) y
+        // sin capacidades habilitantes el backend la rechaza (400).
+        const payload: PersonalPayload = {
+            nombre: values.nombre,
+            apellido: values.apellido,
+            dni: values.dni,
+            legajo: values.legajo,
+            email: values.email || "",
+            telefono: values.telefono || "",
+            capacidades_ids: values.capacidades_ids,
+            ...(requierePassword && password ? { password } : {}),
+        };
+
+        const res = await submit(payload);
         if (res.status === "error") setError("root", { message: res.message });
         else if (res.status === "success" && esModoCrear) reset();
     });
@@ -130,6 +183,60 @@ export const PersonalForm = ({ modo, persona, onCancelar, onGuardado, enModal = 
                         />
                         {errors.capacidades_ids && <Text color="red.500" fontSize="sm" mt={1}>{errors.capacidades_ids.message}</Text>}
                     </Box>
+
+                    {/* Contraseña: visible solo para personal con capacidades
+                        habilitantes (administrar u operar), único caso en que
+                        el backend la acepta. */}
+                    {requierePassword && !esModoVer && (
+                        <Box width="100%" textAlign="left">
+                            <Text fontSize="md" fontFamily="sans-serif" mb={1} fontWeight="bold">
+                                Contraseña{esModoModificar ? " (opcional)" : ""}
+                            </Text>
+                            <Box position="relative" width="100%">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    {...register("password")}
+                                    placeholder={
+                                        esModoModificar
+                                            ? "Dejar vacío para no modificar"
+                                            : "Ingresá la contraseña"
+                                    }
+                                    autoComplete={esModoCrear ? "new-password" : "off"}
+                                    disabled={isSubmitting}
+                                    style={{
+                                        width: "100%",
+                                        padding: "8px 76px 8px 12px",
+                                        borderRadius: "6px",
+                                        fontSize: "14px",
+                                    }}
+                                />
+                                <Button
+                                    position="absolute"
+                                    right="2"
+                                    top="50%"
+                                    transform="translateY(-50%)"
+                                    h="1.75rem"
+                                    size="xs"
+                                    variant="ghost"
+                                    onClick={() => setShowPassword((p) => !p)}
+                                    disabled={isSubmitting}
+                                >
+                                    {showPassword ? "Ocultar" : "Mostrar"}
+                                </Button>
+                            </Box>
+                            {errors.password?.message && (
+                                <Text color="red.500" fontSize="sm" mt={1}>
+                                    {errors.password.message}
+                                </Text>
+                            )}
+                            <Text fontSize="xs" color="gray.600" mt={1}>
+                                Obligatoria para personal con capacidades habilitantes
+                                {esModoModificar && persona?.tiene_password
+                                    ? "; dejala vacía para conservar la actual."
+                                    : "."}
+                            </Text>
+                        </Box>
+                    )}
 
                     <FormActions>
                         {esModoVer ? (

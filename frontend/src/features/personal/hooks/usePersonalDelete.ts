@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { Persona } from "../types";
 
@@ -14,7 +15,7 @@ export const handleDelete = async ({ persona, setLoading, setError, onSuccess }:
   setError("");
 
   try {
-    const res = await fetch(`${BASE_URL}/personal/${persona.id}`, {
+    const res = await apiFetch(`${BASE_URL}/personal/${persona.id}`, {
       method: "DELETE",
     });
 

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { EjecucionTarea } from "../../checklists/types";
 
@@ -28,7 +30,7 @@ export const useHistorial = ({ desde, hasta }: UseHistorialOptions) => {
 
     const params = new URLSearchParams({ desde, hasta });
 
-    fetch(`${HISTORIAL_URL}?${params.toString()}`)
+    apiFetch(`${HISTORIAL_URL}?${params.toString()}`)
       .then(async (res) => {
         if (res.ok) return (await res.json()) as EjecucionTarea[];
 

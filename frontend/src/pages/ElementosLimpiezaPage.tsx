@@ -1,4 +1,6 @@
 import { BASE_URL } from "../config";
+
+import { apiFetch } from "../features/auth/apiFetch";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
@@ -41,7 +43,7 @@ export default function ElementosLimpiezaPage() {
     if (!detalleParam) return;
     let activo = true;
 
-    fetch(`${BASE_URL}/elementos-limpieza/${detalleParam}`)
+    apiFetch(`${BASE_URL}/elementos-limpieza/${detalleParam}`)
       .then((res) => {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         return res.json();

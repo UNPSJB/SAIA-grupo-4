@@ -1,4 +1,5 @@
 import { JSON_HEADERS } from "../../../config";
+import { apiFetch } from "../../auth/apiFetch";
 import { useCallback, useState } from "react";
 
 export type SubmitResult =
@@ -14,6 +15,9 @@ export interface PersonalPayload {
   email?: string;
   telefono?: string;
   capacidades_ids?: number[];
+  // Opcional: solo la envía el formulario cuando corresponde (personal con
+  // capacidades habilitantes). Vacío/nula = no modificar (PUT) o no crear.
+  password?: string;
 }
 
 interface UsePersonalSubmitOptions {
@@ -39,10 +43,13 @@ export const usePersonalSubmit = ({ endpoint, method = "POST", id, body, onInact
           email: values?.email || null,
           telefono: values?.telefono || null,
           capacidades_ids: values?.capacidades_ids ?? [],
+          // Solo se incluye si viene informada: el backend la hashea; si no
+          // llega, en PUT se conserva la actual y en POST queda sin contraseña.
+          ...(values?.password ? { password: values.password } : {}),
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,
           body: JSON.stringify(payload),

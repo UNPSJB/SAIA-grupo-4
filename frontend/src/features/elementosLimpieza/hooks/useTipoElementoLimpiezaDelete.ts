@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
 import type { TipoElementoLimpieza } from "../types";
 
@@ -14,7 +15,7 @@ export const handleDeleteTipo = async ({ tipo, setLoading, setError, onSuccess }
   setError("");
 
   try {
-    const res = await fetch(`${BASE_URL}/tipos-elemento-limpieza/${tipo.id}`, {
+    const res = await apiFetch(`${BASE_URL}/tipos-elemento-limpieza/${tipo.id}`, {
       method: "DELETE",
     });
 

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { JSON_HEADERS } from "../../../config";
 import { useCallback, useState } from "react";
 
@@ -48,7 +49,7 @@ export const useEquipoSubmit = ({
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,
           body: JSON.stringify(payload),

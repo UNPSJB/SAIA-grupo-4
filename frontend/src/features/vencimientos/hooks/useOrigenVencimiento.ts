@@ -1,3 +1,4 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { useEffect, useState } from "react";
 import { ORIGEN_VENCIMIENTOS, type FichaOrigen } from "../origenVencimientos";
 import type { Vencimiento } from "../types";
@@ -33,7 +34,7 @@ export const useOrigenVencimiento = (vencimiento: Vencimiento | null) => {
 
     let activo = true;
 
-    fetch(config.endpoint(entidadId))
+    apiFetch(config.endpoint(entidadId))
       .then((res) => {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         return res.json();

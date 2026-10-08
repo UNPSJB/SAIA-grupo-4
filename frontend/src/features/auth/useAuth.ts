@@ -1,19 +1,23 @@
-import { createContext, useContext } from "react";
-import type { Persona } from "../personal/types";
-import type { UsuarioLogueado } from "./types";
+/**
+   frontend/src/features/auth/useAuth.ts
 
-export interface AuthContextValue {
-  usuario: UsuarioLogueado | null; // null = sin sesión
-  // Recibe la persona ya verificada (paso 2 del login) y inicia la sesión.
-  login: (persona: Persona) => UsuarioLogueado;
-  logout: () => void;
-}
+   Punto único de acceso al contexto de autenticación.
 
-export const AuthContext = createContext<AuthContextValue | null>(null);
+   El contexto (AuthContext) vive en AuthContext.ts y el provider en
+   AuthProvider.tsx; el hook queda acá, que es donde lo importan App,
+   RequireAuth, ChecklistPage, HistorialPlanesPage, PlanForm y LoginPage.
+ */
 
-// Hook de acceso. Lanza error si se usa fuera del <AuthProvider>.
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
-  return ctx;
+import { useContext } from "react";
+import { AuthContext, type AuthContextType } from "./AuthContext";
+
+export type { AuthContextType };
+
+// Hook para consumir el contexto de autenticación.
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth debe usarse dentro de un AuthProvider");
+  }
+  return context;
 };

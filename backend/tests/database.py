@@ -52,15 +52,8 @@ _PERSONA_ADMIN = {"persona": None}
 def _persona_admin_override() -> Persona | None:
     return _PERSONA_ADMIN["persona"]
 
-
+#   Crea las capacidades de sistema y una persona admin activa con password.
 def _preparar_persona_admin(db: Session) -> Persona:
-    """Crea las capacidades de sistema y una persona admin activa con password.
-
-    Los tests existentes se escribieron antes de que existiera la
-    autenticación; al proteger los routers, se los autentica como admin sin
-    tocar un solo caso. Los tests de auth (Fase 2/5) desactivan este override
-    para probar el flujo real.
-    """
     inicializar_capacidades_sistema(db)
     admin_cap = db.scalar(select(Capacidad).where(Capacidad.nombre == RolesSistema.ADMINISTRAR))
     admin = Persona(

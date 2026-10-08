@@ -19,5 +19,9 @@ export interface Persona {
     telefono?: string;
     fecha_alta: string;
     activo: boolean;
+    // true si la persona ya tiene contraseña hasheada en el backend. Lo usa
+    // el formulario para saber si falta asignarla (solo aplica a personal
+    // con capacidades habilitantes).
+    tiene_password?: boolean;
     capacidades: PersonaCapacidad[];
 }
