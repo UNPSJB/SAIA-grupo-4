@@ -13,6 +13,11 @@ def create_incidente(incidente: schemas.IncidenteCreate, db: Session = Depends(g
 def read_incidentes(db: Session = Depends(get_db)):
     return services.listar_incidentes(db)
 
+# Lee un único incidente
+@router.get("/{incidente_id}", response_model=schemas.Incidente, status_code=200)
+def read_incidente(incidente_id: int, db: Session = Depends(get_db)):
+    return services.obtener_incidente_por_id(db, incidente_id)
+
 # --- Novedades Cierre / Reapertura / Historial ---
 
 @router.post("/{incidente_id}/cierre", response_model=schemas.Incidente)

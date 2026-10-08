@@ -51,7 +51,11 @@ def listar_incidentes(db: Session) -> list[Incidente]:
 def obtener_incidente_por_id(db: Session, incidente_id: int) -> Incidente:
     incidente = db.scalar(
         select(Incidente)
-        .options(selectinload(Incidente.reportante), selectinload(Incidente.responsable_cierre))
+        .options(
+            selectinload(Incidente.reportante),
+            selectinload(Incidente.responsable_cierre),
+            selectinload(Incidente.tipo),
+        )
         .where(Incidente.id == incidente_id)
     )
     if not incidente:
