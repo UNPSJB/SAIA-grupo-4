@@ -13,7 +13,7 @@ type TipoIncidenteFormProps = {
     enModal?: boolean;
 };
 
-export const TipoElementoLimpiezaForm = ({ modo, tipo, onCancelar, onGuardado, enModal = false }: TipoIncidenteFormProps) => {
+export const TipoIncidenteForm = ({ modo, tipo, onCancelar, onGuardado, enModal = false }: TipoIncidenteFormProps) => {
     const esModoModificar = modo === "modificar";
 
     const [nombre, setNombre] = useState(esModoModificar ? tipo!.nombre : "");
@@ -46,20 +46,25 @@ export const TipoElementoLimpiezaForm = ({ modo, tipo, onCancelar, onGuardado, e
         }
 
         if (!esModoModificar) {
-            const prefijoNormalizado = prefijo.trim().toUpperCase();
-            if (!/^[A-Z]{2,5}$/.test(prefijoNormalizado)) {
-                setErrorPrefijo("Debe tener entre 2 y 5 letras (sin números ni símbolos)");
+            const descripcionNormalizada = descripcion.trim();
+
+            if (!descripcionNormalizada) {
+                setErrorDescripcion("La descripción es obligatoria");
+                hayError = true;
+            } else if (descripcionNormalizada.length > 200) {
+                setErrorDescripcion("La descripcion no puede superar los 200 caracteres");
                 hayError = true;
             } else {
-                setErrorPrefijo("");
+                setErrorDescripcion("");
             }
         }
 
         if (hayError) return;
 
-        const payload = esModoModificar
-            ? { nombre: nombre.trim() }
-            : { nombre: nombre.trim(), prefijo: prefijo.trim().toUpperCase() };
+        const payload = {
+            nombre: nombre.trim(),
+            descripcion: descripcion.trim(),
+        };
 
         const res = await submit(payload);
         if (res.status === "error") setErrorEnvio(res.message);
@@ -68,7 +73,7 @@ export const TipoElementoLimpiezaForm = ({ modo, tipo, onCancelar, onGuardado, e
     return (
         <FormContainer modal={enModal}>
             <FormHeader
-                title={esModoModificar ? "Modificar Tipo de Elemento" : "Nuevo Tipo de Elemento"}
+                title={esModoModificar ? "Modificar Tipo de Incidente" : "Nuevo Tipo de Incidente"}
                 icon={esModoModificar ? FiEdit2 : FiTag}
             />
             <VStack gap={4}>
@@ -79,11 +84,10 @@ export const TipoElementoLimpiezaForm = ({ modo, tipo, onCancelar, onGuardado, e
                     error={errorNombre}
                 />
                 <TextField
-                    label="Prefijo (2 a 5 letras, ej. ESC)"
-                    value={prefijo}
-                    onChange={(e) => setPrefijo(e.target.value.toUpperCase())}
-                    error={errorPrefijo}
-                    disabled={esModoModificar}
+                    label="Descripción del tipo"
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    error={errorDescripcion}
                 />
                 <FormActions>
                     <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} onClick={handleGuardar} colorPalette="green" />
