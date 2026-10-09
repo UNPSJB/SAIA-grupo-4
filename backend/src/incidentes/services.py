@@ -139,7 +139,7 @@ def listar_historial_incidente(db: Session, incidente_id: int) -> list[Historial
 # ESTO ES DE LA ESTADÍSTICA DEL TIPO
 def _validar_rango(desde: date | None, hasta: date | None):
     if desde and hasta and desde > hasta:
-        raise exceptions.RangoFechasInvalido()
+        raise exceptions.RangosFechasInvalido()
 
 def _aplicar_rango(query, desde: date | None, hasta: date | None):
     # fecha_hora_reporte es DateTime: "hasta" es inclusivo, por eso < hasta + 1 día
