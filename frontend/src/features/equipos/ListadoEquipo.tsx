@@ -1,10 +1,11 @@
-import { Badge } from "@chakra-ui/react";
+import { Badge, Button } from "@chakra-ui/react";
 import {
     FiThermometer,
     FiEdit2,
     FiTrash2,
     FiCheckCircle,
     FiEye,
+    FiFilePlus,
 } from "react-icons/fi";
 import {
     AlertMessage,
@@ -47,6 +48,7 @@ interface ListadoEquiposProps {
     onEliminar?: (equipo: Equipo) => void;
     onVer?: (equipo: Equipo) => void;
     onDarAlta?: (equipo: Equipo) => void;
+    onRegistrarCalibracion?: (equipo: Equipo) => void;
 }
 
 const ENDPOINT = "http://127.0.0.1:8000/equipos/";
@@ -58,6 +60,7 @@ export const ListadoEquipos = ({
     onEliminar,
     onVer,
     onDarAlta,
+    onRegistrarCalibracion,
 }: ListadoEquiposProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } =
         useListadoData<Equipo>({
@@ -134,6 +137,15 @@ export const ListadoEquipos = ({
                         onClick={() => onDarAlta?.(equipo)}
                         visible={!equipo.activo}
                     />
+                    <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        colorPalette="purple" 
+                        onClick={() => onRegistrarCalibracion?.(equipo)}
+                        title="Registrar calibración"
+                        >
+                        <FiFilePlus />
+                    </Button>
                 </RowActions>
             ),
         },

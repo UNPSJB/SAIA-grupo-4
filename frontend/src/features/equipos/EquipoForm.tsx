@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
-import { FiEye, FiEdit2, FiThermometer, FiSave, FiXCircle } from "react-icons/fi";
+import { VStack, Box, Button, Icon, HStack, Text } from "@chakra-ui/react";
+import { FiEye, FiEdit2, FiThermometer, FiSave, FiXCircle, FiFileText } from "react-icons/fi";
 
 import {
   FormContainer,
@@ -226,6 +226,7 @@ export const EquipoForm = ({
             {...register("ubicacion")}
           />
 
+
           
           <TextField
             label="Frecuencia de Calibración (en días)"
@@ -250,6 +251,32 @@ export const EquipoForm = ({
             error={errors.fecha_ultima_calibracion?.message}
             {...(register("fecha_ultima_calibracion") as any)}
           />
+          {esModoVer && equipo?.calibraciones && equipo.calibraciones.length > 0 && (
+                  <Box w="100%" mt={2}>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
+                      Último Certificado de Calibración
+                    </Text>
+                    {equipo.calibraciones[0].certificado_url ? (
+                      <Button
+                        size="sm"
+                        colorPalette="blue"
+                        variant="outline"
+                        w="full"
+                        justifyContent="flex-start"
+                        onClick={() => window.open(`http://127.0.0.1:8000${equipo.calibraciones[0].certificado_url}`, "_blank")}
+                      >
+                        <HStack gap={2}>
+                          <Icon as={FiFileText} />
+                          <Text>Ver / Descargar PDF</Text>
+                        </HStack>
+                      </Button>
+                    ) : (
+                      <Text fontSize="sm" color="gray.500">
+                        No se adjuntó certificado en la última calibración.
+                      </Text>
+                    )}
+                  </Box>
+                )}
 
           <FormActions>
             {esModoVer ? (

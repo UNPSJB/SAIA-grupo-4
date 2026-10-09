@@ -7,6 +7,7 @@ import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/equipos/hooks/useEquipoDelete";
 import { useEquipoSubmit } from "../features/equipos/hooks/useEquipoSubmit";
 import type { Equipo } from "../features/equipos/types";
+import {RegistrarCalibracionModal} from "../features/equipos/RegistrarCalibracionModal";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
@@ -25,6 +26,9 @@ export default function EquiposPage() {
   const [altaAbierto, setAltaAbierto] = useState(false);
 
   const [refrescar, setRefrescar] = useState(0);
+
+  const [equipoCalibrar, setEquipoCalibrar] = useState<Equipo | null>(null);
+  const [calibracionAbierta, setCalibracionAbierta] = useState(false);
 
   const confirmarEliminar = () => {
     handleDelete({
@@ -85,6 +89,11 @@ export default function EquiposPage() {
           setEquipoAlta(equipo);
           setAltaAbierto(true);
         }}
+        onRegistrarCalibracion={(equipo) => {
+        setError("");
+        setEquipoCalibrar(equipo);
+        setCalibracionAbierta(true);
+    }}
       />
 
       {vista === "ver" && equipoSeleccionado && (
@@ -153,6 +162,17 @@ export default function EquiposPage() {
           setError("");
         }}
       />
+      <RegistrarCalibracionModal
+        isOpen={calibracionAbierta}
+        equipo={equipoCalibrar}
+        onClose={() => {
+        setCalibracionAbierta(false);
+        setEquipoCalibrar(null);
+        }}
+        onSuccess={() => {
+          setRefrescar((r) => r + 1); // Recarga la grilla
+      }}
+  />
     </Box>
   );
 }
