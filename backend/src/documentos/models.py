@@ -51,8 +51,40 @@ class VersionDocumento(ModeloBase):
     # selectin: al serializar la respuesta se precarga la persona (evita N+1)
     creado_por: Mapped["Persona"] = relationship("Persona", lazy="selectin")
 
+    # Historial de revisiones de esta versión (más reciente primero).
+    # Se borran junto con la versión (cascade).
+    revisiones: Mapped[list["RevisionDocumento"]] = relationship(
+        "RevisionDocumento",
+        back_populates="version",
+        cascade="all, delete-orphan",
+        order_by="RevisionDocumento.fecha_registro.desc()",
+    )
+
     @property
     def subido_por_nombre(self) -> Optional[str]:
         """Nombre completo de la persona que subió la versión (para el frontend)."""
         persona = self.creado_por
+        return f"{persona.nombre} {persona.apellido}" if persona else None
+
+
+class RevisionDocumento(ModeloBase):
+    __tablename__ = "revisiones_documento"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("versiones_documento.id"), nullable=False)
+
+    nueva_fecha_proxima_revision: Mapped[date | None] = mapped_column(Date, nullable=True)
+    observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    registrado_por_id: Mapped[int | None] = mapped_column(ForeignKey("personal.id"), nullable=True)
+    fecha_registro: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+
+    version: Mapped["VersionDocumento"] = relationship("VersionDocumento", back_populates="revisiones")
+    # selectin: al serializar la respuesta se precarga la persona (evita N+1)
+    registrado_por: Mapped["Persona"] = relationship("Persona", lazy="selectin")
+
+    @property
+    def registrado_por_nombre(self) -> Optional[str]:
+        """Nombre completo de la persona que registró la revisión (para el frontend)."""
+        persona = self.registrado_por
         return f"{persona.nombre} {persona.apellido}" if persona else None

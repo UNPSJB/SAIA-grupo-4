@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from src.documentos.constants import TipoDocumentoEnum
 
 
@@ -13,9 +13,17 @@ class VersionDocumentoCreate(VersionDocumentoBase):
     # Nota: El archivo PDF se recibe mediante UploadFile / Form en el Router
     
 class VersionDocumentoRenovacion(BaseModel):
-    # Schema exclusivo para extender la vigencia sin subir un archivo nuevo
-    fecha_proxima_revision: date
+    # Schema exclusivo para extender la vigencia sin subir un archivo nuevo.
+    # Ambos campos son opcionales pero se exige al menos uno
+    fecha_proxima_revision: date | None = None
     observaciones: str | None = None
+    registrado_por_id: int | None = None  # Auditoría: quién registró la revisión
+
+    @model_validator(mode="after")
+    def _requiere_al_menos_un_dato(self):
+        if self.fecha_proxima_revision is None and not (self.observaciones or "").strip():
+            raise ValueError("Debe indicar al menos la nueva fecha de revisión o una observación")
+        return self
 
 class VersionDocumento(VersionDocumentoBase):
     id: int
@@ -27,6 +35,19 @@ class VersionDocumento(VersionDocumentoBase):
     fecha_desde: date  # Fecha de entrada en vigencia
     fecha_hasta: date | None = None  # Se completa cuando pasa a versión histórica
     fecha_subida: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RevisionDocumento(BaseModel):
+    # Una fila del historial de revisiones de una versión
+    id: int
+    version_id: int
+    fecha_registro: datetime
+    nueva_fecha_proxima_revision: date | None = None
+    observaciones: str | None = None
+    registrado_por_id: int | None = None
+    registrado_por_nombre: str | None = None  # Nombre completo de quien revisó
 
     model_config = ConfigDict(from_attributes=True)
 

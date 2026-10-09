@@ -9,7 +9,7 @@ from fastapi import UploadFile
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 from src.documentos.constants import TipoDocumentoEnum
-from src.documentos.models import Documento, VersionDocumento
+from src.documentos.models import Documento, RevisionDocumento, VersionDocumento
 from src.documentos import schemas, exceptions
 from src.personal.models import Persona
 from src.personal import exceptions as personal_exceptions
@@ -282,18 +282,20 @@ def renovar_vigencia_version(
     if not version_objetivo:
         raise exceptions.VersionNoEncontrada()
 
-    # Se actualiza la nueva fecha de vencimiento
-    version_objetivo.fecha_proxima_revision = datos.fecha_proxima_revision
+    # Se actualiza la nueva fecha de vencimiento SOLO si viene informada: una revisión puede limitarse a asentar notas sin mover el vencimiento.
+    if datos.fecha_proxima_revision is not None:
+        version_objetivo.fecha_proxima_revision = datos.fecha_proxima_revision
 
-    # Se deja asentada la revisión en las observaciones para mantener trazabilidad
-    if datos.observaciones:
-        fecha_str = datetime.now().strftime('%d/%m/%Y')
-        texto_auditoria = f" [Revisión {fecha_str}]: {datos.observaciones}"
-        
-        if version_objetivo.observaciones_cambio:
-            version_objetivo.observaciones_cambio += f" |{texto_auditoria}"
-        else:
-            version_objetivo.observaciones_cambio = texto_auditoria
+    # Cada revisión queda como fila propia en el historial de auditoría
+    if datos.registrado_por_id:
+        _validar_autor(db, datos.registrado_por_id)
+    nueva_revision = RevisionDocumento(
+        version_id=version_objetivo.id,
+        nueva_fecha_proxima_revision=datos.fecha_proxima_revision,
+        observaciones=datos.observaciones,
+        registrado_por_id=datos.registrado_por_id,
+    )
+    db.add(nueva_revision)
 
     try:
         db.commit()
@@ -303,3 +305,22 @@ def renovar_vigencia_version(
         raise exceptions.Conflict(detail="Error de integridad al registrar la revisión.")
     
     return db_doc
+
+
+def listar_revisiones_version(
+    db: Session,
+    documento_id: int,
+    version_id: int
+) -> List[RevisionDocumento]:
+    """Historial de revisiones registradas sobre una versión (más reciente primero)."""
+    version_objetivo = db.scalar(
+        select(VersionDocumento).where(
+            VersionDocumento.id == version_id,
+            VersionDocumento.documento_id == documento_id
+        )
+    )
+    if not version_objetivo:
+        raise exceptions.VersionNoEncontrada()
+
+    # La relación ya viene ordenada por fecha_registro descendente
+    return version_objetivo.revisiones

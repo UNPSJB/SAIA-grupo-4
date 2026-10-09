@@ -104,5 +104,16 @@ def renovar_revision_version(
     """
     Registra una revisión del documento (Ej: revisión anual). 
     Extiende su fecha de próximo vencimiento sin crear una nueva versión física.
+    Cada llamada genera una fila en el historial de revisiones de la versión.
     """
     return services.renovar_vigencia_version(db, documento_id, version_id, datos)
+
+
+@router.get("/{documento_id}/versiones/{version_id}/revisiones", response_model=list[schemas.RevisionDocumento])
+def listar_revisiones_version(
+    documento_id: int,
+    version_id: int,
+    db: Session = Depends(get_db)
+):
+    """Historial de revisiones periódicas registradas sobre una versión."""
+    return services.listar_revisiones_version(db, documento_id, version_id)
