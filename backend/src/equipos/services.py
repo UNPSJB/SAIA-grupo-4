@@ -1,6 +1,8 @@
 import os
 import uuid
+from pathlib import Path
 
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional   
 
@@ -72,14 +74,15 @@ def listar_equipos(db: Session) -> List[Equipo]:
 
 def leer_equipo(db: Session, equipo_id: int) -> Equipo:
     db_equipo = db.scalar(
-        select(Equipo).where(
+        select(Equipo)
+        .options(selectinload(Equipo.calibraciones))   
+        .where(
             Equipo.id == equipo_id
         )
     )
 
     if db_equipo is None:
         raise exceptions.EquipoNoEncontrado()
-
     return db_equipo
 
 
@@ -211,40 +214,32 @@ def registrar_calibracion(
     equipo_id: int,
     fecha_calibracion: date,
     observaciones: Optional[str] = None,
-    certificado_url: Optional[str] = None,
-    archivo: Optional[UploadFile] = None,
-) -> CalibracionEquipo:
-    equipo = db.query(Equipo).filter(Equipo.id == equipo_id, Equipo.activo.is_(True)).first()
-    if not equipo:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Equipo no encontrado o inactivo",
-        )
+    archivo: Optional[UploadFile] = None
+):
+    db_equipo = leer_equipo(db, equipo_id)
 
-    if fecha_calibracion > date.today():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La fecha de calibración no puede ser futura",
-        )
+    url_certificado = None
+    if archivo:
+        url_certificado = guardar_archivo_certificado(archivo)
 
-    # Si enviaron un archivo físico, se procesa y genera la URL
-    if archivo and archivo.filename:
-        certificado_url = guardar_archivo_certificado(archivo)
-
-    calibracion = CalibracionEquipo(
+    nueva_calibracion = CalibracionEquipo(
         equipo_id=equipo_id,
         fecha_calibracion=fecha_calibracion,
         observaciones=observaciones,
-        certificado_url=certificado_url,
+        certificado_url=url_certificado
     )
-    db.add(calibracion)
+    db.add(nueva_calibracion)
 
-    # Actualiza la fecha de última calibración en el equipo
-    equipo.fecha_ultima_calibracion = fecha_calibracion
-    db.commit()
-    db.refresh(calibracion)
-    return calibracion
+    db_equipo.fecha_ultima_calibracion = fecha_calibracion
 
+    try:
+        db.commit()
+        db.refresh(nueva_calibracion)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error al registrar la calibración")
+
+    return nueva_calibracion
 
 def listar_historial_calibraciones(db: Session, equipo_id: int) -> list[CalibracionEquipo]:
     equipo = db.query(Equipo).filter(Equipo.id == equipo_id).first()
@@ -294,7 +289,7 @@ def listar_alertas_calibracion(db: Session) -> list[AlertaCalibracion]:
     return alertas
 
 def guardar_archivo_certificado(archivo: UploadFile) -> str:
-    """Valida formato y tamaño, guardando el archivo en uploads/certificados."""
+    """Valida formato y tamaño, guardando el archivo en backend/uploads/certificados."""
     nombre_original = archivo.filename or ""
     ext = os.path.splitext(nombre_original)[1].lower()
     
@@ -305,18 +300,20 @@ def guardar_archivo_certificado(archivo: UploadFile) -> str:
         )
 
     contenido = archivo.file.read()
-    if len(contenido) > MAX_TAMANIO_BYTES:
+    if len(contenido) > MAX_TAMANIO_BYTES: 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El certificado no debe superar los 10MB.",
         )
 
-    # Nombre seguro y único para evitar colisiones
     nombre_generado = f"{uuid.uuid4().hex}{ext}"
-    ruta_directorio = os.path.join("uploads", "certificados")
-    os.makedirs(ruta_directorio, exist_ok=True)
     
-    ruta_completa = os.path.join(ruta_directorio, nombre_generado)
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    
+    ruta_directorio = BASE_DIR / "uploads" / "certificados"
+    ruta_directorio.mkdir(parents=True, exist_ok=True)
+    
+    ruta_completa = ruta_directorio / nombre_generado
     with open(ruta_completa, "wb") as f:
         f.write(contenido)
 

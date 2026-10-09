@@ -1,6 +1,7 @@
+from typing import Annotated, Optional, List
+from src.equipos.models import Equipo, CalibracionEquipo
 from datetime import date
 from enum import Enum
-from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.sectores.schemas import Sector
 
@@ -87,6 +88,7 @@ class Equipo(EquipoBase):
     id: int
     activo: bool
     sector: Sector
+    calibraciones: Optional[List[CalibracionEquipo]] = []
     model_config = ConfigDict(from_attributes=True)
 
 class AlertaCalibracion(BaseModel):
