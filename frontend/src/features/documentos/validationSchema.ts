@@ -29,11 +29,20 @@ export const subirVersionSchema = z.object({
   archivo: z.instanceof(File, { message: 'Debes adjuntar un archivo PDF' })
     .refine((file) => file.size > 0, 'El archivo no puede estar vacío'),
   version: z.string().min(1, 'El número de versión es obligatorio (ej. v1.1)'),
-  fecha_proxima_revision: z.string().min(1, 'La fecha de próxima revisión es obligatoria'),
+  // Opcional: la versión puede subirse sin revisión programada
+  fecha_proxima_revision: z.string().optional(),
   observaciones_cambio: z.string().optional(),
 });
 
 export const registrarRevisionSchema = z.object({
-  fecha_proxima_revision: z.string().min(1, 'La nueva fecha es obligatoria'),
-  observaciones: z.string().min(5, 'Debes ingresar una nota justificando la revisión y por qué no requirió cambios en el PDF'),
+  // Ambas opcionales, pero se exige al menos una: registrar una revisión sin fecha ni notas no deja ningún rastro útil en el historial
+  fecha_proxima_revision: z.string().optional(),
+  observaciones: z.string().optional(),
+}).refine((data) => {
+  const tieneFecha = (data.fecha_proxima_revision ?? '').trim() !== '';
+  const tieneObservaciones = (data.observaciones ?? '').trim() !== '';
+  return tieneFecha || tieneObservaciones;
+}, {
+  message: 'Ingresá al menos la nueva fecha de revisión o una observación',
+  path: ['fecha_proxima_revision'],
 });

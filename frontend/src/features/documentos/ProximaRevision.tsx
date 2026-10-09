@@ -1,11 +1,5 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
-
-// "2026-10-02" -> "02/10/2026" sin pasar por new Date():
-// new Date("2026-10-02") se interpreta en UTC y en Argentina mostraría el día anterior
-const formatearFechaISO = (fecha: string) => {
-    const [anio, mes, dia] = fecha.split("-");
-    return `${dia}/${mes}/${anio}`;
-};
+import { formatearFecha } from "./utils";
 
 // Cálculo en cliente porque el backend no expone alertas de revisión de documentos
 // (a diferencia de recambios, que sí tiene GET /recambios/alertas).
@@ -47,7 +41,7 @@ export const ProximaRevision = ({ fecha }: ProximaRevisionProps) => {
         <VStack gap={0} align="start">
             <HStack gap={2}>
                 <Box w={3} h={3} borderRadius="full" bg={`${color}.500`} flexShrink={0} />
-                <Text>{formatearFechaISO(fecha)}</Text>
+                <Text>{formatearFecha(fecha)}</Text>
             </HStack>
             {leyenda && <Text fontSize="sm" fontStyle="italic" color="gray.500">{leyenda}</Text>}
         </VStack>

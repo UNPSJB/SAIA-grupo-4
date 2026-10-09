@@ -2,13 +2,15 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack, Field, Input, Text, Box } from "@chakra-ui/react";
-import { FiFileText, FiEdit2, FiEye, FiSave, FiXCircle, FiCheckCircle, FiUpload } from "react-icons/fi";
+import { FiFileText, FiEdit2, FiEye, FiSave, FiXCircle, FiCheckCircle } from "react-icons/fi";
 
 import { useDocumentoSubmit } from "./hooks/useDocumentoSubmit";
 import { documentoSchema } from "./validationSchema";
 import type { Documento, DocumentoFormData } from "./types";
 import { TIPOS_DOCUMENTO } from "./types";
 import { useAuth } from "../auth/useAuth";
+import { PdfArchivoField } from "./components/PdfArchivoField";
+import { formatearFecha } from "./utils";
 
 import {
   FormContainer,
@@ -37,12 +39,6 @@ type DocumentoFormProps = {
 
 // Formato exacto YYYY-MM-DD para el atributo 'min' del calendario (no permite fechas pasadas)
 const hoyLocal = new Date().toLocaleDateString("sv-SE");
-
-// Mismo formato que "Fecha de Subida" (toLocaleDateString). Se agrega
-// "T00:00:00" para que JS parsee "YYYY-MM-DD" en hora local: sin ese sufijo
-// lo interpreta en UTC y en Argentina se mostraría un día anterior.
-const formatearFechaISO = (fecha: string) =>
-  new Date(`${fecha}T00:00:00`).toLocaleDateString();
 
 export const DocumentoForm = ({
   modo,
@@ -212,11 +208,11 @@ export const DocumentoForm = ({
               <DetalleItem label="Número de Versión">{documento.version_vigente.version}</DetalleItem>
               <DetalleItem label="Próxima Revisión">
                 {documento.version_vigente.fecha_proxima_revision
-                  ? formatearFechaISO(documento.version_vigente.fecha_proxima_revision)
+                  ? formatearFecha(documento.version_vigente.fecha_proxima_revision)
                   : "No definida"}
               </DetalleItem>
               <DetalleItem label="Fecha de Subida">
-                {new Date(documento.version_vigente.fecha_subida).toLocaleDateString()}
+                {formatearFecha(documento.version_vigente.fecha_subida)}
               </DetalleItem>
               <DetalleItem label="Subido por">
                 {documento.version_vigente.subido_por_nombre || "Usuario desconocido"}
@@ -284,57 +280,13 @@ export const DocumentoForm = ({
               <Text fontSize="md" fontWeight="bold" mb={4} color="gray.600">
                 Subir PDF (Opcional)
               </Text>
-              
-              <Field.Root invalid={!!errors.archivo} mb={4}>
-                <Box
-                  as="label"
-                  cursor="pointer"
-                  border="2px dashed"
-                  borderColor={errors.archivo ? "red.400" : "gray.300"}
-                  borderRadius="md"
-                  p={4}
-                  w="100%"
-                  display="flex"
-                  flexDirection="row"
-                  alignItems="center"
-                  justifyContent="center"
-                  gap={3}
-                  bg={archivoSeleccionado ? "green.50" : "gray.50"}
-                  _hover={{ bg: archivoSeleccionado ? "green.100" : "gray.100" }}
-                  transition="all 0.2s"
-                >
-                  {archivoSeleccionado ? (
-                    <>
-                      <Box color="green.500"><FiFileText size={24} /></Box>
-                      <Text fontWeight="semibold" color="green.700">
-                        {archivoSeleccionado.name}
-                      </Text>
-                      <Text fontSize="sm" color="green.600">(Cambiar)</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Box color="gray.400"><FiUpload size={24} /></Box>
-                      <Text fontWeight="medium" color="gray.600">
-                        Haz clic para adjuntar el PDF
-                      </Text>
-                    </>
-                  )}
-                  <Input
-                    type="file"
-                    accept=".pdf"
-                    display="none"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setValue('archivo', file, { shouldValidate: true });
-                    }}
-                  />
-                </Box>
-                {errors.archivo && (
-                  <Text color="red.500" fontSize="sm" mt={1}>
-                    {errors.archivo.message as string}
-                  </Text>
-                )}
-              </Field.Root>
+
+              {/* Dropzone compartido con el modal de Subir Nueva Versión */}
+              <PdfArchivoField
+                value={archivoSeleccionado ?? null}
+                onChange={(file) => setValue("archivo", file, { shouldValidate: true })}
+                error={errors.archivo?.message as string | undefined}
+              />
 
               {archivoSeleccionado && (
                 <>

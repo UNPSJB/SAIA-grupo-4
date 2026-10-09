@@ -56,11 +56,26 @@ export interface DocumentoFormData {
 export interface SubirVersionFormData {
   archivo: File | null;
   version: string;
-  fecha_proxima_revision: string;
+  // Opcionales: la nueva versión puede subirse sin revisión programada ni notas
+  fecha_proxima_revision?: string;
   observaciones_cambio?: string;
 }
 
 export interface RegistrarRevisionFormData {
-  fecha_proxima_revision: string;
-  observaciones: string;
+  // Opcionales (pero zod exige al menos una de las dos)
+  fecha_proxima_revision?: string;
+  observaciones?: string;
+  // Auditoría: persona logueada que registra la revisión
+  registrado_por_id?: number;
+}
+
+// Una fila del historial de revisiones de una versión (auditoría)
+export interface RevisionDocumento {
+  id: number;
+  version_id: number;
+  fecha_registro: string;
+  nueva_fecha_proxima_revision: string | null;
+  observaciones: string | null;
+  registrado_por_id: number | null;
+  registrado_por_nombre: string | null;
 }

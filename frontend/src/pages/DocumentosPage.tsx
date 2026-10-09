@@ -10,8 +10,8 @@ import { handleDelete } from "../features/documentos/hooks/useDocumentoDelete";
 import { useDocumentoSubmit } from "../features/documentos/hooks/useDocumentoSubmit";
 import type { Documento } from "../features/documentos/types";
 
-// import { SubirVersionModal } from "../features/documentos/components/SubirVersionModal";
-// import { RegistrarRevisionModal } from "../features/documentos/components/RegistrarRevisionModal";
+import { SubirVersionModal } from "../features/documentos/components/SubirVersionModal";
+import { RegistrarRevisionModal } from "../features/documentos/components/RegistrarRevisionModal";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
@@ -33,8 +33,8 @@ export default function DocumentosPage() {
   const [documentoAlta, setDocumentoAlta] = useState<Documento | null>(null);
 
   // Estados para modales secundarios de versionado 
-  // const [versionModalAbierto, setVersionModalAbierto] = useState(false);
-  // const [revisionModalAbierto, setRevisionModalAbierto] = useState(false);
+  const [versionModalAbierto, setVersionModalAbierto] = useState(false);
+  const [revisionModalAbierto, setRevisionModalAbierto] = useState(false);
 
   const reactivar = useDocumentoSubmit({
     endpoint: "http://127.0.0.1:8000/documentos/",
@@ -99,8 +99,16 @@ export default function DocumentosPage() {
         // Navegamos al historial usando react-router-dom
         onVerHistorial={(doc) => navigate(`/documentos/${doc.id}/historial`)}
         
-        // onSubirVersion={(doc) => { setDocumentoSeleccionado(doc); setVersionModalAbierto(true); }}
-        // onRegistrarRevision={(doc) => { setDocumentoSeleccionado(doc); setRevisionModalAbierto(true); }}
+        onSubirVersion={(doc) => {
+          setError("");
+          setDocumentoSeleccionado(doc);
+          setVersionModalAbierto(true);
+        }}
+        onRegistrarRevision={(doc) => {
+          setError("");
+          setDocumentoSeleccionado(doc);
+          setRevisionModalAbierto(true);
+        }}
       />
 
       {/* MODAL PRINCIPAL: Alta y Edición de Carátula */}
@@ -149,7 +157,31 @@ export default function DocumentosPage() {
         error={error}
       />
 
-      {/* ACA VENDRAN LOS MODALES SECUNDARIOS: SubirVersionModal y RegistrarRevisionModal */}
+      {/* MODALES SECUNDARIOS: SubirVersionModal y RegistrarRevisionModal.
+          Se desmontan al cerrar, así cada apertura arranca con el formulario limpio. */}
+      {versionModalAbierto && documentoSeleccionado && (
+        <SubirVersionModal
+          open
+          documento={documentoSeleccionado}
+          onClose={() => setVersionModalAbierto(false)}
+          onExito={() => {
+            setVersionModalAbierto(false);
+            setRefrescar((r) => r + 1);
+          }}
+        />
+      )}
+
+      {revisionModalAbierto && documentoSeleccionado && (
+        <RegistrarRevisionModal
+          open
+          documento={documentoSeleccionado}
+          onClose={() => setRevisionModalAbierto(false)}
+          onExito={() => {
+            setRevisionModalAbierto(false);
+            setRefrescar((r) => r + 1);
+          }}
+        />
+      )}
       
     </Box>
   );

@@ -1,90 +1,144 @@
 import { useCallback, useState } from "react";
-import type { SubirVersionFormData, RegistrarRevisionFormData } from "../types";
+import type { RegistrarRevisionFormData, SubirVersionFormData } from "../types";
+import { extraerMensajeError } from "./useDocumentoSubmit";
 
 // Los estados de respuesta que maneja la UI
 export type VersionSubmitResult =
   | { status: "success" }
   | { status: "error"; message: string };
 
+// Rutas reales del backend (sin "/api": no hay proxy y esas URLs daban 404)
+const BASE_URL = "http://127.0.0.1:8000/documentos";
+
+// Lee el error de FastAPI tal cual lo devuelve (string, lista de 422 u objeto {code})
+const leerError = async (res: Response): Promise<string> => {
+  let detalle: unknown = null;
+  try {
+    const body = (await res.json()) as { detail?: unknown };
+    detalle = body?.detail;
+  } catch {
+    /* El backend no devolvió JSON */
+  }
+  return extraerMensajeError(detalle) ?? `Error ${res.status}`;
+};
+
 export const useDocumentoVersiones = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper interno para leer los errores de FastAPI tal cual los devuelve el backend
-  const handleApiError = async (res: Response): Promise<string> => {
-    let bodyRes: { detail?: unknown } | null = null;
-    try { bodyRes = await res.json(); } catch { /* El backend no devolvió JSON */ }
+  // Sube una NUEVA VERSIÓN y la deja vigente ("Subir y Activar").
+  // Backend: POST .../versiones (multipart: campo `datos` JSON + `archivo`) y
+  // luego PATCH .../versiones/{id}/vigencia, porque la versión ingresa como NO
+  // vigente y recién la segunda llamada archiva a la anterior.
+  const subirNuevaVersion = useCallback(
+    async (
+      documentoId: number,
+      data: SubirVersionFormData,
+      creadoPorId: number,
+    ): Promise<VersionSubmitResult> => {
+      setIsSubmitting(true);
+      try {
+        if (!data.archivo) {
+          return { status: "error", message: "Debes adjuntar un archivo PDF" };
+        }
 
-    const detalle = bodyRes?.detail;
-    if (detalle !== undefined && detalle !== null) {
-      if (typeof detalle === "string") return detalle;
-      if (typeof detalle === "object" && "code" in detalle && typeof detalle.code === "string") return detalle.code;
-      return "Ocurrió un error";
-    }
-    return `Error ${res.status}`;
-  };
+        const datos: Record<string, unknown> = {
+          version: data.version,
+          creado_por_id: creadoPorId,
+        };
+        if (data.fecha_proxima_revision) datos.fecha_proxima_revision = data.fecha_proxima_revision;
+        if (data.observaciones_cambio?.trim()) datos.observaciones_cambio = data.observaciones_cambio.trim();
 
-  // Subir una NUEVA VERSIÓN (Usa FormData porque se envia un PDF físico)
-  const subirNuevaVersion = useCallback(async (documentoId: number, data: SubirVersionFormData): Promise<VersionSubmitResult> => {
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      if (data.archivo) formData.append("archivo", data.archivo);
-      formData.append("version", data.version);
-      formData.append("fecha_proxima_revision", data.fecha_proxima_revision);
-      if (data.observaciones_cambio) formData.append("observaciones_cambio", data.observaciones_cambio);
+        const formData = new FormData();
+        formData.append("datos", JSON.stringify(datos));
+        formData.append("archivo", data.archivo);
 
-      const res = await fetch(`/api/documentos/${documentoId}/versiones/`, {
-        method: "POST",
-        // No se setea el Content-Type. fetch se encarga de poner "multipart/form-data" automáticamente
-        body: formData, 
-      });
+        const res = await fetch(`${BASE_URL}/${documentoId}/versiones`, {
+          method: "POST",
+          // Sin Content-Type manual: fetch agrega el boundary del multipart
+          body: formData,
+        });
+        if (!res.ok) return { status: "error", message: await leerError(res) };
 
-      if (!res.ok) {
-        return { status: "error", message: await handleApiError(res) };
+        const nuevaVersion = (await res.json()) as { id?: number };
+        if (!nuevaVersion.id) {
+          return { status: "error", message: "La versión se subió, pero el backend no devolvió su id" };
+        }
+
+        // Segundo paso: activar la recién subida (la anterior queda histórica)
+        const resVigencia = await fetch(
+          `${BASE_URL}/${documentoId}/versiones/${nuevaVersion.id}/vigencia`,
+          { method: "PATCH" },
+        );
+        if (!resVigencia.ok) {
+          return {
+            status: "error",
+            message: `La versión se subió pero no se pudo activar: ${await leerError(resVigencia)}`,
+          };
+        }
+
+        return { status: "success" };
+      } catch {
+        return { status: "error", message: "Ocurrió un error de red" };
+      } finally {
+        setIsSubmitting(false);
       }
-      return { status: "success" };
-    } catch {
-      return { status: "error", message: "Ocurrió un error de red" };
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
-  // Registrar que se revisó el documento pero SIGUE VIGENTE EL MISMO PDF (Usa JSON)
-  const registrarRevision = useCallback(async (versionId: number, data: RegistrarRevisionFormData): Promise<VersionSubmitResult> => {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/documentos/versiones/${versionId}/revision/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+  // Registra una revisión periódica SIN subir un PDF nuevo (JSON).
+  // Backend: PATCH .../versiones/{versionId}/renovar — actualiza la fecha si
+  // viene informada y crea una fila en el historial de revisiones.
+  const registrarRevision = useCallback(
+    async (
+      documentoId: number,
+      versionId: number,
+      data: RegistrarRevisionFormData,
+    ): Promise<VersionSubmitResult> => {
+      setIsSubmitting(true);
+      try {
+        const payload: Record<string, unknown> = {};
+        if (data.fecha_proxima_revision) payload.fecha_proxima_revision = data.fecha_proxima_revision;
+        if (data.observaciones?.trim()) payload.observaciones = data.observaciones.trim();
+        if (data.registrado_por_id) payload.registrado_por_id = data.registrado_por_id;
 
-      if (!res.ok) return { status: "error", message: await handleApiError(res) };
-      return { status: "success" };
-    } catch {
-      return { status: "error", message: "Ocurrió un error de red" };
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, []);
+        const res = await fetch(`${BASE_URL}/${documentoId}/versiones/${versionId}/renovar`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-  // Hacer ROLLBACK a una versión anterior (Ej: volver de la v1.1 a la v1.0)
-  const activarVersionAnterior = useCallback(async (versionId: number): Promise<VersionSubmitResult> => {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/documentos/versiones/${versionId}/activar/`, {
-        method: "POST", 
-      });
+        if (!res.ok) return { status: "error", message: await leerError(res) };
+        return { status: "success" };
+      } catch {
+        return { status: "error", message: "Ocurrió un error de red" };
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [],
+  );
 
-      if (!res.ok) return { status: "error", message: await handleApiError(res) };
-      return { status: "success" };
-    } catch {
-      return { status: "error", message: "Ocurrió un error de red" };
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, []);
+  // Activa una versión (histórica o nueva): la vigente pasa a histórica.
+  // Backend: PATCH .../versiones/{versionId}/vigencia
+  const activarVersion = useCallback(
+    async (documentoId: number, versionId: number): Promise<VersionSubmitResult> => {
+      setIsSubmitting(true);
+      try {
+        const res = await fetch(`${BASE_URL}/${documentoId}/versiones/${versionId}/vigencia`, {
+          method: "PATCH",
+        });
 
-  return { subirNuevaVersion, registrarRevision, activarVersionAnterior, isSubmitting };
+        if (!res.ok) return { status: "error", message: await leerError(res) };
+        return { status: "success" };
+      } catch {
+        return { status: "error", message: "Ocurrió un error de red" };
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [],
+  );
+
+  return { subirNuevaVersion, registrarRevision, activarVersion, isSubmitting };
 };

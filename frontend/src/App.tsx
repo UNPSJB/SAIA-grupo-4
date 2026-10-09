@@ -23,6 +23,8 @@ import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
 import DocumentosPage from "./pages/DocumentosPage";
+import HistorialVersionesPage from "./pages/HistorialVersionesPage";
+import VisorPdfPage from "./pages/VisorPdfPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -202,6 +204,22 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <DocumentosPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/documentos/:id/historial'
+              element={
+                <RequireAuth>
+                  <HistorialVersionesPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/documentos/:id/versiones/:versionId/pdf'
+              element={
+                <RequireAuth>
+                  <VisorPdfPage />
                 </RequireAuth>
               }
             />

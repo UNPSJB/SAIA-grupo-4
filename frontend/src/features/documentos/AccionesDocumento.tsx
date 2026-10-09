@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FiCalendar,
   FiCheckCircle,
@@ -45,6 +46,7 @@ export const AccionesDocumento = ({
   onVerHistorial,
 }: AccionesDocumentoProps) => {
   const [verVersionado, setVerVersionado] = useState(false);
+  const navigate = useNavigate();
 
   if (verVersionado) {
     return (
@@ -63,8 +65,9 @@ export const AccionesDocumento = ({
           title="Ver el PDF de la versión vigente"
           colorPalette="orange"
           onClick={() => {
-            const url = documento.version_vigente?.archivo_url;
-            if (url) window.open(url, "_blank");
+            // Visor dentro de la app
+            const vigente = documento.version_vigente;
+            if (vigente) navigate(`/documentos/${documento.id}/versiones/${vigente.id}/pdf`);
           }}
           visible={!!documento.version_vigente?.archivo_url}
         />
