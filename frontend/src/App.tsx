@@ -22,7 +22,7 @@ import NuevoPlanPage from "./pages/NuevoPlanPage";
 import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
-import ListadoIncidentesPage from "./pages/ListadoIncidentesPage";
+import ListadoIncidentesPage from "./pages/IncidentesPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },

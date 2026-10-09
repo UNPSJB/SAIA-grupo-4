@@ -10,6 +10,7 @@ export interface IncidentePayload {
   descripcion: string;
   fecha_hora_reporte: string;
   reportante_id: number;
+  tipo_id: number;
 }
 
 type FastApiError = {
@@ -44,6 +45,7 @@ export const useIncidentesSubmit = ({
           descripcion: values?.descripcion ?? "",
           fecha_hora_reporte: values?.fecha_hora_reporte ?? "",
           reportante_id: Number(values?.reportante_id) ?? "",
+          tipo_id: Number(values?.tipo_id) ?? "",
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
