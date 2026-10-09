@@ -1,8 +1,8 @@
 import { useAuth } from "../auth/useAuth";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+import { VStack, Input, Image, Field } from "@chakra-ui/react";
 import { useIncidentesSubmit } from "./hooks/useIncidentesSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { incidenteSchema, type IncidenteFormValues, type IncidenteFormInput } from "./validationSchema";
@@ -46,7 +46,7 @@ export const IncidenteForm = ({
             ? {
                 titulo: incidente!.titulo,
                 descripcion: incidente!.descripcion,
-                foto_url: incidente!.foto || "",
+                foto_url: incidente!.foto_url || "",
                 fecha_hora_reporte: incidente!.fecha_hora_reporte,
                 reportante_id: incidente!.reportante_id,
                 tipo_id: String(incidente!.tipo_id),
@@ -95,6 +95,35 @@ export const IncidenteForm = ({
     const [incidenteInactivoId, setIncidenteInactivoId] = useState<number | null>(null);
     const [errorConfirmar, setErrorConfirmar] = useState("");
     const [nombreEnviado, setNombreEnviado] = useState("");
+
+    const [fotoArchivo, setFotoArchivo] = useState<File | null>(null);
+    const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+    const [errorFoto, setErrorFoto] = useState("");
+
+    useEffect(() => {
+        return () => {
+            if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+        };
+    }, [fotoPreview]);
+
+    const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const archivo = e.target.files?.[0] ?? null;
+
+        setErrorFoto("");
+        setFotoArchivo(null);
+        setFotoPreview(null);
+
+        if (!archivo) return;
+
+        if (!archivo.type.startsWith("image/")) {
+            setErrorFoto("El archivo debe ser una imagen.");
+            e.target.value = "";
+            return;
+        }
+
+        setFotoArchivo(archivo);
+        setFotoPreview(URL.createObjectURL(archivo));
+    };
 
     const { submit } = useIncidentesSubmit({
         endpoint: "http://127.0.0.1:8000/incidentes/",
@@ -191,14 +220,28 @@ export const IncidenteForm = ({
                         error={errors.descripcion?.message}
                         {...register("descripcion")}
                     />
+                    <Field.Root>
+                        <Field.Label fontSize="md" fontFamily="sans-serif">
+                            Foto del incidente (opcional)
+                        </Field.Label>
+                        <Input 
+                            type="file"
+                            accept="image/*"
+                            disabled={esModoVer}
+                            onChange={handleFotoChange}
+                        />
 
-                    <TextField
-                        label="Foto (Opcional)"
-                        disabled={esModoVer}
-                        defaultValue={defaultValues.foto_url}
-                        error={errors.foto_url?.message}
-                        {...register("foto_url")}
-                    />
+                        {errorFoto && <AlertMessage type="error" message={errorFoto} />}
+                    </Field.Root>
+
+                    {fotoPreview && (
+                        <Image
+                            src={fotoPreview}
+                            alt="Vista previa de la foto del incidente"
+                            maxH="200px"
+                            objectFit="contain"
+                        />
+                    )}
 
                     <FormActions>
                         {esModoVer ? (

@@ -67,7 +67,11 @@ export default function ListadoIncidentesPage() {
 
       {crearAbierto && (
         <FormModal open onClose={() => setCrearAbierto(false)}>
-          <IncidenteForm modo="crear"/>
+          <IncidenteForm
+            modo="crear"
+            onCancelar={() => setCrearAbierto(false)}
+            enModal
+          />
         </FormModal>
       )}
     </Box>

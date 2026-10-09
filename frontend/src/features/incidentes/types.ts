@@ -9,7 +9,7 @@ export interface Incidente {
     id: number;
     titulo: string;
     descripcion: string;
-    foto?: string | null;
+    foto_url?: string | null;
     fecha_hora_reporte: string;
     reportante_id: number; // ID del usuario que reportó el incidente
     reportante: {
