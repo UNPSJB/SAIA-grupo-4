@@ -226,7 +226,8 @@ def test_renovar_version_vigencia(autor_base):
     # Se registra la revisión/renovación (sin subir archivo nuevo)
     payload_renovacion = {
         "fecha_proxima_revision": "2027-10-05",
-        "observaciones": "Revisión anual completada. Sigue vigente."
+        "observaciones": "Revisión anual completada. Sigue vigente.",
+        "registrado_por_id": autor_base
     }
     res_renovar = client.patch(
         f"/documentos/{doc_id}/versiones/{version_id}/renovar",
@@ -240,7 +241,69 @@ def test_renovar_version_vigencia(autor_base):
     # Se valida que la fecha se haya actualizado
     assert version_renovada["fecha_proxima_revision"] == "2027-10-05"
     
-    # Se valida la trazabilidad (concatenación del texto)
-    assert "Creación inicial" in version_renovada["observaciones_cambio"]
-    assert "Revisión anual completada" in version_renovada["observaciones_cambio"]
-    assert "[Revisión" in version_renovada["observaciones_cambio"]
+    assert version_renovada["observaciones_cambio"] == "Creación inicial"
+
+    # El historial de revisiones queda como fila propia, con quién la registró
+    res_hist = client.get(f"/documentos/{doc_id}/versiones/{version_id}/revisiones")
+    assert res_hist.status_code == 200
+    revisiones = res_hist.json()
+    assert len(revisiones) == 1
+    assert revisiones[0]["nueva_fecha_proxima_revision"] == "2027-10-05"
+    assert revisiones[0]["observaciones"] == "Revisión anual completada. Sigue vigente."
+    # Nombre completo de la persona que registró la revisión (fixture: "Doc Tester")
+    assert revisiones[0]["registrado_por_nombre"] == "Doc Tester"
+
+
+def test_renovar_solo_observaciones_mantiene_fecha(autor_base):
+    # Documento con versión inicial SIN fecha de revisión programada
+    payload_doc = {
+        "titulo": "Instructivo Sin Fecha",
+        "tipo_documento": "INSTRUCTIVO",
+        "creado_por_id": autor_base
+    }
+    res_doc = client.post(
+        "/documentos/",
+        data={"datos": json.dumps(payload_doc)},
+        files={"archivo": ("v1.pdf", b"pdf1", "application/pdf")}
+    )
+    doc_id = res_doc.json()["id"]
+    version_id = res_doc.json()["version_vigente"]["id"]
+
+    # Revisión sin fecha nueva: solo se asienta la nota de auditoría
+    res_renovar = client.patch(
+        f"/documentos/{doc_id}/versiones/{version_id}/renovar",
+        json={"observaciones": "Se verifica que el procedimiento sigue vigente."}
+    )
+    assert res_renovar.status_code == 200
+    version = res_renovar.json()["version_vigente"]
+
+    # La fecha no se toca (sigue sin programar) y la nota queda en el historial
+    assert version["fecha_proxima_revision"] is None
+    res_hist = client.get(f"/documentos/{doc_id}/versiones/{version_id}/revisiones")
+    revisiones = res_hist.json()
+    assert len(revisiones) == 1
+    assert revisiones[0]["nueva_fecha_proxima_revision"] is None
+    assert revisiones[0]["registrado_por_id"] is None
+    assert revisiones[0]["registrado_por_nombre"] is None
+
+
+def test_renovar_sin_fecha_ni_observaciones_rechazado(autor_base):
+    payload_doc = {
+        "titulo": "Documento Sin Datos",
+        "tipo_documento": "OTRO",
+        "creado_por_id": autor_base
+    }
+    res_doc = client.post(
+        "/documentos/",
+        data={"datos": json.dumps(payload_doc)},
+        files={"archivo": ("v1.pdf", b"pdf1", "application/pdf")}
+    )
+    doc_id = res_doc.json()["id"]
+    version_id = res_doc.json()["version_vigente"]["id"]
+
+    # Sin fecha y sin observaciones no hay nada que registrar
+    res_renovar = client.patch(
+        f"/documentos/{doc_id}/versiones/{version_id}/renovar",
+        json={"observaciones": "   "}
+    )
+    assert res_renovar.status_code == 422
