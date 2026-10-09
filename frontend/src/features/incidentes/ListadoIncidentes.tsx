@@ -1,6 +1,7 @@
 import { HStack, Button, Badge } from "@chakra-ui/react";
 import { 
     FiEye,
+    FiPlus,
     FiSettings,
 } from "react-icons/fi"; // Importar otros íconos según sea necesario
 import {
@@ -19,6 +20,7 @@ import type { ColumnDef } from "../../components/ui";
 interface ListadoIncidentesProps {
     onVer?: (incidente: Incidente) => void;
     onGestionarTipos?: () => void;
+    onCrear?: () => void;
     // Agregar las props del listado
 }
 
@@ -26,19 +28,25 @@ const ENDPOINT = "http://127.0.0.1:8000/incidentes/";
 const ITEMS_POR_PAGINA = 5;
 
 const formatearFecha = (fecha: string) => {
-  const fechaObj = new Date(fecha);
-  return fechaObj.toLocaleString("es-AR", {
+  const fechaConZona = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fecha)
+    ? fecha
+    : `${fecha}Z`;
+
+  return new Date(fechaConZona).toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   });
 };
 
 export const ListadoIncidentes = ({
     onVer,
     onGestionarTipos,
+    onCrear,
     // Agregar las props del listado
 }: ListadoIncidentesProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
@@ -68,7 +76,7 @@ export const ListadoIncidentes = ({
       key: "estado",
       label: "Estado",
       render: (incidente) => (
-        <Badge colorScheme={incidente.abierto ? "green" : "red"}>
+        <Badge colorPalette={incidente.abierto ? "green" : "red"}>
             {incidente.abierto ? "Abierto" : "Cerrado"}
         </Badge>
       ),
@@ -99,6 +107,11 @@ export const ListadoIncidentes = ({
           <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
             <FiSettings /> Gestionar Tipos
           </Button>
+          {onCrear && (
+          <Button variant='solid' colorPalette='green' onClick={onCrear}>
+            <FiPlus /> Registrar Incidente
+          </Button>
+          )}
         </HStack>
       </HStack>
     

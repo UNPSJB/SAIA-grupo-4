@@ -1,9 +1,12 @@
+import { useAuth } from "../features/auth/useAuth";
+import { esOperador, esAdministrador } from "../features/auth/roles";
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { ListadoIncidentes } from "../features/incidentes/ListadoIncidentes";
 import { IncidenteDetalle } from "../features/incidentes/IncidenteDetalle";
 import { AlertConfirm, FormModal } from "../components/ui";
 import { useIncidentesSubmit } from "../features/incidentes/hooks/useIncidentesSubmit";
+import { IncidenteForm } from "../features/incidentes/IncidentesForm"
 import type { Incidente } from "../features/incidentes/types";
 import { GestionTiposIncidente } from "../features/incidentes/GestionTiposIncidente";
 
@@ -18,6 +21,17 @@ export default function ListadoIncidentesPage() {
   
   const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
 
+  const [crearAbierto, setCrearAbierto] = useState(false);
+
+  // obtengo el usuario para validar sus capacidades
+  const { usuario } = useAuth();
+
+  // valido que sea operador
+  const puedeCrearIncidentes = esOperador(usuario);
+
+  // valido que sea admin
+  const puedeGestionarTipos = esAdministrador(usuario);
+
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       <ListadoIncidentes
@@ -27,7 +41,16 @@ export default function ListadoIncidentesPage() {
           setIncidenteSeleccionado(incidente);
           setVista("ver");
         }}
-        onGestionarTipos={() => setTipoModalAbierto(true)}
+        onGestionarTipos={
+          puedeGestionarTipos
+            ? () => setTipoModalAbierto(true)
+            : undefined
+          }
+        onCrear={
+          puedeCrearIncidentes
+            ? () => setCrearAbierto(true)
+            : undefined 
+        }
       />
       {vista === "ver" && incidenteSeleccionado && (
         <IncidenteDetalle
@@ -39,6 +62,12 @@ export default function ListadoIncidentesPage() {
       {tipoModalAbierto && (
         <FormModal open onClose={() => setTipoModalAbierto(false)}>
           <GestionTiposIncidente />
+        </FormModal>
+      )}
+
+      {crearAbierto && (
+        <FormModal open onClose={() => setCrearAbierto(false)}>
+          <IncidenteForm modo="crear"/>
         </FormModal>
       )}
     </Box>
