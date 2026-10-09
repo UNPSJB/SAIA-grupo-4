@@ -82,12 +82,14 @@ export const TipoIncidenteForm = ({ modo, tipo, onCancelar, onGuardado, enModal 
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
                     error={errorNombre}
+                    placeholder="Ej: Plagas."
                 />
                 <TextField
                     label="Descripción del tipo"
                     value={descripcion}
                     onChange={(e) => setDescripcion(e.target.value)}
                     error={errorDescripcion}
+                    placeholder="Ej: Hace referencia a haber visto algun tipo de plaga."
                 />
                 <FormActions>
                     <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} onClick={handleGuardar} colorPalette="green" />

@@ -9,7 +9,7 @@ import type { TipoIncidente } from "./types";
 
 type Vista = "listado" | "crear" | "modificar";
 
-export const GestionTiposElementoLimpieza = () => {
+export const GestionTiposIncidente = () => {
   const [vista, setVista] = useState<Vista>("listado");
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoIncidente | null>(null);
   const [loading, setLoading] = useState(false);

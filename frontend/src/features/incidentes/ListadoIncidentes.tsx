@@ -1,6 +1,7 @@
 import { HStack, Button, Badge } from "@chakra-ui/react";
 import { 
     FiEye,
+    FiSettings,
 } from "react-icons/fi"; // Importar otros íconos según sea necesario
 import {
     AlertMessage,
@@ -17,6 +18,7 @@ import type { ColumnDef } from "../../components/ui";
 
 interface ListadoIncidentesProps {
     onVer?: (incidente: Incidente) => void;
+    onGestionarTipos?: () => void;
     // Agregar las props del listado
 }
 
@@ -36,6 +38,7 @@ const formatearFecha = (fecha: string) => {
 
 export const ListadoIncidentes = ({
     onVer,
+    onGestionarTipos,
     // Agregar las props del listado
 }: ListadoIncidentesProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
@@ -92,6 +95,11 @@ export const ListadoIncidentes = ({
     <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
         <ListadoHeader title="Listado de Incidentes" />
+        <HStack gap={2}>
+          <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
+            <FiSettings /> Gestionar Tipos
+          </Button>
+        </HStack>
       </HStack>
     
       {loading && <LoadingState message="Cargando incidentes..." />}
