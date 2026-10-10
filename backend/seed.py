@@ -12,11 +12,13 @@ Para regenerarla desde cero, borrar backend/db.sqlite3 y volver a ejecutar.
 
 Por defecto siembra 10 filas en cada tabla maestra (unidades de medida, sectores,
 tipos de elemento, equipos, insumos, insumos quimicos, elementos de limpieza,
-capacidades y personal), 10 planes POES y 10 tareas por plan. Las tablas hijas
-(tareas_insumos_quimicos, tareas_elementos_limpieza, ejecuciones_tareas,
-ejecuciones_insumos_quimicos, historial_recambios y calibraciones_equipos) quedan
-con las filas que surgen de esas relaciones: no son 10 fijas porque dependen de
-la mezcla de recursos de cada tarea y de los dias de historial que se pida.
+capacidades, personal y documentos), 10 planes POES y 10 tareas por plan. Las
+tablas hijas (tareas_insumos_quimicos, tareas_elementos_limpieza,
+ejecuciones_tareas, ejecuciones_insumos_quimicos, historial_recambios,
+calibraciones_equipos, versiones_documento y revisiones_documento) quedan con las
+filas que surgen de esas relaciones: no son 10 fijas porque dependen de la mezcla
+de recursos de cada tarea, de los dias de historial que se pida y de la cantidad
+de versiones o revisiones de cada documento.
 
 Los equipos y los elementos de limpieza llevan frecuencia y fecha de la ultima
 intervencion, con las fechas escalonadas para que la vista consolidada de
@@ -24,6 +26,12 @@ vencimientos (vencimientos/providers.py) tenga filas en los tres estados: la
 categoria elemento_limpieza sale de recambios/services.py::listar_alertas y la
 categoria equipo de equipos/services.py::listar_alertas_calibracion. Cada
 historial (historial_recambios y calibraciones_equipos) respalda esa fecha.
+
+Los documentos llevan una sola version vigente cada uno y su fecha de proxima
+revision queda escalonada para que /documentos/alertas tenga filas vencidas,
+proximas y al dia. Cada version tiene su PDF de relleno en
+backend/uploads/documentos (el visor del frontend lo embebe en un iframe) y la
+version vigente tiene su historial de revisiones en revisiones_documento.
 
 Todos los catalogos de este archivo tienen 10 entradas con valores propios, asi
 que con la cantidad por defecto no se repite ninguno. ``_ciclar`` solo agrega
@@ -44,6 +52,9 @@ plan_poes/schemas.py:
   - Queda un solo plan vigente y un solo plan en borrador, como espera
     plan_poes/services.py::obtener_plan_activo y ::obtener_plan_borrador. Los
     demas quedan archivados, que es lo que muestra el historial de planes.
+  - Cada documento tiene como maximo una sola version vigente, y el codigo
+    autogenerado replica el correlativo por tipo de
+    documentos/services.py::_generar_codigo_documento.
   - Todo el texto sembrado es ASCII: sin tildes, sin enie y sin simbolos.
 
 ``_verificar`` no reimplementa esas reglas: construye un TareaPOESCreate real
@@ -68,6 +79,12 @@ from src.checklists.constants import EstadoEjecucion
 from src.checklists.models import EjecucionInsumoQuimico, EjecucionTarea
 from src.checklists.services import _filtrar_tareas_por_dia
 from src.database import SessionLocal, engine
+from src.documentos.constants import (
+    EstadoVencimiento as EstadoRevisionDocumento,
+    TipoDocumentoEnum,
+)
+from src.documentos.models import Documento, RevisionDocumento, VersionDocumento
+from src.documentos.services import listar_alertas as listar_alertas_documentos
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.equipos.models import CalibracionEquipo, Equipo
 from src.insumo_quimico.models import InsumoQuimico
@@ -114,6 +131,7 @@ TABLAS_CON_CANTIDAD_FIJA = (
     "elementos_limpieza",
     "capacidad",
     "personal",
+    "documentos",
     "planes_poes",
 )
 
@@ -227,6 +245,58 @@ ELEMENTOS = (
     ("Cepillo de Mango Largo", 6, 120, 80),
     ("Guante de Nitrilo", 8, 30, 10),
     ("Franela para Limpiavidrios", 3, None, 25),
+)
+
+# (titulo, tipo, descripcion, cantidad de versiones, dias hasta la proxima
+# revision). El tipo es uno de los valores de documentos/constants.py
+# ::TipoDocumentoEnum. La cantidad de versiones arma el historial de cada
+# documento: la ultima queda vigente y las anteriores archivadas con fecha_hasta.
+# Los dias de revision deciden el estado en /documentos/alertas: negativo esta
+# vencido, entre 0 y 15 esta proximo, por encima de 15 esta al dia y None no
+# genera alerta (vencimientos/constants.py y documentos/constants.py). El
+# documento 8 (indice 7) queda sin version, como cuando se da de alta sin PDF, y
+# el ultimo (indice 9) queda dado de baja para ejercitar el alta logica.
+DOCUMENTOS = (
+    ("Manual de Buenas Practicas de Manufactura", "MANUAL_BPM", "Lineamientos generales de higiene e inocuidad para toda la planta.", 3, -20),
+    ("Procedimiento de Limpieza y Desinfeccion", "PROCEDIMIENTO", "Pasos para la limpieza y desinfeccion de superficies y equipos.", 2, 5),
+    ("Procedimiento de Control de Plagas", "PROCEDIMIENTO", "Programa de monitoreo y control de plagas en areas de proceso.", 1, 60),
+    ("Instructivo de Preparacion de Soluciones", "INSTRUCTIVO", "Dosificacion y preparacion de soluciones de limpieza.", 2, None),
+    ("Planilla de Control de Temperaturas", "PLANILLA", "Registro diario de temperaturas de camaras y equipos.", 1, -3),
+    ("Procedimiento de Calibracion de Balanzas", "PROCEDIMIENTO", "Calibracion periodica de balanzas de proceso y laboratorio.", 3, 12),
+    ("Instructivo de Rotulacion de Producto", "INSTRUCTIVO", "Como rotular y trazabilizar el producto terminado.", 1, 200),
+    ("Planilla de Registro de Limpieza", "PLANILLA", "Planilla para asentar la limpieza diaria de los sectores.", 0, None),
+    ("Manual de Higiene del Personal", "MANUAL_BPM", "Practicas de higiene y vestimenta del personal de planta.", 1, 45),
+    ("Politica de Gestion Documental", "OTRO", "Organizacion, revision y resguardo de la documentacion del sistema.", 1, -45),
+)
+
+# Prefijos del codigo autogenerado, espejo de
+# documentos/services.py::_generar_codigo_documento. El correlativo se cuenta por
+# tipo y en 4 digitos, asi el proximo documento que cree la app sigue la
+# numeracion sembrada en vez de pisarla.
+PREFIJOS_DOCUMENTO = {
+    TipoDocumentoEnum.MANUAL_BPM: "BPM",
+    TipoDocumentoEnum.PROCEDIMIENTO: "POES",
+    TipoDocumentoEnum.INSTRUCTIVO: "INS",
+    TipoDocumentoEnum.PLANILLA: "PLA",
+    TipoDocumentoEnum.OTRO: "DOC",
+}
+
+# Carpeta de evidencias de documentos, misma ruta que
+# documentos/services.py::UPLOAD_DIR. El seed escribe ahi los PDF de relleno que
+# referencia archivo_url.
+DIRECTORIO_DOCUMENTOS = Path(__file__).resolve().parent / "uploads" / "documentos"
+
+OBSERVACIONES_CAMBIO_DOCUMENTO = (
+    "Version inicial aprobada.",
+    "Se actualizo el alcance del procedimiento.",
+    "Se corrigio la redaccion y se agregaron aclaraciones.",
+    "Revision anual sin cambios de fondo.",
+)
+
+OBSERVACIONES_REVISION_DOCUMENTO = (
+    "Revision anual completada. Sigue vigente.",
+    "Se confirmo la vigencia del documento.",
+    "Sin observaciones en la revision periodica.",
 )
 
 CAPACIDADES = (
@@ -839,6 +909,154 @@ def _crear_personas(db, fake, cantidad, hoy):
     return personas
 
 
+def _escapar_pdf(texto):
+    """Escapa los caracteres especiales de un literal de texto PDF."""
+    return texto.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _pdf_de_relleno(titulo, subtitulo):
+    """PDF minimo de una pagina, armado con la libreria estandar.
+
+    El proyecto no trae una libreria de PDF (backend/requirements.txt), asi que
+    se arma a mano: alcanza para que el <iframe> del VisorPdfPage muestre algo en
+    vez de un archivo roto. Los offsets del xref se calculan de verdad para que
+    cualquier lector lo abra.
+    """
+    contenido = (
+        f"BT /F1 16 Tf 40 160 Td ({_escapar_pdf(titulo)}) Tj "
+        f"0 -24 Td /F1 11 Tf ({_escapar_pdf(subtitulo)}) Tj ET"
+    ).encode("ascii")
+    objetos = (
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 320 220] "
+        b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Length " + str(len(contenido)).encode("ascii") + b" >>\nstream\n"
+        + contenido + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    )
+
+    partes = [b"%PDF-1.4\n"]
+    offsets = []
+    for numero, cuerpo in enumerate(objetos, start=1):
+        offsets.append(sum(len(parte) for parte in partes))
+        partes.append(f"{numero} 0 obj\n".encode("ascii") + cuerpo + b"\nendobj\n")
+
+    posicion_xref = sum(len(parte) for parte in partes)
+    partes.append(f"xref\n0 {len(objetos) + 1}\n".encode("ascii"))
+    partes.append(b"0000000000 65535 f \n")
+    for offset in offsets:
+        partes.append(f"{offset:010d} 00000 n \n".encode("ascii"))
+    partes.append(
+        f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\n"
+        f"startxref\n{posicion_xref}\n%%EOF\n".encode("ascii")
+    )
+    return b"".join(partes)
+
+
+def _escribir_pdf_documento(codigo, version, titulo):
+    """Escribe el PDF de relleno de una version y devuelve su archivo_url.
+
+    El nombre es determinista (codigo + version), asi volver a correr el seed con
+    --reset pisa el mismo archivo en vez de acumular copias huerfanas.
+    """
+    DIRECTORIO_DOCUMENTOS.mkdir(parents=True, exist_ok=True)
+    nombre = f"doc_{codigo}_{version}.pdf"
+    (DIRECTORIO_DOCUMENTOS / nombre).write_bytes(
+        _pdf_de_relleno(titulo, f"{codigo} - {version}")
+    )
+    return f"uploads/documentos/{nombre}"
+
+
+def _crear_documentos(db, personas, cantidad, hoy):
+    """Documentos con su historial de versiones, revisiones y PDF de relleno.
+
+    Cada documento arma `cantidad de versiones` versiones: la ultima queda
+    vigente y las anteriores archivadas con fecha_hasta encadenada a la
+    fecha_desde de la siguiente, como hace
+    documentos/services.py::marcar_version_vigente. La fecha de proxima revision
+    de la version vigente es el unico dato que alimenta /documentos/alertas, y
+    queda escalonada por DOCUMENTOS para cubrir los tres estados. La ultima
+    persona sembrada esta dada de baja, por eso el creador se elige entre las
+    activas.
+    """
+    activos = max(1, len(personas) - 1)
+    documentos = []
+    versiones = []
+    revisiones = []
+    correlativos: dict[str, int] = {}
+    for indice, (titulo, tipo, descripcion, total_versiones, dias_revision) in enumerate(
+        _ciclar(DOCUMENTOS, cantidad, campos=(0,))
+    ):
+        tipo_documento = TipoDocumentoEnum(tipo)
+        correlativo = correlativos.get(tipo, 0) + 1
+        correlativos[tipo] = correlativo
+        codigo = f"{PREFIJOS_DOCUMENTO[tipo_documento]}-{correlativo:04d}"
+        creado_por_id = personas[indice % activos].id
+        # El ultimo documento de cada vuelta del catalogo queda dado de baja.
+        activo = indice % len(DOCUMENTOS) != len(DOCUMENTOS) - 1
+        fecha_creacion = hoy - timedelta(days=360 + indice * 14)
+
+        documento = Documento(
+            codigo=codigo,
+            titulo=titulo,
+            tipo_documento=tipo_documento,
+            descripcion=descripcion,
+            activo=activo,
+            fecha_creacion=datetime.combine(fecha_creacion, time(8, 0)),
+        )
+        documentos.append(documento)
+
+        for numero in range(1, total_versiones + 1):
+            es_vigente = numero == total_versiones
+            fecha_desde = fecha_creacion + timedelta(days=(numero - 1) * 120)
+            version = VersionDocumento(
+                documento=documento,
+                version=f"v{numero}.0",
+                archivo_url=_escribir_pdf_documento(codigo, f"v{numero}.0", titulo),
+                es_vigente=es_vigente,
+                fecha_desde=fecha_desde,
+                fecha_hasta=(None if es_vigente else fecha_desde + timedelta(days=120)),
+                fecha_proxima_revision=(
+                    hoy + timedelta(days=dias_revision)
+                    if es_vigente and dias_revision is not None
+                    else None
+                ),
+                observaciones_cambio=OBSERVACIONES_CAMBIO_DOCUMENTO[
+                    numero % len(OBSERVACIONES_CAMBIO_DOCUMENTO)
+                ],
+                creado_por_id=creado_por_id,
+                fecha_subida=datetime.combine(fecha_desde, time(10, 0)),
+            )
+            versiones.append(version)
+
+            if not es_vigente:
+                continue
+            # Una o dos revisiones de auditoria sobre la version vigente.
+            for vuelta in range(1 + indice % 2):
+                revisiones.append(
+                    RevisionDocumento(
+                        version=version,
+                        nueva_fecha_proxima_revision=(
+                            hoy + timedelta(days=dias_revision)
+                            if dias_revision is not None
+                            else None
+                        ),
+                        observaciones=OBSERVACIONES_REVISION_DOCUMENTO[
+                            vuelta % len(OBSERVACIONES_REVISION_DOCUMENTO)
+                        ],
+                        registrado_por_id=creado_por_id,
+                        fecha_registro=datetime.combine(
+                            fecha_desde + timedelta(days=30 * (vuelta + 1)), time(9, 0)
+                        ),
+                    )
+                )
+
+    db.add_all(documentos + versiones + revisiones)
+    db.flush()
+    return documentos
+
+
 def _crear_planes(db, personas, cantidad, hoy):
     objetivos = (
         "Garantizar la inocuidad en la linea de produccion.",
@@ -1240,6 +1458,59 @@ def _verificar_calibraciones(db, cantidad):
         )
 
 
+def _verificar_documentos(db, cantidad):
+    """Cada documento tiene una sola version vigente y aparece en las alertas.
+
+    documentos/services.py::listar_alertas devuelve un documento activo por cada
+    version vigente con fecha de proxima revision agendada, ordenado por
+    urgencia. Los tres estados solo se exigen con el catalogo completo, porque
+    con --cantidad menor el recorte de DOCUMENTOS puede dejar solo uno.
+    """
+    documentos = db.scalars(select(Documento)).all()
+    for documento in documentos:
+        vigentes = [version for version in documento.versiones if version.es_vigente]
+        if len(vigentes) > 1:
+            raise RuntimeError(
+                f"El documento {documento.codigo!r} tiene mas de una version vigente."
+            )
+
+    alertas = listar_alertas_documentos(db)
+    if not alertas:
+        raise RuntimeError("La vista de alertas de documentos esta vacia.")
+
+    esperados = {
+        documento.id
+        for documento in documentos
+        if documento.activo
+        and documento.version_vigente is not None
+        and documento.version_vigente.fecha_proxima_revision is not None
+    }
+    ids = [alerta.documento.id for alerta in alertas]
+    if len(ids) != len(set(ids)):
+        raise RuntimeError("La vista de alertas de documentos repite documentos.")
+    if set(ids) != esperados:
+        raise RuntimeError(
+            f"Hay {len(esperados)} documentos activos con proxima revision "
+            f"pero {len(ids)} alertas."
+        )
+
+    dias = [alerta.dias_restantes for alerta in alertas]
+    if dias != sorted(dias):
+        raise RuntimeError("Las alertas de documentos no estan ordenadas por urgencia.")
+
+    if cantidad < len(DOCUMENTOS):
+        return
+    estados = {alerta.estado for alerta in alertas}
+    faltantes = [
+        estado.value for estado in EstadoRevisionDocumento if estado not in estados
+    ]
+    if faltantes:
+        raise RuntimeError(
+            "Las alertas de documentos no tienen filas en estado: "
+            + ", ".join(faltantes)
+        )
+
+
 def _verificar_multi_insumo(plan_vigente):
     """El plan vigente tiene que incluir tareas con 2 y con 3 insumos.
 
@@ -1311,6 +1582,7 @@ def _verificar(db, hoy, cantidad):
     _verificar_cantidades(db, cantidad)
     _verificar_vencimientos(db, cantidad)
     _verificar_calibraciones(db, cantidad)
+    _verificar_documentos(db, cantidad)
 
     return plan_vigente, esperadas_hoy
 
@@ -1384,6 +1656,33 @@ def _resumen(db, personas, plan_vigente, tareas_hoy, estados):
     print(f"    equipos sin frecuencia de calibracion: {sin_calibracion} (no generan vencimiento)")
 
     print()
+    print("  Documentos (gestion documental)")
+    print(f"    documentos: {db.scalar(select(func.count()).select_from(Documento))}")
+    for tipo in TipoDocumentoEnum:
+        total = db.scalar(
+            select(func.count())
+            .select_from(Documento)
+            .where(Documento.tipo_documento == tipo)
+        )
+        print(f"      {tipo.value:<14} {total}")
+    sin_version = db.scalar(
+        select(func.count())
+        .select_from(Documento)
+        .where(~Documento.versiones.any())
+    )
+    inactivos = db.scalar(
+        select(func.count())
+        .select_from(Documento)
+        .where(Documento.activo.is_(False))
+    )
+    print(f"    sin version: {sin_version}   inactivos: {inactivos}")
+    alertas_documentos = listar_alertas_documentos(db)
+    print(f"    alertas de revision: {len(alertas_documentos)}")
+    for estado in EstadoRevisionDocumento:
+        total = sum(1 for alerta in alertas_documentos if alerta.estado == estado)
+        print(f"      {estado.value:<12} {total}")
+
+    print()
     print("  Ingreso por DNI (LoginPage compara el documento contra GET /personal/)")
     for persona in personas:
         nombres = ", ".join(
@@ -1455,6 +1754,7 @@ def main():
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
+            _crear_documentos(db, personas, args.cantidad, hoy)
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,

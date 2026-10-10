@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare } from "react-icons/fi";
-import { NavBar, type NavItem } from "./components/layout";
+import { NavBar, OperadorLayout, type NavItem } from "./components/layout";
 import { AlertConfirm } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
@@ -24,6 +24,10 @@ import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
 import VencimientosPage from "./pages/VencimientosPage";
 import { RenovacionProvider } from "./features/vencimientos/RenovacionProvider";
+import DocumentosPage from "./pages/DocumentosPage";
+import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
+import HistorialVersionesPage from "./pages/HistorialVersionesPage";
+import VisorPdfPage from "./pages/VisorPdfPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -48,16 +52,41 @@ function AppContent() {
   const esAdmin = esAdministrador(usuario);
   const esOp = esOperador(usuario);
 
-  // RAMA OPERADOR: quien no tiene "administrar", sin NavBar, solo su vista.
-  // Cualquier ruta de gestión queda bloqueada y redirige a /checklist.
-  // El logout vive en ChecklistPage, que es quien muestra la barra propia.
+  // RAMA OPERADOR: quien no tiene "administrar". Ahora usa un layout propio
+  // (OperadorLayout) con navbar responsiva: Checklist Diario + Documentos.
+  // El logout vive en el layout. Entra directo al checklist diario.
   if (!esAdmin) {
     return (
-      <Routes>
-        <Route path='/' element={<Navigate to='/checklist' replace />} />
-        <Route path='/checklist' element={<ChecklistPage />} />
-        <Route path='*' element={<Navigate to='/checklist' replace />} />
-      </Routes>
+      <OperadorLayout>
+        <Routes>
+          <Route path='/' element={<Navigate to='/checklist' replace />} />
+          <Route
+            path='/checklist'
+            element={
+              <RequireAuth>
+                <ChecklistPage mostrarBarraInstitucional={false} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path='/documentos'
+            element={
+              <RequireAuth>
+                <DocumentosOperadorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path='/documentos/:id/versiones/:versionId/pdf'
+            element={
+              <RequireAuth>
+                <VisorPdfPage />
+              </RequireAuth>
+            }
+          />
+          <Route path='*' element={<Navigate to='/checklist' replace />} />
+        </Routes>
+      </OperadorLayout>
     );
   }
 
@@ -204,6 +233,32 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <HistorialChecklistPage />
+                </RequireAuth>
+              }
+            />
+
+            {/* Rutas Documentos */}
+            <Route
+              path='/documentos'
+              element={
+                <RequireAuth>
+                  <DocumentosPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/documentos/:id/historial'
+              element={
+                <RequireAuth>
+                  <HistorialVersionesPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/documentos/:id/versiones/:versionId/pdf'
+              element={
+                <RequireAuth>
+                  <VisorPdfPage />
                 </RequireAuth>
               }
             />

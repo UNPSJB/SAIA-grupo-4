@@ -29,6 +29,7 @@ import {
   FiDroplet,
   FiCheckSquare,
   FiAlertCircle,
+  FiFileText,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -87,6 +88,15 @@ const vencimientosItem: LinkNavItem = {
   to: "/vencimientos",
   label: "Vencimientos",
   icon: FiAlertCircle,
+};
+
+// Acceso directo a Gestión Documental: se muestra como link simple bajo el
+// encabezado "Gestión", sin ser un desplegable (como Plan POE) ni parte de
+// la sección "Navegación".
+const documentosItem: LinkNavItem = {
+  to: "/documentos",
+  label: "Gestión documental",
+  icon: FiFileText,
 };
 
 const isActiveRoute = (pathname: string, to: string) =>
@@ -472,6 +482,13 @@ export const NavBar = ({
 
       <SingleNavLink
         item={vencimientosItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
+
+      {/* Link directo (no desplegable) dentro de la sección "Gestión" */}
+      <SingleNavLink
+        item={documentosItem}
         isCollapsed={isCollapsed}
         pathname={pathname}
       />

@@ -154,8 +154,10 @@ export default function ChecklistPage({
   });
 
   return (
-    <Box bg='gray.50' minH='100vh'>
-      {/* Barra superior institucional SAIA-4 */}
+    <Box bg='gray.50' minH={mostrarBarraInstitucional ? "100vh" : "auto"}>
+      {/* Barra superior institucional SAIA-4.
+          El operador ahora entra por OperadorLayout, que ya trae la navbar y el
+          logout, así que esta barra sólo se muestra si la pantalla se está ejecutando de manera externa y solitaria */}
       {mostrarBarraInstitucional && (
         <Box
           bg='green.600'
@@ -275,16 +277,18 @@ export default function ChecklistPage({
             }}
           />
 
-          <AlertConfirm
-            open={cerrarSesionAbierto}
-            title='Cerrar sesión'
-            message='¿Estás seguro de que querés cerrar tu sesión?'
-            onConfirm={() => {
-              setCerrarSesionAbierto(false);
-              logout();
-            }}
-            onCancel={() => setCerrarSesionAbierto(false)}
-          />
+          {mostrarBarraInstitucional && (
+            <AlertConfirm
+              open={cerrarSesionAbierto}
+              title='Cerrar sesión'
+              message='¿Estás seguro de que querés cerrar tu sesión?'
+              onConfirm={() => {
+                setCerrarSesionAbierto(false);
+                logout();
+              }}
+              onCancel={() => setCerrarSesionAbierto(false)}
+            />
+          )}
         </Container>
       </Box>
     </Box>
