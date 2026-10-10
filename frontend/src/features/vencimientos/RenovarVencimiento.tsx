@@ -54,12 +54,6 @@ type Props = {
    * fecha de vencimiento de la fila cambia al registrar el recambio.
    */
   onGuardado: () => void;
-  /**
-   * Título del formulario. La campana de notificaciones lo usa para poner
-   * "Resolver: <concepto>" y distinguirlo de la renovación hecha desde el
-   * tablero.
-   */
-  titulo?: string;
 };
 
 export const RenovarVencimiento = ({
@@ -67,7 +61,6 @@ export const RenovarVencimiento = ({
   elemento,
   onCancelar,
   onGuardado,
-  titulo,
 }: Props) => {
   const entrada = renovacionDe(categoria);
   const Formulario = FORMULARIOS[categoria];
@@ -77,7 +70,7 @@ export const RenovarVencimiento = ({
   return (
     <Formulario
       elemento={elemento}
-      titulo={titulo ?? entrada.titulo}
+      titulo={entrada.titulo}
       onCancelar={onCancelar}
       onGuardado={onGuardado}
     />

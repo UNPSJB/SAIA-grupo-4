@@ -73,7 +73,6 @@ export const RenovacionProvider = ({ children }: { children: ReactNode }) => {
             <RenovarVencimiento
               categoria={aRenovar.categoria}
               elemento={ficha.registro}
-              titulo={`${aRenovar.concepto}`}
               onCancelar={cerrar}
               onGuardado={() => {
                 cerrar();

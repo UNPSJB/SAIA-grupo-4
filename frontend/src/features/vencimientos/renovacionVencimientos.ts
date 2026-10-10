@@ -26,9 +26,9 @@ export type EntradaRenovacion = {
 const RENOVACIONES: Partial<Record<CategoriaVencimiento, EntradaRenovacion>> = {
   elemento_limpieza: {
     icono: FiRefreshCw,
-    etiqueta: "Registrar recambio",
+    etiqueta: "Registrar Recambio",
     colorPalette: "green",
-    titulo: "Registrar recambio",
+    titulo: "Registrar Recambio",
   },
 };
 
