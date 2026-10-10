@@ -1,151 +1,192 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge } from "@chakra-ui/react";
+import { Badge, Button } from "@chakra-ui/react";
 import {
-    FiThermometer,
-    FiEdit2,
-    FiTrash2,
-    FiCheckCircle,
-    FiEye,
+  FiThermometer,
+  FiEdit2,
+  FiTrash2,
+  FiCheckCircle,
+  FiEye,
+  FiFilePlus,
 } from "react-icons/fi";
 import {
-    AlertMessage,
-    DataTable,
-    LoadingState,
-    RowActionButton,
-    RowActions,
-    TablePagination,
+  AlertMessage,
+  DataTable,
+  LoadingState,
+  RowActionButton,
+  RowActions,
+  TablePagination,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Equipo } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
+const obtenerBadgeSemaforo = (equipo: Equipo) => {
+  if (!equipo.frecuencia_calibracion_dias || !equipo.fecha_ultima_calibracion) {
+    return <Badge colorPalette='gray'>Sin plan</Badge>;
+  }
+
+  const ultima = new Date(equipo.fecha_ultima_calibracion);
+  const proxima = new Date(ultima);
+  proxima.setDate(proxima.getDate() + equipo.frecuencia_calibracion_dias);
+
+  const hoy = new Date();
+  const diffTiempo = proxima.getTime() - hoy.getTime();
+  const diasRestantes = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
+
+  if (diasRestantes < 0) {
+    return (
+      <Badge colorPalette='red'>Vencido ({Math.abs(diasRestantes)}d)</Badge>
+    );
+  }
+  if (diasRestantes <= 15) {
+    return <Badge colorPalette='yellow'>Próximo ({diasRestantes}d)</Badge>;
+  }
+  return <Badge colorPalette='green'>Al día ({diasRestantes}d)</Badge>;
+};
+
 interface ListadoEquiposProps {
-    onCrear?: () => void;
-    onModificar?: (equipo: Equipo) => void;
-    onEliminar?: (equipo: Equipo) => void;
-    onVer?: (equipo: Equipo) => void;
-    onDarAlta?: (equipo: Equipo) => void;
+  onCrear?: () => void;
+  onModificar?: (equipo: Equipo) => void;
+  onEliminar?: (equipo: Equipo) => void;
+  onVer?: (equipo: Equipo) => void;
+  onDarAlta?: (equipo: Equipo) => void;
+  onRegistrarCalibracion?: (equipo: Equipo) => void;
 }
 
 const ENDPOINT = `${BASE_URL}/equipos/`;
 export const ListadoEquipos = ({
-    onCrear,
-    onModificar,
-    onEliminar,
-    onVer,
-    onDarAlta,
+  onCrear,
+  onModificar,
+  onEliminar,
+  onVer,
+  onDarAlta,
+  onRegistrarCalibracion,
 }: ListadoEquiposProps) => {
-    const { data, loading, error, page, setPage, itemsPaginados } =
-        useListadoData<Equipo>({
-            endpoint: ENDPOINT,
-            pageSize: ITEMS_POR_PAGINA,
-            errorMessage: "No se pudo cargar la lista de equipos.",
-        });
+  const { data, loading, error, page, setPage, itemsPaginados } =
+    useListadoData<Equipo>({
+      endpoint: ENDPOINT,
+      pageSize: ITEMS_POR_PAGINA,
+      errorMessage: "No se pudo cargar la lista de equipos.",
+    });
 
-    const columnas: ColumnDef<Equipo>[] = [
-        {
-            key: "nombre",
-            label: "Nombre",
-            render: (equipo) => equipo.nombre,
-        },
-        {
-            key: "marca",
-            label: "Marca",
-            render: (equipo) => equipo.marca,
-        },
-        {
-            key: "numero_serie",
-            label: "N° Serie",
-            render: (equipo) => equipo.numero_serie,
-        },
-        {
-            key: "sector",
-            label: "Sector",
-            render: (equipo) => equipo.sector.nombre,
-        },
-        {
-            key: "activo",
-            label: "Estado",
-            render: (equipo) => (
-                <Badge colorPalette={equipo.activo ? "green" : "red"}>
-                    {equipo.activo ? "Activo" : "Inactivo"}
-                </Badge>
-            ),
-        },
-        {
-            key: "acciones",
-            label: "Acciones",
-            align: "end",
-            render: (equipo) => (
-                <RowActions>
-                    <RowActionButton
-                        icon={FiEdit2}
-                        label="Modificar"
-                        colorPalette="blue"
-                        onClick={() => onModificar?.(equipo)}
-                        visible={equipo.activo}
-                    />
-                    <RowActionButton
-                        icon={FiEye}
-                        label="Ver"
-                        colorPalette="yellow"
-                        onClick={() => onVer?.(equipo)}
-                    />
-                    <RowActionButton
-                        icon={FiTrash2}
-                        label="Eliminar"
-                        colorPalette="red"
-                        onClick={() => onEliminar?.(equipo)}
-                        visible={equipo.activo}
-                    />
-                    <RowActionButton
-                        icon={FiCheckCircle}
-                        label="Dar de alta"
-                        colorPalette="green"
-                        onClick={() => onDarAlta?.(equipo)}
-                        visible={!equipo.activo}
-                    />
-                </RowActions>
-            ),
-        },
-    ];
+  const columnas: ColumnDef<Equipo>[] = [
+    {
+      key: "nombre",
+      label: "Nombre",
+      render: (equipo) => equipo.nombre,
+    },
+    {
+      key: "marca",
+      label: "Marca",
+      render: (equipo) => equipo.marca,
+    },
+    {
+      key: "numero_serie",
+      label: "N° Serie",
+      render: (equipo) => equipo.numero_serie,
+    },
+    {
+      key: "sector",
+      label: "Sector",
+      render: (equipo) => equipo.sector.nombre,
+    },
+    {
+      key: "calibracion",
+      label: "Calibración",
+      render: (equipo) => obtenerBadgeSemaforo(equipo),
+    },
+    {
+      key: "activo",
+      label: "Estado",
+      render: (equipo) => (
+        <Badge colorPalette={equipo.activo ? "green" : "red"}>
+          {equipo.activo ? "Activo" : "Inactivo"}
+        </Badge>
+      ),
+    },
+    {
+      key: "acciones",
+      label: "Acciones",
+      align: "end",
+      render: (equipo) => (
+        <RowActions>
+          <RowActionButton
+            icon={FiEdit2}
+            label='Modificar'
+            colorPalette='blue'
+            onClick={() => onModificar?.(equipo)}
+            visible={equipo.activo}
+          />
+          <RowActionButton
+            icon={FiEye}
+            label='Ver'
+            colorPalette='yellow'
+            onClick={() => onVer?.(equipo)}
+          />
+          <RowActionButton
+            icon={FiTrash2}
+            label='Eliminar'
+            colorPalette='red'
+            onClick={() => onEliminar?.(equipo)}
+            visible={equipo.activo}
+          />
+          <RowActionButton
+            icon={FiCheckCircle}
+            label='Dar de alta'
+            colorPalette='green'
+            onClick={() => onDarAlta?.(equipo)}
+            visible={!equipo.activo}
+          />
+          <Button
+            size='sm'
+            variant='ghost'
+            colorPalette='purple'
+            onClick={() => onRegistrarCalibracion?.(equipo)}
+            title='Registrar calibración'
+          >
+            <FiFilePlus />
+          </Button>
+        </RowActions>
+      ),
+    },
+  ];
 
-    return (
-        <ListadoContainer>
-            <ListadoHeader
-                title="Equipos"
-                icon={FiThermometer}
-                buttonLabel="Nuevo equipo"
-                onCrear={onCrear}
-            />
+  return (
+    <ListadoContainer>
+      <ListadoHeader
+        title='Equipos'
+        icon={FiThermometer}
+        buttonLabel='Nuevo equipo'
+        onCrear={onCrear}
+      />
 
-            {loading && <LoadingState message="Cargando equipos..." />}
+      {loading && <LoadingState message='Cargando equipos...' />}
 
-            {!loading && error && <AlertMessage type="error" message={error} />}
+      {!loading && error && <AlertMessage type='error' message={error} />}
 
-            {!loading && !error && data.length === 0 && (
-                <AlertMessage type="info" message="Todavía no hay equipos cargados." />
-            )}
+      {!loading && !error && data.length === 0 && (
+        <AlertMessage type='info' message='Todavía no hay equipos cargados.' />
+      )}
 
-            {!loading && !error && data.length > 0 && (
-                <>
-                    <DataTable
-                        items={itemsPaginados}
-                        columns={columnas}
-                        getRowKey={(equipo) => equipo.id}
-                    />
+      {!loading && !error && data.length > 0 && (
+        <>
+          <DataTable
+            items={itemsPaginados}
+            columns={columnas}
+            getRowKey={(equipo) => equipo.id}
+          />
 
-                    <TablePagination
-                        count={data.length}
-                        page={page}
-                        pageSize={ITEMS_POR_PAGINA}
-                        onPageChange={setPage}
-                        labelSingular="equipo"
-                        labelPlural="equipos"
-                    />
-                </>
-            )}
-        </ListadoContainer>
-    );
+          <TablePagination
+            count={data.length}
+            page={page}
+            pageSize={ITEMS_POR_PAGINA}
+            onPageChange={setPage}
+            labelSingular='equipo'
+            labelPlural='equipos'
+          />
+        </>
+      )}
+    </ListadoContainer>
+  );
 };
