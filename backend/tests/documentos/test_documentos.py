@@ -2,11 +2,14 @@ import pytest
 import uuid
 import random
 import json
+from datetime import date, timedelta
 from fastapi.testclient import TestClient
 
 from src.main import app
 from tests.database import session
 from src.personal.models import Persona
+from src.documentos.constants import Constantes, EstadoVencimiento
+from src.documentos.services import calcular_estado_vencimiento
 
 client = TestClient(app)
 
@@ -307,3 +310,97 @@ def test_renovar_sin_fecha_ni_observaciones_rechazado(autor_base):
         json={"observaciones": "   "}
     )
     assert res_renovar.status_code == 422
+
+
+# Test de alertas de vencimeinto de próximas revisiones, con la regla de semaforización
+
+def test_calcular_estado_vencimiento_vencido():
+    hoy = date(2026, 1, 20)
+    dias, estado = calcular_estado_vencimiento(date(2026, 1, 10), hoy)
+    assert dias == -10
+    assert estado == EstadoVencimiento.VENCIDO
+
+
+def test_calcular_estado_vencimiento_vence_hoy_es_proximo():
+    hoy = date(2026, 1, 20)
+    dias, estado = calcular_estado_vencimiento(hoy, hoy)
+    assert dias == 0
+    assert estado == EstadoVencimiento.PROXIMO
+
+
+def test_calcular_estado_vencimiento_limite_proximo():
+    hoy = date(2026, 1, 20)
+    limite = hoy + timedelta(days=Constantes.DIAS_AVISO_PROXIMO)
+    _, estado = calcular_estado_vencimiento(limite, hoy)
+    assert estado == EstadoVencimiento.PROXIMO
+
+
+def test_calcular_estado_vencimiento_al_dia():
+    hoy = date(2026, 1, 20)
+    fuera_de_rango = hoy + timedelta(days=Constantes.DIAS_AVISO_PROXIMO + 1)
+    _, estado = calcular_estado_vencimiento(fuera_de_rango, hoy)
+    assert estado == EstadoVencimiento.AL_DIA
+
+
+def _crear_documento_con_revision(autor_id, fecha_proxima_revision, titulo="Doc Alerta"):
+    payload = {
+        "titulo": titulo,
+        "tipo_documento": "PROCEDIMIENTO",
+        "creado_por_id": autor_id,
+        "fecha_proxima_revision": fecha_proxima_revision,
+    }
+    res = client.post(
+        "/documentos/",
+        data={"datos": json.dumps(payload)},
+        files={"archivo": ("v1.pdf", b"pdf1", "application/pdf")}
+    )
+    assert res.status_code == 201
+    return res.json()["id"]
+
+
+def test_listar_alertas_ordena_por_urgencia_y_excluye(autor_base):
+    hoy = date.today()
+    doc_vencido = _crear_documento_con_revision(
+        autor_base, (hoy - timedelta(days=5)).isoformat(), "Vencido"
+    )
+    doc_proximo = _crear_documento_con_revision(
+        autor_base, (hoy + timedelta(days=3)).isoformat(), "Próximo"
+    )
+    doc_al_dia = _crear_documento_con_revision(
+        autor_base, (hoy + timedelta(days=60)).isoformat(), "Al día"
+    )
+    # Sin próxima revisión: no debe aparecer
+    _crear_documento_con_revision(autor_base, None, "Sin fecha")
+    # Dado de baja: no debe aparecer aunque tenga fecha
+    doc_baja = _crear_documento_con_revision(
+        autor_base, (hoy - timedelta(days=1)).isoformat(), "De baja"
+    )
+    assert client.delete(f"/documentos/{doc_baja}").status_code == 204
+
+    res = client.get("/documentos/alertas")
+    assert res.status_code == 200
+    alertas = res.json()
+
+    # Sólo los tres documentos activos con revisión, ordenados por urgencia
+    ids = [a["documento"]["id"] for a in alertas]
+    assert ids == [doc_vencido, doc_proximo, doc_al_dia]
+
+    # Estados y días restantes coherentes
+    por_id = {a["documento"]["id"]: a for a in alertas}
+    assert por_id[doc_vencido]["estado"] == EstadoVencimiento.VENCIDO
+    assert por_id[doc_vencido]["dias_restantes"] == -5
+    assert por_id[doc_proximo]["estado"] == EstadoVencimiento.PROXIMO
+    assert por_id[doc_proximo]["dias_restantes"] == 3
+    assert por_id[doc_al_dia]["estado"] == EstadoVencimiento.AL_DIA
+    assert por_id[doc_al_dia]["dias_restantes"] == 60
+
+    # El schema expone la carátula del documento, no sólo el id
+    assert por_id[doc_vencido]["documento"]["titulo"] == "Vencido"
+    assert por_id[doc_vencido]["documento"]["codigo"].startswith("POES-")
+    assert por_id[doc_vencido]["proxima_revision"] == (hoy - timedelta(days=5)).isoformat()
+
+
+def test_listar_alertas_sin_documentos_devuelve_vacio():
+    res = client.get("/documentos/alertas")
+    assert res.status_code == 200
+    assert res.json() == []
