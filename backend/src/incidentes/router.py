@@ -45,11 +45,15 @@ def read_incidentes_abiertos(db: Session = Depends(get_db)):
 def read_incidentes_cerrados(db: Session = Depends(get_db)):
     return services.listar_incidentes_cerrados(db)
 
+# Lista los incidentes abiertos agrupados por tipo como pide la E7
+@router.get("/abiertos/por-tipo", response_model=list[schemas.IncidentesAbiertosPorTipo])
+def read_incidentes_abiertos_por_tipo(db: Session = Depends(get_db)):
+    return services.listar_incidentes_abiertos_por_tipo(db)
+
 # Lee un único incidente
 @router.get("/{incidente_id}", response_model=schemas.Incidente, status_code=200)
 def read_incidente(incidente_id: int, db: Session = Depends(get_db)):
     return services.obtener_incidente_por_id(db, incidente_id)
-
 
 # --- Novedades Cierre / Reapertura / Historial ---
 

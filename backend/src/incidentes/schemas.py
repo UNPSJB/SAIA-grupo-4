@@ -16,6 +16,11 @@ class IncidenteBase(BaseModel):
 class IncidenteCreate(IncidenteBase):
     pass
 
+# schema para la E7
+class IncidentesAbiertosPorTipo(BaseModel):
+    tipo_id: int
+    tipo: str
+    cantidad:int
 
 # --- Requests Cierre y Reapertura ---
 

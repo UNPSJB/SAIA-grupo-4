@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from src.incidentes import schemas, exceptions
@@ -216,3 +216,20 @@ def listar_incidentes_cerrados(db: Session) -> list[Incidente]:
             Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
         )
     ).all()
+
+# service para la E7
+def listar_incidentes_abiertos_por_tipo(db: Session):
+    stmt = (
+        select(
+            # arma la respuesta de la forma { "tipo_id", "tipo", "cantidad" } donde:
+            TipoIncidente.id.label("tipo_id"), # esto seria la id del tipo
+            TipoIncidente.nombre.label("tipo"), # esto seria el nombre del tipo
+            func.count(Incidente.id).label("cantidad"), # esta seria la cantidad de incidentes del tipo
+        )
+        .join(Incidente, Incidente.tipo_id == TipoIncidente.id)
+        .where(Incidente.abierto.is_(True))
+        .group_by(TipoIncidente.id, TipoIncidente.nombre)
+        .order_by(TipoIncidente.nombre.asc())
+    )
+
+    return [dict(fila._mapping) for fila in db.execute(stmt)]
