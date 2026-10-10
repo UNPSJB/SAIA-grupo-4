@@ -1,5 +1,5 @@
 import { BASE_URL } from "../../config";
-import type { CategoriaVencimiento, EstadoVencimiento } from "./types";
+import type { CategoriaVencimiento, FiltroEstadoVencimiento } from "./types";
 
 // Reexportado porque el resto de `features/vencimientos` lo importa de acá.
 export { BASE_URL };
@@ -14,7 +14,7 @@ export { BASE_URL };
  * error: el filtro no debería poder romper la consulta.
  */
 export const construirEndpoint = (
-  estado: EstadoVencimiento | "",
+  estado: FiltroEstadoVencimiento | "",
   categoria: string,
   dias: string,
 ) => {

@@ -15,7 +15,7 @@ import type { Vencimiento } from "../types";
  * Con eso se ahorran dos cosas: un endpoint nuevo en el backend y filtrar en
  * el cliente. Lo que llega ya es la lista de notificaciones.
  */
-const ENDPOINT = `${BASE_URL}/vencimientos/?dias_max=${DIAS_AVISO_NOTIFICACIONES}`;
+const ENDPOINT = `${BASE_URL}/vencimientos/?estado=por_vencer&dias_max=${DIAS_AVISO_NOTIFICACIONES}`;
 
 export const useNotificaciones = () => {
   const { data, loading, error, reload } = useListadoData<Vencimiento>({

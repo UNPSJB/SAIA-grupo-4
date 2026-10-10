@@ -1,10 +1,11 @@
 import { FiltroNumero, FiltroSelect, FiltrosBar } from "../../components/ui";
 import { tieneFiltros, type FiltrosVencimientos } from "./filtrosVencimientos";
-import type { CategoriaDisponible, EstadoVencimiento } from "./types";
+import type { CategoriaDisponible, FiltroEstadoVencimiento } from "./types";
 
 const OPCIONES_ESTADO = [
   { label: "Vencidos", value: "vencido" },
   { label: "Próximos a vencer", value: "proximo" },
+  { label: "Vencidos y próximos a vencer", value: "por_vencer" },
   { label: "Vigentes", value: "vigente" },
 ];
 
@@ -17,7 +18,7 @@ interface VencimientosFiltrosProps {
   loading?: boolean;
 }
 
-/**
+/*
  * Barra de filtros del tablero.
  *
  * Los controles viven acá y el listado guarda el borrador, pero la consulta se
@@ -45,7 +46,7 @@ export const VencimientosFiltros = ({
       options={OPCIONES_ESTADO}
       value={filtros.estado}
       onChange={(valor) =>
-        onCambiar({ ...filtros, estado: valor as EstadoVencimiento | "" })
+        onCambiar({ ...filtros, estado: valor as FiltroEstadoVencimiento | "" })
       }
     />
 

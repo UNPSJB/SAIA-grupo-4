@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.vencimientos import schemas, services
-from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
+from src.vencimientos.constants import CategoriaVencimiento, FiltroEstadoVencimiento
 from src.auth.dependencies import requiere_administracion
 
 # Router protegido: cualquier request sin sesión válida con capacidad
@@ -30,7 +30,7 @@ def listar_categorias(
 
 @router.get("/", response_model=list[schemas.Vencimiento])
 def listar_vencimientos(
-    estado: EstadoVencimiento | None = None,
+    estado: FiltroEstadoVencimiento | None = None,
     categoria: CategoriaVencimiento | None = None,
     dias_max: int | None = Query(default=None, ge=0),
     db: Session = Depends(get_db),

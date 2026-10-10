@@ -8,6 +8,8 @@ from src.vencimientos.constants import (
     Constantes,
     EstadoVencimiento,
     ETIQUETA_CATEGORIA,
+    ESTADOS_POR_VENCER,
+    FiltroEstadoVencimiento,
 )
 
 
@@ -22,7 +24,7 @@ def calcular_estado(dias_restantes: int) -> EstadoVencimiento:
 
 
 def _resolver_corte(
-    estado: EstadoVencimiento | None,
+    estado: FiltroEstadoVencimiento | None,
     dias_max: int | None,
 ) -> int | None:
     """Dias hasta donde se recorta el listado, o None para no recortar.
@@ -33,7 +35,7 @@ def _resolver_corte(
     implicito en ese mismo umbral dejaba fuera justamente a los vigentes y
     "Todos los estados" no podia mostrarlos. Acortar la ventana es explicito.
     """
-    if estado == EstadoVencimiento.VIGENTE:
+    if estado == FiltroEstadoVencimiento.VIGENTE:
         return None
     return dias_max
 
@@ -44,7 +46,7 @@ def _resolver_corte(
 # global entre categorias.
 def listar_vencimientos(
     db: Session,
-    estado: EstadoVencimiento | None = None,
+    estado: FiltroEstadoVencimiento | None = None,
     categoria: CategoriaVencimiento | None = None,
     dias_max: int | None = None,
 ) -> list[schemas.Vencimiento]:
@@ -65,7 +67,10 @@ def listar_vencimientos(
         vencimientos = [v for v in vencimientos if v.categoria == categoria]
 
     if estado is not None:
-        vencimientos = [v for v in vencimientos if v.estado == estado]
+        if estado == FiltroEstadoVencimiento.POR_VENCER:
+            vencimientos = [v for v in vencimientos if v.estado in ESTADOS_POR_VENCER]
+        else:
+            vencimientos = [v for v in vencimientos if v.estado.value == estado.value]
 
     # Orden por urgencia: primero lo mas negativo (mas vencido), primero lo que vence hoy.
     vencimientos.sort(key=lambda v: (v.dias_restantes, v.categoria.value, v.concepto))

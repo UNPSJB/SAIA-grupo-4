@@ -22,26 +22,26 @@ export function ChecklistFiltros({
   conteo,
 }: ChecklistFiltrosProps) {
   return (
-    <HStack gap={2} mb={6} overflowX="auto" pb={1}>
+    <HStack gap={2} mb={6} overflowX='auto' pb={1}>
       {FILTROS.map(({ valor, label }) => {
         const activo = filtroActual === valor;
 
         return (
           <Button
             key={valor}
-            size="sm"
+            size='sm'
             variant={activo ? "solid" : "outline"}
-            colorScheme={activo ? "green" : "gray"}
+            colorPalette={activo ? "green" : "gray"}
             onClick={() => onCambiarFiltro(valor)}
-            borderRadius="full"
+            borderRadius='full'
             px={4}
-            whiteSpace="nowrap"
+            whiteSpace='nowrap'
           >
             {label}
             <Badge
               ml={2}
               colorScheme={activo ? "whiteAlpha" : "gray"}
-              borderRadius="full"
+              borderRadius='full'
             >
               {conteo[valor]}
             </Badge>

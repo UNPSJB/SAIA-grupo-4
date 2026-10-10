@@ -27,6 +27,16 @@ class EstadoVencimiento(str, Enum):
     VIGENTE = "vigente"    # dias_restantes > 15
 
 
+class FiltroEstadoVencimiento(str, Enum):
+    VENCIDO = "vencido"
+    PROXIMO = "proximo"
+    VIGENTE = "vigente"
+    POR_VENCER = "por_vencer"
+
+
+ESTADOS_POR_VENCER = frozenset({EstadoVencimiento.VENCIDO, EstadoVencimiento.PROXIMO})
+
+
 # Ventana de aviso de la vista consolidada.
 class Constantes:
     DIAS_AVISO_PROXIMO = 15

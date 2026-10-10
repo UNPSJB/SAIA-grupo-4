@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-// Ruta directa al archivo, no al barrel: evitaría el ciclo
-// layout -> features -> layout (CampanaNotificaciones importa useRenovacion).
 import { FormModal } from "../../components/layout/FormModal";
 import { AlertMessage, LoadingState } from "../../components/ui";
 import { useOrigenVencimiento } from "./hooks/useOrigenVencimiento";
@@ -10,16 +8,10 @@ import { RenovacionContext } from "./hooks/useRenovacion";
 import type { Vencimiento } from "./types";
 
 /**
- * Dueño del modal de renovación.
- *
- * Vive fuera del árbol del NavBar a propósito: se abre desde la campana, que
- * está adentro de un Popover que se cierra en el mismo tick. Si el Dialog
- * nace como hermano de ese Popover, los dos overlays conviven un rato y el
- * modal recién abierto se cierra solo.
- *
- * `SALIDA_POPOVER_MS` es lo que tarda el popover en desmontarse (Chakra usa
- * `--animate-faster`, ~120ms, mas margen). Recien ahi se pone `open`, para
- * que el Dialog no monte nunca junto con el popover.
+  Dueño del modal de renovación.
+ 
+  Vive fuera del árbol del NavBar a propósito: se abre desde la campana, que
+  está adentro de un Popover que se cierra en el mismo tick.
  */
 const SALIDA_POPOVER_MS = 250;
 
@@ -29,8 +21,7 @@ export const RenovacionProvider = ({ children }: { children: ReactNode }) => {
   const [versionGuardado, setVersionGuardado] = useState(0);
   const timer = useRef<number | null>(null);
 
-  // La ficha arranca apenas se llama `abrir`, asi que la peticion al backend
-  // se solapa con la espera: el usuario no suma los 250ms al tiempo de carga.
+  // La ficha arranca apenas se llama `abrir`, asi que la peticion al backend se solapa con la espera
   const { ficha, loading, error } = useOrigenVencimiento(aRenovar);
 
   const cerrar = useCallback(() => {
@@ -82,7 +73,7 @@ export const RenovacionProvider = ({ children }: { children: ReactNode }) => {
             <RenovarVencimiento
               categoria={aRenovar.categoria}
               elemento={ficha.registro}
-              titulo={`Resolver: ${aRenovar.concepto}`}
+              titulo={`${aRenovar.concepto}`}
               onCancelar={cerrar}
               onGuardado={() => {
                 cerrar();

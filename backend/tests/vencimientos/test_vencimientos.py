@@ -283,6 +283,57 @@ def test_filtro_por_estado_sin_coincidencias_devuelve_lista_vacia():
     assert client.get("/vencimientos/", params={"estado": "vencido"}).json() == []
 
 
+def test_filtro_por_estado_por_vencer_excluye_vigentes():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("Vencido", -20, tipo_id=tipo_id)
+    crear_con_urgencia("Hoy", 0, tipo_id=tipo_id)
+    crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Limite", 15, tipo_id=tipo_id)
+    crear_con_urgencia("Vigente", 29, tipo_id=tipo_id)
+
+    data = client.get("/vencimientos/", params={"estado": "por_vencer"}).json()
+
+    assert [v["concepto"] for v in data] == ["Vencido", "Hoy", "Proximo", "Limite"]
+    assert all(v["estado"] in ("vencido", "proximo") for v in data)
+
+
+def test_filtro_por_estado_por_vencer_respeta_dias_max():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("Vencido", -20, tipo_id=tipo_id)
+    crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Vigente", 29, tipo_id=tipo_id)
+
+    data = client.get("/vencimientos/", params={"estado": "por_vencer", "dias_max": 0}).json()
+    assert [v["concepto"] for v in data] == ["Vencido"]
+
+
+def test_filtro_por_estado_por_vencer_mantiene_orden_por_urgencia():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("VencidoA", -1, tipo_id=tipo_id)
+    crear_con_urgencia("VencidoB", -20, tipo_id=tipo_id)
+    crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Hoy", 0, tipo_id=tipo_id)
+
+    data = client.get("/vencimientos/", params={"estado": "por_vencer"}).json()
+
+    assert [v["concepto"] for v in data] == ["VencidoB", "VencidoA", "Hoy", "Proximo"]
+
+
+def test_filtro_por_estado_por_vencer_combinado_con_categoria():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Vencido", -20, tipo_id=tipo_id)
+    crear_con_urgencia("Vigente", 29, tipo_id=tipo_id)
+
+    data = client.get(
+        "/vencimientos/",
+        params={"estado": "por_vencer", "categoria": "elemento_limpieza"},
+    ).json()
+
+    assert [v["concepto"] for v in data] == ["Vencido", "Proximo"]
+    assert all(v["categoria"] == "elemento_limpieza" for v in data)
+
+
 def test_estado_invalido_devuelve_422():
     assert client.get("/vencimientos/", params={"estado": "inventado"}).status_code == 422
 

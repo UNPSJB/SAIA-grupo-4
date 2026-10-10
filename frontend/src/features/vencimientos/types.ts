@@ -1,6 +1,8 @@
 // Espejo de backend/src/vencimientos/schemas.py.
 export type EstadoVencimiento = "vencido" | "proximo" | "vigente";
 
+export type FiltroEstadoVencimiento = EstadoVencimiento | "por_vencer";
+
 export type CategoriaVencimiento =
   | "personal"
   | "equipo"

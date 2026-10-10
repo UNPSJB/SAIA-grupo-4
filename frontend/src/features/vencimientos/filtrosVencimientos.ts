@@ -1,4 +1,4 @@
-import type { EstadoVencimiento } from "./types";
+import type { FiltroEstadoVencimiento } from "./types";
 
 /**
  * Filtros del tablero de vencimientos, como borrador.
@@ -7,7 +7,7 @@ import type { EstadoVencimiento } from "./types";
  * exige que un archivo de componente exporte únicamente componentes.
  */
 export type FiltrosVencimientos = {
-  estado: EstadoVencimiento | "";
+  estado: FiltroEstadoVencimiento | "";
   categoria: string;
   /**
    * Ventana de días, como texto.
