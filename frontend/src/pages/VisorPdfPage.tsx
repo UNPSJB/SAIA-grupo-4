@@ -1,13 +1,19 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
-import { FiArrowLeft, FiExternalLink, FiFileText } from "react-icons/fi";
+import { FiArrowLeft, FiDownload, FiExternalLink, FiFileText } from "react-icons/fi";
 
 import { AlertMessage, LoadingState } from "../components/ui";
+import { OPERADOR_MOBILE_BAR_HEIGHT } from "../components/layout";
 import { useDocumentoDetalle } from "../features/documentos/hooks/useDocumentoDetalle";
-import { urlBackend } from "../features/documentos/utils";
+import {
+  descargarDocumento,
+  nombreArchivoDocumento,
+  urlBackend,
+} from "../features/documentos/utils";
 
 
-// Visor de PDF del documento (versión vigente o histórica). Vista propia dentro de la app. Ofrece "Abrir en pestaña nueva" para quien prefiera el visor nativo del navegador a pantalla completa.
+// Visor de PDF del documento (versión vigente o histórica). Vista propia dentro de la app. Ofrece descargar el archivo y "Abrir en pestaña nueva" para quien prefiera el visor nativo del navegador a pantalla completa.
 export default function VisorPdfPage() {
   const navigate = useNavigate();
   const params = useParams<{ id: string; versionId: string }>();
@@ -19,11 +25,32 @@ export default function VisorPdfPage() {
     errorMessage: "No se pudo cargar el documento.",
   });
 
+  const [descargando, setDescargando] = useState(false);
+
   const version = documento?.versiones.find((v) => v.id === versionId);
   const urlPdf = version?.archivo_url ? urlBackend(version.archivo_url) : "";
 
+  const handleDescargar = async () => {
+    if (!urlPdf || !version || !documento) return;
+    setDescargando(true);
+    await descargarDocumento(
+      urlPdf,
+      nombreArchivoDocumento(documento.codigo, documento.titulo, version.version),
+    );
+    setDescargando(false);
+  };
+
   return (
-    <Box h="100vh" bg="gray.100" p={6} display="flex" flexDirection="column" gap={4} overflow="hidden">
+    <Box
+      // En móvil descuenta la barra superior del operador; en escritorio ocupa toda la altura disponible.
+      h={{ base: `calc(100dvh - ${OPERADOR_MOBILE_BAR_HEIGHT})`, md: "100vh" }}
+      bg="gray.100"
+      p={6}
+      display="flex"
+      flexDirection="column"
+      gap={4}
+      overflow="hidden"
+    >
       <HStack justify="space-between" flexWrap="wrap" gap={3} flexShrink={0}>
         <HStack gap={3} flexWrap="wrap">
           <Button variant="outline" colorPalette="green" onClick={() => navigate(-1)}>
@@ -37,13 +64,24 @@ export default function VisorPdfPage() {
         </HStack>
 
         {urlPdf && (
-          <Button
-            variant="outline"
-            colorPalette="orange"
-            onClick={() => window.open(urlPdf, "_blank")}
-          >
-            <FiExternalLink /> Abrir en pestaña nueva
-          </Button>
+          <HStack gap={2} flexWrap="wrap">
+            <Button
+              variant="outline"
+              colorPalette="blue"
+              onClick={handleDescargar}
+              loading={descargando}
+              loadingText="Descargando..."
+            >
+              <FiDownload /> Descargar
+            </Button>
+            <Button
+              variant="outline"
+              colorPalette="orange"
+              onClick={() => window.open(urlPdf, "_blank")}
+            >
+              <FiExternalLink /> Abrir en pestaña nueva
+            </Button>
+          </HStack>
         )}
       </HStack>
 

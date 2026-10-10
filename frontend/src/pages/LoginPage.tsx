@@ -64,7 +64,7 @@ export default function LoginPage() {
   const confirmarIngreso = () => {
     if (!personaVerificada) return;
     const usuario = login(personaVerificada);
-    navigate(esAdministrador(usuario) ? "/plan-poes" : "/operador", {
+    navigate(esAdministrador(usuario) ? "/plan-poes" : "/checklist", {
       replace: true,
     });
   };
