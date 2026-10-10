@@ -70,6 +70,10 @@ export default function ListadoIncidentesPage() {
           <IncidenteForm
             modo="crear"
             onCancelar={() => setCrearAbierto(false)}
+            onGuardado={() => {
+              setCrearAbierto(false);
+              setRefrescar((r) => r + 1);
+            }}
             enModal
           />
         </FormModal>
