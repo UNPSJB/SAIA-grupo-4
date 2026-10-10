@@ -1,7 +1,7 @@
 import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { Badge, HStack } from "@chakra-ui/react";
-import { FiAlertCircle, FiEye } from "react-icons/fi";
+import { FiAlertCircle, FiEye, FiRefreshCw } from "react-icons/fi";
 import {
   AlertMessage,
   COLOR_ESTADO,
@@ -141,7 +141,7 @@ export const ListadoVencimientos = ({
                 categoría no obliga a tocar esta tabla. */}
             {renovacion && (
               <RowActionButton
-                icon={renovacion.icono}
+                icon={FiRefreshCw}
                 label={renovacion.etiqueta}
                 colorPalette={renovacion.colorPalette}
                 title={renovacion.etiqueta}

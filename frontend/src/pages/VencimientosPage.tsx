@@ -50,7 +50,7 @@ export default function VencimientosPage() {
           {!loading && !error && ficha?.registro && (
             <RenovarVencimiento
               categoria={aRenovar.categoria}
-              elemento={ficha.registro}
+              registro={ficha.registro}
               onCancelar={() => setARenovar(null)}
               onGuardado={() => {
                 setARenovar(null);

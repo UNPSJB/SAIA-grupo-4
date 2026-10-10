@@ -1,21 +1,12 @@
 import uuid
 from datetime import date, timedelta
-import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.database import engine
-from src.models import ModeloBase
 from src.equipos.services import calcular_semaforo_equipo
+from tests.database import session
 
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    """Asegura que todas las tablas y columnas nuevas existan en la DB de pruebas."""
-    ModeloBase.metadata.create_all(bind=engine)
-    yield
 
 
 def generar_serie_unica(prefijo: str = "SN") -> str:
@@ -85,7 +76,10 @@ def test_registrar_calibracion_exitosa():
 
     res = client.post(
         f"/equipos/{equipo_id}/calibraciones",
-        json={"fecha_calibracion": hoy_str, "observaciones": "Calibración anual"},
+        data={
+            "fecha_calibracion": hoy_str,
+            "observaciones": "Calibración anual",
+        },
     )
     assert res.status_code == 201
     data = res.json()
@@ -103,9 +97,9 @@ def test_registrar_calibracion_fecha_futura_error():
 
     res = client.post(
         f"/equipos/{equipo_id}/calibraciones",
-        json={"fecha_calibracion": fecha_futura},
+        data={"fecha_calibracion": fecha_futura},
     )
-    assert res.status_code in (400, 422)
+    assert res.status_code == 400
 
 
 def test_endpoint_alertas_calibracion():

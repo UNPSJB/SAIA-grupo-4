@@ -14,9 +14,16 @@ Por defecto siembra 10 filas en cada tabla maestra (unidades de medida, sectores
 tipos de elemento, equipos, insumos, insumos quimicos, elementos de limpieza,
 capacidades y personal), 10 planes POES y 10 tareas por plan. Las tablas hijas
 (tareas_insumos_quimicos, tareas_elementos_limpieza, ejecuciones_tareas,
-ejecuciones_insumos_quimicos e historial_recambios) quedan con las filas que
-surguen de esas relaciones: no son 10 fijas porque dependen de la mezcla de
-recursos de cada tarea y de los dias de historial que se pida.
+ejecuciones_insumos_quimicos, historial_recambios y calibraciones_equipos) quedan
+con las filas que surgen de esas relaciones: no son 10 fijas porque dependen de
+la mezcla de recursos de cada tarea y de los dias de historial que se pida.
+
+Los equipos y los elementos de limpieza llevan frecuencia y fecha de la ultima
+intervencion, con las fechas escalonadas para que la vista consolidada de
+vencimientos (vencimientos/providers.py) tenga filas en los tres estados: la
+categoria elemento_limpieza sale de recambios/services.py::listar_alertas y la
+categoria equipo de equipos/services.py::listar_alertas_calibracion. Cada
+historial (historial_recambios y calibraciones_equipos) respalda esa fecha.
 
 Todos los catalogos de este archivo tienen 10 entradas con valores propios, asi
 que con la cantidad por defecto no se repite ninguno. ``_ciclar`` solo agrega
@@ -62,7 +69,7 @@ from src.checklists.models import EjecucionInsumoQuimico, EjecucionTarea
 from src.checklists.services import _filtrar_tareas_por_dia
 from src.database import SessionLocal, engine
 from src.elementos_limpieza.models import ElementoLimpieza
-from src.equipos.models import Equipo
+from src.equipos.models import CalibracionEquipo, Equipo
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.models import ModeloBase
@@ -89,7 +96,7 @@ from src.plan_poes.services import (
 from src.sectores.models import Sector
 from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
 from src.unidad_medida.models import UnidadMedida
-from src.vencimientos.constants import EstadoVencimiento
+from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
 from src.vencimientos.services import listar_vencimientos
 from src.auth.utils import get_password_hash
 from src.capacidades.constants import RolesSistema
@@ -153,17 +160,27 @@ TIPOS_ELEMENTO = (
 
 # Un equipo por sector: indice_sector recorre los 10 sectores, asi que el listado
 # de equipos y el de sectores quedan cruzado en todas las combinaciones.
+#
+# Los dos ultimos campos son (frecuencia de calibracion en dias, antiguedad de la
+# ultima calibracion en dias). Deciden si el equipo aparece en la vista de
+# vencimientos y en que estado, igual que ELEMENTOS con el recambio:
+#   - sin frecuencia, no aparece (equipos/services.py::listar_alertas_calibracion
+#     filtra los equipos activos con frecuencia y fecha cargadas)
+#   - con frecuencia, dias_restantes = frecuencia - antiguedad: negativo esta
+#     vencido, entre 0 y 15 esta proximo y por encima de 15 esta al dia (vigente).
+# Quedan dos equipos sin calibracion a proposito, para que el listado de equipos
+# no muestre que todo lo que no es de medicion directa se calibra.
 EQUIPOS = (
-    ("Heladera 1", "Fresar", "HF-0001", "heladera", 0, "Sala de frio"),
-    ("Mesa Refrigerada de Muestras", "Delta", "MR-0001", "otro", 1, "Sala de limpieza"),
-    ("Balanza de Plataforma", "Ohaus", "BP-0001", "balanza", 2, "Deposito de insumos"),
-    ("Heladera 2", "Fresar", "HF-0002", "heladera", 3, "Camara fria"),
-    ("Lavavajillas Industrial", "Hobart", "LI-0001", "otro", 4, "Embalaje"),
-    ("Amasadora de Masa", "Spiral", "AM-0001", "otro", 5, "Sala de recepcion"),
-    ("Horno de Coccion", "Rational", "HC-0001", "horno", 6, "Linea de produccion"),
-    ("Termometro Digital", "Testo", "TD-0001", "termometro", 7, "Expediciones"),
-    ("Balanza de Laboratorio", "Kern", "BL-0001", "balanza", 8, "Laboratorio"),
-    ("Compresor de Nitrogeno", "Atlas Copco", "CN-0001", "otro", 9, "Taller de mantenimiento"),
+    ("Heladera 1", "Fresar", "HF-0001", "heladera", 0, "Sala de frio", 180, 195),
+    ("Mesa Refrigerada de Muestras", "Delta", "MR-0001", "otro", 1, "Sala de limpieza", 180, 172),
+    ("Balanza de Plataforma", "Ohaus", "BP-0001", "balanza", 2, "Deposito de insumos", 365, 300),
+    ("Heladera 2", "Fresar", "HF-0002", "heladera", 3, "Camara fria", 180, 190),
+    ("Lavavajillas Industrial", "Hobart", "LI-0001", "otro", 4, "Embalaje", None, None),
+    ("Amasadora de Masa", "Spiral", "AM-0001", "otro", 5, "Sala de recepcion", 365, 330),
+    ("Horno de Coccion", "Rational", "HC-0001", "horno", 6, "Linea de produccion", 365, 375),
+    ("Termometro Digital", "Testo", "TD-0001", "termometro", 7, "Expediciones", 365, 40),
+    ("Balanza de Laboratorio", "Kern", "BL-0001", "balanza", 8, "Laboratorio", 365, 355),
+    ("Compresor de Nitrogeno", "Atlas Copco", "CN-0001", "otro", 9, "Taller de mantenimiento", None, None),
 )
 
 INSUMOS = (
@@ -229,6 +246,14 @@ OBSERVACIONES_RECAMBIO = (
     "Recambio preventivo programado.",
     "Se cambio por desgaste.",
     "Se cambio al perder eficacia.",
+    None,
+)
+
+OBSERVACIONES_CALIBRACION = (
+    "Calibracion anual con patron certificado.",
+    "Se ajusto la lectura a cero.",
+    "Certificado emitido por laboratorio externo.",
+    "Se verifico el rango de medicion completo.",
     None,
 )
 
@@ -580,10 +605,23 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             sector=sectores[indice_sector % len(sectores)],
             ubicacion=ubicacion,
             activo=True,
+            frecuencia_calibracion_dias=frecuencia_calibracion,
+            fecha_ultima_calibracion=(
+                hoy - timedelta(days=antiguedad_calibracion)
+                if frecuencia_calibracion is not None and antiguedad_calibracion is not None
+                else None
+            ),
         )
-        for nombre, marca, serie, categoria, indice_sector, ubicacion in _ciclar(
-            EQUIPOS, cantidad, campos=(0, 2)
-        )
+        for (
+            nombre,
+            marca,
+            serie,
+            categoria,
+            indice_sector,
+            ubicacion,
+            frecuencia_calibracion,
+            antiguedad_calibracion,
+        ) in _ciclar(EQUIPOS, cantidad, campos=(0, 2))
     ]
     insumos = [
         Insumo(
@@ -678,6 +716,37 @@ def _crear_historial_recambios(db, elementos):
     db.add_all(recambios)
     db.flush()
     return len(recambios)
+
+
+def _crear_historial_calibraciones(db, equipos):
+    """Historial de calibracion de los equipos que tienen frecuencia configurada.
+
+    Mismo criterio que _crear_historial_recambios: el ultimo registro coincide
+    con fecha_ultima_calibracion, que es la que usa
+    equipos/services.py::calcular_semaforo_equipo para la proxima fecha, y los
+    anteriores caen hacia atras un periodo completo cada uno. Sin esto el detalle
+    de calibraciones del equipo aparece vacio y la fecha sembrada no tiene
+    respaldo.
+    """
+    calibraciones = []
+    for indice, equipo in enumerate(equipos):
+        periodo = equipo.frecuencia_calibracion_dias
+        if periodo is None:
+            continue
+        ultima = equipo.fecha_ultima_calibracion
+        for vuelta in range(1 + indice % 3):
+            calibraciones.append(
+                CalibracionEquipo(
+                    equipo_id=equipo.id,
+                    fecha_calibracion=ultima - timedelta(days=periodo * vuelta),
+                    observaciones=OBSERVACIONES_CALIBRACION[
+                        vuelta % len(OBSERVACIONES_CALIBRACION)
+                    ],
+                )
+            )
+    db.add_all(calibraciones)
+    db.flush()
+    return len(calibraciones)
 
 
 def _crear_personas(db, fake, cantidad, hoy):
@@ -1122,6 +1191,55 @@ def _verificar_vencimientos(db, cantidad):
         )
 
 
+def _verificar_calibraciones(db, cantidad):
+    """Los equipos con calibracion configurada tienen que aparecer en la vista.
+
+    equipos/services.py::listar_alertas_calibracion filtra los equipos activos con
+    frecuencia y fecha de ultima calibracion cargadas, asi que cada uno de esos
+    tiene que generar exactamente una fila de categoria EQUIPO, y el historial de
+    calibraciones tiene que terminar en fecha_ultima_calibracion: es el respaldo
+    que muestra el detalle del equipo.
+    """
+    configurados = db.scalars(
+        select(Equipo).where(
+            Equipo.activo.is_(True),
+            Equipo.frecuencia_calibracion_dias.isnot(None),
+            Equipo.fecha_ultima_calibracion.isnot(None),
+        )
+    ).all()
+    if not configurados:
+        raise RuntimeError("Ningun equipo quedo con calibracion configurada.")
+
+    alertas = listar_vencimientos(db, categoria=CategoriaVencimiento.EQUIPO)
+    if len(alertas) != len(configurados):
+        raise RuntimeError(
+            f"Hay {len(configurados)} equipos con calibracion configurada "
+            f"pero {len(alertas)} vencimientos de equipos."
+        )
+
+    for equipo in configurados:
+        ultima = db.scalar(
+            select(func.max(CalibracionEquipo.fecha_calibracion)).where(
+                CalibracionEquipo.equipo_id == equipo.id
+            )
+        )
+        if ultima != equipo.fecha_ultima_calibracion:
+            raise RuntimeError(
+                f"El historial de calibraciones del equipo {equipo.id} no termina "
+                f"en {equipo.fecha_ultima_calibracion}."
+            )
+
+    if cantidad < len(EQUIPOS):
+        return
+    estados = {alerta.estado for alerta in alertas}
+    faltantes = [estado.value for estado in EstadoVencimiento if estado not in estados]
+    if faltantes:
+        raise RuntimeError(
+            "Las calibraciones de equipos no tienen filas en estado: "
+            + ", ".join(faltantes)
+        )
+
+
 def _verificar_multi_insumo(plan_vigente):
     """El plan vigente tiene que incluir tareas con 2 y con 3 insumos.
 
@@ -1192,6 +1310,7 @@ def _verificar(db, hoy, cantidad):
     _verificar_multi_insumo(plan_vigente)
     _verificar_cantidades(db, cantidad)
     _verificar_vencimientos(db, cantidad)
+    _verificar_calibraciones(db, cantidad)
 
     return plan_vigente, esperadas_hoy
 
@@ -1257,6 +1376,12 @@ def _resumen(db, personas, plan_vigente, tareas_hoy, estados):
         .where(ElementoLimpieza.frecuencia_recambio_dias.is_(None))
     )
     print(f"    elementos sin frecuencia de recambio: {sin_frecuencia} (no generan vencimiento)")
+    sin_calibracion = db.scalar(
+        select(func.count())
+        .select_from(Equipo)
+        .where(Equipo.frecuencia_calibracion_dias.is_(None))
+    )
+    print(f"    equipos sin frecuencia de calibracion: {sin_calibracion} (no generan vencimiento)")
 
     print()
     print("  Ingreso por DNI (LoginPage compara el documento contra GET /personal/)")
@@ -1328,6 +1453,7 @@ def main():
         try:
             catalogo = _crear_prerrequisitos(db, args.cantidad, hoy)
             _crear_historial_recambios(db, catalogo["elementos"])
+            _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(

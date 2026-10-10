@@ -93,7 +93,7 @@ export const EquipoForm = ({
     loading: cargandoSectores,
     error: errorSectores,
   } = useListadoData<Sector>({
-    endpoint: "http://127.0.0.1:8000/sectores/",
+    endpoint: `${BASE_URL}/sectores/`,
   });
 
   const opcionesSectores = useMemo(() => {
@@ -112,7 +112,7 @@ export const EquipoForm = ({
   const [nombreEnviado, setNombreEnviado] = useState("");
 
   const { submit } = useEquipoSubmit({
-    endpoint: "http://127.0.0.1:8000/equipos/",
+    endpoint: `${BASE_URL}/equipos/`,
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? equipo!.id : undefined,
     onInactivo: (equipoId) => {
@@ -128,7 +128,7 @@ export const EquipoForm = ({
   });
 
   const reactivar = useEquipoSubmit({
-    endpoint: "http://127.0.0.1:8000/equipos/",
+    endpoint: `${BASE_URL}/equipos/`,
     method: "PUT",
     id: equipoInactivoId ?? undefined,
     body: { activo: true },

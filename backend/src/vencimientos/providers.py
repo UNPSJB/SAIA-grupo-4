@@ -41,7 +41,6 @@ def hay_proveedor(categoria: CategoriaVencimiento) -> bool:
 
 
 # Provider de elementos de limpieza 
-
 class _ProveedorElementosLimpieza:
     categoria = CategoriaVencimiento.ELEMENTO_LIMPIEZA
 
@@ -67,6 +66,30 @@ class _ProveedorElementosLimpieza:
             )
         return vencimientos
 
+class _ProveedorEquipos:
+    categoria = CategoriaVencimiento.EQUIPO
+
+    def listar(self, db: Session, hoy: date) -> list[schemas.Vencimiento]:
+        from src.equipos.services import listar_alertas_calibracion
+
+        vencimientos = []
+        for alerta in listar_alertas_calibracion(db):
+            dias_restantes = (alerta.proxima_fecha - hoy).days
+            vencimientos.append(
+                schemas.Vencimiento(
+                    id=f"{self.categoria.value}:{alerta.entidad_id}",
+                    categoria=self.categoria,
+                    concepto=alerta.entidad,
+                    entidad="Equipos",
+                    entidad_id=alerta.entidad_id,
+                    fecha_vencimiento=alerta.proxima_fecha,
+                    dias_restantes=dias_restantes,
+                    estado=_estado_de(dias_restantes),
+                    detalle="Calibración",
+                    ruta_detalle=f"/equipos?detalle={alerta.entidad_id}",
+                )
+            )
+        return vencimientos
 
 def _estado_de(dias_restantes: int):
     # Import diferido: services.py importa este modulo, asi que la importacion
@@ -80,6 +103,6 @@ def _estado_de(dias_restantes: int):
 # Alta al importar el modulo. 
 
 registrar(_ProveedorElementosLimpieza())
-# registrar(_ProveedorEquipos())
+registrar(_ProveedorEquipos())
 # registrar(_ProveedorDocumentos())
 # registrar(_ProveedorPersonal())

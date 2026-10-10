@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, timedelta
 
 import pytest
@@ -50,6 +51,47 @@ def crear_con_urgencia(nombre, dias_restantes, tipo_id=None, frecuencia=None):
     elemento_id = crear_elemento_auxiliar(nombre, frecuencia=frecuencia, tipo_id=tipo_id)
     registrar_recambio(elemento_id, frecuencia - dias_restantes)
     return elemento_id
+
+
+# Equipos: el alta pide un sector. El nombre del sector no puede repetirse, asi
+# que el helper lo hace unico para varios equipos dentro del mismo test.
+def crear_equipo_auxiliar(nombre="Balanza", frecuencia=30, fecha_ultima=None):
+    sector_id = client.post(
+        "/sectores/", json={"nombre": f"Sector_{uuid.uuid4().hex[:6]}"}
+    ).json()["id"]
+    res = client.post(
+        "/equipos/",
+        json={
+            "nombre": nombre,
+            "marca": "Ohaus",
+            "numero_serie": f"SN_{uuid.uuid4().hex[:6]}",
+            "categoria": "balanza",
+            "sector_id": sector_id,
+            "frecuencia_calibracion_dias": frecuencia,
+            "fecha_ultima_calibracion": fecha_ultima,
+        },
+    )
+    return res.json()["id"]
+
+
+# Mismo atajo que para los elementos: proxima = ultima + frecuencia, entonces
+# dias_restantes = frecuencia - dias_atras. La frecuencia se elige para que la
+# fecha de la ultima calibracion nunca quede en el futuro.
+def crear_equipo_con_urgencia(nombre, dias_restantes, frecuencia=None):
+    if frecuencia is None:
+        frecuencia = max(dias_restantes, 30)
+    fecha_ultima = date.today() - timedelta(days=frecuencia - dias_restantes)
+    return crear_equipo_auxiliar(
+        nombre=nombre, frecuencia=frecuencia, fecha_ultima=fecha_ultima.isoformat()
+    )
+
+
+def _fila_equipo(equipo_id):
+    """Devuelve la fila consolidada de un equipo, o None si no esta."""
+    for v in client.get("/vencimientos/", params={"categoria": "equipo"}).json():
+        if v["id"] == f"equipo:{equipo_id}":
+            return v
+    return None
 
 
 # =============================================================================
@@ -364,7 +406,15 @@ def test_categoria_sin_proveedor_devuelve_400():
 
 @pytest.mark.parametrize(
     "categoria",
-    [c.value for c in CategoriaVencimiento if c is not CategoriaVencimiento.ELEMENTO_LIMPIEZA],
+    [
+        c.value
+        for c in CategoriaVencimiento
+        if c
+        not in (
+            CategoriaVencimiento.ELEMENTO_LIMPIEZA,
+            CategoriaVencimiento.EQUIPO,
+        )
+    ],
 )
 def test_todas_las_categorias_sin_provider_devuelven_400(categoria):
     assert client.get("/vencimientos/", params={"categoria": categoria}).status_code == 400
@@ -499,7 +549,7 @@ def test_categorias_declaradas_en_el_contrato():
 def test_categorias_endpoint_solo_expone_las_con_provider():
     data = client.get("/vencimientos/categorias").json()
 
-    assert [c["valor"] for c in data] == ["elemento_limpieza"]
+    assert [c["valor"] for c in data] == ["elemento_limpieza", "equipo"]
 
 
 def test_categorias_endpoint_usa_la_etiqueta_legible():
@@ -527,7 +577,8 @@ def test_categorias_endpoint_total_refleja_el_listado():
 
 def test_categorias_endpoint_lista_vacia_sin_datos():
     assert client.get("/vencimientos/categorias").json() == [
-        {"valor": "elemento_limpieza", "nombre": "Elementos de limpieza", "total": 0}
+        {"valor": "elemento_limpieza", "nombre": "Elementos de limpieza", "total": 0},
+        {"valor": "equipo", "nombre": "Equipos", "total": 0},
     ]
 
 
@@ -655,3 +706,122 @@ def test_renovar_refleja_el_estado_vigente():
     assert fila is not None  # sigue en el listado, ahora vigente
     assert fila["estado"] == EstadoVencimiento.VIGENTE.value
     assert fila["dias_restantes"] == 40
+
+
+# =============================================================================
+# Provider de equipos: calibraciones en la vista consolidada
+# =============================================================================
+
+def test_equipo_aparece_en_la_vista_consolidada():
+    equipo_id = crear_equipo_con_urgencia("Balanza cocina", 5)
+
+    data = client.get("/vencimientos/", params={"categoria": "equipo"}).json()
+
+    assert len(data) == 1
+    fila = data[0]
+    assert fila["id"] == f"equipo:{equipo_id}"
+    assert fila["categoria"] == "equipo"
+    assert fila["entidad"] == "Equipos"
+    assert fila["entidad_id"] == equipo_id
+    assert fila["detalle"] == "Calibración"
+    assert fila["dias_restantes"] == 5
+    assert fila["estado"] == "proximo"
+    assert fila["fecha_vencimiento"] == (date.today() + timedelta(days=5)).isoformat()
+    # La alerta de calibracion trae el nombre ya compuesto con marca y serie.
+    assert fila["concepto"].startswith("Balanza cocina (Ohaus - ")
+
+
+def test_equipo_ruta_detalle_apunta_al_equipo():
+    equipo_id = crear_equipo_con_urgencia("Balanza detalle", 5)
+
+    fila = _fila_equipo(equipo_id)
+
+    assert fila["ruta_detalle"] == f"/equipos?detalle={equipo_id}"
+
+
+def test_equipo_al_dia_se_traduce_a_vigente():
+    # El modulo de equipos le dice "al_dia" a lo que el tablero llama "vigente".
+    # El provider no reusa ese estado: lo recalcula con la regla unica de
+    # services.calcular_estado, igual que el de elementos de limpieza.
+    crear_equipo_con_urgencia("Balanza lejana", 40)
+
+    data = client.get("/vencimientos/", params={"categoria": "equipo"}).json()
+
+    assert data[0]["estado"] == "vigente"
+    assert data[0]["dias_restantes"] == 40
+
+
+def test_equipo_vencido_entra_como_vencido():
+    crear_equipo_con_urgencia("Balanza vencida", -20)
+
+    data = client.get("/vencimientos/", params={"categoria": "equipo"}).json()
+
+    assert data[0]["estado"] == "vencido"
+    assert data[0]["dias_restantes"] == -20
+
+
+def test_dias_max_recorta_a_los_equipos_como_al_resto():
+    # Es la ventana que usa la campana: los equipos tienen que entrar y salir
+    # de la misma manera que los elementos de limpieza.
+    crear_equipo_con_urgencia("Balanza lejana", 40)
+
+    assert (
+        client.get(
+            "/vencimientos/", params={"categoria": "equipo", "dias_max": 15}
+        ).json()
+        == []
+    )
+    assert (
+        len(
+            client.get(
+                "/vencimientos/", params={"categoria": "equipo", "dias_max": 40}
+            ).json()
+        )
+        == 1
+    )
+
+
+def test_equipo_y_elemento_conviven_ordenados_por_urgencia():
+    equipo_id = crear_equipo_con_urgencia("Balanza", -10)
+    elemento_id = crear_con_urgencia("Escoba", 3)
+
+    data = client.get("/vencimientos/").json()
+
+    assert [v["dias_restantes"] for v in data] == [-10, 3]
+    assert [v["categoria"] for v in data] == ["equipo", "elemento_limpieza"]
+    assert len({v["id"] for v in data}) == 2
+    assert f"equipo:{equipo_id}" in {v["id"] for v in data}
+    assert f"elemento_limpieza:{elemento_id}" in {v["id"] for v in data}
+
+
+def test_filtro_por_estado_combinado_con_categoria_equipo():
+    crear_equipo_con_urgencia("Vencido", -20)
+    crear_equipo_con_urgencia("Vigente", 40)
+
+    data = client.get(
+        "/vencimientos/", params={"estado": "por_vencer", "categoria": "equipo"}
+    ).json()
+
+    assert [v["estado"] for v in data] == ["vencido"]
+
+
+def test_categoria_equipo_disponible_en_el_endpoint():
+    crear_equipo_con_urgencia("Balanza", 5)
+
+    data = client.get("/vencimientos/categorias").json()
+
+    assert {"valor": "equipo", "nombre": "Equipos", "total": 1} in data
+
+
+def test_excluye_equipos_sin_frecuencia():
+    # Sin plan de calibracion no hay proxima fecha que computar.
+    crear_equipo_auxiliar(nombre="Sin frecuencia", frecuencia=30, fecha_ultima=None)
+
+    assert client.get("/vencimientos/", params={"categoria": "equipo"}).json() == []
+
+
+def test_excluye_equipos_inactivos():
+    equipo_id = crear_equipo_con_urgencia("Inactivo", 5)
+    client.delete(f"/equipos/{equipo_id}")
+
+    assert client.get("/vencimientos/", params={"categoria": "equipo"}).json() == []

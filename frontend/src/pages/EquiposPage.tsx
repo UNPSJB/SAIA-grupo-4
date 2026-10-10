@@ -1,6 +1,9 @@
 import { BASE_URL } from "../config";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
+import { apiFetch } from "../features/auth/apiFetch";
+import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import { EquipoForm } from "../features/equipos/EquipoForm";
 import { EquipoDetalle } from "../features/equipos/EquipoDetalle";
 import { ListadoEquipos } from "../features/equipos/ListadoEquipo";
@@ -19,6 +22,48 @@ export default function EquiposPage() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // La campana de notificaciones llega aca con `?detalle=<id>` (ruta_detalle de
+  // la fila consolidada): el parametro abre el detalle del equipo, igual que
+  // hace ElementosLimpiezaPage con los elementos de limpieza.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detalleParam = searchParams.get("detalle");
+
+  // Registrar una calibracion aca tambien baja el badge de la campana, porque
+  // no hay navegacion por el tablero que dispare su refresco.
+  const { notificarGuardado } = useRenovacion();
+
+  useEffect(() => {
+    if (!detalleParam) return;
+    let activo = true;
+
+    apiFetch(`${BASE_URL}/equipos/${detalleParam}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        return res.json();
+      })
+      .then((equipo: Equipo) => {
+        if (!activo) return;
+        setError("");
+        setEquipoSeleccionado(equipo);
+        setVista("ver");
+      })
+      .catch(() => {
+        if (activo) setError("No se pudo cargar el equipo.");
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [detalleParam]);
+
+  // Limpia el parametro al cerrar el detalle. Sin esto, volver a la pagina
+  // reabriria el modal otra vez.
+  const limpiarDetalleParam = () => {
+    if (!searchParams.get("detalle")) return;
+    searchParams.delete("detalle");
+    setSearchParams(searchParams, { replace: true });
+  };
 
   const [equipoEliminar, setEquipoEliminar] = useState<Equipo | null>(null);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
@@ -100,7 +145,10 @@ export default function EquiposPage() {
       {vista === "ver" && equipoSeleccionado && (
         <EquipoDetalle
           equipo={equipoSeleccionado}
-          onCerrar={() => setVista("listado")}
+          onCerrar={() => {
+            setVista("listado");
+            limpiarDetalleParam();
+          }}
         />
       )}
 
@@ -172,6 +220,7 @@ export default function EquiposPage() {
         }}
         onSuccess={() => {
           setRefrescar((r) => r + 1); // Recarga la grilla
+          notificarGuardado();
       }}
   />
     </Box>

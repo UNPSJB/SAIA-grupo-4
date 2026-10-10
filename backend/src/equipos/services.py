@@ -218,6 +218,9 @@ def registrar_calibracion(
 ):
     db_equipo = leer_equipo(db, equipo_id)
 
+    if fecha_calibracion > date.today():
+        raise exceptions.CalibracionFechaFutura()
+
     url_certificado = None
     if archivo:
         url_certificado = guardar_archivo_certificado(archivo)

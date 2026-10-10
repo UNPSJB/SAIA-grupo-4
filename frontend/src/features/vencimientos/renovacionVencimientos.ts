@@ -1,10 +1,6 @@
-import type { ElementType } from "react";
-import { FiRefreshCw } from "react-icons/fi";
 import type { CategoriaVencimiento } from "./types";
 
 export type EntradaRenovacion = {
-  /** Ícono del botón de fila. */
-  icono: ElementType;
   /** Texto del botón de fila y del `title`. */
   etiqueta: string;
   colorPalette: string;
@@ -25,10 +21,14 @@ export type EntradaRenovacion = {
  */
 const RENOVACIONES: Partial<Record<CategoriaVencimiento, EntradaRenovacion>> = {
   elemento_limpieza: {
-    icono: FiRefreshCw,
     etiqueta: "Registrar Recambio",
     colorPalette: "green",
     titulo: "Registrar Recambio",
+  },
+  equipo: {
+    etiqueta: "Registrar Calibración",
+    colorPalette: "green",
+    titulo: "Registrar Calibración",
   },
 };
 

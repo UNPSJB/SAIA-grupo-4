@@ -72,7 +72,7 @@ export const RenovacionProvider = ({ children }: { children: ReactNode }) => {
           {!loading && !error && ficha?.registro && (
             <RenovarVencimiento
               categoria={aRenovar.categoria}
-              elemento={ficha.registro}
+              registro={ficha.registro}
               onCancelar={cerrar}
               onGuardado={() => {
                 cerrar();

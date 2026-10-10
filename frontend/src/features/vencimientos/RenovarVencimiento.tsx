@@ -1,11 +1,14 @@
 import type { FC } from "react";
 import { RegistrarRecambioForm } from "../recambios/RegistrarRecambioForm";
+import { RegistrarCalibracionForm } from "../equipos/RegistrarCalibracionModal";
 import type { ElementoLimpieza } from "../elementosLimpieza/types";
+import type { Equipo } from "../equipos/types";
 import { renovacionDe } from "./renovacionVencimientos";
+import type { RegistroOrigen } from "./origenVencimientos";
 import type { CategoriaVencimiento } from "./types";
 
 type PropsFormulario = {
-  elemento: ElementoLimpieza;
+  registro: RegistroOrigen;
   titulo: string;
   onCancelar: () => void;
   onGuardado: () => void;
@@ -19,17 +22,35 @@ type PropsFormulario = {
  * escritura del recambio y sus validaciones quedan en una sola implementación.
  */
 const RenovarElementoLimpieza: FC<PropsFormulario> = ({
-  elemento,
+  registro,
   titulo,
   onCancelar,
   onGuardado,
 }) => (
   <RegistrarRecambioForm
-    elemento={elemento}
+    elemento={registro as ElementoLimpieza}
     titulo={titulo}
     onCancelar={onCancelar}
     onGuardado={onGuardado}
     enModal
+  />
+);
+
+/**
+ * Renovación de un equipo: registrar la calibración que lo vuelve a dejar al
+ * día. Delega en `RegistrarCalibracionForm`, el mismo que usa el módulo de
+ * equipos, que pega a `POST /equipos/{equipo_id}/calibraciones`.
+ */
+const RenovarEquipo: FC<PropsFormulario> = ({
+  registro,
+  onCancelar,
+  onGuardado,
+}) => (
+  <RegistrarCalibracionForm
+    equipo={registro as Equipo}
+    enModal
+    onCancelar={onCancelar}
+    onGuardado={onGuardado}
   />
 );
 
@@ -43,22 +64,24 @@ const RenovarElementoLimpieza: FC<PropsFormulario> = ({
 const FORMULARIOS: Partial<Record<CategoriaVencimiento, FC<PropsFormulario>>> =
   {
     elemento_limpieza: RenovarElementoLimpieza,
+    equipo: RenovarEquipo,
   };
 
 type Props = {
   categoria: CategoriaVencimiento;
-  elemento: ElementoLimpieza;
+  registro: RegistroOrigen;
   onCancelar: () => void;
   /**
    * Cierra el modal. La página además recarga el listado desde acá, porque la
-   * fecha de vencimiento de la fila cambia al registrar el recambio.
+   * fecha de vencimiento de la fila cambia al registrar el recambio o la
+   * calibración.
    */
   onGuardado: () => void;
 };
 
 export const RenovarVencimiento = ({
   categoria,
-  elemento,
+  registro,
   onCancelar,
   onGuardado,
 }: Props) => {
@@ -69,7 +92,7 @@ export const RenovarVencimiento = ({
 
   return (
     <Formulario
-      elemento={elemento}
+      registro={registro}
       titulo={entrada.titulo}
       onCancelar={onCancelar}
       onGuardado={onGuardado}
