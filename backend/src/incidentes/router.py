@@ -2,8 +2,10 @@ import json
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from src.auth import dependencies
 from src.database import get_db
 from src.incidentes import schemas, services
+from src.personal.models import Persona
 
 router = APIRouter(prefix="/incidentes", tags=["incidentes"])
 
@@ -34,6 +36,13 @@ def create_incidente(
 @router.get("/", response_model=list[schemas.Incidente])
 def read_incidentes(db: Session = Depends(get_db)):
     return services.listar_incidentes(db)
+
+@router.get("/mis-reportes", response_model=list[schemas.Incidente])
+def read_mis_incidentes(
+    persona: Persona = Depends(dependencies.requiere_operacion),
+    db: Session = Depends(get_db),
+):
+    return services.listar_incidentes_por_reportante(db, persona.id)
 
 # Lista los incidentes abiertos
 @router.get("/abiertos", response_model=list[schemas.Incidente])

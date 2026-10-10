@@ -15,6 +15,7 @@ import {
 } from "@chakra-ui/react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  FiAlertTriangle,
   FiCheckSquare,
   FiChevronLeft,
   FiChevronRight,
@@ -39,6 +40,7 @@ export interface OperadorNavItem {
 const defaultItems: OperadorNavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
   { to: "/documentos", label: "Documentos", icon: FiFileText },
+  { to: "/incidentes-reportados", label: "Incidentes Reportados", icon: FiAlertTriangle },
 ];
 
 // Igual criterio que el NavBar del admin: mantiene activo el ítem también en subrutas (p. ej. el visor de PDF depende de /documentos).

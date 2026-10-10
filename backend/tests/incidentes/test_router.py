@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from src.main import app
 from src.personal.models import Persona
 from tests.database import session
@@ -120,6 +121,33 @@ def test_listar_incidentes(session):
     response = cl.get("/incidentes/")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+def test_listar_mis_incidentes_solo_devuelve_reportes_del_usuario_actual(session):
+    usuario_actual = session.scalar(select(Persona).where(Persona.dni == "40000000"))
+    tipo_id = crear_tipo_incidente_auxiliar()
+    reportante_ajeno_id = crear_persona_auxiliar()
+
+    for titulo, reportante_id in (
+        ("Reporte propio", usuario_actual.id),
+        ("Reporte ajeno", reportante_ajeno_id),
+    ):
+        data = {
+            "titulo": titulo,
+            "descripcion": "Descripción de prueba",
+            "fecha_hora_reporte": datetime.now().isoformat(),
+            "reportante_id": reportante_id,
+            "tipo_id": tipo_id,
+        }
+        response = cl.post(
+            "/incidentes/",
+            data={"datos": json.dumps(data)},
+        )
+        assert response.status_code == 201, response.text
+
+    response = cl.get("/incidentes/mis-reportes")
+
+    assert response.status_code == 200
+    assert [incidente["titulo"] for incidente in response.json()] == ["Reporte propio"]
 
 def test_crear_incidente_sin_tipo(session):
     # Se intenta crear un incidente sin tipo

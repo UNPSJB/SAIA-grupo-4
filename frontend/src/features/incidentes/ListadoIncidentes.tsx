@@ -26,6 +26,8 @@ interface ListadoIncidentesProps {
     onVer?: (incidente: Incidente) => void;
     onGestionarTipos?: () => void;
     onCrear?: () => void;
+    endpoint?: string;
+    titulo?: string;
     // Agregar las props del listado
 }
 
@@ -77,6 +79,8 @@ export const ListadoIncidentes = ({
     onVer,
     onGestionarTipos,
     onCrear,
+    endpoint = ENDPOINT,
+    titulo = "Listado de Incidentes",
     // Agregar las props del listado
 }: ListadoIncidentesProps) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState("");
@@ -85,7 +89,7 @@ export const ListadoIncidentes = ({
   const [incidenteConFoto, setIncidenteConFoto] = useState<Incidente | null>(null);
   const { data, loading, error, page, setPage } =
     useListadoData<Incidente>({
-      endpoint: ENDPOINT,
+      endpoint,
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de incidentes.",
     });
@@ -161,11 +165,13 @@ export const ListadoIncidentes = ({
   return (
     <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title="Listado de Incidentes" icon={FiAlertTriangle}/>
+        <ListadoHeader title={titulo} icon={FiAlertTriangle}/>
         <HStack gap={2}>
-          <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
-            <FiSettings /> Gestionar Tipos
-          </Button>
+          {onGestionarTipos && (
+            <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
+              <FiSettings /> Gestionar Tipos
+            </Button>
+          )}
           {onCrear && (
           <Button variant='solid' colorPalette='green' onClick={onCrear}>
             <FiPlus /> Registrar Incidente

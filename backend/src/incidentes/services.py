@@ -109,6 +109,16 @@ def listar_incidentes(db: Session) -> list[Incidente]:
         )
     ).all()
 
+def listar_incidentes_por_reportante(db: Session, reportante_id: int) -> list[Incidente]:
+    return db.scalars(
+        select(Incidente)
+        .where(Incidente.reportante_id == reportante_id)
+        .order_by(
+            Incidente.fecha_hora_reporte.asc(),
+            Incidente.id.asc(),
+        )
+    ).all()
+
 def obtener_incidente_por_id(db: Session, incidente_id: int) -> Incidente:
     incidente = db.scalar(
         select(Incidente)

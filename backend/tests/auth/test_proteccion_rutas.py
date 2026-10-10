@@ -76,6 +76,7 @@ def test_sin_token_es_401():
     assert client.get("/equipos/").status_code == 401
     assert client.get("/personal/").status_code == 401
     assert client.get("/checklists/hoy").status_code == 401
+    assert client.get("/incidentes/mis-reportes").status_code == 401
     res = client.get("/equipos/")
     assert res.status_code == 401
     assert res.headers.get("www-authenticate") == "Bearer"
@@ -100,6 +101,7 @@ def test_operador_solo_checklists(credenciales):
     headers = _headers(token)
 
     assert client.get("/checklists/hoy", headers=headers).status_code == 200
+    assert client.get("/incidentes/mis-reportes", headers=headers).status_code == 200
 
     res = client.get("/equipos/", headers=headers)
     assert res.status_code == 403
