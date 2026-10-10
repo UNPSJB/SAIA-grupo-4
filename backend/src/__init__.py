@@ -7,4 +7,5 @@ from src.insumo_quimico.schemas import InsumoQuimico
 from src.elementos_limpieza.schemas import ElementoLimpieza
 from src.plan_poes.schemas import PlanPOES, TareaPOES
 from src.checklists.schemas import EjecucionTarea, CompletarEjecucion
+from src.vencimientos.schemas import Vencimiento, CategoriaDisponible
 from src.incidentes.schemas import Incidente

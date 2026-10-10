@@ -10,12 +10,17 @@ type RegistrarRecambioFormProps = {
     onCancelar?: () => void;
     onGuardado?: () => void;
     enModal?: boolean;
+    /**
+     * Título del formulario. El tablero de vencimientos lo usa para "Renovar
+     * vencimiento", que es la misma acción vista desde el tablero.
+     */
+    titulo?: string;
 };
 
 // "YYYY-MM-DD" en hora local (toISOString() daría la fecha en UTC)
 const hoyLocal = () => new Date().toLocaleDateString("sv-SE");
 
-export const RegistrarRecambioForm = ({ elemento, onCancelar, onGuardado, enModal = false }: RegistrarRecambioFormProps) => {
+export const RegistrarRecambioForm = ({ elemento, onCancelar, onGuardado, enModal = false, titulo = "Registrar Recambio" }: RegistrarRecambioFormProps) => {
     const [fecha, setFecha] = useState(hoyLocal());
     const [observaciones, setObservaciones] = useState("");
     const [errorFecha, setErrorFecha] = useState("");
@@ -42,7 +47,7 @@ export const RegistrarRecambioForm = ({ elemento, onCancelar, onGuardado, enModa
 
     return (
         <FormContainer modal={enModal}>
-            <FormHeader title="Registrar Recambio" icon={FiRefreshCw} />
+            <FormHeader title={titulo} icon={FiRefreshCw} />
             <VStack gap={4}>
                 <TextField label="Elemento" value={`${elemento.codigo} — ${elemento.nombre}`} disabled />
                 <Field.Root>

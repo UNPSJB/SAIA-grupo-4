@@ -6,3 +6,5 @@ class ErrorCode:
     PERSONA_BAJA_NO_PERMITIDA = "La baja del personal debe realizarse mediante el endpoint de eliminación."
     SIN_CAPACIDADES = "La persona debe tener al menos una capacidad asignada."
     ULTIMO_ADMINISTRADOR = "No se puede realizar la acción porque es el último Administrador activo del sistema."
+    PASSWORD_REQUERIDA = "Debe asignar una contraseña para iniciar sesion."
+    PASSWORD_NO_PERMITIDA = "Solo el personal con capacidades de administrar u operar tiene contraseñas."

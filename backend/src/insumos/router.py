@@ -3,11 +3,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.insumos import schemas, services
+from src.auth.dependencies import requiere_administracion
+
 
 # Creamos un logger para este módulo específico. Más info.: https://docs.python.org/3/library/logging.html
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/insumos", tags=["insumos"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/insumos", tags=["insumos"], dependencies=[Depends(requiere_administracion)])
 
 # Rutas para Insumos
 

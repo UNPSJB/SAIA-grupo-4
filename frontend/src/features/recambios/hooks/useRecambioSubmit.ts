@@ -1,3 +1,6 @@
+import { BASE_URL, JSON_HEADERS } from "../../../config";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { useCallback, useState } from "react";
 
 export type SubmitResult =
@@ -16,7 +19,7 @@ interface UseRecambioSubmitOptions {
 
 // Un recambio solo se registra (POST); no se modifica ni se elimina
 
-const ENDPOINT = "http://127.0.0.1:8000/recambios/";
+const ENDPOINT = `${BASE_URL}/recambios/`;
 
 export const useRecambioSubmit = ({ onSuccess }: UseRecambioSubmitOptions = {}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,9 +27,9 @@ export const useRecambioSubmit = ({ onSuccess }: UseRecambioSubmitOptions = {}) 
   const submit = useCallback(async (values: RecambioPayload): Promise<SubmitResult> => {
       setIsSubmitting(true);
       try {
-        const res = await fetch(ENDPOINT, {
+        const res = await apiFetch(ENDPOINT, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: JSON_HEADERS,
           body: JSON.stringify({
             elemento_id: values.elemento_id,
             fecha_recambio: values.fecha_recambio || null,

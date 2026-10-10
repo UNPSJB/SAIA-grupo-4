@@ -10,6 +10,25 @@ Uso (desde la carpeta backend/):
 Sin ``--reset`` el script se niega a escribir si la base ya tiene datos.
 Para regenerarla desde cero, borrar backend/db.sqlite3 y volver a ejecutar.
 
+Por defecto siembra 10 filas en cada tabla maestra (unidades de medida, sectores,
+tipos de elemento, equipos, insumos, insumos quimicos, elementos de limpieza,
+capacidades y personal), 10 planes POES y 10 tareas por plan. Las tablas hijas
+(tareas_insumos_quimicos, tareas_elementos_limpieza, ejecuciones_tareas,
+ejecuciones_insumos_quimicos, historial_recambios y calibraciones_equipos) quedan
+con las filas que surgen de esas relaciones: no son 10 fijas porque dependen de
+la mezcla de recursos de cada tarea y de los dias de historial que se pida.
+
+Los equipos y los elementos de limpieza llevan frecuencia y fecha de la ultima
+intervencion, con las fechas escalonadas para que la vista consolidada de
+vencimientos (vencimientos/providers.py) tenga filas en los tres estados: la
+categoria elemento_limpieza sale de recambios/services.py::listar_alertas y la
+categoria equipo de equipos/services.py::listar_alertas_calibracion. Cada
+historial (historial_recambios y calibraciones_equipos) respalda esa fecha.
+
+Todos los catalogos de este archivo tienen 10 entradas con valores propios, asi
+que con la cantidad por defecto no se repite ninguno. ``_ciclar`` solo agrega
+sufijos si se pide mas de lo que hay en el catalogo (``--cantidad 15``).
+
 Reglas que respeta el seed, y que son las mismas que valida la app en
 plan_poes/schemas.py:
 
@@ -22,6 +41,9 @@ plan_poes/schemas.py:
     (validar_detalle_frecuencia).
   - Los dias usan los literales exactos de la app y sin tilde, porque asi los
     compara checklists/services.py::_filtrar_tareas_por_dia.
+  - Queda un solo plan vigente y un solo plan en borrador, como espera
+    plan_poes/services.py::obtener_plan_activo y ::obtener_plan_borrador. Los
+    demas quedan archivados, que es lo que muestra el historial de planes.
   - Todo el texto sembrado es ASCII: sin tildes, sin enie y sin simbolos.
 
 ``_verificar`` no reimplementa esas reglas: construye un TareaPOESCreate real
@@ -47,7 +69,7 @@ from src.checklists.models import EjecucionInsumoQuimico, EjecucionTarea
 from src.checklists.services import _filtrar_tareas_por_dia
 from src.database import SessionLocal, engine
 from src.elementos_limpieza.models import ElementoLimpieza
-from src.equipos.models import Equipo
+from src.equipos.models import CalibracionEquipo, Equipo
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.models import ModeloBase
@@ -74,13 +96,38 @@ from src.plan_poes.services import (
 from src.sectores.models import Sector
 from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
 from src.unidad_medida.models import UnidadMedida
+from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
+from src.vencimientos.services import listar_vencimientos
+from src.auth.utils import get_password_hash
+from src.capacidades.constants import RolesSistema
+
+# Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
+# del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
+# depende de la mezcla de recursos de cada tarea y de los dias de historial.
+TABLAS_CON_CANTIDAD_FIJA = (
+    "unidades_de_medidas",
+    "sectores",
+    "tipos_elemento_limpieza",
+    "equipos",
+    "insumos",
+    "insumos_quimicos",
+    "elementos_limpieza",
+    "capacidad",
+    "personal",
+    "planes_poes",
+)
 
 UNIDADES = (
     ("Kilogramo", "kg", "masa"),
     ("Gramo", "g", "masa"),
+    ("Miligramo", "mg", "masa"),
     ("Litro", "L", "volumen"),
     ("Mililitro", "mL", "volumen"),
+    ("Centilitro", "cL", "volumen"),
     ("Unidad", "u", "cantidad"),
+    ("Metro", "m", "longitud"),
+    ("Minuto", "min", "tiempo"),
+    ("Porcentaje", "%", "concentracion"),
 )
 
 SECTORES = (
@@ -89,46 +136,97 @@ SECTORES = (
     "Almacen de Insumos",
     "Camara Fria",
     "Embalaje",
+    "Recepcion de Materia Prima",
+    "Sala de Proceso",
+    "Expediciones",
+    "Laboratorio",
+    "Taller de Mantenimiento",
 )
 
+# El prefijo tiene que cumplir ^[A-Z]{2,5}$ (elementos_limpieza/schemas.py) y no
+# se puede repetir entre tipos activos (elementos_limpieza/constants.py).
 TIPOS_ELEMENTO = (
     ("Detergente", "DET"),
     ("Desinfectante", "DES"),
     ("Jabon Liquido", "JAB"),
     ("Limpiavidrios", "LIM"),
     ("Repelente / Trampa", "REP"),
+    ("Esponja", "ESP"),
+    ("Cepillo", "CEP"),
+    ("Pano de Microfibra", "PAN"),
+    ("Guante de Limpieza", "GUA"),
+    ("Rociador", "ROC"),
 )
 
+# Un equipo por sector: indice_sector recorre los 10 sectores, asi que el listado
+# de equipos y el de sectores quedan cruzado en todas las combinaciones.
+#
+# Los dos ultimos campos son (frecuencia de calibracion en dias, antiguedad de la
+# ultima calibracion en dias). Deciden si el equipo aparece en la vista de
+# vencimientos y en que estado, igual que ELEMENTOS con el recambio:
+#   - sin frecuencia, no aparece (equipos/services.py::listar_alertas_calibracion
+#     filtra los equipos activos con frecuencia y fecha cargadas)
+#   - con frecuencia, dias_restantes = frecuencia - antiguedad: negativo esta
+#     vencido, entre 0 y 15 esta proximo y por encima de 15 esta al dia (vigente).
+# Quedan dos equipos sin calibracion a proposito, para que el listado de equipos
+# no muestre que todo lo que no es de medicion directa se calibra.
 EQUIPOS = (
-    ("Heladera 1", "Fresar", "HF-0001", "heladera", 3, "Sala de frio"),
-    ("Horno de coccion", "Rational", "HC-0002", "horno", 0, "Linea de produccion"),
-    ("Balanza de plataforma", "Ohaus", "BP-0003", "balanza", 2, "Deposito de insumos"),
-    ("Termometro digital", "Testo", "TD-0004", "termometro", 3, "Sala de frio"),
-    ("Lavavajillas industrial", "Hobart", "LI-0005", "otro", 4, "Embalaje"),
+    ("Heladera 1", "Fresar", "HF-0001", "heladera", 0, "Sala de frio", 180, 195),
+    ("Mesa Refrigerada de Muestras", "Delta", "MR-0001", "otro", 1, "Sala de limpieza", 180, 172),
+    ("Balanza de Plataforma", "Ohaus", "BP-0001", "balanza", 2, "Deposito de insumos", 365, 300),
+    ("Heladera 2", "Fresar", "HF-0002", "heladera", 3, "Camara fria", 180, 190),
+    ("Lavavajillas Industrial", "Hobart", "LI-0001", "otro", 4, "Embalaje", None, None),
+    ("Amasadora de Masa", "Spiral", "AM-0001", "otro", 5, "Sala de recepcion", 365, 330),
+    ("Horno de Coccion", "Rational", "HC-0001", "horno", 6, "Linea de produccion", 365, 375),
+    ("Termometro Digital", "Testo", "TD-0001", "termometro", 7, "Expediciones", 365, 40),
+    ("Balanza de Laboratorio", "Kern", "BL-0001", "balanza", 8, "Laboratorio", 365, 355),
+    ("Compresor de Nitrogeno", "Atlas Copco", "CN-0001", "otro", 9, "Taller de mantenimiento", None, None),
 )
 
 INSUMOS = (
     ("Harina 000", 0, "materia prima", "Harina de trigo para masas."),
-    ("Azucar impalpable", 1, "materia prima", "Azucar refinada para scorpia."),
-    ("Sal fina", 1, "aditivo", "Sal de mesa para curado."),
-    ("Bolsa para rotular", 4, "envase", "Bolsa de polietileno para producto terminado."),
-    ("Caja de carton", 4, "envase", "Caja corrugada para transporte."),
+    ("Azucar Impalpable", 0, "materia prima", "Azucar refinada para scorpia."),
+    ("Sal Fina", 0, "aditivo", "Sal de mesa para curado."),
+    ("Levadura Seca", 1, "aditivo", "Levadura comprimida para fermentacion."),
+    ("Bolsa para Rotular", 6, "envase", "Bolsa de polietileno para producto terminado."),
+    ("Caja de Carton", 6, "envase", "Caja corrugada para transporte."),
+    ("Etiqueta Adhesiva", 6, "envase", "Etiqueta con el codigo de trazabilidad."),
+    ("Film Retractil", 0, "envase", "Film para pallets de producto terminado."),
+    ("Agua Tratada", 4, "otro", "Agua tratada para el circuito de limpieza."),
+    ("Concentrado de Aroma", 9, "aditivo", "Aroma dosificado para el horneado."),
 )
 
 INSUMOS_QUIMICOS = (
     ("Detergente Neutro Concentrado", "detergente", 3),
     ("Desinfectante a base de Hipoclorito", "desinfectante", 3),
     ("Desengrasante Concentrado", "desengrasante", 3),
-    ("Jabon Liquido para Manos", "otro", 3),
+    ("Jabon Liquido para Manos", "otro", 4),
     ("Limpiador de Equipamiento", "detergente", 3),
+    ("Desinfectante en Polvo", "desinfectante", 0),
+    ("Antigrasa de Cocina", "desengrasante", 3),
+    ("Sanitizante de Pisos", "desinfectante", 3),
+    ("Detergente Neutro Diluido", "detergente", 4),
+    ("Quitagrasa en Aerosol", "desengrasante", 4),
 )
 
+# (nombre, indice de tipo, frecuencia de recambio en dias, antiguedad del ultimo
+# recambio en dias). Los dos ultimos campos deciden si el elemento aparece en la
+# vista de vencimientos y en que estado:
+#   - sin frecuencia, no aparece (recambios/services.py::listar_alertas lo filtra)
+#   - con frecuencia, dias_restantes = frecuencia - antiguedad: si queda negativo
+#     esta vencido, entre 0 y 15 esta proximo y por encima de 15 esta vigente
+#     (vencimientos/constants.py y recambios/constants.py).
 ELEMENTOS = (
-    ("Esponja Abrasiva Verde", 0, None),
-    ("Pano de Microfibra Azul", 3, None),
-    ("Cepillo de Escobillas", 0, None),
-    ("Trampa Adhesiva para Insectos", 4, 90),
-    ("Rociador de Desinfeccion", 1, 30),
+    ("Esponja Abrasiva Verde", 5, 30, 42),
+    ("Pano de Microfibra Azul", 7, 60, 70),
+    ("Cepillo de Escobillas", 6, 90, 95),
+    ("Trampa Adhesiva para Insectos", 4, 90, 82),
+    ("Rociador de Desinfeccion", 9, None, 14),
+    ("Esponja Doble Cara", 5, 45, 33),
+    ("Pano de Microfibra Rosa", 7, 60, 52),
+    ("Cepillo de Mango Largo", 6, 120, 80),
+    ("Guante de Nitrilo", 8, 30, 10),
+    ("Franela para Limpiavidrios", 3, None, 25),
 )
 
 CAPACIDADES = (
@@ -137,6 +235,26 @@ CAPACIDADES = (
     ("Supervisar Limpieza", "Autoriza el cierre de tareas de limpieza", TipoCapacidad.PERSONALIZADA),
     ("Autorizar Desinfeccion", "Habilita las tareas de desinfeccion", TipoCapacidad.PERSONALIZADA),
     ("Gestionar Inventario", "Controla el stock de insumos y productos", TipoCapacidad.PERSONALIZADA),
+    ("Registrar Evidencias", "Adjunta el registro fotografico de cada tarea", TipoCapacidad.PERSONALIZADA),
+    ("Controlar Temperaturas", "Habilita el registro y control de temperaturas", TipoCapacidad.PERSONALIZADA),
+    ("Aprobar Planes POES", "Da el visto bueno a un plan antes de activarlo", TipoCapacidad.PERSONALIZADA),
+    ("Coordinar Turnos", "Asigna el personal a los turnos de limpieza", TipoCapacidad.PERSONALIZADA),
+    ("Reportar Incidentes", "Registra los incidentes detectados en el proceso", TipoCapacidad.PERSONALIZADA),
+)
+
+OBSERVACIONES_RECAMBIO = (
+    "Recambio preventivo programado.",
+    "Se cambio por desgaste.",
+    "Se cambio al perder eficacia.",
+    None,
+)
+
+OBSERVACIONES_CALIBRACION = (
+    "Calibracion anual con patron certificado.",
+    "Se ajusto la lectura a cero.",
+    "Certificado emitido por laboratorio externo.",
+    "Se verifico el rango de medicion completo.",
+    None,
 )
 
 # Deben coincidir con checklists/services.py::_filtrar_tareas_por_dia y con
@@ -152,9 +270,9 @@ DIAS_ABREVIADOS = {
 
 # (nombre, tipo_poes, frecuencia, destino)
 # El destino es ("equipo", i) o ("sector", i): exactamente uno de los dos, como
-# exige schemas.py::validar_equipo_xor_sector. Las cinco primeras tareas de cada
-# plan arrancan con dos diarias mas una semanal, mensual y de dias especificos,
-# de modo que el checklist de hoy muestre las cinco.
+# exige schemas.py::validar_equipo_xor_sector. Solo se usan los sectores 0 a 2 y
+# los equipos 0 a 2, que son los que tienen recursos con alcance propio en
+# ALCANCES_RECURSOS: asi ningun destino queda con filtros vacios en el frontend.
 TAREAS = (
     ("Control de temperatura en camara fria", "pre_operacional", "diaria", ("equipo", 0)),
     ("Verificacion de elementos de limpieza", "pre_operacional", "diaria", ("sector", 0)),
@@ -164,9 +282,19 @@ TAREAS = (
     ("Verificacion de rotulacion", "operacional", "diaria", ("equipo", 0)),
     ("Limpieza de linea de produccion", "operacional", "semanal", ("sector", 0)),
     ("Desinfeccion de utensilios", "post_operacional", "diaria", ("equipo", 1)),
-    ("Inspeccion de embalajes", "operacional", "diaria", ("sector", 4)),
+    ("Inspeccion de embalajes", "operacional", "diaria", ("sector", 2)),
     ("Rotulacion de trazabilidad", "pre_operacional", "mensual", ("equipo", 2)),
 )
+
+# Cuantas tareas de cada plan se anclan en el dia de hoy. Las primeras cinco
+# arrancan con dos diarias mas una semanal, una mensual y una de dias
+# especificos, para que el checklist de hoy muestre la mezcla de frecuencias. Las
+# siguientes retroceden un dia por tarea: si todas usaran hoy, las diez tareas
+# caerian el mismo dia y el historial no mostraria la cadencia propia de cada una.
+# El checklist de hoy no queda en cinco porque las cinco tareas diarias de TAREAS
+# caen todos los dias de todos modos, con anclaje o no: hoy quedan las cinco
+# diarias mas la semanal, la mensual y la de dias especificos, ocho en total.
+TAREAS_ANCLADAS_A_HOY = 5
 
 # (cantidad de insumos, cantidad de elementos) por tarea. Nunca (0, 0), para
 # respetar schemas.py::validar_al_menos_un_recurso. La mezcla es a proposito:
@@ -178,6 +306,11 @@ PERFILES_RECURSOS = (
     (1, 0),
     (0, 2),
     (2, 1),
+    (3, 2),
+    (1, 1),
+    (2, 0),
+    (0, 1),
+    (3, 0),
 )
 
 PASOS_POR_TIPO = {
@@ -206,6 +339,12 @@ MOTIVOS_NO_REALIZADA = (
     "Se omito porque faltaba el insumo requerido.",
     "El equipo se encontraba en uso.",
     "Quedo pendiente para el proximo turno.",
+    "El sector estaba ocupado con otra intervencion.",
+    "Se intento mas tarde y el horario ya habia cerrado.",
+    "Falto el elemento de limpieza asignado.",
+    "El responsable del sector no se encontro.",
+    "La tarea quedo fuera del alcance del turno.",
+    "Se postergo por una auditoria interna del sector.",
 )
 
 OBSERVACIONES_COMPLETADA = (
@@ -213,7 +352,66 @@ OBSERVACIONES_COMPLETADA = (
     "Se bloqueo el sector durante la intervencion.",
     "Se retiro el equipo del sector por mantenimiento.",
     "Dosis ajustada por mayor suciedad.",
+    "La superficie requierio una segunda pasada.",
+    "Se dejo constancia fotografica de la intervencion.",
+    "Se cumplio el procedimiento tal como esta definido.",
+    "El consumo fue menor al estimado.",
     None,
+    None,
+)
+
+# Alcance de los insumos quimicos y de los elementos de limpieza, en orden de
+# creacion: (None, None) es uso general y "sector"/"equipo" con su posicion.
+# De los 10 recursos, 4 son globales, 3 son de un sector y 3 son de un equipo.
+# Los globales son los que garantizan que toda tarea tenga al menos un recurso
+# compatible, y los destinos coinciden con los que usan las tareas de TAREAS.
+ALCANCES_RECURSOS = (
+    (None, 0),
+    (None, 0),
+    ("sector", 0),
+    (None, 0),
+    ("equipo", 0),
+    ("sector", 1),
+    (None, 0),
+    ("equipo", 1),
+    ("sector", 2),
+    ("equipo", 2),
+)
+
+# (indice de persona, capacidad) de los vinculos vigentes. Cubren las tres ramas
+# de navegacion de App.tsx: administrar+operar, solo operar y solo administrar.
+# Son tres los administradores activos porque personal/services.py
+# ::validar_ultimo_administrador rechaza dar de baja o cambiar el rol del
+# ultimo. La ultima persona queda sin capacidades porque esta dada de baja.
+ASIGNACIONES_CAPACIDADES = (
+    (0, "administrar"),
+    (0, "operar"),
+    (0, "Registrar Evidencias"),
+    (1, "operar"),
+    (1, "Supervisar Limpieza"),
+    (2, "operar"),
+    (2, "Controlar Temperaturas"),
+    (3, "operar"),
+    (3, "Autorizar Desinfeccion"),
+    (4, "administrar"),
+    (4, "operar"),
+    (4, "Gestionar Inventario"),
+    (5, "operar"),
+    (5, "Coordinar Turnos"),
+    (6, "operar"),
+    (7, "administrar"),
+    (7, "operar"),
+    (7, "Aprobar Planes POES"),
+    (8, "operar"),
+    (8, "Reportar Incidentes"),
+)
+
+# (indice de persona, capacidad, dias atras) de vinculos ya dados de baja. Quedan
+# con activo=False y fecha_hasta, que es lo que muestra el historial de
+# capacidades del detalle de la persona.
+CAPACIDADES_HISTORICAS = (
+    (2, "Supervisar Limpieza", 240),
+    (8, "Gestionar Inventario", 120),
 )
 
 
@@ -232,29 +430,39 @@ def _sin_acentos(valor):
     return unicodedata.normalize("NFKD", valor).encode("ascii", "ignore").decode("ascii")
 
 
-def _ciclar(catalogo, cantidad, campo=0):
-    """Repite el catalogo hasta `cantidad`, sufijando el campo pedido."""
+def _ciclar(catalogo, cantidad, campos=(0,)):
+    """Repite el catalogo hasta `cantidad`, sufijando los campos pedidos.
+
+    Los 10 catalogos de este archivo tienen 10 entradas, asi que con la cantidad
+    por defecto no se repite ninguno y los sufijos no aparecen nunca. Quedan
+    para cuando se pide mas de lo que hay en el catalogo: en EQUIPOS se sufijan
+    nombre y numero de serie juntos, porque la unicidad es del trio nombre,
+    marca y serie y una serie repetida se veria rara en el listado.
+    """
     elementos = []
     for indice in range(cantidad):
         base = catalogo[indice % len(catalogo)]
         valores = [base] if isinstance(base, str) else list(base)
         vuelta = indice // len(catalogo)
         if vuelta:
-            valores[campo] = f"{valores[campo]} ({vuelta + 1})"
+            for campo in campos:
+                valores[campo] = f"{valores[campo]} ({vuelta + 1})"
         elementos.append(tuple(valores))
     return elementos
 
 
 def _alcance_del_recurso(indice, sectores, equipos):
-    """Sector y equipo del recurso, en un patron que cubre los destinos de tarea."""
-    patron = indice % 5
-    if patron in (0, 1):
+    """Sector y equipo del recurso, en un patron que cubre los destinos de tarea.
+
+    Devuelve (None, None) para los recursos de uso general, que son los
+    compatibles con cualquier tarea.
+    """
+    tipo, posicion = ALCANCES_RECURSOS[indice % len(ALCANCES_RECURSOS)]
+    if tipo is None:
         return None, None
-    if patron == 2:
-        return sectores[0], None
-    if patron == 3:
-        return sectores[1 % len(sectores)], None
-    return None, equipos[0]
+    if tipo == "sector":
+        return sectores[posicion % len(sectores)], None
+    return None, equipos[posicion % len(equipos)]
 
 
 def _es_compatible(recurso, equipo, sector, es_insumo):
@@ -297,13 +505,29 @@ def _elegir_recursos(catalogo, desplazamiento, cantidad, equipo, sector, es_insu
     return elegidos
 
 
-def _detalle_frecuencia(frecuencia, hoy):
+def _ancla_de_la_tarea(indice, hoy):
+    """Fecha de referencia del `detalle_frecuencia` de la tarea `indice`.
+
+    Las primeras TAREAS_ANCLADAS_A_HOY tareas usan hoy, para que el checklist del
+    dia muestre la mezcla de frecuencias. Las siguientes retroceden un dia por
+    tarea, asi cada una aparece en el historial segun su propia cadencia en vez
+    de caer todas el mismo dia.
+
+    Solo importa para las tareas con detalle: las diarias no tienen
+    `detalle_frecuencia`, asi que caen todos los dias este o no sea hoy.
+    """
+    if indice < TAREAS_ANCLADAS_A_HOY:
+        return hoy
+    return hoy - timedelta(days=indice - TAREAS_ANCLADAS_A_HOY + 1)
+
+
+def _detalle_frecuencia(frecuencia, ancla):
     if frecuencia == "semanal":
-        return DIAS_SEMANA[hoy.isoweekday()]
+        return DIAS_SEMANA[ancla.isoweekday()]
     if frecuencia == "mensual":
-        return str(hoy.day)
+        return str(ancla.day)
     if frecuencia == "dias_especificos":
-        return DIAS_ABREVIADOS[hoy.isoweekday()]
+        return DIAS_ABREVIADOS[ancla.isoweekday()]
     return None
 
 
@@ -357,7 +581,7 @@ def _tablas_con_datos(db):
 # --------------------------------------------------------------------------
 # Siembra
 # --------------------------------------------------------------------------
-def _crear_prerrequisitos(db, cantidad):
+def _crear_prerrequisitos(db, cantidad, hoy):
     unidades = [
         UnidadMedida(nombre=nombre, simbolo=simbolo, tipo_magnitud=magnitud, disponible=True)
         for nombre, simbolo, magnitud in _ciclar(UNIDADES, cantidad)
@@ -381,8 +605,23 @@ def _crear_prerrequisitos(db, cantidad):
             sector=sectores[indice_sector % len(sectores)],
             ubicacion=ubicacion,
             activo=True,
+            frecuencia_calibracion_dias=frecuencia_calibracion,
+            fecha_ultima_calibracion=(
+                hoy - timedelta(days=antiguedad_calibracion)
+                if frecuencia_calibracion is not None and antiguedad_calibracion is not None
+                else None
+            ),
         )
-        for nombre, marca, serie, categoria, indice_sector, ubicacion in _ciclar(EQUIPOS, cantidad)
+        for (
+            nombre,
+            marca,
+            serie,
+            categoria,
+            indice_sector,
+            ubicacion,
+            frecuencia_calibracion,
+            antiguedad_calibracion,
+        ) in _ciclar(EQUIPOS, cantidad, campos=(0, 2))
     ]
     insumos = [
         Insumo(
@@ -410,20 +649,31 @@ def _crear_prerrequisitos(db, cantidad):
             )
         )
 
+    # El correlativo va por tipo y en 4 digitos, igual que lo genera
+    # elementos_limpieza/services.py::crear_elemento_limpieza. Asi el proximo
+    # elemento que cree la app desde el frontend sigue la numeracion sembrada.
+    # Los indices de tipo de ELEMENTOS estan escritos para las diez entradas de
+    # TIPOS_ELEMENTO: con --cantidad menor el resto los envuelve y un elemento
+    # puede quedar de un tipo que no le corresponde. Se acepta en esa corrida de
+    # humo, que solo sirve para comprobar que el seed entra; con diez, que es lo
+    # documentado, los pares salen correctos.
     elementos = []
-    for indice, (nombre, indice_tipo, recambio) in enumerate(_ciclar(ELEMENTOS, cantidad)):
+    correlativos: dict[int, int] = {}
+    for indice, (nombre, indice_tipo, recambio, antiguedad) in enumerate(_ciclar(ELEMENTOS, cantidad)):
         sector, equipo = _alcance_del_recurso(indice, sectores, equipos)
         tipo = tipos[indice_tipo % len(tipos)]
+        correlativo = correlativos.get(tipo.id, 0) + 1
+        correlativos[tipo.id] = correlativo
         elementos.append(
             ElementoLimpieza(
-                codigo=f"{tipo.prefijo}-{indice + 1:03d}",
+                codigo=f"{tipo.prefijo}-{correlativo:04d}",
                 nombre=nombre,
                 tipo=tipo,
                 sector=sector,
                 equipo=equipo,
                 frecuencia_recambio_dias=recambio,
                 fecha_ultimo_recambio=datetime.combine(
-                    date.today() - timedelta(days=recambio or 7), time(9, 0)
+                    hoy - timedelta(days=antiguedad), time(9, 0)
                 ),
                 activo=True,
             )
@@ -437,6 +687,66 @@ def _crear_prerrequisitos(db, cantidad):
         "insumos_quimicos": insumos_quimicos,
         "elementos": elementos,
     }
+
+
+def _crear_historial_recambios(db, elementos):
+    """Historial de recambio de los elementos que tienen frecuencia configurada.
+
+    El ultimo registro coincide con fecha_ultimo_recambio, que es el valor que
+    ya muestra el detalle del elemento, y los anteriores caen hacia atras un
+    periodo completo cada uno. Sin esto el detalle de recambios de cada elemento
+    aparece vacio y la antiguedad sembrada no tiene respaldo.
+    """
+    recambios = []
+    for indice, elemento in enumerate(elementos):
+        periodo = elemento.frecuencia_recambio_dias
+        if periodo is None:
+            continue
+        ultimo = elemento.fecha_ultimo_recambio.date()
+        for vuelta in range(1 + indice % 3):
+            recambios.append(
+                Recambio(
+                    elemento_id=elemento.id,
+                    fecha_recambio=datetime.combine(
+                        ultimo - timedelta(days=periodo * vuelta), time(9, 0)
+                    ),
+                    observaciones=OBSERVACIONES_RECAMBIO[vuelta % len(OBSERVACIONES_RECAMBIO)],
+                )
+            )
+    db.add_all(recambios)
+    db.flush()
+    return len(recambios)
+
+
+def _crear_historial_calibraciones(db, equipos):
+    """Historial de calibracion de los equipos que tienen frecuencia configurada.
+
+    Mismo criterio que _crear_historial_recambios: el ultimo registro coincide
+    con fecha_ultima_calibracion, que es la que usa
+    equipos/services.py::calcular_semaforo_equipo para la proxima fecha, y los
+    anteriores caen hacia atras un periodo completo cada uno. Sin esto el detalle
+    de calibraciones del equipo aparece vacio y la fecha sembrada no tiene
+    respaldo.
+    """
+    calibraciones = []
+    for indice, equipo in enumerate(equipos):
+        periodo = equipo.frecuencia_calibracion_dias
+        if periodo is None:
+            continue
+        ultima = equipo.fecha_ultima_calibracion
+        for vuelta in range(1 + indice % 3):
+            calibraciones.append(
+                CalibracionEquipo(
+                    equipo_id=equipo.id,
+                    fecha_calibracion=ultima - timedelta(days=periodo * vuelta),
+                    observaciones=OBSERVACIONES_CALIBRACION[
+                        vuelta % len(OBSERVACIONES_CALIBRACION)
+                    ],
+                )
+            )
+    db.add_all(calibraciones)
+    db.flush()
+    return len(calibraciones)
 
 
 def _crear_personas(db, fake, cantidad, hoy):
@@ -463,28 +773,68 @@ def _crear_personas(db, fake, cantidad, hoy):
     db.add_all(personas)
     db.flush()
 
-    # Cubren las tres ramas de navegacion de App.tsx: administrar+operar,
-    # solo operar y solo administrar. La ultima persona queda sin capacidades
-    # porque esta dada de baja.
-    asignaciones = (
-        (0, "administrar"),
-        (0, "operar"),
-        (1, "operar"),
-        (2, "administrar"),
-        (3, "Supervisar Limpieza"),
-    )
+    # Cada persona activa tiene al menos una capacidad vigente, como exige
+    # personal/schemas.py::PersonaCreate, y hay varios operadores para que el
+    # historial no repita siempre los mismos nombres. La ultima persona queda sin
+    # capacidades porque esta dada de baja.
+    # Los dos filtros de abajo son para --cantidad menor que diez: con menos de
+    # diez personas o de menos de diez capacidades no existen todas las filas de
+    # ASIGNACIONES_CAPACIDADES ni de CAPACIDADES_HISTORICAS. Igual ningun filtro
+    # deja una capacidad huerfana, porque las tres primeras de
+    # ASIGNACIONES_CAPACIDADES ya se reparten entre las tres primeras personas.
     por_nombre = {capacidad.nombre: capacidad for capacidad in capacidades}
     vinculos = [
         PersonaCapacidad(
             persona=personas[indice_persona],
             capacidad=por_nombre[nombre],
-            fecha_desde=datetime.combine(hoy - timedelta(days=365), time(8, 0)),
+            fecha_desde=datetime.combine(
+                hoy - timedelta(days=365 - indice_persona * 20), time(8, 0)
+            ),
             activo=True,
         )
-        for indice_persona, nombre in asignaciones
-        if indice_persona < len(personas)
+        for indice_persona, nombre in ASIGNACIONES_CAPACIDADES
+        if indice_persona < len(personas) and nombre in por_nombre
     ]
-    db.add_all(vinculos)
+    historicos = [
+        PersonaCapacidad(
+            persona=personas[indice_persona],
+            capacidad=por_nombre[nombre],
+            fecha_desde=datetime.combine(
+                hoy - timedelta(days=dias + 200), time(8, 0)
+            ),
+            fecha_hasta=datetime.combine(hoy - timedelta(days=dias), time(8, 0)),
+            activo=False,
+        )
+        for indice_persona, nombre, dias in CAPACIDADES_HISTORICAS
+        if indice_persona < len(personas) and nombre in por_nombre
+    ]
+    faltantes = [persona.dni for persona in personas[:-1] if not any(
+        vinculo.persona is persona for vinculo in vinculos
+    )]
+    if faltantes:
+        raise RuntimeError(
+            "Personas activas sin capacidad vigente: " + ", ".join(faltantes)
+        )
+    db.add_all(vinculos + historicos)
+    db.flush()
+
+    # Asigna contrasena inicial = DNI solo a personal activo con capacidades
+    # habilitantes (administrar u operar). El resto no tiene contrasena.
+    CAPACIDADES_HABILITANTES = {RolesSistema.ADMINISTRAR, RolesSistema.OPERAR}
+    for persona in personas:
+        if not persona.activo:
+            persona.password_hash = None
+            continue
+        # Tiene alguna capacidad vigente habilitante?
+        tiene_habilitante = any(
+            vinculo.activo
+            and vinculo.capacidad.nombre in CAPACIDADES_HABILITANTES
+            for vinculo in persona.capacidades
+        )
+        if tiene_habilitante:
+            persona.password_hash = get_password_hash(persona.dni)
+        else:
+            persona.password_hash = None
     db.flush()
     return personas
 
@@ -496,14 +846,28 @@ def _crear_planes(db, personas, cantidad, hoy):
         "Controlar la higiene de la camara fria.",
         "Mantener el orden y la higiene del deposito de insumos.",
         "Verificar las condiciones intermedias de elaboracion.",
+        "Asegurar la recepcion e inspeccion de la materia prima.",
+        "Estandarizar la limpieza de las salas de proceso.",
+        "Prevenir la contaminacion durante el despacho.",
+        "Custodiar los reactivos y el instrumental del laboratorio.",
+        "Registrar los recambios preventivos del parque de equipos.",
     )
     # (etiqueta, dias desde hoy hasta la emision, dias hasta el archivado, activo)
+    # Solo la primera queda vigente y solo la segunda queda en borrador
+    # (activo=False y fecha_hasta=None), que es lo que distinguen
+    # obtener_plan_activo y obtener_plan_borrador. Las otras ocho quedan
+    # archivadas y dan contenido al historial de planes.
     ventanas = (
         ("Produccion", 60, None, True),
         ("Embalaje", 1, None, False),
         ("Camara Fria", 240, 60, False),
         ("Almacen de Insumos", 365, 240, False),
         ("Limpieza", 420, 365, False),
+        ("Recepcion de Materia Prima", 500, 450, False),
+        ("Sala de Proceso", 600, 520, False),
+        ("Expediciones", 700, 640, False),
+        ("Laboratorio", 800, 760, False),
+        ("Taller de Mantenimiento", 900, 860, False),
     )
 
     planes = []
@@ -548,7 +912,9 @@ def _crear_tareas(db, fake, planes, cantidad, hoy, equipos, sectores, insumos_qu
                 nombre=nombre,
                 tipo_poes=tipo_poes,
                 frecuencia=frecuencia,
-                detalle_frecuencia=_detalle_frecuencia(frecuencia, hoy),
+                detalle_frecuencia=_detalle_frecuencia(
+                    frecuencia, _ancla_de_la_tarea(indice, hoy)
+                ),
                 equipo=equipo,
                 sector=sector,
                 metodo=_metodo(fake, nombre, tipo_poes),
@@ -776,6 +1142,104 @@ def _verificar_ascii_base(db):
         )
 
 
+def _verificar_cantidades(db, cantidad):
+    """Cada tabla de TABLAS_CON_CANTIDAD_FIJA tiene que quedar con `cantidad` filas.
+
+    Es lo que hace que el seed siga sirviendo como base de demostracion con diez
+    registros por maestro, y no solo con cinco por paquete.
+    """
+    desfasadas = []
+    for nombre in TABLAS_CON_CANTIDAD_FIJA:
+        tabla = ModeloBase.metadata.tables[nombre]
+        total = db.scalar(select(func.count()).select_from(tabla))
+        if total != cantidad:
+            desfasadas.append(f"{nombre}={total} (se esperaban {cantidad})")
+    if desfasadas:
+        raise RuntimeError("Tablas con una cantidad inesperada: " + "; ".join(desfasadas))
+
+    for plan in db.scalars(select(PlanPOES)).all():
+        if len(plan.tareas) != cantidad:
+            raise RuntimeError(
+                f"El plan {plan.nombre!r} tiene {len(plan.tareas)} tareas "
+                f"y se esperaban {cantidad}."
+            )
+
+
+def _verificar_vencimientos(db, cantidad):
+    """La vista consolidada tiene que tener filas en los tres estados.
+
+    Es lo que comprueba que el escalonado de las fechas de recambio de ELEMENTOS
+    sirve: si todas las fechas fueran el dia de hoy, el listado saldria entero en
+    "proximo" y el filtro por estado no tendria con que trabajar.
+
+    Los tres estados solo se exigen con el catalogo completo. Con
+    --cantidad menor el recorte de ELEMENTOS deja menos antiguedades escalonadas
+    y puede dar, por ejemplo, solo vencidos; lo que no puede fallar en ningun
+    caso es que un elemento con frecuencia quede fuera de la vista.
+    """
+    vencimientos = listar_vencimientos(db)
+    if not vencimientos:
+        raise RuntimeError("La vista de vencimientos esta vacia.")
+    if cantidad < len(ELEMENTOS):
+        return
+
+    estados = {vencimiento.estado for vencimiento in vencimientos}
+    faltantes = [estado.value for estado in EstadoVencimiento if estado not in estados]
+    if faltantes:
+        raise RuntimeError(
+            "La vista de vencimientos no tiene filas en estado: " + ", ".join(faltantes)
+        )
+
+
+def _verificar_calibraciones(db, cantidad):
+    """Los equipos con calibracion configurada tienen que aparecer en la vista.
+
+    equipos/services.py::listar_alertas_calibracion filtra los equipos activos con
+    frecuencia y fecha de ultima calibracion cargadas, asi que cada uno de esos
+    tiene que generar exactamente una fila de categoria EQUIPO, y el historial de
+    calibraciones tiene que terminar en fecha_ultima_calibracion: es el respaldo
+    que muestra el detalle del equipo.
+    """
+    configurados = db.scalars(
+        select(Equipo).where(
+            Equipo.activo.is_(True),
+            Equipo.frecuencia_calibracion_dias.isnot(None),
+            Equipo.fecha_ultima_calibracion.isnot(None),
+        )
+    ).all()
+    if not configurados:
+        raise RuntimeError("Ningun equipo quedo con calibracion configurada.")
+
+    alertas = listar_vencimientos(db, categoria=CategoriaVencimiento.EQUIPO)
+    if len(alertas) != len(configurados):
+        raise RuntimeError(
+            f"Hay {len(configurados)} equipos con calibracion configurada "
+            f"pero {len(alertas)} vencimientos de equipos."
+        )
+
+    for equipo in configurados:
+        ultima = db.scalar(
+            select(func.max(CalibracionEquipo.fecha_calibracion)).where(
+                CalibracionEquipo.equipo_id == equipo.id
+            )
+        )
+        if ultima != equipo.fecha_ultima_calibracion:
+            raise RuntimeError(
+                f"El historial de calibraciones del equipo {equipo.id} no termina "
+                f"en {equipo.fecha_ultima_calibracion}."
+            )
+
+    if cantidad < len(EQUIPOS):
+        return
+    estados = {alerta.estado for alerta in alertas}
+    faltantes = [estado.value for estado in EstadoVencimiento if estado not in estados]
+    if faltantes:
+        raise RuntimeError(
+            "Las calibraciones de equipos no tienen filas en estado: "
+            + ", ".join(faltantes)
+        )
+
+
 def _verificar_multi_insumo(plan_vigente):
     """El plan vigente tiene que incluir tareas con 2 y con 3 insumos.
 
@@ -789,7 +1253,7 @@ def _verificar_multi_insumo(plan_vigente):
         raise RuntimeError("El plan vigente no tiene ninguna tarea con 2 insumos.")
 
 
-def _verificar(db, hoy):
+def _verificar(db, hoy, cantidad):
     _verificar_ascii_fuente()
 
     plan_vigente = obtener_plan_activo(db)
@@ -844,6 +1308,9 @@ def _verificar(db, hoy):
 
     _verificar_ascii_base(db)
     _verificar_multi_insumo(plan_vigente)
+    _verificar_cantidades(db, cantidad)
+    _verificar_vencimientos(db, cantidad)
+    _verificar_calibraciones(db, cantidad)
 
     return plan_vigente, esperadas_hoy
 
@@ -894,6 +1361,29 @@ def _resumen(db, personas, plan_vigente, tareas_hoy, estados):
     print(f"  Ejecuciones completadas con 2 o 3 insumos: {con_dos_o_mas} (de ellas {con_tres} con 3)")
 
     print()
+    print("  Vencimientos (vista consolidada, ordenados por urgencia)")
+    for estado in EstadoVencimiento:
+        filas = listar_vencimientos(db, estado=estado)
+        print(f"    {estado.value:<12} {len(filas)}")
+        for vencimiento in filas[:3]:
+            print(
+                f"      {vencimiento.concepto:<34} {vencimiento.dias_restantes:>5} dias"
+                f"   ({vencimiento.detalle})"
+            )
+    sin_frecuencia = db.scalar(
+        select(func.count())
+        .select_from(ElementoLimpieza)
+        .where(ElementoLimpieza.frecuencia_recambio_dias.is_(None))
+    )
+    print(f"    elementos sin frecuencia de recambio: {sin_frecuencia} (no generan vencimiento)")
+    sin_calibracion = db.scalar(
+        select(func.count())
+        .select_from(Equipo)
+        .where(Equipo.frecuencia_calibracion_dias.is_(None))
+    )
+    print(f"    equipos sin frecuencia de calibracion: {sin_calibracion} (no generan vencimiento)")
+
+    print()
     print("  Ingreso por DNI (LoginPage compara el documento contra GET /personal/)")
     for persona in personas:
         nombres = ", ".join(
@@ -914,7 +1404,12 @@ def _parsear_argumentos():
     parser.add_argument(
         "--reset", action="store_true", help="Vacia la base antes de sembrar."
     )
-    parser.add_argument("--cantidad", type=int, default=5, help="Registros por maestro (minimo 3).")
+    parser.add_argument(
+        "--cantidad",
+        type=int,
+        default=10,
+        help="Registros por maestro y tareas por plan (minimo 3, por defecto 10).",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Semilla de Faker.")
     parser.add_argument("--dias-historia", type=int, default=30, help="Dias con ejecuciones.")
     parser.add_argument(
@@ -956,7 +1451,9 @@ def main():
                 )
 
         try:
-            catalogo = _crear_prerrequisitos(db, args.cantidad)
+            catalogo = _crear_prerrequisitos(db, args.cantidad, hoy)
+            _crear_historial_recambios(db, catalogo["elementos"])
+            _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
@@ -981,7 +1478,7 @@ def main():
             )
             db.flush()
 
-            plan_vigente, tareas_hoy = _verificar(db, hoy)
+            plan_vigente, tareas_hoy = _verificar(db, hoy, args.cantidad)
             db.commit()
         except Exception:
             db.rollback()

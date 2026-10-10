@@ -1,5 +1,10 @@
+import os
+import uuid
+from pathlib import Path
+
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from typing import List, Optional   
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -9,6 +14,15 @@ from src.sectores.models import Sector
 from src.equipos import schemas, exceptions
 from src.sectores import exceptions as sector_exceptions
 
+from datetime import date, timedelta
+from fastapi import HTTPException, status, UploadFile
+from sqlalchemy.orm import Session
+from src.equipos.models import Equipo, CalibracionEquipo
+from src.equipos.schemas import CalibracionEquipoCreate, AlertaCalibracion
+
+UMBRAL_DIAS_PROXIMO = 15
+EXTENSIONES_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
+MAX_TAMANIO_BYTES= 10 * 1024 * 1024  # 10 MB
 
 def crear_equipo(db: Session, equipo: schemas.EquipoCreate) -> Equipo:
     sector = db.scalar(
@@ -60,14 +74,15 @@ def listar_equipos(db: Session) -> List[Equipo]:
 
 def leer_equipo(db: Session, equipo_id: int) -> Equipo:
     db_equipo = db.scalar(
-        select(Equipo).where(
+        select(Equipo)
+        .options(selectinload(Equipo.calibraciones))   
+        .where(
             Equipo.id == equipo_id
         )
     )
 
     if db_equipo is None:
         raise exceptions.EquipoNoEncontrado()
-
     return db_equipo
 
 
@@ -177,3 +192,132 @@ def eliminar_equipo(db: Session, equipo_id: int) -> Equipo:
         )
 
     return db_equipo
+
+def calcular_semaforo_equipo(fecha_ultima: date, frecuencia_dias: int, fecha_ref: date | None = None) -> tuple[date, int, str]:
+    """Calcula la próxima fecha, días restantes y estado (vencido, proximo, al_dia)."""
+    proxima_fecha = fecha_ultima + timedelta(days=frecuencia_dias)
+    hoy = fecha_ref or date.today()
+    dias_restantes = (proxima_fecha - hoy).days
+
+    if dias_restantes < 0:
+        estado = "vencido"
+    elif dias_restantes <= UMBRAL_DIAS_PROXIMO:
+        estado = "proximo"
+    else:
+        estado = "al_dia"
+
+    return proxima_fecha, dias_restantes, estado
+
+
+def registrar_calibracion(
+    db: Session,
+    equipo_id: int,
+    fecha_calibracion: date,
+    observaciones: Optional[str] = None,
+    archivo: Optional[UploadFile] = None
+):
+    db_equipo = leer_equipo(db, equipo_id)
+
+    if fecha_calibracion > date.today():
+        raise exceptions.CalibracionFechaFutura()
+
+    url_certificado = None
+    if archivo:
+        url_certificado = guardar_archivo_certificado(archivo)
+
+    nueva_calibracion = CalibracionEquipo(
+        equipo_id=equipo_id,
+        fecha_calibracion=fecha_calibracion,
+        observaciones=observaciones,
+        certificado_url=url_certificado
+    )
+    db.add(nueva_calibracion)
+
+    db_equipo.fecha_ultima_calibracion = fecha_calibracion
+
+    try:
+        db.commit()
+        db.refresh(nueva_calibracion)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error al registrar la calibración")
+
+    return nueva_calibracion
+
+def listar_historial_calibraciones(db: Session, equipo_id: int) -> list[CalibracionEquipo]:
+    equipo = db.query(Equipo).filter(Equipo.id == equipo_id).first()
+    if not equipo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Equipo no encontrado",
+        )
+    return (
+        db.query(CalibracionEquipo)
+        .filter(CalibracionEquipo.equipo_id == equipo_id)
+        .order_by(CalibracionEquipo.fecha_calibracion.desc())
+        .all()
+    )
+
+
+def listar_alertas_calibracion(db: Session) -> list[AlertaCalibracion]:
+    equipos = (
+        db.query(Equipo)
+        .filter(
+            Equipo.activo.is_(True),
+            Equipo.frecuencia_calibracion_dias.isnot(None),
+            Equipo.frecuencia_calibracion_dias > 0,
+            Equipo.fecha_ultima_calibracion.isnot(None),
+        )
+        .all()
+    )
+
+    alertas: list[AlertaCalibracion] = []
+    for eq in equipos:
+        proxima, dias, estado = calcular_semaforo_equipo(
+            eq.fecha_ultima_calibracion, eq.frecuencia_calibracion_dias  # type: ignore
+        )
+        alertas.append(
+            AlertaCalibracion(
+                entidad_id=eq.id,
+                entidad=f"{eq.nombre} ({eq.marca} - {eq.numero_serie})",
+                tipo="equipo",
+                proxima_fecha=proxima,
+                dias_restantes=dias,
+                estado=estado,
+            )
+        )
+
+    # Ordenados por más urgente primero (menor cantidad de días restantes)
+    alertas.sort(key=lambda a: a.dias_restantes)
+    return alertas
+
+def guardar_archivo_certificado(archivo: UploadFile) -> str:
+    """Valida formato y tamaño, guardando el archivo en backend/uploads/certificados."""
+    nombre_original = archivo.filename or ""
+    ext = os.path.splitext(nombre_original)[1].lower()
+    
+    if ext not in EXTENSIONES_PERMITIDAS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Formato de archivo '{ext}' no permitido. Use PDF, JPG, PNG o WebP.",
+        )
+
+    contenido = archivo.file.read()
+    if len(contenido) > MAX_TAMANIO_BYTES: 
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El certificado no debe superar los 10MB.",
+        )
+
+    nombre_generado = f"{uuid.uuid4().hex}{ext}"
+    
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    
+    ruta_directorio = BASE_DIR / "uploads" / "certificados"
+    ruta_directorio.mkdir(parents=True, exist_ok=True)
+    
+    ruta_completa = ruta_directorio / nombre_generado
+    with open(ruta_completa, "wb") as f:
+        f.write(contenido)
+
+    return f"/uploads/certificados/{nombre_generado}"

@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
   FiEdit2,
@@ -30,9 +31,7 @@ interface ListadoInsumosQuimicosProps {
   onVerUnidades?: () => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/insumos-quimicos/";
-const ITEMS_POR_PAGINA = 5;
-
+const ENDPOINT = `${BASE_URL}/insumos-quimicos/`;
 const formatearConsumo = (consumo: number) =>
   Number(consumo).toLocaleString("es-AR", {
     maximumFractionDigits: 3,

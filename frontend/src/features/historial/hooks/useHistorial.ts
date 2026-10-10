@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
+import { BASE_URL } from "../../../config";
 import type { EjecucionTarea } from "../../checklists/types";
 
-const BASE_URL = "http://127.0.0.1:8000/checklists/historial";
+const HISTORIAL_URL = `${BASE_URL}/checklists/historial`;
 
 interface UseHistorialOptions {
   // Rango ya aplicado por el usuario (no el borrador del filtro): así cambiar
@@ -27,7 +30,7 @@ export const useHistorial = ({ desde, hasta }: UseHistorialOptions) => {
 
     const params = new URLSearchParams({ desde, hasta });
 
-    fetch(`${BASE_URL}?${params.toString()}`)
+    apiFetch(`${HISTORIAL_URL}?${params.toString()}`)
       .then(async (res) => {
         if (res.ok) return (await res.json()) as EjecucionTarea[];
 

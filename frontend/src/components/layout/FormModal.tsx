@@ -7,6 +7,13 @@ interface FormModalProps {
   title?: string;
   titleIcon?: ElementType;
   showClose?: boolean;
+  /**
+   * Cierra el modal al hacer click o al mover el foco afuera. Default true:
+   * es lo que quieren los formularios. Se apaga cuando el modal se abre en el
+   * mismo tick que otro overlay se cierra, porque Ark interpreta el foco que
+   * queda en `body` como una interaccion outside y cierra el recien abierto.
+   */
+  closeOnInteractOutside?: boolean;
   onClose: () => void;
   children: ReactNode;
 }
@@ -16,10 +23,15 @@ export const FormModal = ({
   title,
   titleIcon,
   showClose = false,
+  closeOnInteractOutside = true,
   onClose,
   children,
 }: FormModalProps) => (
-  <Dialog.Root open={open} onOpenChange={(e) => !e.open && onClose()}>
+  <Dialog.Root
+    open={open}
+    onOpenChange={(e) => !e.open && onClose()}
+    closeOnInteractOutside={closeOnInteractOutside}
+  >
     <Portal>
       <Dialog.Backdrop />
       <Dialog.Positioner>

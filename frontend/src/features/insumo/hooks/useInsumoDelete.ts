@@ -1,3 +1,5 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
+import { BASE_URL } from "../../../config";
 import type { Insumo } from "../types";
 
 type FastApiError = {
@@ -22,7 +24,7 @@ export const handleDelete = async ({
   setError("");
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/insumos/${insumo.id}`, {
+    const res = await apiFetch(`${BASE_URL}/insumos/${insumo.id}`, {
       method: "DELETE",
     });
 

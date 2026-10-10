@@ -5,6 +5,7 @@ import {
   Button,
   Collapsible,
   Flex,
+  HStack,
   Icon,
   IconButton,
   Text,
@@ -27,8 +28,10 @@ import {
   FiMap,
   FiDroplet,
   FiCheckSquare,
+  FiAlertCircle,
 } from "react-icons/fi";
-import { MdOutlineCleaningServices } from 'react-icons/md';
+import { MdOutlineCleaningServices } from "react-icons/md";
+import { CampanaNotificaciones } from "./CampanaNotificaciones";
 interface LinkNavItem {
   to: string;
   label: string;
@@ -84,6 +87,13 @@ const planItems: NavItem[] = [
   { to: "/historial-planes", label: "Historial", icon: FiClock },
 ];
 
+// Acceso directo ubicado debajo del grupo "Plan POE".
+const vencimientosItem: LinkNavItem = {
+  to: "/vencimientos",
+  label: "Vencimientos",
+  icon: FiAlertCircle,
+};
+
 const isActiveRoute = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`);
 
@@ -124,7 +134,9 @@ const SingleNavLink = ({
       bg={active ? "white" : undefined}
       color={active ? "green.700" : "white"}
       borderLeft={!isSubItem ? "4px solid" : undefined}
-      borderLeftColor={!isSubItem ? (active ? "green.400" : "transparent") : undefined}
+      borderLeftColor={
+        !isSubItem ? (active ? "green.400" : "transparent") : undefined
+      }
       focusRing='outside'
       _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
       transition='background 0.15s ease, color 0.15s ease'
@@ -309,7 +321,7 @@ export const NavBar = ({
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const planAccordionOpen = isCollapsed ? true : planOpen;
   const checklistAccordionOpen = isCollapsed ? true : checklistOpen;
-  
+
   const sidebarW = isCollapsed ? "64px" : "260px";
 
   const handleOpenChange = (open: boolean) => {
@@ -339,6 +351,11 @@ export const NavBar = ({
       flexShrink={0}
       overflowY='auto'
       overflowX='hidden'
+      css={{
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
+        "&::-webkit-scrollbar": { display: "none" },
+      }}
       transition='width 0.25s ease'
     >
       <Flex
@@ -366,25 +383,32 @@ export const NavBar = ({
           </NavTooltip>
         ) : (
           <>
-            <NavLink
-              to='/'
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                minWidth: 0,
-              }}
-            >
-              <Icon as={brandIcon} boxSize={6} color='white' flexShrink={0} />
-              <Text
-                color='white'
-                fontSize='xl'
-                fontWeight='bold'
-                whiteSpace='nowrap'
+            {/*
+              Campana a la derecha del título, agrupada con el NavLink para que
+              `justify: space-between` no la separe y la mande al medio.
+            */}
+            <HStack gap={2} align='center' minWidth={0}>
+              <NavLink
+                to='/'
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  minWidth: 0,
+                }}
               >
-                {title}
-              </Text>
-            </NavLink>
+                <Icon as={brandIcon} boxSize={6} color='white' flexShrink={0} />
+                <Text
+                  color='white'
+                  fontSize='xl'
+                  fontWeight='bold'
+                  whiteSpace='nowrap'
+                >
+                  {title}
+                </Text>
+              </NavLink>
+              <CampanaNotificaciones />
+            </HStack>
             <NavTooltip label='Colapsar menú'>
               <IconButton
                 aria-label='Colapsar menú'
@@ -401,6 +425,19 @@ export const NavBar = ({
         )}
       </Flex>
 
+      {/*
+        Con el sidebar colapsado el contenido mide 40px (64px menos el p={3}) y
+        solo entra UN boton de iconos: no hay lugar para campana + chevron lado
+        a lado. La campana baja a su propia fila centrada, igual que los botones
+        de navegacion. Solo monta esta instancia (el header no la trae cuando
+        esta colapsado), asi que sigue habiendo un solo request.
+      */}
+      {isCollapsed && (
+        <Box display='flex' justifyContent='center'>
+          <CampanaNotificaciones />
+        </Box>
+      )}
+
       {!isCollapsed && (
         <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Gestión
@@ -408,7 +445,7 @@ export const NavBar = ({
       )}
 
       <NavSection
-        label='Navegación'
+        label='Datos Maestros'
         icon={FiMenu}
         items={items}
         isCollapsed={isCollapsed}
@@ -417,6 +454,11 @@ export const NavBar = ({
         onCollapsedClick={() => setIsCollapsed(false)}
       />
 
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Planes
+        </Text>
+      )}
       <NavSection
         label='Plan POE'
         icon={FiClipboard}
@@ -427,10 +469,28 @@ export const NavBar = ({
         onCollapsedClick={() => setIsCollapsed(false)}
       />
 
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Vencimientos
+        </Text>
+      )}
+
+      <SingleNavLink
+        item={vencimientosItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
+
       {checklistItems.length > 0 && (
         <>
           {!isCollapsed && (
-            <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+            <Text
+              fontSize='sm'
+              fontWeight='semibold'
+              color='white'
+              px={2}
+              mt={2}
+            >
               Checklists
             </Text>
           )}

@@ -26,6 +26,9 @@ from src.plan_poes.router import router as plan_poes_router
 from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_router
 from src.recambios.router import router as recambios_router
 from src.checklists.router import router as checklists_router
+from src.vencimientos.router import router as vencimientos_router
+# Router de autenticación: login/refresh/logout con JWT y endpoint /auth/me
+from src.auth.router import router as auth_router
 from src.incidentes.router import router as incidentes_router
 from src.tipo_incidente.router import router as tipo_incidente_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -80,5 +83,8 @@ app.include_router(plan_poes_router)
 app.include_router(tipo_elemento_limpieza_router)
 app.include_router(recambios_router)
 app.include_router(checklists_router)
+app.include_router(vencimientos_router)
+app.include_router(auth_router)  # /auth/token, /auth/me (prefijo /auth)
+
 app.include_router(incidentes_router)
 app.include_router(tipo_incidente_router)

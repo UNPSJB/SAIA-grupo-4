@@ -1,3 +1,5 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
+import { BASE_URL } from "../../../config";
 import type { UnidadMedida } from "../types";
 
 type FastApiError = {
@@ -22,8 +24,8 @@ export const handleDelete = async ({
   setError("");
 
   try {
-    const res = await fetch(
-      `http://127.0.0.1:8000/unidades-de-medida/${unidad.id}`,
+    const res = await apiFetch(
+      `${BASE_URL}/unidades-de-medida/${unidad.id}`,
       { method: "DELETE" },
     );
 

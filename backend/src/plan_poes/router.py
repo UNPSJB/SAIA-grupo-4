@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.plan_poes import schemas, services, exceptions
+from src.auth.dependencies import requiere_administracion
 
-
-router = APIRouter(prefix="/planes-poes", tags=["planes_poes"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/planes-poes", tags=["planes_poes"], dependencies=[Depends(requiere_administracion)])
 
 # RUTAS DE PLAN POES
 

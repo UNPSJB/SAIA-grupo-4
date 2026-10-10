@@ -3,6 +3,12 @@ from sqlalchemy.exc import IntegrityError
 from typing import List
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
+from src.auth.services import (
+    CAPACIDADES_HABILITANTES,
+    incluye_capacidad_habilitante,
+    nombres_capacidades_activas,
+)
+from src.auth.utils import get_password_hash
 
 from src.personal.models import Persona, PersonaCapacidad
 from src.personal import schemas, exceptions
@@ -58,13 +64,27 @@ def crear_persona(db: Session, persona: schemas.PersonaCreate) -> Persona:
     if not persona.capacidades_ids:
         raise exceptions.SinCapacidades()
 
+    # Regla de negocio: solo el personal con capacidades habilitantes
+    # (administrar u operar) tiene contraseña, y para ellos es obligatoria.
+    habilitante = incluye_capacidad_habilitante(db, persona.capacidades_ids)
+    if habilitante and not persona.password:
+        raise exceptions.PasswordRequerida()
+    if not habilitante and persona.password:
+        raise exceptions.PasswordNoPermitida()
+    
     persona_existente = db.scalar(select(Persona).where(or_(Persona.dni == persona.dni, Persona.legajo == persona.legajo)))
     if persona_existente:
         if not persona_existente.activo:
             raise exceptions.PersonaRequiereReactivacion(persona_existente.id)
         raise exceptions.PersonaDuplicada()
 
-    _persona = Persona(**persona.model_dump(exclude={"capacidades_ids"}), activo=True)
+    # Se excluye "password": jamás se persiste crudo, solo su hash (que puede
+    # ser None cuando la persona no tiene capacidades habilitantes).
+    _persona = Persona(
+        **persona.model_dump(exclude={"capacidades_ids", "password"}),
+        activo=True,
+        password_hash=get_password_hash(persona.password) if persona.password else None,
+    )
     db.add(_persona)
     db.flush() 
 
@@ -98,11 +118,18 @@ def modificar_persona(db: Session, persona_id: int, persona: schemas.PersonaUpda
     db_persona = leer_persona(db, persona_id)
     update_data = persona.model_dump(exclude_unset=True)
 
+    # La contraseña nunca se escribe cruda en la tabla: viaja aparte y solo se
+    # guarda hasheada. "capacidades_ids" también se procesa en su propio bloque
+    # más abajo; capturamos ambos acá para aplicar las reglas de contraseña
+    # después de sincronizar las capacidades.
+    nueva_password = update_data.pop("password", None)
+    toca_capacidades = "capacidades_ids" in update_data
+
     if not db_persona.activo:
         # Si la persona está inactiva, SOLO permitimos reactivarla
         if update_data != {"activo": True}:
             raise exceptions.PersonaInactiva()
-            
+
         # Se busca el historial de capacidades que la persona tenía antes de ser dada de baja
         asignaciones_historicas = db.scalars(select(PersonaCapacidad).where(
             PersonaCapacidad.persona_id == persona_id,
@@ -168,6 +195,22 @@ def modificar_persona(db: Session, persona_id: int, persona: schemas.PersonaUpda
         )).all()
         
         _sincronizar_capacidades(db, persona_id, nuevos_ids, asignaciones_actuales)
+
+    # Reglas de contraseña según las capacidades vigentes RESULTANTES después
+    # de sincronizar. Solo aplica si se tocan capacidades o se envía password:
+    # la reactivación pura {"activo": true} queda exenta para no bloquearla.
+    if toca_capacidades or nueva_password is not None:
+        db.flush()  # la sesión tiene autoflush=False: forzamos ver el estado final
+        habilitante = bool(
+            nombres_capacidades_activas(db, persona_id) & CAPACIDADES_HABILITANTES
+        )
+        if habilitante:
+            if nueva_password:
+                db_persona.password_hash = get_password_hash(nueva_password)
+            elif db_persona.password_hash is None:
+                raise exceptions.PasswordRequerida()
+        elif nueva_password:
+            raise exceptions.PasswordNoPermitida()
 
     if update_data:
         db.execute(update(Persona).where(Persona.id == persona_id).values(**update_data))

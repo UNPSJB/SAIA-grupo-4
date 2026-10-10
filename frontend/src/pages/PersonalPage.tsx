@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
@@ -41,7 +42,7 @@ export default function PersonalPage() {
   };
 
   const reactivar = usePersonalSubmit({
-    endpoint: "http://127.0.0.1:8000/personal/",
+    endpoint: `${BASE_URL}/personal/`,
     method: "PUT",
     id: personaAlta?.id,
     body: { activo: true },

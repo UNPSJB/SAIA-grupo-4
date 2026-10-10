@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge, Wrap, HStack, Button } from "@chakra-ui/react";
 import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
@@ -17,8 +18,8 @@ interface ListadoPersonalProps {
 
 export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDarAlta, onVerCapacidades }: ListadoPersonalProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<Persona>({
-        endpoint: "http://127.0.0.1:8000/personal/",
-        pageSize: 5,
+        endpoint: `${BASE_URL}/personal/`,
+        pageSize: ITEMS_POR_PAGINA,
         errorMessage: "No se pudo cargar la lista de personal.",
     });
 
@@ -92,7 +93,7 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
             {!loading && !error && data.length > 0 && (
                 <>
                     <DataTable items={itemsPaginados} columns={columnas} getRowKey={(p) => p.id} />
-                    <TablePagination count={data.length} page={page} pageSize={5} onPageChange={setPage} labelSingular="persona" labelPlural="personas" />
+                    <TablePagination count={data.length} page={page} pageSize={ITEMS_POR_PAGINA} onPageChange={setPage} labelSingular="persona" labelPlural="personas" />
                 </>
             )}
         </ListadoContainer>

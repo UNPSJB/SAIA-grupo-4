@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { useMemo, useState } from "react";
 import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
@@ -9,7 +10,7 @@ import {
   FiSettings,
   FiRefreshCw,
 } from "react-icons/fi";
-import { MdOutlineCleaningServices } from 'react-icons/md';
+import { MdOutlineCleaningServices } from "react-icons/md";
 import {
   AlertMessage,
   DataTable,
@@ -36,8 +37,6 @@ interface ListadoElementosLimpiezaProps {
   onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
-const PAGE_SIZE = 5;
-
 const formatearFecha = (fechaStr?: string | null) => {
   if (!fechaStr) return "—";
   try {
@@ -52,7 +51,7 @@ const formatearFecha = (fechaStr?: string | null) => {
 };
 
 const construirEndpoint = (filtroEstado: "todos" | "activos" | "inactivos") => {
-  const base = "http://127.0.0.1:8000/elementos-limpieza/";
+  const base = `${BASE_URL}/elementos-limpieza/`;
   if (filtroEstado === "activos") return `${base}?activo=true`;
   if (filtroEstado === "inactivos") return `${base}?activo=false`;
   return base;
@@ -79,7 +78,7 @@ export const ListadoElementosLimpieza = ({
 
   // La próxima fecha y el semáforo los calcula el backend; se cruzan por id de elemento
   const { data: alertas } = useListadoData<AlertaRecambio>({
-    endpoint: "http://127.0.0.1:8000/recambios/alertas",
+    endpoint: `${BASE_URL}/recambios/alertas`,
     errorMessage: "No se pudieron cargar las alertas de recambio.",
   });
   const alertaPorElemento = useMemo(
@@ -87,8 +86,8 @@ export const ListadoElementosLimpieza = ({
     [alertas],
   );
 
-  const inicio = (page - 1) * PAGE_SIZE;
-  const itemsPaginados = data.slice(inicio, inicio + PAGE_SIZE);
+  const inicio = (page - 1) * ITEMS_POR_PAGINA;
+  const itemsPaginados = data.slice(inicio, inicio + ITEMS_POR_PAGINA);
 
   const handleCambiarFiltro = (
     nuevoFiltro: "todos" | "activos" | "inactivos",
@@ -212,9 +211,12 @@ export const ListadoElementosLimpieza = ({
   ];
 
   return (
-    <ListadoContainer>
+    <ListadoContainer maxW='6xl'>
       <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Elementos de Limpieza' icon={MdOutlineCleaningServices} />
+        <ListadoHeader
+          title='Elementos de Limpieza'
+          icon={MdOutlineCleaningServices}
+        />
         <HStack gap={2}>
           <SelectField
             label=''
@@ -253,12 +255,12 @@ export const ListadoElementosLimpieza = ({
             items={itemsPaginados}
             columns={columnas}
             getRowKey={(e) => e.id}
-            minW="1210px"
+            minW='1210px'
           />
           <TablePagination
             count={data.length}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
             labelSingular='elemento'
             labelPlural='elementos'

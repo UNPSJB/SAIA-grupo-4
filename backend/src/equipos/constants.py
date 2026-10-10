@@ -4,3 +4,4 @@ class ErrorCode:
     EQUIPO_REQUIERE_REACTIVACION = "El equipo ya existe pero está dado de baja."
     EQUIPO_INACTIVO = "El equipo está dado de baja y debe ser reactivado antes de modificarlo."
     EQUIPO_BAJA_NO_PERMITIDA = "La baja del equipo debe realizarse mediante el endpoint de eliminación."
+    CALIBRACION_FECHA_FUTURA = "La fecha de calibración no puede ser futura."

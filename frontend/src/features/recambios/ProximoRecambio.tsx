@@ -1,47 +1,25 @@
-import { Box, HStack, Text, VStack } from "@chakra-ui/react";
+import { SemaforoFecha, type EstadoSemaforo } from "../../components/ui";
 import type { AlertaRecambio, EstadoRecambio } from "./types";
 
-// "2026-10-02" -> "02/10/2026" sin pasar por new Date():
-// new Date("2026-10-02") se interpreta en UTC y en Argentina mostraría el día anterior
-const formatearFechaISO = (fecha: string) => {
-    const [anio, mes, dia] = fecha.split("-");
-    return `${dia}/${mes}/${anio}`;
+// Traduce el enum de recambios al estado semantico del componente compartido.
+// Los dos modulos nombran distinto el mismo concepto: recambios dice "al_dia"
+// y vencimientos dice "vigente".
+const ESTADO_COMPARTIDO: Record<EstadoRecambio, EstadoSemaforo> = {
+  vencido: "vencido",
+  proximo: "proximo",
+  al_dia: "vigente",
 };
-
-interface EstiloEstado {
-    color: string;      // colorPalette de Chakra para el punto (ej. "red", "yellow", "green")
-    leyenda?: string;   // texto opcional debajo de la fecha, ej. "(Vencido)"
-}
-
-const estiloPorEstado = (estado: EstadoRecambio, diasRestantes: number): EstiloEstado => {
-    switch (estado) {
-        case "vencido":
-            return { color: "red", leyenda: "(Vencido)" };
-        case "proximo":
-            return { color: "yellow", leyenda: diasRestantes === 0 ? "(Hoy)" : `(En ${diasRestantes} días)` };
-        case "al_dia":
-            return { color: "green" };
-    }
-};
-
-interface ProximoRecambioProps {
-    alerta?: AlertaRecambio;
-}
 
 // Columna "Próximo Recambio" del listado de elementos de limpieza.
 // Sin alerta (elemento inactivo o sin frecuencia configurada) se muestra "—".
-export const ProximoRecambio = ({ alerta }: ProximoRecambioProps) => {
-    if (!alerta) return <>—</>;
+export const ProximoRecambio = ({ alerta }: { alerta?: AlertaRecambio }) => {
+  if (!alerta) return <>"—"</>;
 
-    const { color, leyenda } = estiloPorEstado(alerta.estado, alerta.dias_restantes);
-
-    return (
-        <VStack gap={0} align="start">
-            <HStack gap={2}>
-                <Box w={3} h={3} borderRadius="full" bg={`${color}.500`} flexShrink={0} />
-                <Text>{formatearFechaISO(alerta.proxima_fecha)}</Text>
-            </HStack>
-            {leyenda && <Text fontSize="sm" fontStyle="italic" color="gray.500">{leyenda}</Text>}
-        </VStack>
-    );
+  return (
+    <SemaforoFecha
+      estado={ESTADO_COMPARTIDO[alerta.estado]}
+      fecha={alerta.proxima_fecha}
+      diasRestantes={alerta.dias_restantes}
+    />
+  );
 };

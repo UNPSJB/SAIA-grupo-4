@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { ListadoTiposElementoLimpieza } from "./ListadoTiposElementoLimpieza";
@@ -40,7 +41,7 @@ export const GestionTiposElementoLimpieza = () => {
   };
 
   const reactivar = useTipoElementoLimpiezaSubmit({
-    endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/",
+    endpoint: `${BASE_URL}/tipos-elemento-limpieza/`,
     method: "PUT",
     id: tipoAlta?.id,
     body: { activo: true },

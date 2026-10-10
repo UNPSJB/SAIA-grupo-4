@@ -1,3 +1,6 @@
+import { BASE_URL, JSON_HEADERS } from "../../../config";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import type { Equipo } from "../../equipos/types";
 import type { Sector } from "../../sectores/types";
 import type { Persona } from "../../personal/types";
@@ -7,8 +10,6 @@ import type {
   PlanPOES,
   TareaPOES,
 } from "../types";
-
-const BASE_URL = "http://127.0.0.1:8000";
 
 export class ApiError extends Error {
   status: number;
@@ -60,8 +61,8 @@ async function extraerMensaje(res: Response): Promise<string> {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${path}`, {
-      headers: init?.body ? { "Content-Type": "application/json" } : undefined,
+    res = await apiFetch(`${BASE_URL}${path}`, {
+      headers: init?.body ? JSON_HEADERS : undefined,
       ...init,
     });
   } catch {

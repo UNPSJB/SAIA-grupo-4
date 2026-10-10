@@ -23,6 +23,8 @@ import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
 import ListadoIncidentesPage from "./pages/IncidentesPage";
+import VencimientosPage from "./pages/VencimientosPage";
+import { RenovacionProvider } from "./features/vencimientos/RenovacionProvider";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -171,6 +173,14 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            <Route
+              path='/vencimientos'
+              element={
+                <RequireAuth>
+                  <VencimientosPage />
+                </RequireAuth>
+              }
+            />
 
             {/* Checklists. El diario requiere "administrar" + "operar": quien solo
                 administra no lo ve en el NavBar y, si escribe la URL a mano, cae
@@ -185,7 +195,10 @@ function AppContent() {
                 }
               />
             ) : (
-              <Route path='/checklist' element={<Navigate to='/historial' replace />} />
+              <Route
+                path='/checklist'
+                element={<Navigate to='/historial' replace />}
+              />
             )}
             <Route
               path='/historial'
@@ -236,7 +249,15 @@ export default function App() {
       {/* AuthProvider para que cualquier componente use useAuth() */}
       <AuthProvider>
         <BrowserRouter>
-          <AppContent />
+          {/*
+            El modal de renovacion vive aca y no en la campana: la campana esta
+            dentro de un Popover que se cierra en el mismo tick que el modal se
+            abre, y los dos overlays se pisan. Fuera del NavBar el Dialog no
+            comparte arbol con nadie.
+          */}
+          <RenovacionProvider>
+            <AppContent />
+          </RenovacionProvider>
         </BrowserRouter>
       </AuthProvider>
     </ChakraProvider>
