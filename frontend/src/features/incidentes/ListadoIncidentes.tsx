@@ -5,6 +5,7 @@ import {
     FiImage,
     FiPlus,
     FiSettings,
+    FiAlertTriangle,
     FiX,
 } from "react-icons/fi"; // Importar otros íconos según sea necesario
 import {
@@ -160,7 +161,7 @@ export const ListadoIncidentes = ({
   return (
     <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title="Listado de Incidentes" />
+        <ListadoHeader title="Listado de Incidentes" icon={FiAlertTriangle}/>
         <HStack gap={2}>
           <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
             <FiSettings /> Gestionar Tipos

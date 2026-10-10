@@ -29,6 +29,7 @@ import {
   FiDroplet,
   FiCheckSquare,
   FiAlertCircle,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -77,7 +78,7 @@ const defaultItems: NavItem[] = [
   {
     to: "/incidentes",
     label: "Incidentes",
-    icon: FiMenu,
+    icon: FiAlertTriangle,
   },
 ];
 
