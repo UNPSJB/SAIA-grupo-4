@@ -1,8 +1,11 @@
-import { HStack, Button, Badge } from "@chakra-ui/react";
+import { useState } from "react";
+import { Badge, Button, Dialog, HStack, Image, Portal } from "@chakra-ui/react";
 import { 
     FiEye,
+    FiImage,
     FiPlus,
     FiSettings,
+    FiX,
 } from "react-icons/fi"; // Importar otros íconos según sea necesario
 import {
     AlertMessage,
@@ -24,8 +27,14 @@ interface ListadoIncidentesProps {
     // Agregar las props del listado
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/incidentes/";
+const API_BASE_URL = "http://127.0.0.1:8000";
+const ENDPOINT = `${API_BASE_URL}/incidentes/`;
 const ITEMS_POR_PAGINA = 5;
+
+const obtenerUrlFoto = (fotoUrl: string) =>
+  /^https?:\/\//i.test(fotoUrl)
+    ? fotoUrl
+    : `${API_BASE_URL}/${fotoUrl.replace(/^\/+/, "")}`;
 
 const formatearFecha = (fecha: string) => {
   const fechaConZona = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fecha)
@@ -49,6 +58,7 @@ export const ListadoIncidentes = ({
     onCrear,
     // Agregar las props del listado
 }: ListadoIncidentesProps) => {
+  const [incidenteConFoto, setIncidenteConFoto] = useState<Incidente | null>(null);
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Incidente>({
       endpoint: ENDPOINT,
@@ -87,13 +97,20 @@ export const ListadoIncidentes = ({
       align: "end",
       render: (incidente) => (
         <RowActions>
+            {incidente.foto_url && (
+              <RowActionButton
+                icon={FiImage}
+                label="Ver foto"
+                colorPalette="blue"
+                onClick={() => setIncidenteConFoto(incidente)}
+              />
+            )}
             <RowActionButton 
               icon={FiEye}
               label="Ver"
               colorPalette="yellow"
               onClick={() => onVer?.(incidente)} 
             />
-            // Agregar botones de acción según sea necesario
         </RowActions>
       ),
     },
@@ -141,6 +158,43 @@ export const ListadoIncidentes = ({
           />
         </>
       )}
+
+      <Dialog.Root
+        open={incidenteConFoto !== null}
+        onOpenChange={(e) => !e.open && setIncidenteConFoto(null)}
+        size="xl"
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title>
+                  Foto del incidente{incidenteConFoto ? `: ${incidenteConFoto.titulo}` : ""}
+                </Dialog.Title>
+                <Dialog.CloseTrigger 
+                  _hover={{ color: "red.500", bg: "red.50" }}
+                  transition='background 0.2s, color 0.2s'
+                  cursor='pointer'
+                >
+                  <FiX />
+                </Dialog.CloseTrigger>
+              </Dialog.Header>
+              <Dialog.Body>
+                {incidenteConFoto?.foto_url && (
+                  <Image
+                    src={obtenerUrlFoto(incidenteConFoto.foto_url)}
+                    alt={`Foto del incidente ${incidenteConFoto.titulo}`}
+                    maxH="75vh"
+                    w="100%"
+                    objectFit="contain"
+                  />
+                )}
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </ListadoContainer>
   );
 };
