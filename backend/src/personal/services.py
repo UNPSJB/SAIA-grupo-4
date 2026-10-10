@@ -1,14 +1,28 @@
+import os
+import shutil
 from datetime import datetime
+from pathlib import Path
+from fastapi import UploadFile
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
-from src.personal.models import Persona, PersonaCapacidad
+from src.personal.models import Persona, PersonaCapacidad, VencimientoPersonal
 from src.personal import schemas, exceptions
+from src.personal.constants import Constantes
+from src.documentos_personal import services as documentos_services, exceptions as documentos_exceptions
 from src.capacidades.models import Capacidad
 from src.capacidades.constants import RolesSistema
 from src.capacidades import exceptions as capacidad_exceptions
+
+# Carpeta local de comprobantes, dentro de la misma carpeta uploads que expone src/main.py
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+UPLOAD_DIR = BASE_DIR / "uploads" / "comprobantes"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Prefijo que se guarda en url_comprobante, para no persistir rutas absolutas de la maquina
+UPLOAD_URL_PREFIX = "uploads/comprobantes"
 
 # --- FUNCIONES MODULARIZADAS DE APOYO ---
 
@@ -93,6 +107,94 @@ def leer_persona(db: Session, persona_id: int) -> Persona:
     if not db_persona:
         raise exceptions.PersonaNoEncontrada()
     return db_persona
+
+def crear_vencimiento(db: Session, persona_id: int, vencimiento: schemas.VencimientoPersonalCreate) -> VencimientoPersonal:
+    db_persona = leer_persona(db, persona_id)
+    db_documento = documentos_services.leer_documento(db, vencimiento.documento_id)
+
+    if not db_persona.activo:
+        raise exceptions.PersonaInactiva()
+    if not db_documento.activo:
+        raise documentos_exceptions.DocumentoPersonalInactivo()
+
+    vencimiento_existente = db.scalar(select(VencimientoPersonal).where(VencimientoPersonal.persona_id == persona_id, VencimientoPersonal.documento_id == vencimiento.documento_id))
+    if vencimiento_existente:
+        raise exceptions.VencimientoDuplicado()
+
+    db_vencimiento = VencimientoPersonal(persona_id=persona_id, **vencimiento.model_dump())
+    db.add(db_vencimiento)
+    try:
+        db.commit()
+        db.refresh(db_vencimiento)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error de integridad al guardar el vencimiento.")
+    return db_vencimiento
+
+def leer_vencimiento(db: Session, persona_id: int, vencimiento_id: int) -> VencimientoPersonal:
+    db_vencimiento = db.scalar(select(VencimientoPersonal).where(VencimientoPersonal.id == vencimiento_id, VencimientoPersonal.persona_id == persona_id))
+    if not db_vencimiento:
+        raise exceptions.VencimientoNoEncontrado()
+    return db_vencimiento
+
+def modificar_vencimiento(db: Session, persona_id: int, vencimiento_id: int, vencimiento: schemas.VencimientoPersonalUpdate) -> VencimientoPersonal:
+    db_persona = leer_persona(db, persona_id)
+    db_vencimiento = leer_vencimiento(db, persona_id, vencimiento_id)
+    update_data = vencimiento.model_dump(exclude_unset=True)
+
+    if not db_persona.activo:
+        raise exceptions.PersonaInactiva()
+
+    if "fecha_vencimiento" in update_data and update_data["fecha_vencimiento"] is None:
+        raise exceptions.FechaVencimientoObligatoria()
+
+    # Se validan las fechas resultantes: las nuevas si vinieron, y si no las ya guardadas
+    fecha_emision = update_data.get("fecha_emision", db_vencimiento.fecha_emision)
+    fecha_vencimiento = update_data.get("fecha_vencimiento", db_vencimiento.fecha_vencimiento)
+    if fecha_emision and fecha_emision >= fecha_vencimiento:
+        raise exceptions.FechasVencimientoInvalidas()
+
+    if update_data:
+        db.execute(update(VencimientoPersonal).where(VencimientoPersonal.id == vencimiento_id).values(**update_data))
+
+    try:
+        db.commit()
+        db.refresh(db_vencimiento)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error de integridad al actualizar el vencimiento.")
+    return db_vencimiento
+
+def _guardar_comprobante_local(vencimiento_id: int, comprobante: UploadFile) -> str:
+    """Guarda el archivo en la carpeta de comprobantes y devuelve la ruta relativa servida por la API."""
+    # El nombre lo arma el servidor: no se usa el nombre original del archivo
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    extension = Constantes.EXTENSIONES_COMPROBANTE[comprobante.content_type]
+    nombre_archivo = f"vencimiento_{vencimiento_id}_{timestamp}{extension}"
+
+    with open(UPLOAD_DIR / nombre_archivo, "wb") as buffer:
+        shutil.copyfileobj(comprobante.file, buffer)
+
+    return f"{UPLOAD_URL_PREFIX}/{nombre_archivo}"
+
+def adjuntar_comprobante(db: Session, persona_id: int, vencimiento_id: int, comprobante: UploadFile) -> VencimientoPersonal:
+    db_persona = leer_persona(db, persona_id)
+    db_vencimiento = leer_vencimiento(db, persona_id, vencimiento_id)
+
+    if not db_persona.activo:
+        raise exceptions.PersonaInactiva()
+
+    if comprobante.content_type not in Constantes.EXTENSIONES_COMPROBANTE:
+        raise exceptions.ComprobanteInvalido()
+
+    db_vencimiento.url_comprobante = _guardar_comprobante_local(vencimiento_id, comprobante)
+    try:
+        db.commit()
+        db.refresh(db_vencimiento)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error de integridad al guardar el comprobante.")
+    return db_vencimiento
 
 def modificar_persona(db: Session, persona_id: int, persona: schemas.PersonaUpdate) -> Persona:
     db_persona = leer_persona(db, persona_id)

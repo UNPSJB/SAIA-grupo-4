@@ -15,6 +15,7 @@ import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
 import CapacidadPage from "./pages/CapacidadPage";
+import DocumentoPersonalPage from "./pages/DocumentoPersonalPage";
 import ElementosLimpiezaPage from "./pages/ElementosLimpiezaPage";
 import InsumoQuimicoPage from "./pages/InsumoQuimicoPage";
 import PlanPage from "./pages/PlanPage";
@@ -141,6 +142,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <CapacidadPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/documentos-personal'
+              element={
+                <RequireAuth>
+                  <DocumentoPersonalPage />
                 </RequireAuth>
               }
             />

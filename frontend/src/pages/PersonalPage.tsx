@@ -4,6 +4,7 @@ import { Box } from "@chakra-ui/react";
 import { PersonalForm } from "../features/personal/PersonalForm";
 import { PersonalDetalle } from "../features/personal/PersonaDetalle";
 import { ListadoPersonal } from "../features/personal/ListadoPersonal";
+import { RegistrarVencimientoForm } from "../features/personal/RegistrarVencimientoForm";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/personal/hooks/usePersonalDelete";
 import { usePersonalSubmit } from "../features/personal/hooks/usePersonalSubmit";
@@ -24,6 +25,8 @@ export default function PersonalPage() {
 
   const [personaAlta, setPersonaAlta] = useState<Persona | null>(null);
   const [altaAbierto, setAltaAbierto] = useState(false);
+
+  const [personaVencimiento, setPersonaVencimiento] = useState<Persona | null>(null);
 
   const [refrescar, setRefrescar] = useState(0);
 
@@ -64,6 +67,7 @@ export default function PersonalPage() {
       <ListadoPersonal
         key={refrescar}
         onVerCapacidades={() => navigate("/capacidades")}
+        onVerDocumentos={() => navigate("/documentos-personal")}
         onCrear={() => setVista("crear")}
         onModificar={(persona) => {
           setError("");
@@ -85,7 +89,23 @@ export default function PersonalPage() {
           setPersonaAlta(persona);
           setAltaAbierto(true);
         }}
+        onRegistrarVencimiento={(persona) => setPersonaVencimiento(persona)}
       />
+
+      {/* Modal de Registrar Vencimiento */}
+      {personaVencimiento && (
+        <FormModal open onClose={() => setPersonaVencimiento(null)}>
+          <RegistrarVencimientoForm
+            persona={personaVencimiento}
+            onCancelar={() => setPersonaVencimiento(null)}
+            onGuardado={() => {
+              setPersonaVencimiento(null);
+              setRefrescar((r) => r + 1);
+            }}
+            enModal
+          />
+        </FormModal>
+      )}
 
       {/* Modal de Detalle (Vista) */}
       {vista === "ver" && personaSeleccionada && (

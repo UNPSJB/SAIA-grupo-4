@@ -7,6 +7,11 @@ class PersonaInactiva(Conflict): DETAIL = ErrorCode.PERSONA_INACTIVA
 class PersonaBajaNoPermitida(BadRequest): DETAIL = ErrorCode.PERSONA_BAJA_NO_PERMITIDA
 class SinCapacidades(BadRequest): DETAIL = ErrorCode.SIN_CAPACIDADES
 class UltimoAdministrador(Conflict): DETAIL = ErrorCode.ULTIMO_ADMINISTRADOR
+class VencimientoDuplicado(Conflict): DETAIL = ErrorCode.VENCIMIENTO_DUPLICADO
+class VencimientoNoEncontrado(NotFound): DETAIL = ErrorCode.VENCIMIENTO_NO_ENCONTRADO
+class FechaVencimientoObligatoria(BadRequest): DETAIL = ErrorCode.FECHA_VENCIMIENTO_OBLIGATORIA
+class FechasVencimientoInvalidas(BadRequest): DETAIL = ErrorCode.FECHAS_VENCIMIENTO_INVALIDAS
+class ComprobanteInvalido(BadRequest): DETAIL = ErrorCode.COMPROBANTE_INVALIDO
 class PersonaRequiereReactivacion(Conflict):
     def __init__(self, persona_id: int):
         super().__init__(detail={"code": ErrorCode.PERSONA_REQUIERE_REACTIVACION, "persona_id": persona_id})

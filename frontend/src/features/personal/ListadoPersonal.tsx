@@ -1,5 +1,5 @@
 import { Badge, Wrap, HStack, Button } from "@chakra-ui/react";
-import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus } from "react-icons/fi";
+import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus, FiFileText, FiCalendar } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -13,9 +13,11 @@ interface ListadoPersonalProps {
     onVer?: (persona: Persona) => void;
     onDarAlta?: (persona: Persona) => void;
     onVerCapacidades?: () => void;
+    onVerDocumentos?: () => void;
+    onRegistrarVencimiento?: (persona: Persona) => void;
 }
 
-export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDarAlta, onVerCapacidades }: ListadoPersonalProps) => {
+export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDarAlta, onVerCapacidades, onVerDocumentos, onRegistrarVencimiento }: ListadoPersonalProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<Persona>({
         endpoint: "http://127.0.0.1:8000/personal/",
         pageSize: 5,
@@ -65,6 +67,7 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
                 <RowActions>
                     <RowActionButton icon={FiEdit2} label="Modificar" colorPalette="blue" onClick={() => onModificar?.(p)} visible={p.activo} />
                     <RowActionButton icon={FiEye} label="Ver" colorPalette="yellow" onClick={() => onVer?.(p)} />
+                    <RowActionButton icon={FiCalendar} label="Registrar vencimiento" colorPalette="purple" onClick={() => onRegistrarVencimiento?.(p)} visible={p.activo} />
                     <RowActionButton icon={FiTrash2} label="Eliminar" colorPalette="red" onClick={() => onEliminar?.(p)} visible={p.activo} />
                     <RowActionButton icon={FiCheckCircle} label="Dar de alta" colorPalette="green" onClick={() => onDarAlta?.(p)} visible={!p.activo} />
                 </RowActions>
@@ -79,6 +82,9 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
                 <HStack gap={2}>
                     <Button variant="outline" colorPalette="green" onClick={onVerCapacidades}>
                         <FiAward /> Capacidades
+                    </Button>
+                    <Button variant="outline" colorPalette="green" onClick={onVerDocumentos}>
+                        <FiFileText /> Documentos
                     </Button>
                     <Button colorPalette="green" onClick={onCrear}>
                         <FiPlus /> Nueva persona
