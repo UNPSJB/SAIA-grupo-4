@@ -24,3 +24,6 @@ class IncidenteYaCerrado(BadRequest):
 
 class IncidenteYaAbierto(BadRequest):
     DETAIL = ErrorCode.INCIDENTE_YA_ABIERTO
+
+class ArchivoInvalido(BadRequest):
+    DETAIL = ErrorCode.ARCHIVO_INVALIDO

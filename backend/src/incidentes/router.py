@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+import json
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.incidentes import schemas, services
@@ -6,8 +8,28 @@ from src.incidentes import schemas, services
 router = APIRouter(prefix="/incidentes", tags=["incidentes"])
 
 @router.post("/", response_model=schemas.Incidente, status_code=201)
-def create_incidente(incidente: schemas.IncidenteCreate, db: Session = Depends(get_db)):
-    return services.crear_incidente(db, incidente)
+def create_incidente(
+    datos: str = Form(...),
+    foto: UploadFile | None = File(default=None),
+    db: Session = Depends(get_db),
+):
+    try:
+        datos_dict = json.loads(datos)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="El campo 'datos' debe contener JSON válido.",
+        ) from exc
+    
+    try:
+        incidente = schemas.IncidenteCreate.model_validate(datos_dict)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=exc.errors()
+        ) from exc
+    
+    return services.crear_incidente(db, incidente, foto)
 
 @router.get("/", response_model=list[schemas.Incidente])
 def read_incidentes(db: Session = Depends(get_db)):

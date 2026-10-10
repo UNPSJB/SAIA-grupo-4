@@ -166,11 +166,14 @@ export const IncidenteForm = ({
         setSuccess(false);
         clearErrors("root");
         setNombreEnviado(values.titulo);
-        const res = await submit({
-            ...values,
-            reportante_id: usuario!.personaId,
-            fecha_hora_reporte: new Date().toISOString(),
-        });
+        const res = await submit(
+            {
+                ...values,
+                reportante_id: usuario!.personaId,
+                fecha_hora_reporte: new Date().toISOString(),
+            },
+            fotoArchivo,
+        );
         if (res.status === "error") {
             setError("root", { message: res.message });
         } else if (res.status === "success") {

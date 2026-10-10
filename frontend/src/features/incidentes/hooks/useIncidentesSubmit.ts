@@ -37,7 +37,7 @@ export const useIncidentesSubmit = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submit = useCallback(
-    async (values?: IncidentePayload): Promise<SubmitResult> => {
+    async (values?: IncidentePayload, foto?: File | null): Promise<SubmitResult> => {
       setIsSubmitting(true);
       try {
         const payload = body ?? {
@@ -48,12 +48,32 @@ export const useIncidentesSubmit = ({
           tipo_id: Number(values?.tipo_id) ?? "",
         };
 
+
+
         const url = id ? `${endpoint}${id}/` : endpoint;
-        const res = await fetch(url, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        let res: Response;
+        
+        if (values !== undefined) {
+          const formData = new FormData();
+          formData.append("datos", JSON.stringify(values));
+
+          if (foto) {
+            formData.append("foto", foto);
+          }
+
+          res = await fetch(url, {
+            method,
+            body: formData,
+          });
+        } else if (body !== undefined) {
+          res = await fetch(url, {
+            method,
+            headers:  { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+        } else {
+          return { status: "error", message: "No se recibieron datos para enviar."}
+        }
 
         if (!res.ok) {
           let bodyRes: FastApiError | null = null;

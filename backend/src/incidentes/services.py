@@ -7,8 +7,26 @@ from src.incidentes.models import Incidente, HistorialIncidente
 from src.personal.models import Persona
 from src.tipo_incidente.models import TipoIncidente
 from src.tipo_incidente.exceptions import TipoNoExiste, TipoInactivo
+from fastapi import UploadFile
+from pathlib import Path
+import os
+import shutil
+import uuid
+import re
 
-def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incidente:
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+UPLOAD_DIR = BASE_DIR / "uploads" / "incidentes"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+UPLOAD_URL_PREFIX = "uploads/incidentes"
+
+EXTENSIONES_POR_CONTENT_TYPE = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
+def crear_incidente(db: Session, incidente: schemas.IncidenteCreate, foto: UploadFile | None = None, ) -> Incidente:
 
     reportante = db.scalar(
         select(Persona).where(
@@ -31,7 +49,45 @@ def crear_incidente(db: Session, incidente: schemas.IncidenteCreate) -> Incident
     if not tipo.activo:
         raise TipoInactivo()
 
-    _incidente = Incidente(**incidente.model_dump(), abierto=True)
+    # Validaciones de la foto
+    foto_url = None
+
+    if foto is not None:
+        if not foto.content_type or not foto.content_type.startswith("image/"):
+            raise exceptions.ArchivoInvalido()
+
+        # Preparo un titulo para la imagen cuando la guarde
+        titulo_seguro = re.sub(
+            r"[^a-zA-Z0-9_-]",
+            "_",
+            incidente.titulo,
+        ).strip("_")[:40] or "Incidente"
+
+        # Preparo la fecha para sumarla al titulo de la imagen
+        fecha = incidente.fecha_hora_reporte.strftime("%Y%m%d_%H%M%S_%f")
+
+        # Preparo la extension de la imagen
+        content_type = (foto.content_type or "").lower().strip()
+        extension = EXTENSIONES_POR_CONTENT_TYPE.get(content_type)
+
+        if extension is None:
+            raise exceptions.ArchivoInvalido()
+
+        # Genero un sufijo por si el titulo y la fecha y hora del incidente son iguales
+        sufijo = uuid.uuid4().hex
+
+        # Preparo el nombre de la imagen
+        nombre_archivo = f"{titulo_seguro}_{fecha}_{sufijo}{extension}"
+        # Ej: Moscas_20261010_003918_457000_a1b2c3....jpg
+
+        ruta_archivo = UPLOAD_DIR / nombre_archivo
+
+        with ruta_archivo.open("wb") as destino:
+            shutil.copyfileobj(foto.file, destino)
+        
+        foto_url = f"{UPLOAD_URL_PREFIX}/{nombre_archivo}"
+
+    _incidente = Incidente(**incidente.model_dump(exclude={"foto_url"}),foto_url=foto_url, abierto=True)
 
     db.add(_incidente)
     try:
