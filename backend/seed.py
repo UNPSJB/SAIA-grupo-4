@@ -70,6 +70,7 @@ from src.checklists.services import _filtrar_tareas_por_dia
 from src.database import SessionLocal, engine
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.equipos.models import CalibracionEquipo, Equipo
+from src.incidentes.models import Incidente
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.models import ModeloBase
@@ -95,6 +96,7 @@ from src.plan_poes.services import (
 )
 from src.sectores.models import Sector
 from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
+from src.tipo_incidente.models import TipoIncidente
 from src.unidad_medida.models import UnidadMedida
 from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
 from src.vencimientos.services import listar_vencimientos
@@ -1065,6 +1067,40 @@ def _crear_ejecuciones(db, fake, personas, planes, hoy, dias_historia, incluir_a
     db.flush()
     return estados
 
+def _crear_incidentes(db, personas, cantidad, hoy):
+    reportantes = [persona for persona in personas if persona.activo]
+    if not reportantes:
+        raise RuntimeError("Se necesita al menos una persona activa para crear incidentes.")
+
+    tipos = [
+        TipoIncidente(nombre="Higiene", descripcion="Incidentes de higiene", activo=True),
+        TipoIncidente(nombre="Seguridad", descripcion="Incidentes de seguridad", activo=True),
+        TipoIncidente(nombre="Equipamiento", descripcion="Incidentes de equipamiento", activo=True),
+    ]
+    db.add_all(tipos)
+    db.flush()  # Asigna los ID de los tipos.
+
+    incidentes = []
+    for indice in range(cantidad):
+        fecha_reporte = datetime.combine(
+            hoy - timedelta(days=indice % 30),
+            time(9, 0),
+        )
+        abierto = indice % 3 != 2
+
+        incidente = Incidente(
+            titulo=f"Incidente de prueba {indice + 1}",
+            descripcion="Incidente generado para probar el sistema.",
+            fecha_hora_reporte=fecha_reporte,
+            reportante_id=reportantes[indice % len(reportantes)].id,
+            tipo_id=tipos[indice % len(tipos)].id,
+            abierto=abierto,
+        )
+        incidentes.append(incidente)
+
+    db.add_all(incidentes)
+    db.flush()
+    return incidentes
 
 # --------------------------------------------------------------------------
 # Verificacion
@@ -1455,6 +1491,7 @@ def main():
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
+            _crear_incidentes(db, personas, args.cantidad, hoy)
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,
