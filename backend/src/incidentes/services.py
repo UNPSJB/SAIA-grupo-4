@@ -102,7 +102,12 @@ def crear_incidente(db: Session, incidente: schemas.IncidenteCreate, foto: Uploa
     return _incidente
 
 def listar_incidentes(db: Session) -> list[Incidente]:
-    return db.scalars(select(Incidente)).all()
+    return db.scalars(
+        select(Incidente).order_by(
+            Incidente.fecha_hora_reporte.asc(), # ordena del mas viejo al mas nuevo
+            Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
+        )
+    ).all()
 
 def obtener_incidente_por_id(db: Session, incidente_id: int) -> Incidente:
     incidente = db.scalar(
@@ -190,4 +195,24 @@ def listar_historial_incidente(db: Session, incidente_id: int) -> list[Historial
         .options(selectinload(HistorialIncidente.responsable))
         .where(HistorialIncidente.incidente_id == incidente_id)
         .order_by(HistorialIncidente.fecha.desc())
+    ).all()
+
+def listar_incidentes_abiertos(db: Session) -> list[Incidente]:
+    return db.scalars(
+        select(Incidente).where(
+            Incidente.abierto.is_(True), # lista solo los incidentes que esten abiertos
+        ).order_by(
+            Incidente.fecha_hora_reporte.asc(), # ordena del mas viejo al mas nuevo
+            Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
+        )
+    ).all()
+
+def listar_incidentes_cerrados(db: Session) -> list[Incidente]:
+    return db.scalars(
+        select(Incidente).where(
+            Incidente.abierto.is_(False), # lista solo los incidentes que esten cerrados
+        ).order_by(
+            Incidente.fecha_hora_reporte.asc(), # ordena del mas viejo al mas nuevo
+            Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
+        )
     ).all()

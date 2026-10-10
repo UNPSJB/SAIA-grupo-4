@@ -35,10 +35,21 @@ def create_incidente(
 def read_incidentes(db: Session = Depends(get_db)):
     return services.listar_incidentes(db)
 
+# Lista los incidentes abiertos
+@router.get("/abiertos", response_model=list[schemas.Incidente])
+def read_incidentes_abiertos(db: Session = Depends(get_db)):
+    return services.listar_incidentes_abiertos(db)
+
+# Lista los incidentes cerrados
+@router.get("/cerrados", response_model=list[schemas.Incidente])
+def read_incidentes_cerrados(db: Session = Depends(get_db)):
+    return services.listar_incidentes_cerrados(db)
+
 # Lee un único incidente
 @router.get("/{incidente_id}", response_model=schemas.Incidente, status_code=200)
 def read_incidente(incidente_id: int, db: Session = Depends(get_db)):
     return services.obtener_incidente_por_id(db, incidente_id)
+
 
 # --- Novedades Cierre / Reapertura / Historial ---
 
