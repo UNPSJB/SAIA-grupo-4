@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge, Button, Dialog, HStack, Image, Portal } from "@chakra-ui/react";
 import { 
     FiEye,
@@ -19,6 +19,7 @@ import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Incidente } from "./types";
 import type { ColumnDef } from "../../components/ui";
+import { FiltroSelect, FiltrosBar } from "../../components/ui";
 
 interface ListadoIncidentesProps {
     onVer?: (incidente: Incidente) => void;
@@ -52,19 +53,55 @@ const formatearFecha = (fecha: string) => {
   });
 };
 
+const obtenerColorFecha = (
+  fecha: string,
+): "green" | "yellow" | "red" | "gray" => {
+  const fechaConZona = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fecha)
+    ? fecha
+    : `${fecha}Z`;
+  const fechaReporte = new Date(fechaConZona);
+
+  if (Number.isNaN(fechaReporte.getTime())) return "gray";
+
+  const diasTranscurridos = Math.floor(
+    (Date.now() - fechaReporte.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (diasTranscurridos >= 30) return "red";
+  if (diasTranscurridos >= 7) return "yellow";
+  return "green";
+};
+
 export const ListadoIncidentes = ({
     onVer,
     onGestionarTipos,
     onCrear,
     // Agregar las props del listado
 }: ListadoIncidentesProps) => {
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState("");
+  const [estadoAplicado, setEstadoAplicado] = useState("");
+
   const [incidenteConFoto, setIncidenteConFoto] = useState<Incidente | null>(null);
-  const { data, loading, error, page, setPage, itemsPaginados } =
+  const { data, loading, error, page, setPage } =
     useListadoData<Incidente>({
       endpoint: ENDPOINT,
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de incidentes.",
     });
+
+  const incidentesFiltrados = useMemo(() => 
+    data.filter((incidente) => {
+      if (estadoAplicado === "abierto") return incidente.abierto; // Muestra solo los abiertos
+      if (estadoAplicado === "cerrado") return !incidente.abierto; // Muestra solo los cerrados
+      return true; // Muestra todos los incidentes
+    }),
+    [data, estadoAplicado],
+  );
+
+  const itemsFiltradosPaginados = incidentesFiltrados.slice(
+    (page - 1) * ITEMS_POR_PAGINA,
+    page * ITEMS_POR_PAGINA,
+  );
 
   const columnas: ColumnDef<Incidente>[] = [
     {
@@ -80,7 +117,11 @@ export const ListadoIncidentes = ({
     {
       key: "fecha",
       label: "Fecha",
-      render: (incidente) => formatearFecha(incidente.fecha_hora_reporte),
+      render: (incidente) => (
+        <Badge colorPalette={obtenerColorFecha(incidente.fecha_hora_reporte)}>
+          {formatearFecha(incidente.fecha_hora_reporte)}
+        </Badge>
+      ),
     },
     {
       key: "estado",
@@ -131,6 +172,29 @@ export const ListadoIncidentes = ({
           )}
         </HStack>
       </HStack>
+      <FiltrosBar
+          onAplicar={() => {
+            setEstadoAplicado(estadoSeleccionado);
+            setPage(1);
+          }}
+          onLimpiar={() => {
+            setEstadoSeleccionado("");
+            setEstadoAplicado("");
+            setPage(1);
+          }}
+          hayFiltrosActivos={estadoAplicado !== ""}
+        >
+          <FiltroSelect
+            ariaLabel="Filtrar por estado"
+            placeholder="Todos los estados"
+            value={estadoSeleccionado}
+            onChange={setEstadoSeleccionado}
+            options={[
+              { label: "Abiertos", value: "abierto" },
+              { label: "Cerrados", value: "cerrado" },
+            ]}
+          />
+        </FiltrosBar>
     
       {loading && <LoadingState message="Cargando incidentes..." />}
 
@@ -143,13 +207,13 @@ export const ListadoIncidentes = ({
       {!loading && !error && data.length > 0 && (
         <>
           <DataTable
-            items={itemsPaginados}
+            items={itemsFiltradosPaginados}
             columns={columnas}
             getRowKey={(incidente) => incidente.id}
           />
 
           <TablePagination
-            count={data.length}
+            count={incidentesFiltrados.length}
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
