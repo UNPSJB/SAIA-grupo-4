@@ -56,7 +56,7 @@ export const IncidenteForm = ({
                 descripcion: "",
                 foto_url: "",
                 fecha_hora_reporte: new Date().toISOString(),
-                reportante_id: usuario?.personaId ?? 0,
+                reportante_id: usuario?.id ?? 0,
                 tipo_id: "",
               };
 
@@ -169,7 +169,7 @@ export const IncidenteForm = ({
         const res = await submit(
             {
                 ...values,
-                reportante_id: usuario!.personaId,
+                reportante_id: usuario!.id,
                 fecha_hora_reporte: new Date().toISOString(),
             },
             fotoArchivo,
