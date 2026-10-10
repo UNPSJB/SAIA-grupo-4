@@ -16,6 +16,12 @@ def listar_documentos_activos(db: Session = Depends(get_db)):
     return services.listar_documentos_activos(db)
 
 
+@router.get("/alertas", response_model=list[schemas.AlertaDocumento])
+def listar_alertas(db: Session = Depends(get_db)):
+    """Documentos activos con próxima revisión agendada, de la más urgente a la menos."""
+    return services.listar_alertas(db)
+
+
 @router.get("/", response_model=list[schemas.DocumentoDetalle])
 def listar_documentos(db: Session = Depends(get_db)):
     """Devuelve todos los documentos con su historial completo."""

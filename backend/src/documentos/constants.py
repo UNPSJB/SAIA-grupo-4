@@ -20,3 +20,11 @@ class ErrorCode:
     # Útiles para cuando atajemos JSON + UploadFile en el Router
     FORMATO_JSON_INVALIDO = "Los datos enviados no tienen un formato JSON válido."
     DATOS_VALIDACION_ERROR = "Error de validación en los datos ingresados."
+
+class Constantes:
+    DIAS_AVISO_PROXIMO = 15
+
+class EstadoVencimiento(str, Enum):
+    VENCIDO = "vencido"
+    PROXIMO = "proximo"
+    AL_DIA = "al_dia"

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, model_validator
-from src.documentos.constants import TipoDocumentoEnum
+from src.documentos.constants import EstadoVencimiento, TipoDocumentoEnum
 
 
 class VersionDocumentoBase(BaseModel):
@@ -86,3 +86,11 @@ class DocumentoDetalle(Documento):
     versiones: list[VersionDocumento] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AlertaDocumento(BaseModel):
+    # Alerta de vencimiento de la próxima revisión de la versión vigente de un documento.
+    documento: Documento
+    proxima_revision: date
+    dias_restantes: int
+    estado: EstadoVencimiento

@@ -1,14 +1,18 @@
 import os
 import re
 import shutil
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from fastapi import UploadFile
 from sqlalchemy import select, update, func
-from sqlalchemy.orm import Session
-from src.documentos.constants import TipoDocumentoEnum
+from sqlalchemy.orm import Session, selectinload
+from src.documentos.constants import (
+    Constantes,
+    EstadoVencimiento,
+    TipoDocumentoEnum,
+)
 from src.documentos.models import Documento, RevisionDocumento, VersionDocumento
 from src.documentos import schemas, exceptions
 from src.personal.models import Persona
@@ -324,3 +328,55 @@ def listar_revisiones_version(
 
     # La relación ya viene ordenada por fecha_registro descendente
     return version_objetivo.revisiones
+
+
+def calcular_estado_vencimiento(fecha_vencimiento: date, hoy: date) -> tuple[int, EstadoVencimiento]:
+    """Regla de semaforización de una revisión. Devuelve (dias_restantes, estado)."""
+    dias_restantes = (fecha_vencimiento - hoy).days
+    if dias_restantes < 0:
+        estado = EstadoVencimiento.VENCIDO
+    elif dias_restantes <= Constantes.DIAS_AVISO_PROXIMO:
+        estado = EstadoVencimiento.PROXIMO
+    else:
+        estado = EstadoVencimiento.AL_DIA
+    return dias_restantes, estado
+
+
+def listar_alertas(db: Session) -> List[schemas.AlertaDocumento]:
+    """Documentos activos cuya versión vigente tiene una próxima revisión agendada.
+    Devuelve una alerta por documento (su versión vigente), ordenadas de la más urgente a la menos urgente.
+    """
+    # Se consulta VersionDocumento (en vez del @property version_vigente) para
+    # filtrar directamente en SQL y evitar el N+1. selectinload precarga el
+    # documento y sus versiones, que el schema Documento necesita al serializar.
+    versiones = db.scalars(
+        select(VersionDocumento)
+        .join(Documento, VersionDocumento.documento_id == Documento.id)
+        .where(
+            Documento.activo == True,
+            VersionDocumento.es_vigente == True,
+            VersionDocumento.fecha_proxima_revision.is_not(None),
+        )
+        .options(
+            selectinload(VersionDocumento.documento).selectinload(Documento.versiones)
+        )
+    ).all()
+
+    hoy = date.today()
+    alertas = []
+    for version in versiones:
+        dias_restantes, estado = calcular_estado_vencimiento(
+            version.fecha_proxima_revision, hoy
+        )
+        alertas.append(
+            schemas.AlertaDocumento(
+                documento=version.documento,
+                proxima_revision=version.fecha_proxima_revision,
+                dias_restantes=dias_restantes,
+                estado=estado,
+            )
+        )
+
+    # Más urgente primero (dias_restantes ascendente)
+    alertas.sort(key=lambda alerta: alerta.dias_restantes)
+    return alertas
