@@ -10,6 +10,7 @@ import {
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { BASE_URL } from "../../config";
 import type { Documento } from "./types";
 import { ProximaRevision } from "./ProximaRevision";
 import { AccionesDocumento } from "./AccionesDocumento";
@@ -25,7 +26,7 @@ interface ListadoDocumentosProps {
   onVerHistorial?: (doc: Documento) => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/documentos/";
+const ENDPOINT = `${BASE_URL}/documentos/`;
 const ITEMS_POR_PAGINA = 5;
 
 export const ListadoDocumentos = ({

@@ -30,6 +30,11 @@ const RENOVACIONES: Partial<Record<CategoriaVencimiento, EntradaRenovacion>> = {
     colorPalette: "green",
     titulo: "Registrar Calibración",
   },
+  documento: {
+    etiqueta: "Gestionar Revisión",
+    colorPalette: "green",
+    titulo: "Gestionar revisión de documento",
+  },
 };
 
 /** Configuración de renovación de una categoría, o null si no la admite. */

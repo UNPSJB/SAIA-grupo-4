@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack, Field, Input, Text, Box } from "@chakra-ui/react";
 import { FiFileText, FiEdit2, FiEye, FiSave, FiXCircle, FiCheckCircle } from "react-icons/fi";
 
+import { BASE_URL } from "../../config";
 import { useDocumentoSubmit } from "./hooks/useDocumentoSubmit";
 import { documentoSchema } from "./validationSchema";
 import type { Documento, DocumentoFormData } from "./types";
@@ -93,7 +94,7 @@ export const DocumentoForm = ({
   const [errorConfirmar, setErrorConfirmar] = useState("");
 
   const { submit, isSubmitting } = useDocumentoSubmit({
-    endpoint: "http://127.0.0.1:8000/documentos/", 
+    endpoint: `${BASE_URL}/documentos/`, 
     method: esModoCrear ? "POST" : "PATCH",
     id: esModoModificar ? documento!.id : undefined,
     onInactivo: (documento_id) => {
@@ -106,7 +107,7 @@ export const DocumentoForm = ({
 
   // Reactivación del documento existente (PATCH { activo: true })
   const reactivar = useDocumentoSubmit({
-    endpoint: "http://127.0.0.1:8000/documentos/",
+    endpoint: `${BASE_URL}/documentos/`,
     method: "PATCH",
     id: documentoInactivoId ?? undefined,
     body: { activo: true },
@@ -136,7 +137,7 @@ export const DocumentoForm = ({
       const datos: DocumentoFormData = {
         titulo: values.titulo,
         tipo_documento: values.tipo_documento,
-        creado_por_id: usuario.personaId,
+        creado_por_id: usuario.id,
       };
       if (values.codigo && values.codigo.trim() !== "") datos.codigo = values.codigo.trim();
       if (values.descripcion && values.descripcion.trim() !== "") datos.descripcion = values.descripcion.trim();

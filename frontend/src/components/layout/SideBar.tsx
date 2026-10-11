@@ -459,6 +459,13 @@ export const NavBar = ({
         onCollapsedClick={() => setIsCollapsed(false)}
       />
 
+      {/* Link directo (no desplegable) dentro de la sección "Gestión" */}
+      <SingleNavLink
+        item={documentosItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
+
       {!isCollapsed && (
         <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Planes
@@ -482,13 +489,6 @@ export const NavBar = ({
 
       <SingleNavLink
         item={vencimientosItem}
-        isCollapsed={isCollapsed}
-        pathname={pathname}
-      />
-
-      {/* Link directo (no desplegable) dentro de la sección "Gestión" */}
-      <SingleNavLink
-        item={documentosItem}
         isCollapsed={isCollapsed}
         pathname={pathname}
       />

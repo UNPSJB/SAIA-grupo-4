@@ -230,7 +230,17 @@ export const CampanaNotificaciones = () => {
                 pisaria. `minH={0}` es obligatorio, si no el min-height:auto del
                 flex gana sobre max-height y la lista queda sin tope.
               */}
-              <Box flex='1' minH={0} maxH='440px' overflowY='auto'>
+              <Box
+                flex='1'
+                minH={0}
+                maxH='440px'
+                overflowY='auto'
+                css={{
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  "&::-webkit-scrollbar": { display: "none" },
+                }}
+              >
                 {inicial && (
                   <LoadingState message='Cargando notificaciones...' />
                 )}

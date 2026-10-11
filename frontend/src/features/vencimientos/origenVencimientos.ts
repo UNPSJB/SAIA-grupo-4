@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { ElementoLimpieza } from "../elementosLimpieza/types";
 import type { Equipo } from "../equipos/types";
+import type { Documento } from "../documentos/types";
 import { BASE_URL } from "./utils";
 import type { CategoriaVencimiento } from "./types";
 
@@ -10,7 +11,7 @@ import type { CategoriaVencimiento } from "./types";
  * Es una unión porque el tablero no sabe de qué módulo viene la fila: cada
  * `aFicha` recibe lo que devolvió su endpoint y lo estrecha a su propio tipo.
  */
-export type RegistroOrigen = ElementoLimpieza | Equipo;
+export type RegistroOrigen = ElementoLimpieza | Equipo | Documento;
 
 /**
  * Ficha del registro de origen de un vencimiento, ya normalizada para mostrar.
@@ -97,6 +98,31 @@ export const ORIGEN_VENCIMIENTOS: Partial<
           {
             label: "Última calibración",
             valor: r.fecha_ultima_calibracion ?? "—",
+          },
+        ],
+        registro: r,
+      };
+    },
+  },
+  documento: {
+    endpoint: (entidadId) => `${BASE_URL}/documentos/${entidadId}`,
+    etiqueta: "Documentos",
+    aFicha: (registro) => {
+      const r = registro as Documento;
+      return {
+        titulo: r.codigo ? `${r.codigo} — ${r.titulo}` : r.titulo,
+        campos: [
+          { label: "Código", valor: r.codigo || "S/C" },
+          { label: "Título", valor: r.titulo },
+          { label: "Tipo de documento", valor: r.tipo_documento.replace("_", " ") },
+          { label: "Descripción", valor: r.descripcion || "Sin descripción" },
+          {
+            label: "Versión vigente",
+            valor: r.version_vigente?.version ?? "—",
+          },
+          {
+            label: "Próxima revisión",
+            valor: r.version_vigente?.fecha_proxima_revision ?? "No definida",
           },
         ],
         registro: r,

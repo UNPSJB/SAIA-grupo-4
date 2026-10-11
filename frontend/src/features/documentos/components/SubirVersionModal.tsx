@@ -7,6 +7,8 @@ import {
   AlertMessage,
   CancelButton,
   FormActions,
+  FormContainer,
+  FormHeader,
   FormModal,
   SubmitButton,
   TextAreaField,
@@ -21,20 +23,28 @@ import type { Documento, SubirVersionFormData } from "../types";
 
 type SubirVersionFormValues = import("zod").output<typeof subirVersionSchema>;
 
-interface SubirVersionModalProps {
-  open: boolean;
+type SubirVersionFormProps = {
   documento: Documento;
-  onClose: () => void;
-  onExito: () => void;
-}
+  onCancelar?: () => void;
+  onGuardado?: () => void;
+  /** Sirve igual dentro del modal propio o dentro del modal del tablero. */
+  enModal?: boolean;
+};
 
-// Modal "Subir Nueva Versión de Documento". Cabecera de solo lectura (documento + versión vigente actual) y luego los campos de la nueva versión.
-export const SubirVersionModal = ({
-  open,
+/**
+ * Formulario de nueva versión, sin overlay.
+ *
+ * Es la implementación única: `SubirVersionModal` (acá abajo, módulo de
+ * documentos) y el tablero de vencimientos la reusan. A diferencia de la
+ * revisión periódica, acá el PDF sí cambia: se sube un archivo nuevo y se deja
+ * vigente.
+ */
+export const SubirVersionForm = ({
   documento,
-  onClose,
-  onExito,
-}: SubirVersionModalProps) => {
+  onCancelar,
+  onGuardado,
+  enModal = false,
+}: SubirVersionFormProps) => {
   const { usuario } = useAuth();
   const { subirNuevaVersion, isSubmitting } = useDocumentoVersiones();
 
@@ -69,22 +79,18 @@ export const SubirVersionModal = ({
       observaciones_cambio: values.observaciones_cambio || undefined,
     };
 
-    const res = await subirNuevaVersion(documento.id, datos, usuario.personaId);
+    const res = await subirNuevaVersion(documento.id, datos, usuario.id);
     if (res.status === "success") {
-      onExito();
+      onGuardado?.();
     } else {
       setError("root", { message: res.message });
     }
   };
 
   return (
-    <FormModal
-      open={open}
-      onClose={onClose}
-      title="Subir Nueva Versión de Documento"
-      titleIcon={FiUpload}
-      showClose
-    >
+    <FormContainer modal={enModal}>
+      <FormHeader title="Subir Nueva Versión de Documento" icon={FiUpload} />
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <VStack gap={4} align="stretch">
           {/* Cabecera de solo lectura */}
@@ -147,7 +153,7 @@ export const SubirVersionModal = ({
           />
 
           <FormActions>
-            <CancelButton text="Cancelar" onClick={onClose} icon={FiXCircle} />
+            <CancelButton text="Cancelar" onClick={onCancelar} icon={FiXCircle} />
             <SubmitButton
               text="Subir y Activar"
               loading={isSubmitting}
@@ -157,6 +163,43 @@ export const SubirVersionModal = ({
           </FormActions>
         </VStack>
       </form>
+    </FormContainer>
+  );
+};
+
+interface SubirVersionModalProps {
+  open: boolean;
+  documento: Documento;
+  onClose: () => void;
+  onExito: () => void;
+}
+
+/**
+ * Overlay del módulo de documentos para subir una nueva versión.
+ *
+ * Solo aporta el Dialog; la lógica y el POST viven en `SubirVersionForm`, que
+ * está en este mismo archivo y que el tablero de vencimientos reusa dentro de
+ * su propio modal para la renovación.
+ */
+export const SubirVersionModal = ({
+  open,
+  documento,
+  onClose,
+  onExito,
+}: SubirVersionModalProps) => {
+  if (!open || !documento) return null;
+
+  return (
+    <FormModal open onClose={onClose}>
+      <SubirVersionForm
+        documento={documento}
+        enModal
+        onCancelar={onClose}
+        onGuardado={() => {
+          onExito();
+          onClose();
+        }}
+      />
     </FormModal>
   );
 };

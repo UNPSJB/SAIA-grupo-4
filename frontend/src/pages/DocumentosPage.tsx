@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ListadoDocumentos } from "../features/documentos/ListadoDocumentos";
 import { DocumentoForm } from "../features/documentos/DocumentoForm";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
+import { BASE_URL } from "../config";
+import { apiFetch } from "../features/auth/apiFetch";
+import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 
 import { handleDelete } from "../features/documentos/hooks/useDocumentoDelete";
 import { useDocumentoSubmit } from "../features/documentos/hooks/useDocumentoSubmit";
@@ -24,6 +27,48 @@ export default function DocumentosPage() {
   const [refrescar, setRefrescar] = useState(0);
   const [error, setError] = useState("");
 
+  // La campana de notificaciones llega aca con `?detalle=<id>` (ruta_detalle de
+  // la fila consolidada): el parametro abre el detalle del documento, igual que
+  // hace EquiposPage con los equipos.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detalleParam = searchParams.get("detalle");
+
+  // Registrar una revisión o subir una versión desde acá también baja el badge
+  // de la campana: no hay navegación por el tablero que dispare su refresco.
+  const { notificarGuardado } = useRenovacion();
+
+  useEffect(() => {
+    if (!detalleParam) return;
+    let activo = true;
+
+    apiFetch(`${BASE_URL}/documentos/${detalleParam}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        return res.json();
+      })
+      .then((documento: Documento) => {
+        if (!activo) return;
+        setError("");
+        setDocumentoSeleccionado(documento);
+        setVista("ver");
+      })
+      .catch(() => {
+        if (activo) setError("No se pudo cargar el documento.");
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [detalleParam]);
+
+  // Limpia el parametro al cerrar el detalle. Sin esto, volver a la pagina
+  // reabriria el modal otra vez.
+  const limpiarDetalleParam = () => {
+    if (!searchParams.get("detalle")) return;
+    searchParams.delete("detalle");
+    setSearchParams(searchParams, { replace: true });
+  };
+
   // Estados para modales de confirmación (Baja y Reactivación)
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
   const [documentoEliminar, setDocumentoEliminar] = useState<Documento | null>(null);
@@ -37,7 +82,7 @@ export default function DocumentosPage() {
   const [revisionModalAbierto, setRevisionModalAbierto] = useState(false);
 
   const reactivar = useDocumentoSubmit({
-    endpoint: "http://127.0.0.1:8000/documentos/",
+    endpoint: `${BASE_URL}/documentos/`,
     method: "PATCH",
     id: documentoAlta?.id,
     body: { activo: true },
@@ -118,6 +163,7 @@ export default function DocumentosPage() {
           onClose={() => {
             setError("");
             setVista("listado");
+            limpiarDetalleParam();
           }}
         >
           <DocumentoForm
@@ -127,6 +173,7 @@ export default function DocumentosPage() {
             onCancelar={() => {
               setError("");
               setVista("listado");
+              limpiarDetalleParam();
             }}
             onGuardado={() => {
               setVista("listado");
@@ -167,6 +214,7 @@ export default function DocumentosPage() {
           onExito={() => {
             setVersionModalAbierto(false);
             setRefrescar((r) => r + 1);
+            notificarGuardado();
           }}
         />
       )}
@@ -179,6 +227,7 @@ export default function DocumentosPage() {
           onExito={() => {
             setRevisionModalAbierto(false);
             setRefrescar((r) => r + 1);
+            notificarGuardado();
           }}
         />
       )}

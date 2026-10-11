@@ -27,11 +27,12 @@ import {
 import { useDocumentoDetalle } from "../features/documentos/hooks/useDocumentoDetalle";
 import { useDocumentoVersiones } from "../features/documentos/hooks/useDocumentoVersiones";
 import { formatearFecha, formatearFechaHora } from "../features/documentos/utils";
+import { BASE_URL } from "../config";
 import type { RevisionDocumento, VersionDocumento } from "../features/documentos/types";
 
 const ITEMS_POR_PAGINA = 5;
 
-const API_BASE = "http://127.0.0.1:8000/documentos";
+const API_BASE = `${BASE_URL}/documentos`;
 
 
  // Historial de versiones de UN documento. Arriba se muestran los datos de la cabecera del documento y cada fila es una versión

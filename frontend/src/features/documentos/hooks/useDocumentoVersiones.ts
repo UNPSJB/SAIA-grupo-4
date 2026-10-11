@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { BASE_URL } from "../../../config";
 import type { RegistrarRevisionFormData, SubirVersionFormData } from "../types";
 import { extraerMensajeError } from "./useDocumentoSubmit";
 
@@ -7,8 +8,8 @@ export type VersionSubmitResult =
   | { status: "success" }
   | { status: "error"; message: string };
 
-// Rutas reales del backend (sin "/api": no hay proxy y esas URLs daban 404)
-const BASE_URL = "http://127.0.0.1:8000/documentos";
+// Ruta base del módulo (config exporta la dirección única del backend)
+const BASE_DOCUMENTOS = `${BASE_URL}/documentos`;
 
 // Lee el error de FastAPI tal cual lo devuelve (string, lista de 422 u objeto {code})
 const leerError = async (res: Response): Promise<string> => {
@@ -52,7 +53,7 @@ export const useDocumentoVersiones = () => {
         formData.append("datos", JSON.stringify(datos));
         formData.append("archivo", data.archivo);
 
-        const res = await fetch(`${BASE_URL}/${documentoId}/versiones`, {
+        const res = await fetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones`, {
           method: "POST",
           // Sin Content-Type manual: fetch agrega el boundary del multipart
           body: formData,
@@ -66,7 +67,7 @@ export const useDocumentoVersiones = () => {
 
         // Segundo paso: activar la recién subida (la anterior queda histórica)
         const resVigencia = await fetch(
-          `${BASE_URL}/${documentoId}/versiones/${nuevaVersion.id}/vigencia`,
+          `${BASE_DOCUMENTOS}/${documentoId}/versiones/${nuevaVersion.id}/vigencia`,
           { method: "PATCH" },
         );
         if (!resVigencia.ok) {
@@ -102,7 +103,7 @@ export const useDocumentoVersiones = () => {
         if (data.observaciones?.trim()) payload.observaciones = data.observaciones.trim();
         if (data.registrado_por_id) payload.registrado_por_id = data.registrado_por_id;
 
-        const res = await fetch(`${BASE_URL}/${documentoId}/versiones/${versionId}/renovar`, {
+        const res = await fetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones/${versionId}/renovar`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -125,7 +126,7 @@ export const useDocumentoVersiones = () => {
     async (documentoId: number, versionId: number): Promise<VersionSubmitResult> => {
       setIsSubmitting(true);
       try {
-        const res = await fetch(`${BASE_URL}/${documentoId}/versiones/${versionId}/vigencia`, {
+        const res = await fetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones/${versionId}/vigencia`, {
           method: "PATCH",
         });
 

@@ -91,6 +91,32 @@ class _ProveedorEquipos:
             )
         return vencimientos
 
+
+class _ProveedorDocumentos:
+    categoria = CategoriaVencimiento.DOCUMENTO
+
+    def listar(self, db: Session, hoy: date) -> list[schemas.Vencimiento]:
+        from src.documentos.services import listar_alertas
+
+        vencimientos = []
+        for alerta in listar_alertas(db):
+            dias_restantes = (alerta.proxima_revision - hoy).days
+            vencimientos.append(
+                schemas.Vencimiento(
+                    id=f"{self.categoria.value}:{alerta.documento.id}",
+                    categoria=self.categoria,
+                    concepto=alerta.documento.titulo,
+                    entidad="Documentos",
+                    entidad_id=alerta.documento.id,
+                    fecha_vencimiento=alerta.proxima_revision,
+                    dias_restantes=dias_restantes,
+                    estado=_estado_de(dias_restantes),
+                    detalle="Revisión",
+                    ruta_detalle=f"/documentos?detalle={alerta.documento.id}",
+                )
+            )
+        return vencimientos
+
 def _estado_de(dias_restantes: int):
     # Import diferido: services.py importa este modulo, asi que la importacion
     # tiene que ser aca adentro para no cerrar un ciclo. La regla vive una sola
@@ -104,5 +130,5 @@ def _estado_de(dias_restantes: int):
 
 registrar(_ProveedorElementosLimpieza())
 registrar(_ProveedorEquipos())
-# registrar(_ProveedorDocumentos())
+registrar(_ProveedorDocumentos())
 # registrar(_ProveedorPersonal())

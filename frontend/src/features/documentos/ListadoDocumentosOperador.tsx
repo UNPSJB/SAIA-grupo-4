@@ -22,10 +22,11 @@ import {
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { BASE_URL } from "../../config";
 import type { Documento } from "./types";
 
 // Endpoint que devuelve los documentos activos junto con su versión vigente.
-const ENDPOINT = "http://127.0.0.1:8000/documentos/activos";
+const ENDPOINT = `${BASE_URL}/documentos/activos`;
 const ITEMS_POR_PAGINA = 8;
 
 const formatearTipo = (tipo: string) => tipo.replace(/_/g, " ");

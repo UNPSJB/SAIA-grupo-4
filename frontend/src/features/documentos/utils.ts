@@ -1,12 +1,11 @@
 // Helpers compartidos por las vistas y modales de documentos.
 
-// Patrón usado en todo el frontend para hablar con el backend
-export const API_BASE = "http://127.0.0.1:8000";
+import { BASE_URL } from "../../config";
 
 // "uploads/documentos/x.pdf" -> URL absoluta del backend.
 // Si ya viene absoluta se devuelve tal cual.
 export const urlBackend = (ruta: string): string =>
-  ruta.startsWith("http") ? ruta : `${API_BASE}/${ruta}`;
+  ruta.startsWith("http") ? ruta : `${BASE_URL}/${ruta}`;
 
 // Arma el nombre de archivo sugerido al descargar: prioriza el código del documento y cae al título si no tiene. Ej: "POES-0001_v1.0.pdf".
 export const nombreArchivoDocumento = (

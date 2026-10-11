@@ -7,6 +7,8 @@ import {
   AlertMessage,
   CancelButton,
   FormActions,
+  FormContainer,
+  FormHeader,
   FormModal,
   SubmitButton,
   TextAreaField,
@@ -20,21 +22,28 @@ import type { Documento, RegistrarRevisionFormData } from "../types";
 
 type RegistrarRevisionFormValues = import("zod").output<typeof registrarRevisionSchema>;
 
-interface RegistrarRevisionModalProps {
-  open: boolean;
+type RegistrarRevisionFormProps = {
   documento: Documento;
-  onClose: () => void;
-  onExito: () => void;
-}
+  onCancelar?: () => void;
+  onGuardado?: () => void;
+  /** Sirve igual dentro del modal propio o dentro del modal del tablero. */
+  enModal?: boolean;
+};
 
-
-// Modal "Registrar Revisión Periódica". El documento se revisó pero SIGUE vigente el mismo PDF: solo se renueva el vencimiento y/o se asientan notas de auditoría.
-export const RegistrarRevisionModal = ({
-  open,
+/**
+ * Formulario de revisión periódica, sin overlay.
+ *
+ * Es la implementación única: `RegistrarRevisionModal` (acá abajo, módulo de
+ * documentos) y el tablero de vencimientos la reusan. El documento se revisó
+ * pero SIGUE vigente el mismo PDF: solo se renueva el vencimiento y/o se
+ * asientan notas de auditoría.
+ */
+export const RegistrarRevisionForm = ({
   documento,
-  onClose,
-  onExito,
-}: RegistrarRevisionModalProps) => {
+  onCancelar,
+  onGuardado,
+  enModal = false,
+}: RegistrarRevisionFormProps) => {
   const { usuario } = useAuth();
   const { registrarRevision, isSubmitting } = useDocumentoVersiones();
 
@@ -74,25 +83,21 @@ export const RegistrarRevisionModal = ({
     const datos: RegistrarRevisionFormData = {
       fecha_proxima_revision: values.fecha_proxima_revision || undefined,
       observaciones: values.observaciones || undefined,
-      registrado_por_id: usuario.personaId,
+      registrado_por_id: usuario.id,
     };
 
     const res = await registrarRevision(documento.id, versionVigente.id, datos);
     if (res.status === "success") {
-      onExito();
+      onGuardado?.();
     } else {
       setError("root", { message: res.message });
     }
   };
 
   return (
-    <FormModal
-      open={open}
-      onClose={onClose}
-      title="Registrar Revisión Periódica"
-      titleIcon={FiCheckCircle}
-      showClose
-    >
+    <FormContainer modal={enModal}>
+      <FormHeader title="Registrar Revisión Periódica" icon={FiCheckCircle} />
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <VStack gap={4} align="stretch">
           {/* Cabecera de solo lectura */}
@@ -142,7 +147,7 @@ export const RegistrarRevisionModal = ({
           />
 
           <FormActions>
-            <CancelButton text="Cancelar" onClick={onClose} icon={FiXCircle} />
+            <CancelButton text="Cancelar" onClick={onCancelar} icon={FiXCircle} />
             <SubmitButton
               text="Confirmar Revisión"
               loading={isSubmitting}
@@ -152,6 +157,43 @@ export const RegistrarRevisionModal = ({
           </FormActions>
         </VStack>
       </form>
+    </FormContainer>
+  );
+};
+
+interface RegistrarRevisionModalProps {
+  open: boolean;
+  documento: Documento;
+  onClose: () => void;
+  onExito: () => void;
+}
+
+/**
+ * Overlay del módulo de documentos para registrar una revisión.
+ *
+ * Solo aporta el Dialog; la lógica y el PATCH viven en
+ * `RegistrarRevisionForm`, que está en este mismo archivo y que el tablero de
+ * vencimientos reusa dentro de su propio modal para la renovación.
+ */
+export const RegistrarRevisionModal = ({
+  open,
+  documento,
+  onClose,
+  onExito,
+}: RegistrarRevisionModalProps) => {
+  if (!open || !documento) return null;
+
+  return (
+    <FormModal open onClose={onClose}>
+      <RegistrarRevisionForm
+        documento={documento}
+        enModal
+        onCancelar={onClose}
+        onGuardado={() => {
+          onExito();
+          onClose();
+        }}
+      />
     </FormModal>
   );
 };

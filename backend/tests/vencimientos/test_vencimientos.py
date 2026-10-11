@@ -1,10 +1,13 @@
 import uuid
+import json
+import random
 from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app
+from src.personal.models import Persona
 from src.recambios.constants import Constantes as ConstantesRecambio
 from src.vencimientos.constants import (
     CategoriaVencimiento,
@@ -413,6 +416,7 @@ def test_categoria_sin_proveedor_devuelve_400():
         not in (
             CategoriaVencimiento.ELEMENTO_LIMPIEZA,
             CategoriaVencimiento.EQUIPO,
+            CategoriaVencimiento.DOCUMENTO,
         )
     ],
 )
@@ -549,13 +553,15 @@ def test_categorias_declaradas_en_el_contrato():
 def test_categorias_endpoint_solo_expone_las_con_provider():
     data = client.get("/vencimientos/categorias").json()
 
-    assert [c["valor"] for c in data] == ["elemento_limpieza", "equipo"]
+    # Orden alfabetico por etiqueta legible.
+    assert [c["valor"] for c in data] == ["documento", "elemento_limpieza", "equipo"]
 
 
 def test_categorias_endpoint_usa_la_etiqueta_legible():
     data = client.get("/vencimientos/categorias").json()
 
-    assert data[0]["nombre"] == "Elementos de limpieza"
+    assert data[0] == {"valor": "documento", "nombre": "Documentos", "total": 0}
+    assert data[1]["nombre"] == "Elementos de limpieza"
 
 
 def test_categorias_endpoint_total_refleja_el_listado():
@@ -565,18 +571,21 @@ def test_categorias_endpoint_total_refleja_el_listado():
     crear_con_urgencia("Vencido", -20, tipo_id=tipo_id)
 
     data = client.get("/vencimientos/categorias").json()
+    elemento = next(c for c in data if c["valor"] == "elemento_limpieza")
 
     # Sin corte por defecto, el total coincide con las tres filas del listado.
-    assert data[0]["total"] == 3
+    assert elemento["total"] == 3
     # Si el listado se acota, el total cuenta lo mismo que el listado: con
     # dias_max=5 entran el proximo (5) y el vencido (-20), y no el vigente.
     acotado = client.get("/vencimientos/categorias", params={"dias_max": 5}).json()
-    assert acotado[0]["total"] == 2
+    elemento_acotado = next(c for c in acotado if c["valor"] == "elemento_limpieza")
+    assert elemento_acotado["total"] == 2
     assert len(client.get("/vencimientos/", params={"dias_max": 5}).json()) == 2
 
 
 def test_categorias_endpoint_lista_vacia_sin_datos():
     assert client.get("/vencimientos/categorias").json() == [
+        {"valor": "documento", "nombre": "Documentos", "total": 0},
         {"valor": "elemento_limpieza", "nombre": "Elementos de limpieza", "total": 0},
         {"valor": "equipo", "nombre": "Equipos", "total": 0},
     ]
@@ -825,3 +834,195 @@ def test_excluye_equipos_inactivos():
     client.delete(f"/equipos/{equipo_id}")
 
     assert client.get("/vencimientos/", params={"categoria": "equipo"}).json() == []
+
+
+# =============================================================================
+# Provider de documentos: revisiones en la vista consolidada
+# =============================================================================
+
+
+@pytest.fixture
+def autor(session):
+    """Persona activa para usarla como creador/subidor de documentos."""
+    p = Persona(
+        nombre="Doc",
+        apellido="Tester",
+        dni=str(random.randint(10000000, 99999999)),
+        legajo=random.randint(1000, 9999),
+        activo=True,
+    )
+    session.add(p)
+    session.commit()
+    session.refresh(p)
+    return p.id
+
+
+# Documento con su versión 1.0 y una próxima revisión en `dias_restantes`,
+# contados desde hoy.
+def crear_documento_con_urgencia(autor_id, dias_restantes, titulo=None):
+    titulo = titulo or f"Doc_{uuid.uuid4().hex[:6]}"
+    payload = {
+        "titulo": titulo,
+        "tipo_documento": "PROCEDIMIENTO",
+        "creado_por_id": autor_id,
+        "fecha_proxima_revision": (date.today() + timedelta(days=dias_restantes)).isoformat(),
+    }
+    res = client.post(
+        "/documentos/",
+        data={"datos": json.dumps(payload)},
+        files={"archivo": ("v1.pdf", b"pdf1", "application/pdf")},
+    )
+    assert res.status_code == 201
+    return res.json()["id"]
+
+
+def _fila_documento(documento_id):
+    """Devuelve la fila consolidada de un documento, o None si no esta."""
+    for v in client.get("/vencimientos/", params={"categoria": "documento"}).json():
+        if v["id"] == f"documento:{documento_id}":
+            return v
+    return None
+
+
+def test_documento_aparece_en_la_vista_consolidada(autor):
+    documento_id = crear_documento_con_urgencia(autor, 5, titulo="Manual BPM")
+
+    data = client.get("/vencimientos/", params={"categoria": "documento"}).json()
+
+    assert len(data) == 1
+    fila = data[0]
+    assert fila["id"] == f"documento:{documento_id}"
+    assert fila["categoria"] == "documento"
+    assert fila["concepto"] == "Manual BPM"
+    assert fila["entidad"] == "Documentos"
+    assert fila["entidad_id"] == documento_id
+    assert fila["detalle"] == "Revisión"
+    assert fila["dias_restantes"] == 5
+    assert fila["estado"] == "proximo"
+    assert fila["fecha_vencimiento"] == (date.today() + timedelta(days=5)).isoformat()
+
+
+def test_documento_concepto_es_solo_el_titulo(autor):
+    # Decision del diseño: el concepto de la fila es el titulo del documento,
+    # sin anexar el codigo ni el tipo.
+    documento_id = crear_documento_con_urgencia(autor, 5, titulo="Instructivo de Limpieza")
+
+    fila = _fila_documento(documento_id)
+
+    assert fila["concepto"] == "Instructivo de Limpieza"
+
+
+def test_documento_ruta_detalle_apunta_al_documento(autor):
+    documento_id = crear_documento_con_urgencia(autor, 5)
+
+    fila = _fila_documento(documento_id)
+
+    assert fila["ruta_detalle"] == f"/documentos?detalle={documento_id}"
+
+
+def test_documento_al_dia_se_traduce_a_vigente(autor):
+    # El modulo de documentos le dice "al_dia" a lo que el tablero llama
+    # "vigente": el provider recalcula con la regla unica de services.
+    documento_id = crear_documento_con_urgencia(autor, 40)
+
+    fila = _fila_documento(documento_id)
+
+    assert fila["estado"] == "vigente"
+    assert fila["dias_restantes"] == 40
+
+
+def test_documento_vencido_entra_como_vencido(autor):
+    documento_id = crear_documento_con_urgencia(autor, -20)
+
+    fila = _fila_documento(documento_id)
+
+    assert fila["estado"] == "vencido"
+    assert fila["dias_restantes"] == -20
+
+
+def test_dias_max_recorta_a_los_documentos_como_al_resto(autor):
+    # Es la ventana que usa la campana: los documentos tienen que entrar y salir
+    # de la misma manera que los elementos de limpieza.
+    documento_id = crear_documento_con_urgencia(autor, 40)
+
+    assert (
+        client.get(
+            "/vencimientos/", params={"categoria": "documento", "dias_max": 15}
+        ).json()
+        == []
+    )
+    assert (
+        len(
+            client.get(
+                "/vencimientos/", params={"categoria": "documento", "dias_max": 40}
+            ).json()
+        )
+        == 1
+    )
+
+
+def test_documento_y_elemento_conviven_ordenados_por_urgencia(autor):
+    documento_id = crear_documento_con_urgencia(autor, -10)
+    elemento_id = crear_con_urgencia("Escoba", 3)
+
+    data = client.get("/vencimientos/").json()
+
+    assert [v["dias_restantes"] for v in data] == [-10, 3]
+    assert [v["categoria"] for v in data] == ["documento", "elemento_limpieza"]
+    assert len({v["id"] for v in data}) == 2
+    assert f"documento:{documento_id}" in {v["id"] for v in data}
+    assert f"elemento_limpieza:{elemento_id}" in {v["id"] for v in data}
+
+
+def test_filtro_por_estado_combinado_con_categoria_documento(autor):
+    crear_documento_con_urgencia(autor, -20, titulo="Vencido")
+    crear_documento_con_urgencia(autor, 40, titulo="Vigente")
+
+    data = client.get(
+        "/vencimientos/", params={"estado": "por_vencer", "categoria": "documento"}
+    ).json()
+
+    assert [v["estado"] for v in data] == ["vencido"]
+
+
+def test_filtro_por_estado_por_vencer_incluye_documentos(autor):
+    # La campana usa "por_vencer" + dias_max=15: un documento proximo a revisar
+    # tiene que sonar como cualquier otra categoria.
+    documento_id = crear_documento_con_urgencia(autor, 5)
+
+    data = client.get(
+        "/vencimientos/", params={"estado": "por_vencer", "dias_max": 15}
+    ).json()
+
+    assert any(v["id"] == f"documento:{documento_id}" for v in data)
+
+
+def test_categoria_documento_disponible_en_el_endpoint(autor):
+    crear_documento_con_urgencia(autor, 5)
+
+    data = client.get("/vencimientos/categorias").json()
+
+    assert {"valor": "documento", "nombre": "Documentos", "total": 1} in data
+
+
+def test_excluye_documentos_sin_fecha_de_revision(autor):
+    # Un documento sin proxima revision agendada no computa ninguna fila.
+    payload = {
+        "titulo": "Sin revision",
+        "tipo_documento": "PROCEDIMIENTO",
+        "creado_por_id": autor,
+    }
+    client.post(
+        "/documentos/",
+        data={"datos": json.dumps(payload)},
+        files={"archivo": ("v1.pdf", b"pdf1", "application/pdf")},
+    )
+
+    assert client.get("/vencimientos/", params={"categoria": "documento"}).json() == []
+
+
+def test_excluye_documentos_inactivos(autor):
+    documento_id = crear_documento_con_urgencia(autor, 5)
+    client.delete(f"/documentos/{documento_id}")
+
+    assert client.get("/vencimientos/", params={"categoria": "documento"}).json() == []
