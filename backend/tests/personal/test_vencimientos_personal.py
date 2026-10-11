@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from fastapi.testclient import TestClient
 from src.main import app
 from src.personal.constants import Constantes, EstadoVencimiento
-from src.personal.services import calcular_estado_vencimiento, listar_alertas_vencimientos
+from src.personal.services import calcular_estado_vencimiento
 from tests.database import session
 
 client = TestClient(app)
@@ -228,13 +228,13 @@ def test_calcular_estado_vencimiento_vigente():
     assert estado == EstadoVencimiento.VIGENTE
 
 
-# Listado de alertas
+# Vista consolidada: GET /vencimientos/?categoria=personal
 
 def vence_en(dias: int) -> str:
     return (date.today() + timedelta(days=dias)).isoformat()
 
 
-def test_listar_alertas_ordena_por_urgencia(session):
+def test_vencimientos_de_personal_ordenados_por_urgencia():
     persona_id = crear_persona()
     for nombre, dias in (("Apto físico", 40), ("Carnet de manipulador", -5), ("Libreta sanitaria", 10)):
         res = client.post(
@@ -243,29 +243,15 @@ def test_listar_alertas_ordena_por_urgencia(session):
         )
         assert res.status_code == 201, res.text
 
-    alertas = listar_alertas_vencimientos(session)
-    assert [a.dias_restantes for a in alertas] == [-5, 10, 40]
-    assert [a.estado for a in alertas] == [EstadoVencimiento.VENCIDO, EstadoVencimiento.PROXIMO, EstadoVencimiento.VIGENTE]
-    assert alertas[0].persona == "Perez, Juan"
-    assert alertas[0].persona_id == persona_id
-    assert alertas[0].documento == "Carnet de manipulador"
+    data = client.get("/vencimientos/", params={"categoria": "personal"}).json()
+    assert [v["dias_restantes"] for v in data] == [-5, 10, 40]
+    assert [v["estado"] for v in data] == ["vencido", "proximo", "vigente"]
+    assert data[0]["concepto"] == "Perez, Juan - Carnet de manipulador"
+    assert data[0]["entidad_id"] == persona_id
+    assert data[0]["detalle"] == "Carnet de manipulador"
 
 
-def test_listar_alertas_refleja_la_renovacion(session):
-    persona_id = crear_persona()
-    res = client.post(
-        f"/personal/{persona_id}/vencimientos",
-        json={"documento_id": crear_documento(), "fecha_vencimiento": vence_en(-5)},
-    )
-    assert listar_alertas_vencimientos(session)[0].estado == EstadoVencimiento.VENCIDO
-
-    res = client.patch(f"/personal/{persona_id}/vencimientos/{res.json()['id']}", json={"fecha_vencimiento": vence_en(365)})
-    assert res.status_code == 200, res.text
-    session.expire_all()
-    assert listar_alertas_vencimientos(session)[0].estado == EstadoVencimiento.VIGENTE
-
-
-def test_listar_alertas_excluye_documento_o_persona_dados_de_baja(session):
+def test_vencimientos_de_personal_excluye_documento_o_persona_dados_de_baja():
     persona_id = crear_persona()
     documento_id, otro_documento_id = crear_documento(), crear_documento("Apto físico")
     for doc_id in (documento_id, otro_documento_id):
@@ -273,10 +259,36 @@ def test_listar_alertas_excluye_documento_o_persona_dados_de_baja(session):
         assert res.status_code == 201, res.text
 
     assert client.delete(f"/documentos-personal/{documento_id}").status_code == 200
-    session.expire_all()
-    assert [a.documento for a in listar_alertas_vencimientos(session)] == ["Apto físico"]
+    data = client.get("/vencimientos/", params={"categoria": "personal"}).json()
+    assert [v["detalle"] for v in data] == ["Apto físico"]
 
     assert client.delete(f"/personal/{persona_id}").status_code == 200
-    session.expire_all()
-    assert listar_alertas_vencimientos(session) == []
+    assert client.get("/vencimientos/", params={"categoria": "personal"}).json() == []
 
+
+# Campanita: GET /vencimientos/ acotado a vencidos y próximos
+
+def test_la_campanita_incluye_los_vencimientos_criticos_de_personal():
+    persona_id = crear_persona()
+    ids = {}
+    for nombre, dias in (("Apto físico", 40), ("Carnet de manipulador", -5), ("Libreta sanitaria", 10)):
+        res = client.post(
+            f"/personal/{persona_id}/vencimientos",
+            json={"documento_id": crear_documento(nombre), "fecha_vencimiento": vence_en(dias)},
+        )
+        assert res.status_code == 201, res.text
+        ids[nombre] = res.json()["id"]
+
+    url = f"/vencimientos/?estado=por_vencer&dias_max={Constantes.DIAS_AVISO_PROXIMO}"
+    data = client.get(url).json()
+    assert [(v["concepto"], v["estado"]) for v in data] == [
+        ("Perez, Juan - Carnet de manipulador", "vencido"),
+        ("Perez, Juan - Libreta sanitaria", "proximo"),
+    ]
+    assert data[0]["categoria"] == "personal"
+    assert data[0]["entidad_id"] == persona_id
+
+    # Al renovar, la alerta desaparece
+    res = client.patch(f"/personal/{persona_id}/vencimientos/{ids['Carnet de manipulador']}", json={"fecha_vencimiento": vence_en(365)})
+    assert res.status_code == 200, res.text
+    assert [v["concepto"] for v in client.get(url).json()] == ["Perez, Juan - Libreta sanitaria"]

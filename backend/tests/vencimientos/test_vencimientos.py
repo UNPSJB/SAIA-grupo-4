@@ -398,7 +398,7 @@ def test_filtro_por_categoria_devuelve_solo_esa_categoria():
 
 def test_categoria_sin_proveedor_devuelve_400():
     # El filtro tiene que fallar fuerte para que el frontend distinga "no hay datos" de "esa categoria no existe".
-    res = client.get("/vencimientos/", params={"categoria": "personal"})
+    res = client.get("/vencimientos/", params={"categoria": "documento"})
 
     assert res.status_code == 400
     assert res.json()["detail"] == "La categoria solicitada todavia no tiene vencimientos registrados. "
@@ -413,6 +413,7 @@ def test_categoria_sin_proveedor_devuelve_400():
         not in (
             CategoriaVencimiento.ELEMENTO_LIMPIEZA,
             CategoriaVencimiento.EQUIPO,
+            CategoriaVencimiento.PERSONAL,
         )
     ],
 )
@@ -549,7 +550,7 @@ def test_categorias_declaradas_en_el_contrato():
 def test_categorias_endpoint_solo_expone_las_con_provider():
     data = client.get("/vencimientos/categorias").json()
 
-    assert [c["valor"] for c in data] == ["elemento_limpieza", "equipo"]
+    assert [c["valor"] for c in data] == ["elemento_limpieza", "equipo", "personal"]
 
 
 def test_categorias_endpoint_usa_la_etiqueta_legible():
@@ -579,6 +580,7 @@ def test_categorias_endpoint_lista_vacia_sin_datos():
     assert client.get("/vencimientos/categorias").json() == [
         {"valor": "elemento_limpieza", "nombre": "Elementos de limpieza", "total": 0},
         {"valor": "equipo", "nombre": "Equipos", "total": 0},
+        {"valor": "personal", "nombre": "Personal", "total": 0},
     ]
 
 
