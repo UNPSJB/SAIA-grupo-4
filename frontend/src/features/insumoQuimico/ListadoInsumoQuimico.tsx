@@ -63,10 +63,18 @@ export const ListadoInsumosQuimicos = ({
       label: "Asociado a",
       render: (insumoQuimico) => {
         if (insumoQuimico.equipo) {
-          return `Equipo: ${insumoQuimico.equipo.nombre}`;
+          return (
+            <Badge colorPalette='purple' variant='subtle'>
+              Equipo: {insumoQuimico.equipo.nombre}
+            </Badge>
+          );
         }
         if (insumoQuimico.sector) {
-          return `Sector: ${insumoQuimico.sector.nombre}`;
+          return (
+            <Badge colorPalette='blue' variant='subtle'>
+              Sector: {insumoQuimico.sector.nombre}
+            </Badge>
+          );
         }
         return "Sin asignar";
       },
@@ -126,28 +134,31 @@ export const ListadoInsumosQuimicos = ({
 
   return (
     <ListadoContainer>
-      <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title="Insumos Químicos" icon={FiDroplet} />
+      <HStack justify='space-between' mb={6} align='center'>
+        <ListadoHeader title='Insumos Químicos' icon={FiDroplet} />
         <HStack gap={2}>
           <Button
-            variant="outline"
-            colorPalette="green"
+            variant='outline'
+            colorPalette='green'
             onClick={onVerUnidades}
           >
             <FaRuler /> Unidades de medida
           </Button>
-          <Button colorPalette="green" onClick={onCrear}>
+          <Button colorPalette='green' onClick={onCrear}>
             <FiPlus /> Nuevo insumo químico
           </Button>
         </HStack>
       </HStack>
-      
+
       {loading && <LoadingState message='Cargando insumos químicos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type='info' message='Todavía no hay insumos químicos cargados.' />
+        <AlertMessage
+          type='info'
+          message='Todavía no hay insumos químicos cargados.'
+        />
       )}
 
       {!loading && !error && data.length > 0 && (

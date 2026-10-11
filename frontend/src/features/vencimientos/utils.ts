@@ -7,11 +7,14 @@ export { BASE_URL };
 /**
  * Arma el endpoint de la vista consolidada.
  *
- * `dias_max` solo se manda si el usuario acota la ventana. No mandar nada
- * significa "sin recorte": el backend devuelve vencidos, próximos y vigentes,
- * y el semáforo sigue clasificando con su propio umbral de 15 días, que es otro
- * concepto. Un valor negativo o con decimales se ignora en vez de mandarse a
- * error: el filtro no debería poder romper la consulta.
+ * `dias_ventana` es la ventana simetrica del tablero: acota lo que vencio o
+ * vence dentro de N dias (`|dias_restantes| <= N`). No mandarlo significa "sin
+ * recorte": el backend devuelve vencidos, proximos y vigentes, y el semaforo
+ * sigue clasificando con su propio umbral de 15 dias, que es otro concepto. A
+ * diferencia de `dias_max` (la cota superior unilateral de la campana), la
+ * ventana tiene efecto en todos los estados, incluido "vigente". Un valor
+ * negativo o con decimales se ignora en vez de mandarse a error: el filtro no
+ * deberia poder romper la consulta.
  */
 export const construirEndpoint = (
   estado: FiltroEstadoVencimiento | "",
@@ -24,7 +27,7 @@ export const construirEndpoint = (
 
   const diasMax = Number(dias.trim());
   if (dias.trim() !== "" && Number.isInteger(diasMax) && diasMax >= 0) {
-    params.set("dias_max", String(diasMax));
+    params.set("dias_ventana", String(diasMax));
   }
 
   const query = params.toString();

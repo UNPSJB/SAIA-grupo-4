@@ -49,6 +49,7 @@ def listar_vencimientos(
     estado: FiltroEstadoVencimiento | None = None,
     categoria: CategoriaVencimiento | None = None,
     dias_max: int | None = None,
+    dias_ventana: int | None = None,
 ) -> list[schemas.Vencimiento]:
     hoy = date.today()
 
@@ -62,6 +63,15 @@ def listar_vencimientos(
     corte = _resolver_corte(estado, dias_max)
     if corte is not None:
         vencimientos = [v for v in vencimientos if v.dias_restantes <= corte]
+
+    # Ventana simetrica del tablero: |dias_restantes| <= dias_ventana. A
+    # diferencia de `dias_max` (cota superior unilateral que ademas ignora a los
+    # vigentes), acota hacia el pasado y hacia el futuro por igual, asi que tiene
+    # efecto en todos los estados.
+    if dias_ventana is not None:
+        vencimientos = [
+            v for v in vencimientos if abs(v.dias_restantes) <= dias_ventana
+        ]
 
     if categoria is not None:
         vencimientos = [v for v in vencimientos if v.categoria == categoria]

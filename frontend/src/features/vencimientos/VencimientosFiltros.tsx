@@ -64,11 +64,12 @@ export const VencimientosFiltros = ({
       onChange={(valor) => onCambiar({ ...filtros, categoria: valor })}
     />
 
-    {/* Acota la ventana de fechas. Vacío es "sin límite", que es el estado por
-        defecto: sin esto no habría forma de volver a un recorte corto cuando
-        el listado crece. */}
+    {/* Ventana de dias alrededor de hoy: acota lo que vencio o vence dentro de
+        N dias, asi que tiene efecto en todos los estados (vencido, proximo y
+        vigente). Vacío es "sin límite", que es el estado por defecto: sin esto
+        no habría forma de volver a un recorte corto cuando el listado crece. */}
     <FiltroNumero
-      ariaLabel='Días hasta el vencimiento'
+      ariaLabel='Ventana de días alrededor de hoy'
       placeholder='Sin límite de días'
       value={filtros.dias}
       onChange={(valor) => onCambiar({ ...filtros, dias: valor })}

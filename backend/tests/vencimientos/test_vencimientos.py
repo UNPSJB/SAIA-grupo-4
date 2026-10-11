@@ -219,6 +219,96 @@ def test_dias_max_no_entero_devuelve_422():
 
 
 # =============================================================================
+# Ventana simetrica (dias_ventana): funciona en todos los estados
+# =============================================================================
+# A diferencia de `dias_max` (cota superior unilateral que ademas se ignora en
+# "vigente"), `dias_ventana` acota |dias_restantes| <= N: recorta lo vencido y
+# lo futuro por igual, asi que tiene efecto en los tres estados.
+
+def test_dias_ventana_acota_ambos_extremos():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("MuyVencido", -20, tipo_id=tipo_id)
+    crear_con_urgencia("VencidoLeve", -3, tipo_id=tipo_id)
+    crear_con_urgencia("Hoy", 0, tipo_id=tipo_id)
+    crear_con_urgencia("Proximo", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Lejano", 29, tipo_id=tipo_id)
+
+    data = client.get("/vencimientos/", params={"dias_ventana": 10}).json()
+
+    assert [v["concepto"] for v in data] == ["VencidoLeve", "Hoy", "Proximo"]
+
+
+def test_dias_ventana_incluye_el_limite():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("Justo", -10, tipo_id=tipo_id)
+    crear_con_urgencia("UnoMas", -11, tipo_id=tipo_id)
+
+    data = client.get("/vencimientos/", params={"dias_ventana": 10}).json()
+
+    assert [v["concepto"] for v in data] == ["Justo"]
+
+
+def test_dias_ventana_cero_solo_deja_lo_que_vence_hoy():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("Vencido", -1, tipo_id=tipo_id)
+    crear_con_urgencia("Hoy", 0, tipo_id=tipo_id)
+    crear_con_urgencia("Manana", 1, tipo_id=tipo_id)
+
+    data = client.get("/vencimientos/", params={"dias_ventana": 0}).json()
+
+    assert [v["concepto"] for v in data] == ["Hoy"]
+
+
+def test_dias_ventana_tiene_efecto_en_estado_vigente():
+    # Con `dias_max` el filtro se ignoraba en "vigente"; con la ventana, no.
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("VigenteCerca", 20, tipo_id=tipo_id)
+    crear_con_urgencia("VigenteLejos", 40, tipo_id=tipo_id)
+
+    data = client.get(
+        "/vencimientos/", params={"estado": "vigente", "dias_ventana": 30}
+    ).json()
+
+    assert [v["concepto"] for v in data] == ["VigenteCerca"]
+
+
+def test_dias_ventana_tiene_efecto_en_estado_vencido():
+    # Con `dias_max` los vencidos nunca se recortaban (dias negativos <= N).
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("VencidoReciente", -3, tipo_id=tipo_id)
+    crear_con_urgencia("VencidoAntiguo", -40, tipo_id=tipo_id)
+
+    data = client.get(
+        "/vencimientos/", params={"estado": "vencido", "dias_ventana": 10}
+    ).json()
+
+    assert [v["concepto"] for v in data] == ["VencidoReciente"]
+
+
+def test_dias_ventana_se_combina_con_categoria():
+    tipo_id = crear_tipo_auxiliar()
+    crear_con_urgencia("Cerca", 5, tipo_id=tipo_id)
+    crear_con_urgencia("Lejos", 40, tipo_id=tipo_id)
+    crear_equipo_con_urgencia("EquipoCerca", 5)
+
+    data = client.get(
+        "/vencimientos/",
+        params={"categoria": "elemento_limpieza", "dias_ventana": 10},
+    ).json()
+
+    assert [v["concepto"] for v in data] == ["Cerca"]
+    assert all(v["categoria"] == "elemento_limpieza" for v in data)
+
+
+def test_dias_ventana_negativo_devuelve_422():
+    assert client.get("/vencimientos/", params={"dias_ventana": -1}).status_code == 422
+
+
+def test_dias_ventana_no_entero_devuelve_422():
+    assert client.get("/vencimientos/", params={"dias_ventana": "quince"}).status_code == 422
+
+
+# =============================================================================
 # Orden por urgencia (criterio 2)
 # =============================================================================
 
