@@ -1,6 +1,6 @@
 import os
 import shutil
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from fastapi import UploadFile
 from sqlalchemy.exc import IntegrityError
@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session
 
 from src.personal.models import Persona, PersonaCapacidad, VencimientoPersonal
 from src.personal import schemas, exceptions
-from src.personal.constants import Constantes
+from src.personal.constants import Constantes, EstadoVencimiento
 from src.documentos_personal import services as documentos_services, exceptions as documentos_exceptions
+from src.documentos_personal.models import DocumentoPersonal
 from src.capacidades.models import Capacidad
 from src.capacidades.constants import RolesSistema
 from src.capacidades import exceptions as capacidad_exceptions
@@ -164,6 +165,42 @@ def modificar_vencimiento(db: Session, persona_id: int, vencimiento_id: int, ven
         db.rollback()
         raise exceptions.Conflict(detail="Error de integridad al actualizar el vencimiento.")
     return db_vencimiento
+
+def calcular_estado_vencimiento(fecha_vencimiento: date, hoy: date) -> tuple[int, EstadoVencimiento]:
+    """Regla de semaforización: función pura, no depende de la base ni de la API.
+
+    Devuelve (dias_restantes, estado).
+    """
+    dias_restantes = (fecha_vencimiento - hoy).days
+    if dias_restantes < 0:
+        estado = EstadoVencimiento.VENCIDO
+    elif dias_restantes <= Constantes.DIAS_AVISO_PROXIMO:
+        estado = EstadoVencimiento.PROXIMO
+    else:
+        estado = EstadoVencimiento.VIGENTE
+    return dias_restantes, estado
+
+def listar_alertas_vencimientos(db: Session) -> List[schemas.AlertaVencimiento]:
+    consulta = select(VencimientoPersonal).join(VencimientoPersonal.persona).join(VencimientoPersonal.documento)
+    consulta = consulta.where(Persona.activo == True, DocumentoPersonal.activo == True)
+    vencimientos = db.scalars(consulta).all()
+
+    hoy = date.today()
+    alertas = []
+    for vencimiento in vencimientos:
+        dias_restantes, estado = calcular_estado_vencimiento(vencimiento.fecha_vencimiento, hoy)
+        alertas.append(schemas.AlertaVencimiento(
+            vencimiento_id=vencimiento.id,
+            persona_id=vencimiento.persona_id,
+            persona=f"{vencimiento.persona.apellido}, {vencimiento.persona.nombre}",
+            documento=vencimiento.documento.nombre,
+            fecha_vencimiento=vencimiento.fecha_vencimiento,
+            dias_restantes=dias_restantes,
+            estado=estado,
+        ))
+    # Lo más urgente primero
+    alertas.sort(key=lambda a: a.dias_restantes)
+    return alertas
 
 def _guardar_comprobante_local(vencimiento_id: int, comprobante: UploadFile) -> str:
     """Guarda el archivo en la carpeta de comprobantes y devuelve la ruta relativa servida por la API."""

@@ -1,3 +1,5 @@
+from enum import Enum
+
 class ErrorCode:
     PERSONA_NO_ENCONTRADA = "La persona no fue encontrada."
     PERSONA_DUPLICADA = "Ya existe un miembro del personal con el mismo DNI o Legajo."
@@ -19,3 +21,10 @@ class Constantes:
         "image/png": ".png",
         "application/pdf": ".pdf",
     }
+    # Cantidad de días antes del vencimiento a partir de la cual se avisa como "próximo"
+    DIAS_AVISO_PROXIMO = 15
+
+class EstadoVencimiento(str, Enum):
+    VENCIDO = "vencido"
+    PROXIMO = "proximo"
+    VIGENTE = "vigente"

@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field, EmailStr, model_validator
 from typing import Optional, Annotated, List
 from src.capacidades.schemas import Capacidad
 from src.documentos_personal.schemas import DocumentoPersonal
+from src.personal.constants import EstadoVencimiento
 
 class PersonaBase(BaseModel):
     nombre: Annotated[str, Field(min_length=1, max_length=100)]
@@ -61,6 +62,15 @@ class VencimientoPersonal(VencimientoPersonalBase):
     url_comprobante: Optional[str] = None
     documento: DocumentoPersonal
     model_config = ConfigDict(from_attributes=True)
+
+class AlertaVencimiento(BaseModel):
+    vencimiento_id: int
+    persona_id: int
+    persona: str
+    documento: str
+    fecha_vencimiento: date
+    dias_restantes: int
+    estado: EstadoVencimiento
 
 class Persona(PersonaBase):
     id: int
