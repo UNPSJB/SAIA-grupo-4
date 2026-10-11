@@ -1,4 +1,5 @@
 import type { DocumentoPersonal } from "../types";
+import { apiFetch } from "../../auth/apiFetch";
 
 interface HandleDeleteOptions {
   documento: DocumentoPersonal | null;
@@ -13,7 +14,7 @@ export const handleDelete = async ({ documento, setLoading, setError, onSuccess 
   setError("");
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/documentos-personal/${documento.id}`, {
+    const res = await apiFetch(`http://127.0.0.1:8000/documentos-personal/${documento.id}`, {
       method: "DELETE",
     });
 

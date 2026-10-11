@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { apiFetch } from "../../auth/apiFetch";
 
 export type SubmitResult =
   | { status: "success" }
@@ -45,7 +46,7 @@ export const useVencimientoSubmit = ({ onSuccess }: UseVencimientoSubmitOptions 
         const base = `${ENDPOINT}${values.persona_id}/vencimientos`;
         const esRenovacion = values.vencimiento_id !== undefined;
 
-        const res = await fetch(esRenovacion ? `${base}/${values.vencimiento_id}` : base, {
+        const res = await apiFetch(esRenovacion ? `${base}/${values.vencimiento_id}` : base, {
           method: esRenovacion ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
@@ -62,7 +63,7 @@ export const useVencimientoSubmit = ({ onSuccess }: UseVencimientoSubmitOptions 
           const formData = new FormData();
           formData.append("comprobante", values.comprobante);
 
-          const resComprobante = await fetch(`${base}/${vencimiento.id}/comprobante`, { method: "POST", body: formData });
+          const resComprobante = await apiFetch(`${base}/${vencimiento.id}/comprobante`, { method: "POST", body: formData });
           if (!resComprobante.ok) {
             const motivo = await leerMensajeError(resComprobante);
             return { status: "error", message: `El vencimiento se guardó, pero no se pudo adjuntar el comprobante: ${motivo}` };

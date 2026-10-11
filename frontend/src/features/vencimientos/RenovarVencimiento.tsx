@@ -3,6 +3,8 @@ import { RegistrarRecambioForm } from "../recambios/RegistrarRecambioForm";
 import { RegistrarCalibracionForm } from "../equipos/RegistrarCalibracionModal";
 import type { ElementoLimpieza } from "../elementosLimpieza/types";
 import type { Equipo } from "../equipos/types";
+import { RegistrarVencimientoForm } from "../personal/RegistrarVencimientoForm";
+import type { Persona } from "../personal/types";
 import { renovacionDe } from "./renovacionVencimientos";
 import type { RegistroOrigen } from "./origenVencimientos";
 import type { CategoriaVencimiento } from "./types";
@@ -55,6 +57,25 @@ const RenovarEquipo: FC<PropsFormulario> = ({
 );
 
 /**
+ * Renovación de un vencimiento de personal. Delega en el
+ * `RegistrarVencimientoForm` del módulo de personal, que renueva con
+ * `PATCH /personal/{persona_id}/vencimientos/{vencimiento_id}` cuando la
+ * persona ya tiene cargado el documento elegido.
+ */
+const RenovarPersonal: FC<PropsFormulario> = ({
+  registro,
+  onCancelar,
+  onGuardado,
+}) => (
+  <RegistrarVencimientoForm
+    persona={registro as Persona}
+    onCancelar={onCancelar}
+    onGuardado={onGuardado}
+    enModal
+  />
+);
+
+/**
  * Qué formulario de renovación corresponde a cada categoría.
  *
  * Es el dispatcher de la renovación: cuando entren las otras categorías alcanza
@@ -65,6 +86,7 @@ const FORMULARIOS: Partial<Record<CategoriaVencimiento, FC<PropsFormulario>>> =
   {
     elemento_limpieza: RenovarElementoLimpieza,
     equipo: RenovarEquipo,
+    personal: RenovarPersonal,
   };
 
 type Props = {

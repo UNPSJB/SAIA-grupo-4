@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { apiFetch } from "../../auth/apiFetch";
 
 export type SubmitResult =
   | { status: "success" }
@@ -31,7 +32,7 @@ export const useDocumentoPersonalSubmit = ({ endpoint, method = "POST", id, body
         };
 
         const url = id ? `${endpoint}${id}` : endpoint;
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

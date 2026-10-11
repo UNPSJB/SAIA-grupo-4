@@ -74,6 +74,9 @@ from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.models import ModeloBase
 from src.personal.models import Persona, PersonaCapacidad
+# Sin este import, documento_personal no entra en ModeloBase.metadata y
+# vencimiento_personal no encuentra la tabla de su clave foranea.
+from src.documentos_personal.models import DocumentoPersonal
 # Sin este import, historial_recambios no entra en ModeloBase.metadata y
 # _resetear la dropea como "tabla no mapeada" en vez de truncarla.
 from src.recambios.models import Recambio

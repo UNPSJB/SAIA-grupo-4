@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.documentos_personal import schemas, services
+from src.auth.dependencies import requiere_administracion
 
-router = APIRouter(prefix="/documentos-personal", tags=["documentos-personal"])
+router = APIRouter(prefix="/documentos-personal", tags=["documentos-personal"], dependencies=[Depends(requiere_administracion)])
 
 # Rutas para DocumentoPersonal
 
