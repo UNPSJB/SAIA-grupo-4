@@ -15,6 +15,7 @@ class PersonaBase(BaseModel):
 
 class PersonaCreate(PersonaBase):
     capacidades_ids: Annotated[List[int], Field(min_length=1)]
+    password: Annotated[Optional[str], Field(default=None, min_length=8, max_length=128)]
 
 class PersonaUpdate(BaseModel):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100)]
@@ -25,6 +26,7 @@ class PersonaUpdate(BaseModel):
     telefono: Annotated[Optional[str], Field(default=None, max_length=50)]
     activo: Annotated[Optional[bool], Field(default=None)]
     capacidades_ids: Annotated[Optional[List[int]], Field(default=None)]
+    password: Annotated[Optional[str], Field(default=None, min_length=8, max_length=128)]
 
 class PersonaCapacidad(BaseModel):
     id: Annotated[int, Field(gt=0)]
@@ -78,4 +80,5 @@ class Persona(PersonaBase):
     activo: bool
     capacidades: List[PersonaCapacidad] = []
     vencimientos: List[VencimientoPersonal] = []
+    tiene_password: bool
     model_config = ConfigDict(from_attributes=True)

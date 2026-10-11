@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,7 +39,7 @@ export const CapacidadForm = ({ modo, capacidad, onCancelar, onGuardado, enModal
     const [nombreEnviado, setNombreEnviado] = useState("");
 
     const { submit } = useCapacidadSubmit({
-        endpoint: "http://127.0.0.1:8000/capacidades/",
+        endpoint: `${BASE_URL}/capacidades/`,
         method: esModoCrear ? "POST" : "PUT",
         id: esModoModificar ? capacidad!.id : undefined,
         onInactivo: (capId) => {
@@ -54,7 +55,7 @@ export const CapacidadForm = ({ modo, capacidad, onCancelar, onGuardado, enModal
     });
 
     const reactivar = useCapacidadSubmit({
-        endpoint: "http://127.0.0.1:8000/capacidades/",
+        endpoint: `${BASE_URL}/capacidades/`,
         method: "PUT",
         id: capacidadInactivaId ?? undefined,
         body: { activo: true },

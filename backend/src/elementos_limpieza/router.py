@@ -3,10 +3,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.elementos_limpieza import schemas, services
+from src.auth.dependencies import requiere_administracion
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/elementos-limpieza", tags=["elementos-limpieza"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/elementos-limpieza", tags=["elementos-limpieza"], dependencies=[Depends(requiere_administracion)])
 
 # Rutas para Elementos de Limpieza
 
@@ -33,10 +36,12 @@ def eliminar_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
 def modificar_elemento_limpieza(elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate, db: Session = Depends(get_db)):
     return services.modificar_elemento_limpieza(db, elemento_id, elemento)
 
+# Los listados por sector/equipo se usan para asignar elementos (p. ej. en un
+# plan POES), por lo que nunca deben incluir elementos dados de baja.
 @router.get("/por-sector/{sector_id}", response_model=list[schemas.ElementoLimpieza])
 def listar_elementos_por_sector(sector_id: int, db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db, sector_id=sector_id)
+    return services.listar_elementos_limpieza(db, sector_id=sector_id, activo=True)
 
 @router.get("/por-equipo/{equipo_id}", response_model=list[schemas.ElementoLimpieza])
 def listar_elementos_por_equipo(equipo_id: int, db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db, equipo_id=equipo_id)
+    return services.listar_elementos_limpieza(db, equipo_id=equipo_id, activo=True)

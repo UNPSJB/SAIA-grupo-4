@@ -1,3 +1,5 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
+import { JSON_HEADERS } from "../../../config";
 import { useCallback, useState } from "react";
 
 export type SubmitResult =
@@ -16,7 +18,7 @@ type FastApiError = {
 };
 
 interface UseUnidadMedidaSubmitOptions {
-  endpoint: string; // URL base (ej: "http://127.0.0.1:8000/unidades-de-medida/")
+  endpoint: string; // URL base (ej: `${BASE_URL}/unidades-de-medida/`)
   method?: "POST" | "PUT"; // método HTTP
   id?: number | string; // solo para PUT
   body?: Record<string, unknown>; // override del body (ej: { disponible: true })
@@ -50,9 +52,9 @@ export const useUnidadMedidaSubmit = ({
         };
 
         const url = id ? `${endpoint}${id}/` : endpoint;
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
           method,
-          headers: { "Content-Type": "application/json" },
+          headers: JSON_HEADERS,
           body: JSON.stringify(payload),
         });
 

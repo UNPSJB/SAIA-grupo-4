@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,7 +63,7 @@ export const SectorForm = ({
     const [nombreEnviado, setNombreEnviado] = useState("");
 
     const { submit } = useSectorSubmit({
-        endpoint: "http://127.0.0.1:8000/sectores/",
+        endpoint: `${BASE_URL}/sectores/`,
         method: esModoCrear ? "POST" : "PUT",
         id: esModoModificar ? sector!.id : undefined,
         onInactivo: (sectorId) => {
@@ -78,7 +79,7 @@ export const SectorForm = ({
     });
 
     const reactivar = useSectorSubmit({
-        endpoint: "http://127.0.0.1:8000/sectores/",
+        endpoint: `${BASE_URL}/sectores/`,
         method: "PUT",
         id: sectorInactivoId ?? undefined,
         body: { activo: true },

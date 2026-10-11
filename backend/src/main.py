@@ -27,6 +27,9 @@ from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_r
 from src.recambios.router import router as recambios_router
 from src.checklists.router import router as checklists_router
 from src.documentos_personal.router import router as documentos_personal_router
+from src.vencimientos.router import router as vencimientos_router
+# Router de autenticación: login/refresh/logout con JWT y endpoint /auth/me
+from src.auth.router import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -80,3 +83,5 @@ app.include_router(tipo_elemento_limpieza_router)
 app.include_router(recambios_router)
 app.include_router(checklists_router)
 app.include_router(documentos_personal_router)
+app.include_router(vencimientos_router)
+app.include_router(auth_router)  # /auth/token, /auth/me (prefijo /auth)

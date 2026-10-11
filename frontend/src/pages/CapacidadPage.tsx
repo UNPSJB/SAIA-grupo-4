@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Button } from "@chakra-ui/react";
@@ -41,7 +42,7 @@ export default function CapacidadPage() {
     };
 
     const reactivar = useCapacidadSubmit({
-        endpoint: "http://127.0.0.1:8000/capacidades/",
+        endpoint: `${BASE_URL}/capacidades/`,
         method: "PUT",
         id: capacidadAlta?.id,
         body: { activo: true },

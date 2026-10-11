@@ -1,7 +1,10 @@
+import { BASE_URL } from "../../../config";
+
+import { apiFetch } from "../../../features/auth/apiFetch";
 import { useCallback, useEffect, useState } from "react";
 import type { EjecucionTarea } from "../types";
 
-const ENDPOINT_CHECKLISTS_HOY = "http://127.0.0.1:8000/checklists/hoy";
+const ENDPOINT_CHECKLISTS_HOY = `${BASE_URL}/checklists/hoy`;
 
 // Lista las ejecuciones de tareas del día. El endpoint genera las ejecuciones
 // faltantes y cierra las vencidas, así que se recarga después de cada completado.
@@ -19,7 +22,7 @@ export const useChecklistHoy = () => {
   useEffect(() => {
     let active = true;
 
-    fetch(ENDPOINT_CHECKLISTS_HOY)
+    apiFetch(ENDPOINT_CHECKLISTS_HOY)
       .then((res) => {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         return res.json();

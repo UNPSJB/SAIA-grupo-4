@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,20 +49,20 @@ export const InsumoQuimicoForm = ({
   const esModoModificar = modo === "modificar";
 
   const { data: unidades } = useListadoData<UnidadMedida>({
-    endpoint: "http://127.0.0.1:8000/unidades-de-medida/",
-    pageSize: 100,
+    endpoint: `${BASE_URL}/unidades-de-medida/`,
+    pageSize: ITEMS_SELECT,
     errorMessage: "No se pudieron cargar las unidades de medida.",
   });
 
   const { data: sectores } = useListadoData<Sector>({
-  endpoint: "http://127.0.0.1:8000/sectores/",
-  pageSize: 100,
+  endpoint: `${BASE_URL}/sectores/`,
+  pageSize: ITEMS_SELECT,
   errorMessage: "No se pudieron cargar los sectores.",
   });
 
   const { data: equipos } = useListadoData<Equipo>({
-  endpoint: "http://127.0.0.1:8000/equipos/",
-  pageSize: 100,
+  endpoint: `${BASE_URL}/equipos/`,
+  pageSize: ITEMS_SELECT,
   errorMessage: "No se pudieron cargar los equipos.",
   });
 
@@ -162,7 +163,7 @@ export const InsumoQuimicoForm = ({
   const [nombreEnviado, setNombreEnviado] = useState("");
 
   const { submit } = useInsumoQuimicoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos-quimicos/",
+    endpoint: `${BASE_URL}/insumos-quimicos/`,
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? insumoQuimico!.id : undefined,
     onInactivo: (insumoQuimicoId) => {
@@ -180,7 +181,7 @@ export const InsumoQuimicoForm = ({
   });
 
   const reactivar = useInsumoQuimicoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos-quimicos/",
+    endpoint: `${BASE_URL}/insumos-quimicos/`,
     method: "PUT",
     id: insumoQuimicoInactivoId ?? undefined,
     body: { activo: true },

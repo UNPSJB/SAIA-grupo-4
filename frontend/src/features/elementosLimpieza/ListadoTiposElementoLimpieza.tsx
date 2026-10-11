@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge, HStack, Button } from "@chakra-ui/react";
 import {
   FiTag,
@@ -34,8 +35,8 @@ export const ListadoTiposElementoLimpieza = ({
 }: ListadoTiposElementoLimpiezaProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<TipoElementoLimpieza>({
-      endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/",
-      pageSize: 5,
+      endpoint: `${BASE_URL}/tipos-elemento-limpieza/`,
+      pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de tipos.",
     });
 
@@ -107,7 +108,7 @@ export const ListadoTiposElementoLimpieza = ({
           <TablePagination
             count={data.length}
             page={page}
-            pageSize={5}
+            pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
             labelSingular='tipo'
             labelPlural='tipos'

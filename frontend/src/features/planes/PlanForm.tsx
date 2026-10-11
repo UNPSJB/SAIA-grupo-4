@@ -44,7 +44,7 @@ export const PlanForm = ({
     nombre: plan?.nombre ?? "",
     objetivo: plan?.objetivo ?? "",
     // En modo crear "Elaborado por" no se elige: siempre es la persona logueada.
-    elaborado_por_id: esModoCrear ? usuario?.personaId : undefined,
+    elaborado_por_id: esModoCrear ? usuario?.id : undefined,
   };
 
   const {

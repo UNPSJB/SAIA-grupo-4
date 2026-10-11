@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge } from "@chakra-ui/react";
 import { FiEdit2, FiTrash2, FiCheckCircle, FiEye } from "react-icons/fi";
 import { FaRuler } from "react-icons/fa";
@@ -22,9 +23,7 @@ interface ListadoUnidadMedidaProps {
   onDarAlta?: (unidad: UnidadMedida) => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/unidades-de-medida/";
-const ITEMS_POR_PAGINA = 5;
-
+const ENDPOINT = `${BASE_URL}/unidades-de-medida/`;
 export const ListadoUnidadMedida = ({
   onCrear,
   onModificar,

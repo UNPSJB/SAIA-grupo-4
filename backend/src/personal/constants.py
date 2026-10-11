@@ -13,6 +13,8 @@ class ErrorCode:
     COMPROBANTE_INVALIDO = "El comprobante debe ser una imagen JPG o PNG, o un archivo PDF."
     VENCIMIENTO_DUPLICADO = "La persona ya tiene un vencimiento cargado para ese documento."
     ULTIMO_ADMINISTRADOR = "No se puede realizar la acción porque es el último Administrador activo del sistema."
+    PASSWORD_REQUERIDA = "Debe asignar una contraseña para iniciar sesion."
+    PASSWORD_NO_PERMITIDA = "Solo el personal con capacidades de administrar u operar tiene contraseñas."
 
 class Constantes:
     # Tipos de archivo aceptados como comprobante y la extension con la que se guardan

@@ -1,10 +1,22 @@
 import { useState, useMemo } from "react";
-import { Box, Button, Container, VStack, Text, Center, HStack, Icon } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Container,
+  VStack,
+  Text,
+  Center,
+  HStack,
+  Icon,
+} from "@chakra-ui/react";
 import { FiInbox, FiLogOut, FiShield } from "react-icons/fi";
 
 import { useAuth } from "../features/auth/useAuth";
 import { AlertConfirm, AlertMessage, LoadingState } from "../components/ui";
-import type { EjecucionTarea, RegistroConsumoQuimico } from "../features/checklists/types";
+import type {
+  EjecucionTarea,
+  RegistroConsumoQuimico,
+} from "../features/checklists/types";
 import { useChecklistHoy } from "../features/checklists/hooks/useChecklistHoy";
 import { useCompletarTarea } from "../features/checklists/hooks/useCompletarTarea";
 import { ChecklistHeader } from "../features/checklists/components/ChecklistHeader";
@@ -28,15 +40,21 @@ export default function ChecklistPage({
   const { usuario, logout } = useAuth();
   const { ejecuciones, loading, error, reload } = useChecklistHoy();
   const { completarTarea, isSubmitting } = useCompletarTarea({
-    operadorId: usuario?.personaId ?? 0,
+    operadorId: usuario?.id ?? 0,
   });
 
   const [filtro, setFiltro] = useState<FiltroChecklist>("todos");
-  const [mensaje, setMensaje] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
+  const [mensaje, setMensaje] = useState<{
+    tipo: "success" | "error";
+    texto: string;
+  } | null>(null);
   const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
 
-  const [tareaSeleccionadaParaFoto, setTareaSeleccionadaParaFoto] = useState<EjecucionTarea | null>(null);
-  const [fotosPorTarea, setFotosPorTarea] = useState<Record<number, File | null>>({});
+  const [tareaSeleccionadaParaFoto, setTareaSeleccionadaParaFoto] =
+    useState<EjecucionTarea | null>(null);
+  const [fotosPorTarea, setFotosPorTarea] = useState<
+    Record<number, File | null>
+  >({});
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false);
 
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
@@ -47,7 +65,9 @@ export default function ChecklistPage({
     nombreTarea: string;
   } | null>(null);
 
-  const completadas = ejecuciones.filter((e) => e.estado === "COMPLETADA").length;
+  const completadas = ejecuciones.filter(
+    (e) => e.estado === "COMPLETADA",
+  ).length;
 
   const conteo = useMemo(() => {
     const porTipo = (tipo: FiltroChecklist) =>
@@ -89,8 +109,8 @@ export default function ChecklistPage({
     consumos: RegistroConsumoQuimico[],
     observacion: string,
   ) => {
-    const ejecucionTarget = ejecuciones.find(e => e.id === ejecucionId);
-    
+    const ejecucionTarget = ejecuciones.find((e) => e.id === ejecucionId);
+
     setDatosPorConfirmar({
       ejecucionId,
       consumos,
@@ -122,7 +142,7 @@ export default function ChecklistPage({
     setMensaje({ tipo: "success", texto: "Tarea registrada exitosamente." });
     setConfirmacionAbierta(false);
     setDatosPorConfirmar(null);
-    
+
     reload();
   };
 
@@ -134,22 +154,28 @@ export default function ChecklistPage({
   });
 
   return (
-    <Box bg="gray.50" minH="100vh">
+    <Box bg='gray.50' minH='100vh'>
       {/* Barra superior institucional SAIA-4 */}
       {mostrarBarraInstitucional && (
-        <Box bg="green.600" px={{ base: 4, md: 8 }} py={3} color="white" boxShadow="sm">
-          <Container maxW="container.lg" px={0}>
-            <HStack justify="space-between" align="center">
+        <Box
+          bg='green.600'
+          px={{ base: 4, md: 8 }}
+          py={3}
+          color='white'
+          boxShadow='sm'
+        >
+          <Container maxW='container.lg' px={0}>
+            <HStack justify='space-between' align='center'>
               <HStack gap={2.5}>
                 <FiShield size={22} strokeWidth={2.5} />
-                <Text fontSize="lg" fontWeight="bold" letterSpacing="wide">
+                <Text fontSize='lg' fontWeight='bold' letterSpacing='wide'>
                   SAIA-4
                 </Text>
               </HStack>
               <Button
-                variant="ghost"
-                color="white"
-                size="sm"
+                variant='ghost'
+                color='white'
+                size='sm'
                 onClick={() => setCerrarSesionAbierto(true)}
                 _hover={{ bg: "whiteAlpha.200" }}
               >
@@ -163,27 +189,26 @@ export default function ChecklistPage({
 
       {/* contenido principal */}
       <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
-        <Container maxW="container.lg" px={0}>
+        <Container maxW='container.lg' px={0}>
           <ChecklistHeader
-            nombreOperario={usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : ""}
-            capacidades={usuario?.capacidades.map((c) => c.nombre) ?? []}
+            nombreOperario={
+              usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : ""
+            }
+            capacidades={
+              usuario?.capacidades.map((c) => c.capacidad.nombre) ?? []
+            }
             fechaStr={fechaHoyStr}
             totalTareas={ejecuciones.length}
             completadas={completadas}
           />
 
           {mensaje && (
-            <AlertMessage
-              type={mensaje.tipo}
-              message={mensaje.texto}
-            />
+            <AlertMessage type={mensaje.tipo} message={mensaje.texto} />
           )}
 
-          {loading && <LoadingState message="Cargando checklist del día..." />}
+          {loading && <LoadingState message='Cargando checklist del día...' />}
 
-          {!loading && error && (
-            <AlertMessage type="error" message={error} />
-          )}
+          {!loading && error && <AlertMessage type='error' message={error} />}
 
           {!loading && !error && (
             <>
@@ -194,17 +219,25 @@ export default function ChecklistPage({
               />
 
               {ejecucionesFiltradas.length === 0 ? (
-                <Center py={16} flexDirection="column" color="gray.400">
+                <Center py={16} flexDirection='column' color='gray.400'>
                   <FiInbox size={48} />
-                  <Text mt={3} fontSize="md" fontWeight="medium" textAlign="center">
+                  <Text
+                    mt={3}
+                    fontSize='md'
+                    fontWeight='medium'
+                    textAlign='center'
+                  >
                     No hay tareas en esta categoría para el día de hoy.
                   </Text>
                 </Center>
               ) : (
-                <VStack align="stretch" gap={3} w="100%">
+                <VStack align='stretch' gap={3} w='100%'>
                   {ejecucionesFiltradas.map((ejecucion) =>
                     ejecucion.estado === "COMPLETADA" ? (
-                      <TareaCardCompletada key={ejecucion.id} ejecucion={ejecucion} />
+                      <TareaCardCompletada
+                        key={ejecucion.id}
+                        ejecucion={ejecucion}
+                      />
                     ) : (
                       <TareaCardPendiente
                         key={ejecucion.id}
@@ -232,7 +265,7 @@ export default function ChecklistPage({
           {/* Modal de Doble Confirmación para Completar Tarea */}
           <AlertConfirm
             open={confirmacionAbierta}
-            title="Completar Tarea"
+            title='Completar Tarea'
             message={`¿Confirmás que realizaste la tarea: "${datosPorConfirmar?.nombreTarea}" con los consumos indicados?`}
             loading={isSubmitting}
             onConfirm={ejecutarCompletadoFinal}

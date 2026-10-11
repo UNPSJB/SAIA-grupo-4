@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { Box } from "@chakra-ui/react";
 import { SectorForm } from "../features/sectores/SectorForm";
@@ -40,7 +41,7 @@ export default function SectoresPage() {
   };
 
   const reactivar = useSectorSubmit({
-    endpoint: "http://127.0.0.1:8000/sectores/",
+    endpoint: `${BASE_URL}/sectores/`,
     method: "PUT",
     id: sectorAlta?.id,
     body: { activo: true },

@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.capacidades import schemas, services
+from src.auth.dependencies import requiere_administracion
 
-router = APIRouter(prefix="/capacidades", tags=["capacidades"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/capacidades", tags=["capacidades"], dependencies=[Depends(requiere_administracion)])
 
 # Rutas para Capacidad
 

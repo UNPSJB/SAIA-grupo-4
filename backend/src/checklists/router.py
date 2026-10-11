@@ -6,8 +6,11 @@ from pydantic import ValidationError
 
 from src.database import get_db
 from src.checklists import schemas, services, exceptions
+from src.auth.dependencies import requiere_operacion
 
-router = APIRouter(prefix="/checklists", tags=["checklists"])
+# Router protegido: cualquier request sin sesión válida con capacidad
+# 'administrar' responde 401 (sin token) o 403 (token de no-admin).
+router = APIRouter(prefix="/checklists", tags=["checklists"], dependencies=[Depends(requiere_operacion)])
 
 @router.get("/hoy", response_model=list[schemas.EjecucionTarea])
 def obtener_tareas_hoy(db: Session = Depends(get_db)):

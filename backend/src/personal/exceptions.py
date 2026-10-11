@@ -12,6 +12,8 @@ class VencimientoNoEncontrado(NotFound): DETAIL = ErrorCode.VENCIMIENTO_NO_ENCON
 class FechaVencimientoObligatoria(BadRequest): DETAIL = ErrorCode.FECHA_VENCIMIENTO_OBLIGATORIA
 class FechasVencimientoInvalidas(BadRequest): DETAIL = ErrorCode.FECHAS_VENCIMIENTO_INVALIDAS
 class ComprobanteInvalido(BadRequest): DETAIL = ErrorCode.COMPROBANTE_INVALIDO
+class PasswordRequerida(BadRequest): DETAIL = ErrorCode.PASSWORD_REQUERIDA
+class PasswordNoPermitida(BadRequest): DETAIL = ErrorCode.PASSWORD_NO_PERMITIDA
 class PersonaRequiereReactivacion(Conflict):
     def __init__(self, persona_id: int):
         super().__init__(detail={"code": ErrorCode.PERSONA_REQUIERE_REACTIVACION, "persona_id": persona_id})

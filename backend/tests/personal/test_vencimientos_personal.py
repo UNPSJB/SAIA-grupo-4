@@ -96,7 +96,9 @@ def test_la_persona_incluye_sus_vencimientos():
 
     vencimiento = crear_vencimiento(persona_id, crear_documento())
     assert client.get(f"/personal/{persona_id}").json()["vencimientos"] == [vencimiento]
-    assert client.get("/personal/").json()[0]["vencimientos"] == [vencimiento]
+    # El listado incluye también a la persona admin que carga la suite
+    persona = next(p for p in client.get("/personal/").json() if p["id"] == persona_id)
+    assert persona["vencimientos"] == [vencimiento]
 
 
 def test_renovar_vencimiento():

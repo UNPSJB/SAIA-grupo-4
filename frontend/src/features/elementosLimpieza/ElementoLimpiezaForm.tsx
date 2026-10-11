@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HStack, VStack } from "@chakra-ui/react";
@@ -121,15 +122,15 @@ export const ElementoLimpiezaForm = ({
     error: errorTipos,
     reload: reloadTipos,
   } = useListadoData<TipoElementoLimpieza>({
-    endpoint: "http://127.0.0.1:8000/tipos-elemento-limpieza/",
+    endpoint: `${BASE_URL}/tipos-elemento-limpieza/`,
   });
   const { data: sectores, loading: loadingSectores, error: errorSectores } =
     useListadoData<Sector>({
-      endpoint: "http://127.0.0.1:8000/sectores/",
+      endpoint: `${BASE_URL}/sectores/`,
     });
   const { data: equipos, loading: loadingEquipos, error: errorEquipos } =
     useListadoData<Equipo>({
-      endpoint: "http://127.0.0.1:8000/equipos/",
+      endpoint: `${BASE_URL}/equipos/`,
     });
 
   const opcionesTipo = useMemo(
@@ -152,7 +153,7 @@ export const ElementoLimpiezaForm = ({
     loadingTipos || loadingSectores || loadingEquipos;
 
   const { submit } = useElementoLimpiezaSubmit({
-    endpoint: "http://127.0.0.1:8000/elementos-limpieza/",
+    endpoint: `${BASE_URL}/elementos-limpieza/`,
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? elemento!.id : undefined,
     onSuccess: () => {

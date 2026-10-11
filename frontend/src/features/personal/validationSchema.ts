@@ -11,6 +11,17 @@ export const personalSchema = z.object({
     email: z.email("Correo electrónico inválido").optional().or(z.literal("")),
     telefono: z.string().optional(),
     capacidades_ids: z.array(z.number()).min(1, "Debe seleccionar al menos una capacidad"),
+    // Opcional a nivel de schema: si se informa, respeta los límites del
+    // backend (8 a 128). La obligatoriedad condicional (solo para personal
+    // con capacidades habilitantes) se valida en PersonalForm, que conoce
+    // los nombres de las capacidades seleccionadas.
+    password: z
+        .string()
+        .max(128, "La contraseña no puede superar los 128 caracteres")
+        .optional()
+        .refine((val) => !val || val.length >= 8, {
+            message: "La contraseña debe tener al menos 8 caracteres",
+        }),
 });
 
 export type PersonalFormValues = z.output<typeof personalSchema>;

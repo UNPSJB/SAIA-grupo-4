@@ -21,3 +21,6 @@ class EquipoInactivo(Conflict):
     
 class EquipoBajaNoPermitida(BadRequest): 
     DETAIL = ErrorCode.EQUIPO_BAJA_NO_PERMITIDA
+
+class CalibracionFechaFutura(BadRequest):
+    DETAIL = ErrorCode.CALIBRACION_FECHA_FUTURA

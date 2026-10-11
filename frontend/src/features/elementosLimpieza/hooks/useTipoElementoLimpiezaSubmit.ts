@@ -1,3 +1,5 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
+import { JSON_HEADERS } from "../../../config";
 import { useCallback, useState } from "react";
 import type { TipoElementoLimpieza } from "../types";
 
@@ -26,9 +28,9 @@ export const useTipoElementoLimpiezaSubmit = ({ endpoint, method = "POST", id, b
     try {
       const payload = body ?? values;
       const url = id ? `${endpoint}${id}/` : endpoint;
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: JSON_HEADERS,
         body: JSON.stringify(payload),
       });
 

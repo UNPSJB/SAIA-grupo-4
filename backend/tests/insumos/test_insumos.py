@@ -122,7 +122,7 @@ def test_crear_insumo_con_unidad_inactiva():
         },
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "La unidad de medida ya esta dada de baja"
+    assert response.json()["detail"] == "La unidad de medida asociada se encuentra dada de baja. Debe reactivarse la unidad de medida primero"
 
 
 def test_dar_alta_insumo_con_unidad_inactiva():
@@ -147,7 +147,7 @@ def test_dar_alta_insumo_con_unidad_inactiva():
         json={"disponible": True},
     )
     assert res_put.status_code == 400
-    assert res_put.json()["detail"] == "La unidad de medida ya esta dada de baja"
+    assert res_put.json()["detail"] == "La unidad de medida asociada se encuentra dada de baja. Debe reactivarse la unidad de medida primero"
 
 
 def test_dar_alta_insumo_con_unidad_activa():

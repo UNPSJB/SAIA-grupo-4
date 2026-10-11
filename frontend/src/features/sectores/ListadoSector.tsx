@@ -1,3 +1,4 @@
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge } from "@chakra-ui/react";
 import {
     FiMap,
@@ -27,9 +28,7 @@ interface ListadoSectoresProps {
     onDarAlta?: (sector: Sector) => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/sectores/";
-const ITEMS_POR_PAGINA = 5;
-
+const ENDPOINT = `${BASE_URL}/sectores/`;
 export const ListadoSectores = ({
     onCrear,
     onModificar,

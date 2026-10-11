@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
@@ -38,7 +39,7 @@ export default function InsumoPage() {
   };
 
   const reactivar = useInsumoSubmit({
-    endpoint: "http://127.0.0.1:8000/insumos/",
+    endpoint: `${BASE_URL}/insumos/`,
     method: "PUT",
     id: insumoAlta?.id,
     body: { disponible: true },
