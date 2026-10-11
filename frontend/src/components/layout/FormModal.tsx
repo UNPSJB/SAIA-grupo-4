@@ -6,6 +6,8 @@ interface FormModalProps {
   open: boolean;
   title?: string;
   titleIcon?: ElementType;
+  /** Ancho máximo del contenido. Por defecto deja el que trae el Dialog. */
+  maxW?: string;
   showClose?: boolean;
   /**
    * Cierra el modal al hacer click o al mover el foco afuera. Default true:
@@ -22,6 +24,7 @@ export const FormModal = ({
   open,
   title,
   titleIcon,
+  maxW,
   showClose = false,
   closeOnInteractOutside = true,
   onClose,
@@ -35,7 +38,7 @@ export const FormModal = ({
     <Portal>
       <Dialog.Backdrop />
       <Dialog.Positioner>
-        <Dialog.Content>
+        <Dialog.Content maxW={maxW}>
           <Dialog.Header>
             {title && (
               <Dialog.Title

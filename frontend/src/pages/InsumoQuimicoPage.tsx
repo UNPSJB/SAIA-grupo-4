@@ -64,7 +64,11 @@ export default function InsumoQuimicoPage() {
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       <ListadoInsumosQuimicos
         key={refescar}
-        onVerUnidades={() => navigate("/unidades-de-medida")}
+        onVerUnidades={() =>
+          navigate("/unidades-de-medida", {
+            state: { from: "/insumos-quimicos", label: "Insumos Químicos" },
+          })
+        }
         onCrear={() => {
           setError("");
           setVista("crear");

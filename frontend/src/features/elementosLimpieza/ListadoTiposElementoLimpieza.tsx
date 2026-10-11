@@ -1,5 +1,5 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge, HStack, Button } from "@chakra-ui/react";
+import { Badge, Box, HStack, Button } from "@chakra-ui/react";
 import {
   FiTag,
   FiEdit2,
@@ -15,7 +15,7 @@ import {
   RowActions,
   TablePagination,
 } from "../../components/ui";
-import { ListadoContainer, ListadoHeader } from "../../components/layout";
+import { ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { TipoElementoLimpieza } from "./types";
 import type { ColumnDef } from "../../components/ui";
@@ -85,7 +85,7 @@ export const ListadoTiposElementoLimpieza = ({
   ];
 
   return (
-    <ListadoContainer>
+    <Box>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader title='Tipos de Elemento de Limpieza' icon={FiTag} />
         <Button colorPalette='green' onClick={onCrear}>
@@ -115,6 +115,6 @@ export const ListadoTiposElementoLimpieza = ({
           />
         </>
       )}
-    </ListadoContainer>
+    </Box>
   );
 };

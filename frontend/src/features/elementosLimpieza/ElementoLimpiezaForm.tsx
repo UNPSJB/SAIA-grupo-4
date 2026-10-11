@@ -2,13 +2,7 @@ import { BASE_URL } from "../../config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HStack, VStack } from "@chakra-ui/react";
-import {
-  FiEdit2,
-  FiSave,
-  FiXCircle,
-  FiEye,
-  FiPlus,
-} from "react-icons/fi";
+import { FiEdit2, FiSave, FiXCircle, FiEye, FiPlus } from "react-icons/fi";
 import { useMemo, useState } from "react";
 import {
   useElementoLimpiezaSubmit,
@@ -35,7 +29,6 @@ import {
   SubmitButton,
   CancelButton,
   AlertMessage,
-  FormModal,
   RowActionButton,
 } from "../../components/ui";
 import { TipoElementoLimpiezaForm } from "./TipoElementoLimpiezaForm";
@@ -73,7 +66,7 @@ export const ElementoLimpiezaForm = ({
   elemento,
   onCancelar,
   onGuardado,
-  enModal = false,
+  enModal = true,
 }: ElementoLimpiezaFormProps) => {
   const esModoVer = modo === "ver";
   const esModoCrear = modo === "crear";
@@ -124,14 +117,20 @@ export const ElementoLimpiezaForm = ({
   } = useListadoData<TipoElementoLimpieza>({
     endpoint: `${BASE_URL}/tipos-elemento-limpieza/`,
   });
-  const { data: sectores, loading: loadingSectores, error: errorSectores } =
-    useListadoData<Sector>({
-      endpoint: `${BASE_URL}/sectores/`,
-    });
-  const { data: equipos, loading: loadingEquipos, error: errorEquipos } =
-    useListadoData<Equipo>({
-      endpoint: `${BASE_URL}/equipos/`,
-    });
+  const {
+    data: sectores,
+    loading: loadingSectores,
+    error: errorSectores,
+  } = useListadoData<Sector>({
+    endpoint: `${BASE_URL}/sectores/`,
+  });
+  const {
+    data: equipos,
+    loading: loadingEquipos,
+    error: errorEquipos,
+  } = useListadoData<Equipo>({
+    endpoint: `${BASE_URL}/equipos/`,
+  });
 
   const opcionesTipo = useMemo(
     () => opcionesCatalogo(tiposIniciales, elemento?.tipo, esModoCrear),
@@ -149,8 +148,7 @@ export const ElementoLimpiezaForm = ({
   const [success, setSuccess] = useState(false);
   const [tipoModalAbierto, setTipoModalAbierto] = useState(false);
 
-  const cargandoCatalogos =
-    loadingTipos || loadingSectores || loadingEquipos;
+  const cargandoCatalogos = loadingTipos || loadingSectores || loadingEquipos;
 
   const { submit } = useElementoLimpiezaSubmit({
     endpoint: `${BASE_URL}/elementos-limpieza/`,
@@ -178,6 +176,23 @@ export const ElementoLimpiezaForm = ({
     else if (res.status === "success" && esModoCrear) reset();
   });
 
+  // Mientras se crea un tipo desde este mismo formulario, se muestra el alta
+  // de tipo en lugar del formulario del elemento. Se renderiza inline (sin un
+  // Dialog propio) para no apilar dos overlays sobre el modal del elemento.
+  if (tipoModalAbierto) {
+    return (
+      <TipoElementoLimpiezaForm
+        modo='crear'
+        enModal={enModal}
+        onCancelar={() => setTipoModalAbierto(false)}
+        onGuardado={() => {
+          setTipoModalAbierto(false);
+          reloadTipos();
+        }}
+      />
+    );
+  }
+
   return (
     <FormContainer modal={enModal}>
       <FormHeader
@@ -203,7 +218,9 @@ export const ElementoLimpiezaForm = ({
               label='Tipo'
               placeholder='Seleccioná un tipo'
               options={opcionesTipo}
-              error={errors.tipo_id?.message || (cargandoCatalogos ? "" : errorTipos)}
+              error={
+                errors.tipo_id?.message || (cargandoCatalogos ? "" : errorTipos)
+              }
               readOnly={esModoVer || esModoModificar}
               onFocus={
                 esModoVer || esModoModificar
@@ -232,7 +249,8 @@ export const ElementoLimpiezaForm = ({
             placeholder='Sin asignar'
             options={opcionesSector}
             error={
-              errors.sector_id?.message || (cargandoCatalogos ? "" : errorSectores)
+              errors.sector_id?.message ||
+              (cargandoCatalogos ? "" : errorSectores)
             }
             disabled={esModoVer}
             {...register("sector_id")}
@@ -243,7 +261,8 @@ export const ElementoLimpiezaForm = ({
             placeholder='Sin asignar'
             options={opcionesEquipo}
             error={
-              errors.equipo_id?.message || (cargandoCatalogos ? "" : errorEquipos)
+              errors.equipo_id?.message ||
+              (cargandoCatalogos ? "" : errorEquipos)
             }
             disabled={esModoVer}
             {...register("equipo_id")}
@@ -314,18 +333,6 @@ export const ElementoLimpiezaForm = ({
           )}
         </VStack>
       </form>
-      {tipoModalAbierto && (
-        <FormModal open onClose={() => setTipoModalAbierto(false)}>
-          <TipoElementoLimpiezaForm
-            modo='crear'
-            onCancelar={() => setTipoModalAbierto(false)}
-            onGuardado={() => {
-              setTipoModalAbierto(false);
-              reloadTipos();
-            }}
-          />
-        </FormModal>
-      )}
     </FormContainer>
   );
 };

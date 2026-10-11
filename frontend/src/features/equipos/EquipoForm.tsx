@@ -161,7 +161,7 @@ export const EquipoForm = ({
   });
 
   return (
-    <FormContainer>
+    <FormContainer modal={_enModal}>
       <FormHeader
         title={
           esModoVer

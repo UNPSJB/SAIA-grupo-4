@@ -63,7 +63,11 @@ export default function InsumoPage() {
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       <ListadoInsumos
         key={refescar}
-        onVerUnidades={() => navigate("/unidades-de-medida")}
+        onVerUnidades={() =>
+          navigate("/unidades-de-medida", {
+            state: { from: "/insumos", label: "Insumos" },
+          })
+        }
         onCrear={() => {
           setError("");
           setVista("crear");

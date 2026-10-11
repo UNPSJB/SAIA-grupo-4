@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { ElementoLimpiezaForm } from "../features/elementosLimpieza/ElementoLimpiezaForm";
+import { ElementoLimpiezaDetalle } from "../features/elementosLimpieza/ElementoLimpiezaDetalle";
 import { ListadoElementosLimpieza } from "../features/elementosLimpieza/ListadoElementosLimpieza";
 import { GestionTiposElementoLimpieza } from "../features/elementosLimpieza/GestionTiposElementoLimpieza";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
@@ -132,7 +133,7 @@ export default function ElementosLimpiezaPage() {
         onRegistrarRecambio={(elemento) => setElementoRecambio(elemento)}
       />
 
-      {(vista === "crear" || vista === "modificar" || vista === "ver") && (
+      {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
           onClose={() => {
@@ -165,20 +166,25 @@ export default function ElementosLimpiezaPage() {
               enModal
             />
           )}
-
-          {vista === "ver" && elementoSeleccionado && (
-            <ElementoLimpiezaForm
-              modo='ver'
-              elemento={elementoSeleccionado}
-              onCancelar={() => setVista("listado")}
-              enModal
-            />
-          )}
         </FormModal>
       )}
 
+      {vista === "ver" && elementoSeleccionado && (
+        <ElementoLimpiezaDetalle
+          elemento={elementoSeleccionado}
+          onCerrar={() => {
+            setVista("listado");
+            limpiarDetalleParam();
+          }}
+        />
+      )}
+
       {tipoModalAbierto && (
-        <FormModal open onClose={() => setTipoModalAbierto(false)}>
+        <FormModal
+          open
+          maxW='3xl'
+          onClose={() => setTipoModalAbierto(false)}
+        >
           <GestionTiposElementoLimpieza />
         </FormModal>
       )}
