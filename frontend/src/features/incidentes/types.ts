@@ -21,3 +21,9 @@ export interface Incidente {
     tipo: TipoIncidente; // Objeto del tipo de incidente
     abierto: boolean;
 }
+
+export interface EstadisticaTipoIncidente {
+  tipo_id: number;
+  tipo: string;
+  cantidad: number;
+}
