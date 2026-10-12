@@ -1,4 +1,5 @@
 import { Badge, Box, HStack, Stack, Text } from "@chakra-ui/react";
+import { BASE_URL } from "../../config";
 import { AlertMessage, LoadingState } from "../../components/ui";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { HistorialIncidente as HistorialItem } from "./types";
@@ -18,7 +19,7 @@ const formatearFecha = (fecha: string) =>
 
 export const HistorialIncidente = ({ incidenteId }: Props) => {
   const { data, loading, error } = useListadoData<HistorialItem>({
-    endpoint: `http://127.0.0.1:8000/incidentes/${incidenteId}/historial`,
+    endpoint: `${BASE_URL}/incidentes/${incidenteId}/historial`,
     errorMessage: "No se pudo cargar el historial.",
   });
 

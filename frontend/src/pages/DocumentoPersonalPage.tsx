@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Button } from "@chakra-ui/react";
@@ -40,7 +41,7 @@ export default function DocumentoPersonalPage() {
     };
 
     const reactivar = useDocumentoPersonalSubmit({
-        endpoint: "http://127.0.0.1:8000/documentos-personal/",
+        endpoint: `${BASE_URL}/documentos-personal/`,
         method: "PUT",
         id: documentoAlta?.id,
         body: { activo: true },

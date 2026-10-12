@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { Field, Input, Text, VStack } from "@chakra-ui/react";
 import { FiCalendar, FiSave, FiXCircle } from "react-icons/fi";
@@ -25,7 +26,7 @@ const formatearFecha = (fecha: string) => fecha.split("-").reverse().join("/");
 
 export const RegistrarVencimientoForm = ({ persona, onCancelar, onGuardado, enModal = false }: RegistrarVencimientoFormProps) => {
     const { data, loading, error } = useListadoData<DocumentoPersonal>({
-        endpoint: "http://127.0.0.1:8000/documentos-personal/",
+        endpoint: `${BASE_URL}/documentos-personal/`,
         errorMessage: "No se pudo cargar la lista de documentos.",
     });
     const documentos = data.filter((doc) => doc.activo);

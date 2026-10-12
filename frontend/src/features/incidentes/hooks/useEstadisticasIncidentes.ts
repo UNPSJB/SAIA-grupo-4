@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { BASE_URL } from "../../../config";
 import type { EstadisticaTipoIncidente } from "../types";
 
-const BASE_URL = "http://127.0.0.1:8000/incidentes/estadisticas";
+const ENDPOINT = `${BASE_URL}/incidentes/estadisticas`;
 const REFRESCO_MS = 30_000;
 
 interface Options {
@@ -31,7 +32,7 @@ export const useEstadisticasIncidentes = ({ desde, hasta }: Options) => {
     let active = true;
     const params = new URLSearchParams({ desde, hasta });
 
-    fetch(`${BASE_URL}?${params.toString()}`)
+    fetch(`${ENDPOINT}?${params.toString()}`)
       .then(async (res) => {
         if (res.ok) return (await res.json()) as EstadisticaTipoIncidente[];
         const body = await res.json().catch(() => null);
@@ -41,7 +42,11 @@ export const useEstadisticasIncidentes = ({ desde, hasta }: Options) => {
       })
       .then((json) => {
         if (!active) return;
-        setEstadisticas(json);
+        // Evitamos setear un array nuevo si el contenido no cambió: así recharts
+        // no re-anima las barras en cada refresco en segundo plano (parpadeo).
+        setEstadisticas((actual) =>
+          JSON.stringify(actual) === JSON.stringify(json) ? actual : json,
+        );
         setError("");
       })
       .catch((err: Error) => {

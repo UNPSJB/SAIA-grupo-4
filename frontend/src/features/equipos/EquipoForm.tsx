@@ -281,7 +281,7 @@ export const EquipoForm = ({
                     justifyContent='flex-start'
                     onClick={() =>
                       window.open(
-                        `http://127.0.0.1:8000${equipo.calibraciones[0].certificado_url}`,
+                        `${BASE_URL}${equipo.calibraciones[0].certificado_url}`,
                         "_blank",
                       )
                     }

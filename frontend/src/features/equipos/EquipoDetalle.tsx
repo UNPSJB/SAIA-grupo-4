@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { Badge, Box, Button, HStack, Icon, Text } from "@chakra-ui/react";
 import { FiEye, FiThermometer, FiFileText } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
@@ -58,7 +59,7 @@ export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
                   mt={1}
                   onClick={() =>
                     window.open(
-                      `http://127.0.0.1:8000${ultimaCalibracion.certificado_url}`,
+                      `${BASE_URL}${ultimaCalibracion.certificado_url}`,
                       "_blank"
                     )
                   }

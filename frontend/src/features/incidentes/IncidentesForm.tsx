@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useAuth } from "../auth/useAuth";
 import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -77,7 +78,7 @@ export const IncidenteForm = ({
         loading: loadingTipos,
         error: errorTipos,
     } = useListadoData<TipoIncidente>({
-        endpoint: "http://127.0.0.1:8000/tipos-incidente/",
+        endpoint: `${BASE_URL}/tipos-incidente/`,
     });
 
     const opcionesTipo = useMemo(() => {
@@ -125,7 +126,7 @@ export const IncidenteForm = ({
     };
 
     const { submit } = useIncidentesSubmit({
-        endpoint: "http://127.0.0.1:8000/incidentes/",
+        endpoint: `${BASE_URL}/incidentes/`,
         method: esModoCrear ? "POST" : "PUT",
         id: esModoModificar ? incidente!.id : undefined,
         onInactivo: (incidenteId) => {
@@ -141,7 +142,7 @@ export const IncidenteForm = ({
     });
 
     const reactivar = useIncidentesSubmit({
-        endpoint: "http://127.0.0.1:8000/incidentes/",
+        endpoint: `${BASE_URL}/incidentes/`,
         method: "PUT",
         id: incidenteInactivoId ?? undefined,
         body: { abierto: true},

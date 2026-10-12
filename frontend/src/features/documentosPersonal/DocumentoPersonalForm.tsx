@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +37,7 @@ export const DocumentoPersonalForm = ({ modo, documento, onCancelar, onGuardado,
     const [nombreEnviado, setNombreEnviado] = useState("");
 
     const { submit } = useDocumentoPersonalSubmit({
-        endpoint: "http://127.0.0.1:8000/documentos-personal/",
+        endpoint: `${BASE_URL}/documentos-personal/`,
         method: esModoCrear ? "POST" : "PUT",
         id: esModoModificar ? documento!.id : undefined,
         onInactivo: (documentoId) => {
@@ -52,7 +53,7 @@ export const DocumentoPersonalForm = ({ modo, documento, onCancelar, onGuardado,
     });
 
     const reactivar = useDocumentoPersonalSubmit({
-        endpoint: "http://127.0.0.1:8000/documentos-personal/",
+        endpoint: `${BASE_URL}/documentos-personal/`,
         method: "PUT",
         id: documentoInactivoId ?? undefined,
         body: { activo: true },

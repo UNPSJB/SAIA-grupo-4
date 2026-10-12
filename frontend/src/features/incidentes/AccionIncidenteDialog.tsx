@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Field, HStack, NativeSelect, Text, Textarea } from "@chakra-ui/react";
 import { FiCheckCircle, FiRotateCcw } from "react-icons/fi";
+import { BASE_URL } from "../../config";
 import { FormModal } from "../../components/ui";
 import { useIncidentesSubmit } from "./hooks/useIncidentesSubmit";
 import type { Incidente } from "./types";
@@ -29,7 +30,7 @@ export const AccionIncidenteDialog = ({
   const valido = texto.trim().length > 0 && responsableId !== "";
 
   const { submit, isSubmitting } = useIncidentesSubmit({
-    endpoint: `http://127.0.0.1:8000/incidentes/${incidente.id}/${modo}`,
+    endpoint: `${BASE_URL}/incidentes/${incidente.id}/${modo}`,
     body: esCierre
       ? {
           accion_correctiva: texto.trim(),

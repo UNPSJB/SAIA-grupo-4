@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BASE_URL } from "../../config";
 import { Box } from "@chakra-ui/react";
 import { ListadoTiposIncidentes } from "./ListadoTiposIncidente";
 import { TipoIncidenteForm } from "./TipoIncidenteForm";
@@ -37,7 +38,7 @@ export const GestionTiposIncidente = () => {
   };
 
   const reactivar = useTipoIncidenteSubmit({
-    endpoint: "http://127.0.0.1:8000/tipos-incidente/",
+    endpoint: `${BASE_URL}/tipos-incidente/`,
     method: "PUT",
     id: tipoAlta?.id,
     body: { activo: true },

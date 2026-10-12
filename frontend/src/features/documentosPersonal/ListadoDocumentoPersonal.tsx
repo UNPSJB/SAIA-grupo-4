@@ -1,3 +1,4 @@
+import { BASE_URL } from "../../config";
 import { Badge } from "@chakra-ui/react";
 import { FiFileText, FiEdit2, FiTrash2, FiCheckCircle } from "react-icons/fi";
 import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
@@ -15,7 +16,7 @@ interface ListadoDocumentosPersonalProps {
 
 export const ListadoDocumentosPersonal = ({ onCrear, onModificar, onEliminar, onDarAlta }: ListadoDocumentosPersonalProps) => {
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<DocumentoPersonal>({
-        endpoint: "http://127.0.0.1:8000/documentos-personal/",
+        endpoint: `${BASE_URL}/documentos-personal/`,
         pageSize: 5,
         errorMessage: "No se pudo cargar la lista de documentos.",
     });

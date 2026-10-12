@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { BASE_URL } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
 
 export type SubmitResult =
@@ -18,7 +19,7 @@ interface UseVencimientoSubmitOptions {
   onSuccess?: () => void;
 }
 
-const ENDPOINT = "http://127.0.0.1:8000/personal/";
+const ENDPOINT = `${BASE_URL}/personal/`;
 
 const leerMensajeError = async (res: Response): Promise<string> => {
   let bodyRes: { detail?: unknown } | null = null;
