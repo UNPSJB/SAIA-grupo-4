@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.personal import schemas, services
+from src.personal.constants import EstadoVencimiento
 from src.auth.dependencies import requiere_administracion
 
 # Router protegido: cualquier request sin sesión válida con capacidad
@@ -12,9 +13,9 @@ router = APIRouter(prefix="/personal", tags=["personal"], dependencies=[Depends(
 def crear_persona(persona: schemas.PersonaCreate, db: Session = Depends(get_db)):
     return services.crear_persona(db, persona)
 
-@router.get("/", response_model=list[schemas.Persona])
-def read_personal(db: Session = Depends(get_db)):
-    return services.listar_personal(db)
+@router.get("/", response_model=list[schemas.PersonaConVencimientos])
+def read_personal(busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None, db: Session = Depends(get_db)):
+    return services.listar_personal(db, busqueda, documento_id, estado)
 
 @router.get("/{persona_id}", response_model=schemas.Persona)
 def read_persona(persona_id: int, db: Session = Depends(get_db)):

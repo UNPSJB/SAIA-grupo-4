@@ -65,6 +65,10 @@ class VencimientoPersonal(VencimientoPersonalBase):
     documento: DocumentoPersonal
     model_config = ConfigDict(from_attributes=True)
 
+class VencimientoPersonalConEstado(VencimientoPersonal):
+    dias_restantes: Annotated[int, Field(description="Negativo si ya venció")]
+    estado: EstadoVencimiento
+
 class AlertaVencimiento(BaseModel):
     vencimiento_id: int
     persona_id: int
@@ -82,3 +86,7 @@ class Persona(PersonaBase):
     vencimientos: List[VencimientoPersonal] = []
     tiene_password: bool
     model_config = ConfigDict(from_attributes=True)
+
+# Persona del listado: solo los vencimientos activos, cada uno con su estado calculado
+class PersonaConVencimientos(Persona):
+    vencimientos: List[VencimientoPersonalConEstado] = []

@@ -120,8 +120,48 @@ def crear_persona(db: Session, persona: schemas.PersonaCreate) -> Persona:
         raise exceptions.Conflict(detail="Error de integridad al guardar la persona.")
     return _persona
 
-def listar_personal(db: Session) -> List[Persona]:
-    return db.scalars(select(Persona)).all()
+def vencimientos_con_estado(db_persona: Persona, hoy: date) -> List[schemas.VencimientoPersonalConEstado]:
+    """Vencimientos activos de la persona con su estado calculado."""
+    vencimientos = []
+    for vencimiento in db_persona.vencimientos:
+        if vencimiento.documento.activo:
+            dias_restantes, estado = calcular_estado_vencimiento(vencimiento.fecha_vencimiento, hoy)
+            vencimientos.append(schemas.VencimientoPersonalConEstado(
+                id=vencimiento.id,
+                persona_id=vencimiento.persona_id,
+                documento_id=vencimiento.documento_id,
+                fecha_emision=vencimiento.fecha_emision,
+                fecha_vencimiento=vencimiento.fecha_vencimiento,
+                url_comprobante=vencimiento.url_comprobante,
+                documento=vencimiento.documento,
+                dias_restantes=dias_restantes,
+                estado=estado
+            ))
+    # Lo más urgente primero
+    vencimientos.sort(key=lambda v: v.dias_restantes)
+    return vencimientos
+
+def listar_personal(db: Session, busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None) -> List[schemas.PersonaConVencimientos]:
+    consulta = select(Persona)
+    # Filtro por persona: coincidencia parcial en nombre, apellido o DNI
+    if busqueda:
+        patron = f"%{busqueda}%"
+        consulta = consulta.where(or_(Persona.nombre.ilike(patron), Persona.apellido.ilike(patron), Persona.dni.ilike(patron)))
+    # Filtro por tipo de vencimiento: personas que tienen cargado ese documento
+    if documento_id is not None:
+        consulta = consulta.where(Persona.vencimientos.any(VencimientoPersonal.documento_id == documento_id))
+
+    hoy = date.today()
+    personal = []
+    for db_persona in db.scalars(consulta).all():
+        vencimientos = vencimientos_con_estado(db_persona, hoy)
+        # Filtro por estado: personas con al menos un vencimiento activo en ese estado.
+        # Se filtra acá y no en la consulta porque el estado se calcula, no se guarda.
+        if estado is not None and not any(v.estado == estado for v in vencimientos):
+            continue
+        datos = schemas.Persona.model_validate(db_persona).model_dump(exclude={"vencimientos"})
+        personal.append(schemas.PersonaConVencimientos(**datos, vencimientos=vencimientos))
+    return personal
 
 def leer_persona(db: Session, persona_id: int) -> Persona:
     db_persona = db.scalar(select(Persona).where(Persona.id == persona_id))
