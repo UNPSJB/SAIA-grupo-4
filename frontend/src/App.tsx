@@ -87,8 +87,8 @@ function AppContent() {
               </RequireAuth>
             }
           />
-          <Route 
-            path="/incidentes-reportados"
+          <Route
+            path='/incidentes-reportados'
             element={
               <RequireAuth>
                 <IncidentesReportadosPage />
@@ -118,8 +118,8 @@ function AppContent() {
         />
         <Box bg='gray.100' flex='1' minW='0'>
           <Routes>
-            {/* La raíz, estando logueado, va a /equipos */}
-            <Route path='/' element={<Navigate to='/equipos' replace />} />
+            {/* La raíz, estando logueado, va a /checklist/historial */}
+            <Route path='/' element={<Navigate to='/historial' replace />} />
 
             {/* Rutas activas (con guardia de autenticación) */}
             <Route

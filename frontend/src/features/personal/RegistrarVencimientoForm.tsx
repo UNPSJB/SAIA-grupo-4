@@ -10,6 +10,8 @@ import type { DocumentoPersonal } from "../documentosPersonal/types";
 
 type RegistrarVencimientoFormProps = {
     persona: Persona;
+    /** Documento a renovar: si viene, el campo "Tipo de documento" queda fijo. */
+    documentoFijo?: DocumentoPersonal;
     onCancelar?: () => void;
     onGuardado?: () => void;
     enModal?: boolean;
@@ -24,15 +26,19 @@ const hoyMasDias = (dias: number) => {
 
 const formatearFecha = (fecha: string) => fecha.split("-").reverse().join("/");
 
-export const RegistrarVencimientoForm = ({ persona, onCancelar, onGuardado, enModal = false }: RegistrarVencimientoFormProps) => {
+export const RegistrarVencimientoForm = ({ persona, documentoFijo, onCancelar, onGuardado, enModal = false }: RegistrarVencimientoFormProps) => {
     const { data, loading, error } = useListadoData<DocumentoPersonal>({
         endpoint: `${BASE_URL}/documentos-personal/`,
         errorMessage: "No se pudo cargar la lista de documentos.",
     });
     const documentos = data.filter((doc) => doc.activo);
 
-    const [documentoId, setDocumentoId] = useState("");
-    const [fecha, setFecha] = useState("");
+    // Al renovar desde el tablero el documento ya viene definido: el campo se
+    // muestra fijo y arranca con la fecha propuesta según su vigencia.
+    const [documentoId, setDocumentoId] = useState(documentoFijo ? String(documentoFijo.id) : "");
+    const [fecha, setFecha] = useState(() =>
+        documentoFijo ? hoyMasDias(documentoFijo.vigencia_dias) : ""
+    );
     const [comprobante, setComprobante] = useState<File | null>(null);
     const [errorDocumento, setErrorDocumento] = useState("");
     const [errorFecha, setErrorFecha] = useState("");
@@ -82,8 +88,13 @@ export const RegistrarVencimientoForm = ({ persona, onCancelar, onGuardado, enMo
                     placeholder="Seleccione un documento"
                     value={documentoId}
                     onChange={handleDocumentoChange}
-                    options={documentos.map((doc) => ({ label: doc.nombre, value: String(doc.id) }))}
+                    options={
+                        documentoFijo
+                            ? [{ label: documentoFijo.nombre, value: String(documentoFijo.id) }]
+                            : documentos.map((doc) => ({ label: doc.nombre, value: String(doc.id) }))
+                    }
                     error={errorDocumento}
+                    readOnly={!!documentoFijo}
                 />
                 {vencimientoActual && (
                     <Text fontSize="sm" color="gray.600" alignSelf="flex-start">

@@ -20,10 +20,12 @@ import { RegistrarVencimientoForm } from "../personal/RegistrarVencimientoForm";
 import type { Persona } from "../personal/types";
 import { renovacionDe } from "./renovacionVencimientos";
 import type { RegistroOrigen } from "./origenVencimientos";
-import type { CategoriaVencimiento } from "./types";
+import type { CategoriaVencimiento, Vencimiento } from "./types";
 
 type PropsFormulario = {
   registro: RegistroOrigen;
+  /** Fila consolidada del tablero que se está renovando. */
+  vencimiento: Vencimiento;
   titulo: string;
   onCancelar: () => void;
   onGuardado: () => void;
@@ -155,16 +157,28 @@ const RenovarDocumento: FC<PropsFormulario> = ({
  */
 const RenovarPersonal: FC<PropsFormulario> = ({
   registro,
+  vencimiento,
   onCancelar,
   onGuardado,
-}) => (
-  <RegistrarVencimientoForm
-    persona={registro as unknown as Persona}
-    onCancelar={onCancelar}
-    onGuardado={onGuardado}
-    enModal
-  />
-);
+}) => {
+  const persona = registro as unknown as Persona;
+  // La fila consolidada usa la clave "personal:{vencimiento_id}": con ese id
+  // ubicamos el documento exacto que se renueva para fijarlo en el formulario.
+  const idVencimiento = Number(vencimiento.id.split(":")[1]);
+  const objetivo = (persona.vencimientos || []).find(
+    (v) => v.id === idVencimiento,
+  );
+
+  return (
+    <RegistrarVencimientoForm
+      persona={persona}
+      documentoFijo={objetivo?.documento}
+      onCancelar={onCancelar}
+      onGuardado={onGuardado}
+      enModal
+    />
+  );
+};
 
 /**
  * Qué formulario de renovación corresponde a cada categoría.
@@ -184,6 +198,8 @@ const FORMULARIOS: Partial<Record<CategoriaVencimiento, FC<PropsFormulario>>> =
 type Props = {
   categoria: CategoriaVencimiento;
   registro: RegistroOrigen;
+  /** Fila consolidada del tablero que se está renovando. */
+  vencimiento: Vencimiento;
   onCancelar: () => void;
   /**
    * Cierra el modal. La página además recarga el listado desde acá, porque la
@@ -196,6 +212,7 @@ type Props = {
 export const RenovarVencimiento = ({
   categoria,
   registro,
+  vencimiento,
   onCancelar,
   onGuardado,
 }: Props) => {
@@ -207,6 +224,7 @@ export const RenovarVencimiento = ({
   return (
     <Formulario
       registro={registro}
+      vencimiento={vencimiento}
       titulo={entrada.titulo}
       onCancelar={onCancelar}
       onGuardado={onGuardado}
