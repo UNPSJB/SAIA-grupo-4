@@ -1,7 +1,7 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { Badge, Wrap, HStack, Button } from "@chakra-ui/react";
 import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus, FiFileText, FiCalendar } from "react-icons/fi";
-import { AlertMessage, DataTable, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
+import { AlertMessage, COLOR_ESTADO, DataTable, ETIQUETA_ESTADO, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Persona } from "./types";
@@ -45,6 +45,27 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
                                 textTransform="capitalize"
                             >
                                 {c.capacidad.nombre}
+                            </Badge>
+                        ))}
+                    </Wrap>
+                );
+            },
+        },
+        {
+            key: "vencimientos",
+            label: "Vencimientos",
+            render: (p) => {
+                const vencimientos = p.vencimientos || [];
+                if (vencimientos.length === 0) return <span style={{ color: "gray" }}>Ninguno</span>;
+                return (
+                    <Wrap gap={1}>
+                        {vencimientos.map((v) => (
+                            <Badge
+                                key={v.id}
+                                colorPalette={v.estado ? COLOR_ESTADO[v.estado] : "gray"}
+                                title={v.estado ? ETIQUETA_ESTADO[v.estado] : undefined}
+                            >
+                                {v.documento.nombre}
                             </Badge>
                         ))}
                     </Wrap>
