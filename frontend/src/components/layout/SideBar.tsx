@@ -29,6 +29,7 @@ import {
   FiDroplet,
   FiCheckSquare,
   FiAlertCircle,
+  FiAlertTriangle,
   FiFileText,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
@@ -90,6 +91,11 @@ const vencimientosItem: LinkNavItem = {
   icon: FiAlertCircle,
 };
 
+const incidenteItem: LinkNavItem = {
+  to: "/incidentes",
+  label: "Incidentes",
+  icon: FiAlertTriangle,
+};
 // Acceso directo a Gestión Documental: se muestra como link simple bajo el
 // encabezado "Gestión", sin ser un desplegable (como Plan POE) ni parte de
 // la sección "Navegación".
@@ -489,6 +495,18 @@ export const NavBar = ({
 
       <SingleNavLink
         item={vencimientosItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
+
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Incidentes
+        </Text>
+      )}
+
+      <SingleNavLink
+        item={incidenteItem}
         isCollapsed={isCollapsed}
         pathname={pathname}
       />

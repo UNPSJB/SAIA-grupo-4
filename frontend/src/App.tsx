@@ -23,12 +23,14 @@ import NuevoPlanPage from "./pages/NuevoPlanPage";
 import HistorialPlanesPage from "./pages/HistorialPlanesPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
+import IncidentesPage from "./pages/IncidentesPage";
 import VencimientosPage from "./pages/VencimientosPage";
 import { RenovacionProvider } from "./features/vencimientos/RenovacionProvider";
 import DocumentosPage from "./pages/DocumentosPage";
 import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
 import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
+import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -82,6 +84,14 @@ function AppContent() {
             element={
               <RequireAuth>
                 <VisorPdfPage />
+              </RequireAuth>
+            }
+          />
+          <Route 
+            path="/incidentes-reportados"
+            element={
+              <RequireAuth>
+                <IncidentesReportadosPage />
               </RequireAuth>
             }
           />
@@ -242,6 +252,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <HistorialChecklistPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/incidentes'
+              element={
+                <RequireAuth>
+                  <IncidentesPage />
                 </RequireAuth>
               }
             />

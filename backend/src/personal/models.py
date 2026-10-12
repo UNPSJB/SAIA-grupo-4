@@ -25,6 +25,7 @@ class Persona(ModeloBase):
         "PlanPOES", 
         back_populates="elaborado_por"
     )
+    incidentes_reportados: Mapped[list["Incidente"]] = relationship("Incidente", foreign_keys="[Incidente.reportante_id]", back_populates="reportante") # Relacion con la tabla de incidentes
 
     # Indica si la persona tiene contraseña asignada. Se expone en el schema de
     # respuesta (tiene_password) para que el frontend sepa si falta asignarla;
