@@ -195,7 +195,7 @@ export const ListadoTareas = ({
 
   return (
     <>
-      <ListadoContainer maxW='7xl'>
+      <ListadoContainer maxW='6xl'>
         <HStack
           justify='space-between'
           align='center'
@@ -276,7 +276,7 @@ export const ListadoTareas = ({
         </VStack>
       </ListadoContainer>
 
-      <ListadoContainer maxW='7xl' mt={4}>
+      <ListadoContainer maxW='6xl' mt={4}>
         <HStack
           justify='space-between'
           align='center'

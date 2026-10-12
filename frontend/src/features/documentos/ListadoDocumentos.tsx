@@ -129,7 +129,7 @@ export const ListadoDocumentos = ({
   ];
 
   return (
-    <ListadoContainer maxW="7xl">
+    <ListadoContainer maxW="6xl">
       <ListadoHeader
         title="Gestión Documental"
         icon={FiFileText}

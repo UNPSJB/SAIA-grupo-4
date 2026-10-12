@@ -150,7 +150,7 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
     ];
 
     return (
-        <ListadoContainer>
+        <ListadoContainer maxW='6xl'>
             <HStack justify="space-between" mb={6} align="center">
                 <ListadoHeader title="Personal" icon={FiUser} />
                 <HStack gap={2}>

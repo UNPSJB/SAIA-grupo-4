@@ -97,7 +97,7 @@ export const ListadoSectores = ({
     ];
 
     return (
-        <ListadoContainer>
+        <ListadoContainer maxW='6xl'>
             <ListadoHeader
                 title="Sectores"
                 icon={FiMap}

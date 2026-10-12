@@ -219,7 +219,7 @@ export default function HistorialVersionesPage() {
             ];
 
   return (
-    <ListadoContainer maxW="7xl">
+    <ListadoContainer maxW="6xl">
       {/* Título + volver al listado */}
       <HStack justify="space-between" align="center" flexWrap="wrap" gap={2} mb={6}>
         <Heading size="xl" color="green" display="flex" alignItems="center" gap={2}>

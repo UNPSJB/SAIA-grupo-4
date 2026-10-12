@@ -12,13 +12,16 @@ Para regenerarla desde cero, borrar backend/db.sqlite3 y volver a ejecutar.
 
 Por defecto siembra 10 filas en cada tabla maestra (unidades de medida, sectores,
 tipos de elemento, equipos, insumos, insumos quimicos, elementos de limpieza,
-capacidades, personal y documentos), 10 planes POES y 10 tareas por plan. Las
-tablas hijas (tareas_insumos_quimicos, tareas_elementos_limpieza,
-ejecuciones_tareas, ejecuciones_insumos_quimicos, historial_recambios,
-calibraciones_equipos, versiones_documento y revisiones_documento) quedan con las
-filas que surgen de esas relaciones: no son 10 fijas porque dependen de la mezcla
-de recursos de cada tarea, de los dias de historial que se pida y de la cantidad
-de versiones o revisiones de cada documento.
+personal y documentos), 10 planes POES y 10 tareas por plan. Dos catalogos del
+sistema son la excepcion y no dependen de --cantidad: las capacidades son 5
+(administrar, operar y 3 personalizadas) y la documentacion de personal son 5
+tipos (DOCUMENTOS_PERSONAL). Las tablas hijas (tareas_insumos_quimicos,
+tareas_elementos_limpieza, ejecuciones_tareas, ejecuciones_insumos_quimicos,
+historial_recambios, calibraciones_equipos, versiones_documento,
+revisiones_documento y vencimiento_personal) quedan con las filas que surgen de
+esas relaciones: no son 10 fijas porque dependen de la mezcla de recursos de cada
+tarea, de los dias de historial que se pida y de la cantidad de versiones o
+revisiones de cada documento.
 
 Los equipos y los elementos de limpieza llevan frecuencia y fecha de la ultima
 intervencion, con las fechas escalonadas para que la vista consolidada de
@@ -33,9 +36,18 @@ proximas y al dia. Cada version tiene su PDF de relleno en
 backend/uploads/documentos (el visor del frontend lo embebe en un iframe) y la
 version vigente tiene su historial de revisiones en revisiones_documento.
 
-Todos los catalogos de este archivo tienen 10 entradas con valores propios, asi
-que con la cantidad por defecto no se repite ninguno. ``_ciclar`` solo agrega
-sufijos si se pide mas de lo que hay en el catalogo (``--cantidad 15``).
+Los documentos de personal (documento_personal) son el catalogo de libretas y
+certificados que se le exigen a cada persona: son 5 tipos fijos, y
+vencimiento_personal carga a lo sumo 10 vencimientos, uno por persona y tipo. Las
+fechas quedan escalonadas para que la categoria personal de la vista consolidada
+(vencimientos/providers.py::_ProveedorPersonal) tenga filas vencidas, proximas y
+al dia. Cada vencimiento tiene su comprobante PDF de relleno en
+backend/uploads/comprobantes, que es lo que enlaza el detalle de la persona.
+
+Todos los catalogos de este archivo tienen 10 entradas con valores propios, salvo
+la documentacion de personal, que tiene 5, asi que con la cantidad por defecto no
+se repite ninguno. ``_ciclar`` solo agrega sufijos si se pide mas de lo que hay
+en el catalogo (``--cantidad 15``).
 
 Reglas que respeta el seed, y que son las mismas que valida la app en
 plan_poes/schemas.py:
@@ -90,7 +102,11 @@ from src.equipos.models import CalibracionEquipo, Equipo
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.models import ModeloBase
-from src.personal.models import Persona, PersonaCapacidad
+# El alias evita el choque con EstadoVencimiento de vencimientos.constants, que
+# es el que usan las categorias consolidadas (equipos, elementos, documentos).
+from src.personal.constants import Constantes, EstadoVencimiento as EstadoVencimientoPersonal
+from src.personal.models import Persona, PersonaCapacidad, VencimientoPersonal
+from src.personal.services import listar_alertas_vencimientos
 # Sin este import, documento_personal no entra en ModeloBase.metadata y
 # vencimiento_personal no encuentra la tabla de su clave foranea.
 from src.documentos_personal.models import DocumentoPersonal
@@ -132,7 +148,6 @@ TABLAS_CON_CANTIDAD_FIJA = (
     "insumos",
     "insumos_quimicos",
     "elementos_limpieza",
-    "capacidad",
     "personal",
     "documentos",
     "planes_poes",
@@ -289,6 +304,37 @@ PREFIJOS_DOCUMENTO = {
 # referencia archivo_url.
 DIRECTORIO_DOCUMENTOS = Path(__file__).resolve().parent / "uploads" / "documentos"
 
+# Carpeta de comprobantes de personal, misma ruta que personal/services.py
+# ::UPLOAD_DIR. El seed escribe ahi los PDF de relleno que referencia
+# url_comprobante en vencimiento_personal.
+DIRECTORIO_COMPROBANTES = Path(__file__).resolve().parent / "uploads" / "comprobantes"
+
+# (nombre, vigencia en dias) del catalogo documento_personal. La vigencia es la
+# que usa personal/schemas.py para proponer la fecha en RegistrarVencimientoForm.
+# Es un catalogo fijo del sistema: se siembra entero (no depende de --cantidad),
+# igual que CAPACIDADES. El ultimo queda inactivo, como cuando se da de baja un
+# tipo que ya no se exige, para ejercitar el alta logica del listado.
+DOCUMENTOS_PERSONAL = (
+    ("Libreta sanitaria", 365),
+    ("Carnet de manipulador de alimentos", 730),
+    ("Curso de capacitacion en BPM", 365),
+    ("Examen medico preocupacional", 365),
+    ("Certificado de vacunacion", 1095),
+)
+
+# (dias desde hoy hasta el vencimiento) que se reparten entre los vencimientos de
+# personal sembrados. El escalonado cubre los tres estados de
+# personal/services.py::calcular_estado_vencimiento: negativo esta vencido, entre
+# 0 y Constantes.DIAS_AVISO_PROXIMO esta proximo y por encima esta vigente.
+OFFSETS_VENCIMIENTO_PERSONAL = (
+    -120, -30, 4, 9, 14, 30, 90, 180, -3, 7, 45, 365,
+)
+
+# Tope de vencimientos de personal sembrados. Diez alcanzan para que el listado y
+# la vista consolidada muestren varias personas y los tres estados sin cargar una
+# fila por cada persona activa.
+LIMITE_VENCIMIENTOS_PERSONAL = 10
+
 OBSERVACIONES_CAMBIO_DOCUMENTO = (
     "Version inicial aprobada.",
     "Se actualizo el alcance del procedimiento.",
@@ -308,11 +354,6 @@ CAPACIDADES = (
     ("Supervisar Limpieza", "Autoriza el cierre de tareas de limpieza", TipoCapacidad.PERSONALIZADA),
     ("Autorizar Desinfeccion", "Habilita las tareas de desinfeccion", TipoCapacidad.PERSONALIZADA),
     ("Gestionar Inventario", "Controla el stock de insumos y productos", TipoCapacidad.PERSONALIZADA),
-    ("Registrar Evidencias", "Adjunta el registro fotografico de cada tarea", TipoCapacidad.PERSONALIZADA),
-    ("Controlar Temperaturas", "Habilita el registro y control de temperaturas", TipoCapacidad.PERSONALIZADA),
-    ("Aprobar Planes POES", "Da el visto bueno a un plan antes de activarlo", TipoCapacidad.PERSONALIZADA),
-    ("Coordinar Turnos", "Asigna el personal a los turnos de limpieza", TipoCapacidad.PERSONALIZADA),
-    ("Reportar Incidentes", "Registra los incidentes detectados en el proceso", TipoCapacidad.PERSONALIZADA),
 )
 
 OBSERVACIONES_RECAMBIO = (
@@ -459,24 +500,19 @@ ALCANCES_RECURSOS = (
 ASIGNACIONES_CAPACIDADES = (
     (0, "administrar"),
     (0, "operar"),
-    (0, "Registrar Evidencias"),
     (1, "operar"),
     (1, "Supervisar Limpieza"),
     (2, "operar"),
-    (2, "Controlar Temperaturas"),
     (3, "operar"),
     (3, "Autorizar Desinfeccion"),
     (4, "administrar"),
     (4, "operar"),
     (4, "Gestionar Inventario"),
     (5, "operar"),
-    (5, "Coordinar Turnos"),
     (6, "operar"),
     (7, "administrar"),
     (7, "operar"),
-    (7, "Aprobar Planes POES"),
     (8, "operar"),
-    (8, "Reportar Incidentes"),
 )
 
 # (indice de persona, capacidad, dias atras) de vinculos ya dados de baja. Quedan
@@ -825,7 +861,7 @@ def _crear_historial_calibraciones(db, equipos):
 def _crear_personas(db, fake, cantidad, hoy):
     capacidades = [
         Capacidad(nombre=nombre, descripcion=descripcion, tipo=tipo, activo=True)
-        for nombre, descripcion, tipo in _ciclar(CAPACIDADES, cantidad)
+        for nombre, descripcion, tipo in CAPACIDADES
     ]
     db.add_all(capacidades)
     db.flush()
@@ -1058,6 +1094,100 @@ def _crear_documentos(db, personas, cantidad, hoy):
     db.add_all(documentos + versiones + revisiones)
     db.flush()
     return documentos
+
+
+def _escribir_pdf_comprobante(persona, documento, fecha_vencimiento):
+    """Escribe el comprobante PDF de relleno de un vencimiento de personal.
+
+    El nombre es determinista (tipo de documento + legajo), asi volver a correr
+    el seed con --reset pisa el mismo archivo en vez de acumular copias huerfanas
+    y la url_comprobante no queda apuntando a un archivo que ya no existe.
+    """
+    DIRECTORIO_COMPROBANTES.mkdir(parents=True, exist_ok=True)
+    nombre = f"comprobante_{documento.id:04d}_{persona.legajo}.pdf"
+    (DIRECTORIO_COMPROBANTES / nombre).write_bytes(
+        _pdf_de_relleno(
+            documento.nombre,
+            f"{persona.apellido}, {persona.nombre} - vence {fecha_vencimiento.isoformat()}",
+        )
+    )
+    return f"uploads/comprobantes/{nombre}"
+
+
+def _crear_documentos_personal(db):
+    """Catalogo de tipos de documento que se le exigen al personal.
+
+    Es un catalogo fijo del sistema: se siembra entero (DOCUMENTOS_PERSONAL) y no
+    depende de --cantidad, igual que CAPACIDADES. El nombre tiene que ser ASCII y
+    unico (documentos_personal/models.py). El ultimo queda inactivo, como cuando
+    se da de baja un tipo que ya no se exige, para ejercitar el alta logica del
+    listado.
+    """
+    documentos = [
+        DocumentoPersonal(
+            nombre=nombre,
+            vigencia_dias=vigencia_dias,
+            activo=indice != len(DOCUMENTOS_PERSONAL) - 1,
+        )
+        for indice, (nombre, vigencia_dias) in enumerate(DOCUMENTOS_PERSONAL)
+    ]
+    db.add_all(documentos)
+    db.flush()
+    return documentos
+
+
+def _crear_vencimientos_personal(db, personas, documentos, hoy):
+    """Vencimientos de personal, hasta LIMITE_VENCIMIENTOS_PERSONAL filas.
+
+    Como exige el indice unico uix_persona_documento de
+    personal/models.py::VencimientoPersonal, cada persona tiene a lo sumo una fila
+    por documento. La cantidad de documentos por persona rota entre 1 y 3 para que
+    el listado de personal muestre personas con distinta carga, y la fecha de
+    vencimiento sale de OFFSETS_VENCIMIENTO_PERSONAL para cubrir los tres estados.
+    La fecha de emision se deriva de la vigencia del documento para que siempre
+    sea anterior al vencimiento.
+    """
+    activas = [persona for persona in personas if persona.activo]
+    activos = [documento for documento in documentos if documento.activo]
+    if not activas or not activos:
+        return []
+
+    vencimientos = []
+    vistos = set()
+    contador = 0
+    for indice_persona, persona in enumerate(activas):
+        if contador >= LIMITE_VENCIMIENTOS_PERSONAL:
+            break
+        for salto in range(1 + indice_persona % 3):
+            if contador >= LIMITE_VENCIMIENTOS_PERSONAL:
+                break
+            documento = activos[(indice_persona + salto * 2) % len(activos)]
+            if (persona.id, documento.id) in vistos:
+                continue
+            vistos.add((persona.id, documento.id))
+
+            fecha_vencimiento = hoy + timedelta(
+                days=OFFSETS_VENCIMIENTO_PERSONAL[
+                    contador % len(OFFSETS_VENCIMIENTO_PERSONAL)
+                ]
+            )
+            contador += 1
+            vencimientos.append(
+                VencimientoPersonal(
+                    persona=persona,
+                    documento=documento,
+                    fecha_emision=fecha_vencimiento
+                    - timedelta(days=documento.vigencia_dias),
+                    fecha_vencimiento=fecha_vencimiento,
+                    url_comprobante=_escribir_pdf_comprobante(
+                        persona, documento, fecha_vencimiento
+                    ),
+                )
+            )
+
+    db.add_all(vencimientos)
+    db.flush()
+    return vencimientos
 
 
 def _crear_planes(db, personas, cantidad, hoy):
@@ -1378,6 +1508,26 @@ def _verificar_cantidades(db, cantidad):
     if desfasadas:
         raise RuntimeError("Tablas con una cantidad inesperada: " + "; ".join(desfasadas))
 
+    # Las capacidades son un catalogo fijo del sistema, no una tabla de demo: se
+    # exige el largo de CAPACIDADES (administrar, operar y las 3 personalizadas).
+    total_capacidades = db.scalar(select(func.count()).select_from(Capacidad))
+    if total_capacidades != len(CAPACIDADES):
+        raise RuntimeError(
+            f"Se sembraron {total_capacidades} capacidades y se esperaban "
+            f"{len(CAPACIDADES)} (administrar, operar y 3 personalizadas)."
+        )
+
+    # La documentacion de personal tambien es un catalogo fijo: se exige el largo
+    # de DOCUMENTOS_PERSONAL (5 tipos, el ultimo inactivo).
+    total_documentos_personal = db.scalar(
+        select(func.count()).select_from(DocumentoPersonal)
+    )
+    if total_documentos_personal != len(DOCUMENTOS_PERSONAL):
+        raise RuntimeError(
+            f"Se sembraron {total_documentos_personal} documentos de personal y se "
+            f"esperaban {len(DOCUMENTOS_PERSONAL)}."
+        )
+
     for plan in db.scalars(select(PlanPOES)).all():
         if len(plan.tareas) != cantidad:
             raise RuntimeError(
@@ -1514,6 +1664,65 @@ def _verificar_documentos(db, cantidad):
         )
 
 
+def _verificar_vencimientos_personal(db, cantidad):
+    """Los vencimientos de personal activos aparecen en la vista consolidada.
+
+    personal/services.py::listar_alertas_vencimientos une vencimiento_personal con
+    la persona y el tipo de documento, y filtra los activos: cada fila vigente
+    tiene que aparecer exactamente una vez y ordenada por urgencia, que es lo que
+    consume el provider _ProveedorPersonal. Nunca se superan
+    LIMITE_VENCIMIENTOS_PERSONAL filas, y los tres estados solo se exigen con
+    --cantidad suficiente para escalonar las fechas (con menos personas puede
+    quedar uno o dos estados).
+    """
+    documentos = db.scalars(select(DocumentoPersonal)).all()
+    activos = [documento for documento in documentos if documento.activo]
+    if not activos:
+        raise RuntimeError("Ningun tipo de documento de personal quedo activo.")
+
+    vencimientos = db.scalars(select(VencimientoPersonal)).all()
+    esperados = {
+        vencimiento.id
+        for vencimiento in vencimientos
+        if vencimiento.persona.activo and vencimiento.documento.activo
+    }
+    if not esperados:
+        raise RuntimeError("Ninguna persona activa quedo con un vencimiento de personal.")
+    if len(esperados) > LIMITE_VENCIMIENTOS_PERSONAL:
+        raise RuntimeError(
+            f"Se sembraron {len(esperados)} vencimientos de personal y el limite es "
+            f"{LIMITE_VENCIMIENTOS_PERSONAL}."
+        )
+
+    alertas = listar_alertas_vencimientos(db)
+    ids = [alerta.vencimiento_id for alerta in alertas]
+    if len(ids) != len(set(ids)):
+        raise RuntimeError("La vista de vencimientos de personal repite vencimientos.")
+    if set(ids) != esperados:
+        raise RuntimeError(
+            f"Hay {len(esperados)} vencimientos de personal activos "
+            f"pero {len(ids)} alertas."
+        )
+
+    dias = [alerta.dias_restantes for alerta in alertas]
+    if dias != sorted(dias):
+        raise RuntimeError("Las alertas de personal no estan ordenadas por urgencia.")
+
+    if cantidad < len(DOCUMENTOS_PERSONAL):
+        # Con menos personas que tipos de documento el escalonado sale corto y no
+        # llega a cubrir los tres estados.
+        return
+    estados = {alerta.estado for alerta in alertas}
+    faltantes = [
+        estado.value for estado in EstadoVencimientoPersonal if estado not in estados
+    ]
+    if faltantes:
+        raise RuntimeError(
+            "Los vencimientos de personal no tienen filas en estado: "
+            + ", ".join(faltantes)
+        )
+
+
 def _verificar_multi_insumo(plan_vigente):
     """El plan vigente tiene que incluir tareas con 2 y con 3 insumos.
 
@@ -1586,6 +1795,7 @@ def _verificar(db, hoy, cantidad):
     _verificar_vencimientos(db, cantidad)
     _verificar_calibraciones(db, cantidad)
     _verificar_documentos(db, cantidad)
+    _verificar_vencimientos_personal(db, cantidad)
 
     return plan_vigente, esperadas_hoy
 
@@ -1686,6 +1896,22 @@ def _resumen(db, personas, plan_vigente, tareas_hoy, estados):
         print(f"      {estado.value:<12} {total}")
 
     print()
+    print("  Documentacion de personal")
+    print(
+        f"    tipos de documento: "
+        f"{db.scalar(select(func.count()).select_from(DocumentoPersonal))}"
+    )
+    print(
+        f"    vencimientos cargados: "
+        f"{db.scalar(select(func.count()).select_from(VencimientoPersonal))}"
+    )
+    alertas_personal = listar_alertas_vencimientos(db)
+    print(f"    en la vista consolidada (categoria personal): {len(alertas_personal)}")
+    for estado in EstadoVencimientoPersonal:
+        total = sum(1 for alerta in alertas_personal if alerta.estado == estado)
+        print(f"      {estado.value:<12} {total}")
+
+    print()
     print("  Ingreso por DNI (LoginPage compara el documento contra GET /personal/)")
     for persona in personas:
         nombres = ", ".join(
@@ -1758,6 +1984,8 @@ def main():
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
             _crear_documentos(db, personas, args.cantidad, hoy)
+            documentos_personal = _crear_documentos_personal(db)
+            _crear_vencimientos_personal(db, personas, documentos_personal, hoy)
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,

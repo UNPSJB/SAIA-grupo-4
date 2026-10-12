@@ -102,7 +102,7 @@ export const ListadoUnidadMedida = ({
   ];
 
   return (
-    <ListadoContainer>
+    <ListadoContainer maxW='6xl'>
       <ListadoHeader
         title='Unidades de Medida'
         icon={FaRuler}

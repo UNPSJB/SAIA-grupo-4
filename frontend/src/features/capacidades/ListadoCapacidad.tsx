@@ -72,7 +72,7 @@ export const ListadoCapacidades = ({ onCrear, onModificar, onEliminar, onVer, on
     ];
 
     return (
-        <ListadoContainer>
+        <ListadoContainer maxW='6xl'>
             <ListadoHeader title="Capacidades" icon={FiAward} buttonLabel="Nueva capacidad" onCrear={onCrear} />
             {loading && <LoadingState message="Cargando capacidades..." />}
             {!loading && error && <AlertMessage type="error" message={error} />}

@@ -133,7 +133,7 @@ export const ListadoInsumosQuimicos = ({
   ];
 
   return (
-    <ListadoContainer>
+    <ListadoContainer maxW='6xl'>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader title='Insumos Químicos' icon={FiDroplet} />
         <HStack gap={2}>
