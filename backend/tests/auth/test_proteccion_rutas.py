@@ -75,6 +75,7 @@ def _headers(token: str) -> dict:
 def test_sin_token_es_401():
     assert client.get("/equipos/").status_code == 401
     assert client.get("/personal/").status_code == 401
+    assert client.get("/documentos-personal/").status_code == 401
     assert client.get("/checklists/hoy").status_code == 401
     res = client.get("/equipos/")
     assert res.status_code == 401

@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Badge, VStack, Text, HStack } from "@chakra-ui/react";
-import { FiEye, FiUser, FiChevronDown, FiChevronUp, FiClock, FiAward } from "react-icons/fi";
+import { Badge, Link, VStack, Text, HStack } from "@chakra-ui/react";
+import { FiEye, FiUser, FiChevronDown, FiChevronUp, FiClock, FiAward, FiFileText } from "react-icons/fi";
+import { BASE_URL } from "../../config";
+import { COLOR_ESTADO, ETIQUETA_ESTADO } from "../../components/ui";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import type { Persona } from "./types";
 
@@ -25,6 +27,7 @@ export const PersonalDetalle = ({ persona, onCerrar }: PersonalDetalleProps) => 
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
   const capacidadesVigentes = persona.capacidades.filter((c) => c.activo);
+  const vencimientos = persona.vencimientos || [];
 
   const historialAgrupado = persona.capacidades.reduce((acc, cap) => {
     const nombreCap = cap.capacidad.nombre;
@@ -64,6 +67,30 @@ export const PersonalDetalle = ({ persona, onCerrar }: PersonalDetalleProps) => 
             valor: `(Vigente desde: ${formatearFecha(cap.fecha_desde)})`,
           }))
         : [{ label: "Estado", valor: "No posee capacidades vigentes en la actualidad." }],
+    },
+    {
+      titulo: "DOCUMENTACIÓN Y VENCIMIENTOS",
+      icono: FiFileText,
+      items: vencimientos.length > 0
+        ? vencimientos.map((v) => ({
+            label: v.documento.nombre,
+            valor: (
+              <HStack as="span" display="inline-flex" gap={2} wrap="wrap">
+                <Text as="span">Vence el {formatearFecha(v.fecha_vencimiento)}</Text>
+                {v.estado && (
+                  <Badge colorPalette={COLOR_ESTADO[v.estado]}>{ETIQUETA_ESTADO[v.estado]}</Badge>
+                )}
+                {v.url_comprobante ? (
+                  <Link href={`${BASE_URL}/${v.url_comprobante}`} target="_blank" rel="noopener noreferrer" colorPalette="blue">
+                    Ver comprobante
+                  </Link>
+                ) : (
+                  <Text as="span" color="gray.500">Sin comprobante</Text>
+                )}
+              </HStack>
+            ),
+          }))
+        : [{ label: "Estado", valor: "No tiene documentación cargada." }],
     },
     {
       titulo: (

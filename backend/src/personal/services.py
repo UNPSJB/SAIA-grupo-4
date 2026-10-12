@@ -1,4 +1,8 @@
-from datetime import datetime
+import os
+import shutil
+from datetime import date, datetime
+from pathlib import Path
+from fastapi import UploadFile
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from sqlalchemy import func, or_, select, update
@@ -10,11 +14,22 @@ from src.auth.services import (
 )
 from src.auth.utils import get_password_hash
 
-from src.personal.models import Persona, PersonaCapacidad
+from src.personal.models import Persona, PersonaCapacidad, VencimientoPersonal
 from src.personal import schemas, exceptions
+from src.personal.constants import Constantes, EstadoVencimiento
+from src.documentos_personal import services as documentos_services, exceptions as documentos_exceptions
+from src.documentos_personal.models import DocumentoPersonal
 from src.capacidades.models import Capacidad
 from src.capacidades.constants import RolesSistema
 from src.capacidades import exceptions as capacidad_exceptions
+
+# Carpeta local de comprobantes, dentro de la misma carpeta uploads que expone src/main.py
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+UPLOAD_DIR = BASE_DIR / "uploads" / "comprobantes"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Prefijo que se guarda en url_comprobante, para no persistir rutas absolutas de la maquina
+UPLOAD_URL_PREFIX = "uploads/comprobantes"
 
 # --- FUNCIONES MODULARIZADAS DE APOYO ---
 
@@ -105,14 +120,183 @@ def crear_persona(db: Session, persona: schemas.PersonaCreate) -> Persona:
         raise exceptions.Conflict(detail="Error de integridad al guardar la persona.")
     return _persona
 
-def listar_personal(db: Session) -> List[Persona]:
-    return db.scalars(select(Persona)).all()
+def vencimientos_con_estado(db_persona: Persona, hoy: date) -> List[schemas.VencimientoPersonalConEstado]:
+    """Vencimientos activos de la persona con su estado calculado."""
+    vencimientos = []
+    for vencimiento in db_persona.vencimientos:
+        if vencimiento.documento.activo:
+            dias_restantes, estado = calcular_estado_vencimiento(vencimiento.fecha_vencimiento, hoy)
+            vencimientos.append(schemas.VencimientoPersonalConEstado(
+                id=vencimiento.id,
+                persona_id=vencimiento.persona_id,
+                documento_id=vencimiento.documento_id,
+                fecha_emision=vencimiento.fecha_emision,
+                fecha_vencimiento=vencimiento.fecha_vencimiento,
+                url_comprobante=vencimiento.url_comprobante,
+                documento=vencimiento.documento,
+                dias_restantes=dias_restantes,
+                estado=estado
+            ))
+    # Lo más urgente primero
+    vencimientos.sort(key=lambda v: v.dias_restantes)
+    return vencimientos
+
+def listar_personal(db: Session, busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None) -> List[schemas.PersonaConVencimientos]:
+    consulta = select(Persona)
+    # Filtro por persona: coincidencia parcial en nombre, apellido o DNI
+    if busqueda:
+        patron = f"%{busqueda}%"
+        consulta = consulta.where(or_(Persona.nombre.ilike(patron), Persona.apellido.ilike(patron), Persona.dni.ilike(patron)))
+    # Filtro por tipo de vencimiento: personas que tienen cargado ese documento
+    if documento_id is not None:
+        consulta = consulta.where(Persona.vencimientos.any(VencimientoPersonal.documento_id == documento_id))
+
+    hoy = date.today()
+    personal = []
+    for db_persona in db.scalars(consulta).all():
+        vencimientos = vencimientos_con_estado(db_persona, hoy)
+        # Filtro por estado: personas con al menos un vencimiento activo en ese estado.
+        # Se filtra acá y no en la consulta porque el estado se calcula, no se guarda.
+        if estado is not None and not any(v.estado == estado for v in vencimientos):
+            continue
+        datos = schemas.Persona.model_validate(db_persona).model_dump(exclude={"vencimientos"})
+        personal.append(schemas.PersonaConVencimientos(**datos, vencimientos=vencimientos))
+    return personal
 
 def leer_persona(db: Session, persona_id: int) -> Persona:
     db_persona = db.scalar(select(Persona).where(Persona.id == persona_id))
     if not db_persona:
         raise exceptions.PersonaNoEncontrada()
     return db_persona
+
+def leer_persona_con_vencimientos(db: Session, persona_id: int) -> schemas.PersonaConVencimientos:
+    db_persona = leer_persona(db, persona_id)
+    datos = schemas.Persona.model_validate(db_persona).model_dump(exclude={"vencimientos"})
+    return schemas.PersonaConVencimientos(**datos, vencimientos=vencimientos_con_estado(db_persona, date.today()))
+
+def crear_vencimiento(db: Session, persona_id: int, vencimiento: schemas.VencimientoPersonalCreate) -> VencimientoPersonal:
+    db_persona = leer_persona(db, persona_id)
+    db_documento = documentos_services.leer_documento(db, vencimiento.documento_id)
+
+    if not db_persona.activo:
+        raise exceptions.PersonaInactiva()
+    if not db_documento.activo:
+        raise documentos_exceptions.DocumentoPersonalInactivo()
+
+    vencimiento_existente = db.scalar(select(VencimientoPersonal).where(VencimientoPersonal.persona_id == persona_id, VencimientoPersonal.documento_id == vencimiento.documento_id))
+    if vencimiento_existente:
+        raise exceptions.VencimientoDuplicado()
+
+    db_vencimiento = VencimientoPersonal(persona_id=persona_id, **vencimiento.model_dump())
+    db.add(db_vencimiento)
+    try:
+        db.commit()
+        db.refresh(db_vencimiento)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error de integridad al guardar el vencimiento.")
+    return db_vencimiento
+
+def leer_vencimiento(db: Session, persona_id: int, vencimiento_id: int) -> VencimientoPersonal:
+    db_vencimiento = db.scalar(select(VencimientoPersonal).where(VencimientoPersonal.id == vencimiento_id, VencimientoPersonal.persona_id == persona_id))
+    if not db_vencimiento:
+        raise exceptions.VencimientoNoEncontrado()
+    return db_vencimiento
+
+def modificar_vencimiento(db: Session, persona_id: int, vencimiento_id: int, vencimiento: schemas.VencimientoPersonalUpdate) -> VencimientoPersonal:
+    db_persona = leer_persona(db, persona_id)
+    db_vencimiento = leer_vencimiento(db, persona_id, vencimiento_id)
+    update_data = vencimiento.model_dump(exclude_unset=True)
+
+    if not db_persona.activo:
+        raise exceptions.PersonaInactiva()
+
+    if "fecha_vencimiento" in update_data and update_data["fecha_vencimiento"] is None:
+        raise exceptions.FechaVencimientoObligatoria()
+
+    # Se validan las fechas resultantes: las nuevas si vinieron, y si no las ya guardadas
+    fecha_emision = update_data.get("fecha_emision", db_vencimiento.fecha_emision)
+    fecha_vencimiento = update_data.get("fecha_vencimiento", db_vencimiento.fecha_vencimiento)
+    if fecha_emision and fecha_emision >= fecha_vencimiento:
+        raise exceptions.FechasVencimientoInvalidas()
+
+    if update_data:
+        db.execute(update(VencimientoPersonal).where(VencimientoPersonal.id == vencimiento_id).values(**update_data))
+
+    try:
+        db.commit()
+        db.refresh(db_vencimiento)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error de integridad al actualizar el vencimiento.")
+    return db_vencimiento
+
+def calcular_estado_vencimiento(fecha_vencimiento: date, hoy: date) -> tuple[int, EstadoVencimiento]:
+    """Regla de semaforización: función pura, no depende de la base ni de la API.
+
+    Devuelve (dias_restantes, estado).
+    """
+    dias_restantes = (fecha_vencimiento - hoy).days
+    if dias_restantes < 0:
+        estado = EstadoVencimiento.VENCIDO
+    elif dias_restantes <= Constantes.DIAS_AVISO_PROXIMO:
+        estado = EstadoVencimiento.PROXIMO
+    else:
+        estado = EstadoVencimiento.VIGENTE
+    return dias_restantes, estado
+
+def listar_alertas_vencimientos(db: Session) -> List[schemas.AlertaVencimiento]:
+    consulta = select(VencimientoPersonal).join(VencimientoPersonal.persona).join(VencimientoPersonal.documento)
+    consulta = consulta.where(Persona.activo == True, DocumentoPersonal.activo == True)
+    vencimientos = db.scalars(consulta).all()
+
+    hoy = date.today()
+    alertas = []
+    for vencimiento in vencimientos:
+        dias_restantes, estado = calcular_estado_vencimiento(vencimiento.fecha_vencimiento, hoy)
+        alertas.append(schemas.AlertaVencimiento(
+            vencimiento_id=vencimiento.id,
+            persona_id=vencimiento.persona_id,
+            persona=f"{vencimiento.persona.apellido}, {vencimiento.persona.nombre}",
+            documento=vencimiento.documento.nombre,
+            fecha_vencimiento=vencimiento.fecha_vencimiento,
+            dias_restantes=dias_restantes,
+            estado=estado,
+        ))
+    # Lo más urgente primero
+    alertas.sort(key=lambda a: a.dias_restantes)
+    return alertas
+
+def _guardar_comprobante_local(vencimiento_id: int, comprobante: UploadFile) -> str:
+    """Guarda el archivo en la carpeta de comprobantes y devuelve la ruta relativa servida por la API."""
+    # El nombre lo arma el servidor: no se usa el nombre original del archivo
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    extension = Constantes.EXTENSIONES_COMPROBANTE[comprobante.content_type]
+    nombre_archivo = f"vencimiento_{vencimiento_id}_{timestamp}{extension}"
+
+    with open(UPLOAD_DIR / nombre_archivo, "wb") as buffer:
+        shutil.copyfileobj(comprobante.file, buffer)
+
+    return f"{UPLOAD_URL_PREFIX}/{nombre_archivo}"
+
+def adjuntar_comprobante(db: Session, persona_id: int, vencimiento_id: int, comprobante: UploadFile) -> VencimientoPersonal:
+    db_persona = leer_persona(db, persona_id)
+    db_vencimiento = leer_vencimiento(db, persona_id, vencimiento_id)
+
+    if not db_persona.activo:
+        raise exceptions.PersonaInactiva()
+
+    if comprobante.content_type not in Constantes.EXTENSIONES_COMPROBANTE:
+        raise exceptions.ComprobanteInvalido()
+
+    db_vencimiento.url_comprobante = _guardar_comprobante_local(vencimiento_id, comprobante)
+    try:
+        db.commit()
+        db.refresh(db_vencimiento)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.Conflict(detail="Error de integridad al guardar el comprobante.")
+    return db_vencimiento
 
 def modificar_persona(db: Session, persona_id: int, persona: schemas.PersonaUpdate) -> Persona:
     db_persona = leer_persona(db, persona_id)

@@ -1,10 +1,13 @@
 import { BASE_URL } from "../config";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
+import { apiFetch } from "../features/auth/apiFetch";
+import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import { PersonalForm } from "../features/personal/PersonalForm";
 import { PersonalDetalle } from "../features/personal/PersonaDetalle";
 import { ListadoPersonal } from "../features/personal/ListadoPersonal";
+import { RegistrarVencimientoForm } from "../features/personal/RegistrarVencimientoForm";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/personal/hooks/usePersonalDelete";
 import { usePersonalSubmit } from "../features/personal/hooks/usePersonalSubmit";
@@ -20,11 +23,55 @@ export default function PersonalPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // La campana de notificaciones llega aca con `?detalle=<id>` (ruta_detalle de
+  // la fila consolidada): el parametro abre el detalle de la persona, igual que
+  // hace EquiposPage con los equipos.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const detalleParam = searchParams.get("detalle");
+
+  // Registrar o renovar un vencimiento aca tambien baja el badge de la campana,
+  // porque no hay navegacion que dispare su refresco.
+  const { notificarGuardado } = useRenovacion();
+
+  useEffect(() => {
+    if (!detalleParam) return;
+    let activo = true;
+
+    apiFetch(`${BASE_URL}/personal/${detalleParam}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        return res.json();
+      })
+      .then((persona: Persona) => {
+        if (!activo) return;
+        setError("");
+        setPersonaSeleccionada(persona);
+        setVista("ver");
+      })
+      .catch(() => {
+        if (activo) setError("No se pudo cargar la persona.");
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [detalleParam]);
+
+  // Limpia el parametro al cerrar el detalle. Sin esto, volver a la pagina
+  // reabriria el modal otra vez.
+  const limpiarDetalleParam = () => {
+    if (!searchParams.get("detalle")) return;
+    searchParams.delete("detalle");
+    setSearchParams(searchParams, { replace: true });
+  };
+
   const [personaEliminar, setPersonaEliminar] = useState<Persona | null>(null);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
 
   const [personaAlta, setPersonaAlta] = useState<Persona | null>(null);
   const [altaAbierto, setAltaAbierto] = useState(false);
+
+  const [personaVencimiento, setPersonaVencimiento] = useState<Persona | null>(null);
 
   const [refrescar, setRefrescar] = useState(0);
 
@@ -65,6 +112,7 @@ export default function PersonalPage() {
       <ListadoPersonal
         key={refrescar}
         onVerCapacidades={() => navigate("/capacidades")}
+        onVerDocumentos={() => navigate("/documentos-personal")}
         onCrear={() => setVista("crear")}
         onModificar={(persona) => {
           setError("");
@@ -86,13 +134,33 @@ export default function PersonalPage() {
           setPersonaAlta(persona);
           setAltaAbierto(true);
         }}
+        onRegistrarVencimiento={(persona) => setPersonaVencimiento(persona)}
       />
+
+      {/* Modal de Registrar Vencimiento */}
+      {personaVencimiento && (
+        <FormModal open onClose={() => setPersonaVencimiento(null)}>
+          <RegistrarVencimientoForm
+            persona={personaVencimiento}
+            onCancelar={() => setPersonaVencimiento(null)}
+            onGuardado={() => {
+              setPersonaVencimiento(null);
+              setRefrescar((r) => r + 1);
+              notificarGuardado();
+            }}
+            enModal
+          />
+        </FormModal>
+      )}
 
       {/* Modal de Detalle (Vista) */}
       {vista === "ver" && personaSeleccionada && (
         <PersonalDetalle
           persona={personaSeleccionada}
-          onCerrar={() => setVista("listado")}
+          onCerrar={() => {
+            setVista("listado");
+            limpiarDetalleParam();
+          }}
         />
       )}
 

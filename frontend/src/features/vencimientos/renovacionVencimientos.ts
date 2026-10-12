@@ -35,6 +35,11 @@ const RENOVACIONES: Partial<Record<CategoriaVencimiento, EntradaRenovacion>> = {
     colorPalette: "green",
     titulo: "Gestionar revisión de documento",
   },
+  personal: {
+    etiqueta: "Renovar Vencimiento",
+    colorPalette: "green",
+    titulo: "Renovar Vencimiento",
+  },
 };
 
 /** Configuración de renovación de una categoría, o null si no la admite. */
