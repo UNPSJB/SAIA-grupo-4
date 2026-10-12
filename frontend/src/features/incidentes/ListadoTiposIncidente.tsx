@@ -1,4 +1,5 @@
-import { Badge, HStack, Button } from "@chakra-ui/react";
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
+import { Badge, Box, HStack, Button } from "@chakra-ui/react";
 import {
   FiTag,
   FiEdit2,
@@ -14,7 +15,7 @@ import {
   RowActions,
   TablePagination,
 } from "../../components/ui";
-import { ListadoContainer, ListadoHeader } from "../../components/layout";
+import { ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { TipoIncidente } from "./types";
 import type { ColumnDef } from "../../components/ui";
@@ -34,8 +35,8 @@ export const ListadoTiposIncidentes = ({
 }: ListadoTiposIncidenteProps) => {
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<TipoIncidente>({
-      endpoint: "http://127.0.0.1:8000/tipos-incidente/",
-      pageSize: 5,
+      endpoint: `${BASE_URL}/tipos-incidente/`,
+      pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de tipos.",
     });
 
@@ -84,7 +85,7 @@ export const ListadoTiposIncidentes = ({
   ];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <Box>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader title='Tipos de Incidentes' icon={FiTag} />
         <Button colorPalette='green' onClick={onCrear}>
@@ -107,13 +108,13 @@ export const ListadoTiposIncidentes = ({
           <TablePagination
             count={data.length}
             page={page}
-            pageSize={5}
+            pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
             labelSingular='tipo'
             labelPlural='tipos'
           />
         </>
       )}
-    </ListadoContainer>
+    </Box>
   );
 };

@@ -1,3 +1,4 @@
+import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { Box, Button, HStack, Text } from "@chakra-ui/react";
 import { useAuth } from "../features/auth/useAuth";
@@ -52,7 +53,7 @@ export default function IncidentesPage() {
   const puedeCrearIncidentes = esOperador(usuario);
   const puedeGestionarTipos = esAdministrador(usuario);
   const { data: personas } = useListadoData<Persona>({
-    endpoint: "http://127.0.0.1:8000/personal/",
+    endpoint: `${BASE_URL}/personal/`,
     errorMessage: "No se pudo cargar el personal.",
   });
   const responsables = personas.filter((persona) => persona.activo);
@@ -176,7 +177,7 @@ export default function IncidentesPage() {
       )}
 
       {tipoModalAbierto && (
-        <FormModal open onClose={() => setTipoModalAbierto(false)}>
+        <FormModal open maxW='3xl' onClose={() => setTipoModalAbierto(false)}>
           <GestionTiposIncidente />
         </FormModal>
       )}

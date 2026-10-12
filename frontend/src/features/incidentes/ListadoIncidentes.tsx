@@ -18,6 +18,7 @@ import {
   RowActions,
   TablePagination,
 } from "../../components/ui";
+import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Incidente } from "./types";
@@ -38,14 +39,12 @@ interface ListadoIncidentesProps {
   refreshKey?: number;
 }
 
-const API_BASE_URL = "http://127.0.0.1:8000";
-const ENDPOINT = `${API_BASE_URL}/incidentes/`;
-const ITEMS_POR_PAGINA = 5;
+const ENDPOINT = `${BASE_URL}/incidentes/`;
 
 const obtenerUrlFoto = (fotoUrl: string) =>
   /^https?:\/\//i.test(fotoUrl)
     ? fotoUrl
-    : `${API_BASE_URL}/${fotoUrl.replace(/^\/+/, "")}`;
+    : `${BASE_URL}/${fotoUrl.replace(/^\/+/, "")}`;
 
 const formatearFecha = (fecha: string) => {
   const fechaConZona = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fecha)
@@ -117,6 +116,10 @@ export const ListadoIncidentes = ({
       refreshKey,
       errorMessage: "No se pudo cargar la lista de incidentes.",
     });
+
+  // Solo mostramos el spinner en la primera carga: en los refrescos en segundo
+  // plano (refreshKey) conservamos la tabla para evitar el parpadeo.
+  const primerCarga = loading && data.length === 0;
 
   const incidentesFiltrados = useMemo(() => 
     data.filter((incidente) => {
@@ -242,11 +245,11 @@ export const ListadoIncidentes = ({
           />
         </FiltrosBar>
     
-      {loading && <LoadingState message="Cargando incidentes..." />}
+      {primerCarga && <LoadingState message="Cargando incidentes..." />}
 
-      {!loading && error && <AlertMessage type="error" message={error} />}
+      {!primerCarga && error && <AlertMessage type="error" message={error} />}
 
-      {!loading && !error && data.length === 0 && (
+      {!primerCarga && !error && data.length === 0 && (
         <AlertMessage
           type="info"
           message={
@@ -257,7 +260,7 @@ export const ListadoIncidentes = ({
         />
       )}
 
-      {!loading && !error && data.length > 0 && (
+      {!primerCarga && !error && data.length > 0 && (
         <>
           <DataTable
             items={itemsFiltradosPaginados}

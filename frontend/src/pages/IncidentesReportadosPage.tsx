@@ -32,6 +32,7 @@ export default function IncidentesReportadosPage() {
                 <FormModal open onClose={() => setCrearAbierto(false)}>
                     <IncidenteForm 
                         modo="crear"
+                        enModal
                         onCancelar={() => setCrearAbierto(false)}
                         onGuardado={() => {
                             setCrearAbierto(false);
