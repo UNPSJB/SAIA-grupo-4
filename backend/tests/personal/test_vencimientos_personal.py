@@ -98,7 +98,71 @@ def test_la_persona_incluye_sus_vencimientos():
     assert client.get(f"/personal/{persona_id}").json()["vencimientos"] == [vencimiento]
     # El listado incluye también a la persona admin que carga la suite
     persona = next(p for p in client.get("/personal/").json() if p["id"] == persona_id)
-    assert persona["vencimientos"] == [vencimiento]
+    # En el listado cada vencimiento suma sus días restantes y su estado calculado
+    dias_restantes = (date(2027, 1, 10) - date.today()).days
+    assert persona["vencimientos"] == [{**vencimiento, "dias_restantes": dias_restantes, "estado": "vigente"}]
+
+
+# Listado de personal: GET /personal/ con vencimientos activos, estado y filtros
+
+def test_listado_de_personal_incluye_vencimientos_activos_con_estado_y_por_urgencia():
+    persona_id = crear_persona()
+    documentos = {}
+    for nombre, dias in (("Apto físico", 40), ("Carnet de manipulador", -5), ("Libreta sanitaria", 10), ("Curso BPM", -30)):
+        documentos[nombre] = crear_documento(nombre)
+        fecha = (date.today() + timedelta(days=dias)).isoformat()
+        res = client.post(f"/personal/{persona_id}/vencimientos", json={"documento_id": documentos[nombre], "fecha_vencimiento": fecha})
+        assert res.status_code == 201, res.text
+
+    # El vencimiento de un documento dado de baja no se lista
+    assert client.delete(f"/documentos-personal/{documentos['Curso BPM']}").status_code == 200
+
+    persona = next(p for p in client.get("/personal/").json() if p["id"] == persona_id)
+    assert [(v["documento"]["nombre"], v["dias_restantes"], v["estado"]) for v in persona["vencimientos"]] == [
+        ("Carnet de manipulador", -5, "vencido"),
+        ("Libreta sanitaria", 10, "proximo"),
+        ("Apto físico", 40, "vigente"),
+    ]
+
+
+def test_listado_de_personal_filtra_por_persona():
+    persona_id = crear_persona()
+    # Coincidencia parcial y sin distinguir mayúsculas, en apellido, nombre o DNI
+    for busqueda in ("pere", "JUAN", "30111"):
+        data = client.get("/personal/", params={"busqueda": busqueda}).json()
+        assert [p["id"] for p in data] == [persona_id]
+    assert client.get("/personal/", params={"busqueda": "inexistente"}).json() == []
+
+
+def test_listado_de_personal_filtra_por_tipo_de_vencimiento():
+    persona_id = crear_persona()
+    documento_id, otro_documento_id = crear_documento(), crear_documento("Apto físico")
+    crear_vencimiento(persona_id, documento_id)
+
+    # La persona admin de la suite no tiene vencimientos: queda fuera del filtro
+    data = client.get("/personal/", params={"documento_id": documento_id}).json()
+    assert [p["id"] for p in data] == [persona_id]
+    assert client.get("/personal/", params={"documento_id": otro_documento_id}).json() == []
+
+    # Los filtros se combinan
+    assert client.get("/personal/", params={"documento_id": documento_id, "busqueda": "inexistente"}).json() == []
+
+
+def test_listado_de_personal_filtra_por_estado():
+    persona_id = crear_persona()
+    for nombre, dias in (("Carnet de manipulador", -5), ("Apto físico", 40)):
+        fecha = (date.today() + timedelta(days=dias)).isoformat()
+        res = client.post(f"/personal/{persona_id}/vencimientos", json={"documento_id": crear_documento(nombre), "fecha_vencimiento": fecha})
+        assert res.status_code == 201, res.text
+
+    # Alcanza con que la persona tenga un vencimiento en ese estado
+    for estado in ("vencido", "vigente"):
+        data = client.get("/personal/", params={"estado": estado}).json()
+        assert [p["id"] for p in data] == [persona_id]
+        # La persona se lista con todos sus vencimientos, no solo los del estado pedido
+        assert [v["estado"] for v in data[0]["vencimientos"]] == ["vencido", "vigente"]
+    assert client.get("/personal/", params={"estado": "proximo"}).json() == []
+    assert client.get("/personal/", params={"estado": "cualquiera"}).status_code == 422
 
 
 def test_renovar_vencimiento():
