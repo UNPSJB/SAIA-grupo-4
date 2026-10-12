@@ -1,11 +1,38 @@
+import { useState } from "react";
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge, Wrap, HStack, Button } from "@chakra-ui/react";
+import { Badge, Box, Wrap, HStack, Button } from "@chakra-ui/react";
 import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus, FiFileText, FiCalendar } from "react-icons/fi";
-import { AlertMessage, COLOR_ESTADO, DataTable, ETIQUETA_ESTADO, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
+import { AlertMessage, COLOR_ESTADO, DataTable, ETIQUETA_ESTADO, FiltroSelect, FiltrosBar, FiltroTexto, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Persona } from "./types";
 import type { ColumnDef } from "../../components/ui";
+import type { DocumentoPersonal } from "../documentosPersonal/types";
+
+type FiltrosPersonal = {
+    busqueda: string;
+    documentoId: string;
+    estado: string;
+};
+
+const FILTROS_INICIALES: FiltrosPersonal = { busqueda: "", documentoId: "", estado: "" };
+
+const OPCIONES_ESTADO = [
+    { label: "Con vencidos", value: "vencido" },
+    { label: "Con próximos a vencer", value: "proximo" },
+    { label: "Con vigentes", value: "vigente" },
+];
+
+// Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
+const construirEndpoint = (filtros: FiltrosPersonal) => {
+    const params = new URLSearchParams();
+    if (filtros.busqueda.trim()) params.set("busqueda", filtros.busqueda.trim());
+    if (filtros.documentoId) params.set("documento_id", filtros.documentoId);
+    if (filtros.estado) params.set("estado", filtros.estado);
+
+    const query = params.toString();
+    return `${BASE_URL}/personal/${query ? `?${query}` : ""}`;
+};
 
 interface ListadoPersonalProps {
     onCrear?: () => void;
@@ -19,11 +46,36 @@ interface ListadoPersonalProps {
 }
 
 export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDarAlta, onVerCapacidades, onVerDocumentos, onRegistrarVencimiento }: ListadoPersonalProps) => {
+    // Borrador: lo que el usuario está por aplicar. Aplicados: lo único que llega al endpoint.
+    const [borrador, setBorrador] = useState<FiltrosPersonal>(FILTROS_INICIALES);
+    const [aplicados, setAplicados] = useState<FiltrosPersonal>(FILTROS_INICIALES);
+
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<Persona>({
-        endpoint: `${BASE_URL}/personal/`,
+        endpoint: construirEndpoint(aplicados),
         pageSize: ITEMS_POR_PAGINA,
         errorMessage: "No se pudo cargar la lista de personal.",
     });
+
+    // Tipos de documento para el filtro por tipo de vencimiento
+    const { data: documentos } = useListadoData<DocumentoPersonal>({
+        endpoint: `${BASE_URL}/documentos-personal/`,
+        errorMessage: "No se pudieron cargar los documentos.",
+    });
+
+    const hayFiltros = borrador.busqueda !== "" || borrador.documentoId !== "" || borrador.estado !== "";
+    const hayAplicados = aplicados.busqueda !== "" || aplicados.documentoId !== "" || aplicados.estado !== "";
+
+    // Cada aplicación vuelve a la primera página, para no caer en una página vacía.
+    const aplicar = () => {
+        setAplicados(borrador);
+        setPage(1);
+    };
+
+    const limpiar = () => {
+        setBorrador(FILTROS_INICIALES);
+        setAplicados(FILTROS_INICIALES);
+        setPage(1);
+    };
 
     const columnas: ColumnDef<Persona>[] = [
         { key: "nombre", label: "Nombre completo", render: (p) => `${p.nombre} ${p.apellido}` },
@@ -113,10 +165,40 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
                     </Button>
                 </HStack>
             </HStack>
-            
+
+            <Box mb={4}>
+                <FiltrosBar onAplicar={aplicar} onLimpiar={limpiar} hayFiltrosActivos={hayFiltros} loading={loading}>
+                    <FiltroTexto
+                        ariaLabel="Buscar persona"
+                        placeholder="Nombre, apellido o DNI"
+                        value={borrador.busqueda}
+                        onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") aplicar();
+                        }}
+                    />
+                    <FiltroSelect
+                        ariaLabel="Tipo de vencimiento"
+                        placeholder="Todos los documentos"
+                        options={documentos.filter((d) => d.activo).map((d) => ({ label: d.nombre, value: String(d.id) }))}
+                        value={borrador.documentoId}
+                        onChange={(valor) => setBorrador({ ...borrador, documentoId: valor })}
+                    />
+                    <FiltroSelect
+                        ariaLabel="Estado de los vencimientos"
+                        placeholder="Todos los estados"
+                        options={OPCIONES_ESTADO}
+                        value={borrador.estado}
+                        onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
+                    />
+                </FiltrosBar>
+            </Box>
+
             {loading && <LoadingState message="Cargando personal..." />}
             {!loading && error && <AlertMessage type="error" message={error} />}
-            {!loading && !error && data.length === 0 && <AlertMessage type="info" message="Todavía no hay personal cargado." />}
+            {!loading && !error && data.length === 0 && (
+                <AlertMessage type="info" message={hayAplicados ? "No hay personal que coincida con los filtros seleccionados." : "Todavía no hay personal cargado."} />
+            )}
             {!loading && !error && data.length > 0 && (
                 <>
                     <DataTable items={itemsPaginados} columns={columnas} getRowKey={(p) => p.id} />
