@@ -38,9 +38,6 @@ export const incidenteSchema = z.object({
     .pipe(z.number().int().positive()),
 
   })
-  .superRefine((data, ctx) => {
-    // Validación adicional si es necesario
-    });
 
 export type IncidenteFormValues = z.infer<typeof incidenteSchema>;
 export type IncidenteFormInput = z.input<typeof incidenteSchema>;

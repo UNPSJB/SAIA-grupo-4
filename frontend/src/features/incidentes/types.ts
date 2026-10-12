@@ -21,6 +21,13 @@ export interface Incidente {
     }; // Información del usuario que reportó el incidente
     tipo_id: number; // ID del tipo de incidente
     tipo: TipoIncidente; // Objeto del tipo de incidente
+
+    // Faltaba tras el merge
+    accion_correctiva?: string | null;
+    fecha_cierre?: string | null;
+    responsable_cierre_id?: number | null;
+    responsable_cierre?: Persona | null;
+
     abierto: boolean;
 }
 

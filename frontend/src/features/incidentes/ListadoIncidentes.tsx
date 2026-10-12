@@ -85,7 +85,7 @@ export const ListadoIncidentes = ({
   onCrear,
   endpoint = ENDPOINT,
   titulo = "Listado de Incidentes",
-  Cerrar,
+  onCerrar,
   onReabrir,
   refreshKey
 }: ListadoIncidentesProps) => {
