@@ -169,6 +169,11 @@ def leer_persona(db: Session, persona_id: int) -> Persona:
         raise exceptions.PersonaNoEncontrada()
     return db_persona
 
+def leer_persona_con_vencimientos(db: Session, persona_id: int) -> schemas.PersonaConVencimientos:
+    db_persona = leer_persona(db, persona_id)
+    datos = schemas.Persona.model_validate(db_persona).model_dump(exclude={"vencimientos"})
+    return schemas.PersonaConVencimientos(**datos, vencimientos=vencimientos_con_estado(db_persona, date.today()))
+
 def crear_vencimiento(db: Session, persona_id: int, vencimiento: schemas.VencimientoPersonalCreate) -> VencimientoPersonal:
     db_persona = leer_persona(db, persona_id)
     db_documento = documentos_services.leer_documento(db, vencimiento.documento_id)

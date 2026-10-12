@@ -17,9 +17,9 @@ def crear_persona(persona: schemas.PersonaCreate, db: Session = Depends(get_db))
 def read_personal(busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None, db: Session = Depends(get_db)):
     return services.listar_personal(db, busqueda, documento_id, estado)
 
-@router.get("/{persona_id}", response_model=schemas.Persona)
+@router.get("/{persona_id}", response_model=schemas.PersonaConVencimientos)
 def read_persona(persona_id: int, db: Session = Depends(get_db)):
-    return services.leer_persona(db, persona_id)
+    return services.leer_persona_con_vencimientos(db, persona_id)
 
 @router.post("/{persona_id}/vencimientos", response_model=schemas.VencimientoPersonal, status_code=201)
 def crear_vencimiento(persona_id: int, vencimiento: schemas.VencimientoPersonalCreate, db: Session = Depends(get_db)):

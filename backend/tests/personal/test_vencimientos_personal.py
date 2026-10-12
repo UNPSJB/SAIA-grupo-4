@@ -95,12 +95,13 @@ def test_la_persona_incluye_sus_vencimientos():
     assert client.get(f"/personal/{persona_id}").json()["vencimientos"] == []
 
     vencimiento = crear_vencimiento(persona_id, crear_documento())
-    assert client.get(f"/personal/{persona_id}").json()["vencimientos"] == [vencimiento]
+    # Al leer la persona cada vencimiento suma sus días restantes y su estado calculado
+    dias_restantes = (date(2027, 1, 10) - date.today()).days
+    esperado = [{**vencimiento, "dias_restantes": dias_restantes, "estado": "vigente"}]
+    assert client.get(f"/personal/{persona_id}").json()["vencimientos"] == esperado
     # El listado incluye también a la persona admin que carga la suite
     persona = next(p for p in client.get("/personal/").json() if p["id"] == persona_id)
-    # En el listado cada vencimiento suma sus días restantes y su estado calculado
-    dias_restantes = (date(2027, 1, 10) - date.today()).days
-    assert persona["vencimientos"] == [{**vencimiento, "dias_restantes": dias_restantes, "estado": "vigente"}]
+    assert persona["vencimientos"] == esperado
 
 
 # Listado de personal: GET /personal/ con vencimientos activos, estado y filtros
