@@ -76,7 +76,6 @@ export const IncidenteForm = ({
         data: tiposIncidentes,
         loading: loadingTipos,
         error: errorTipos,
-        reload: reloadTipos,
     } = useListadoData<TipoIncidente>({
         endpoint: "http://127.0.0.1:8000/tipos-incidente/",
     });
@@ -197,7 +196,7 @@ export const IncidenteForm = ({
                 <VStack gap={4}>
                     <SelectField
                         label="Tipo"
-                        placeholder="Selecciona una opción"
+                        placeholder={loadingTipos ? "Cargando tipos..." : "Selecciona una opción"}
                         readOnly={esModoVer}
                         defaultValue={defaultValues.tipo_id}
                         onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
@@ -206,6 +205,7 @@ export const IncidenteForm = ({
                         error={errors.tipo_id?.message}
                         {...register("tipo_id")}
                     />
+                    {errorTipos && <AlertMessage type="error" message={errorTipos}/>}
 
                     <TextField
                         label="Titulo"
