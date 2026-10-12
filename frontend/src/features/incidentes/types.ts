@@ -1,3 +1,5 @@
+import type { Persona } from "../personal/types"; 
+
 export interface TipoIncidente {
     id: number;
     nombre: string;
@@ -20,4 +22,15 @@ export interface Incidente {
     tipo_id: number; // ID del tipo de incidente
     tipo: TipoIncidente; // Objeto del tipo de incidente
     abierto: boolean;
+}
+
+export interface HistorialIncidente {
+  id: number;
+  incidente_id: number;
+  estado_anterior: string;
+  estado_nuevo: string;
+  motivo: string;
+  fecha: string;
+  responsable_id: number;
+  responsable?: Persona | null;
 }

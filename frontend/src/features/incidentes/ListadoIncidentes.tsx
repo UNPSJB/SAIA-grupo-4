@@ -7,14 +7,16 @@ import {
     FiSettings,
     FiAlertTriangle,
     FiX,
+    FiCheckCircle,
+    FiRotateCcw,
 } from "react-icons/fi"; // Importar otros íconos según sea necesario
 import {
-    AlertMessage,
-    DataTable,
-    LoadingState,
-    RowActionButton,
-    RowActions,
-    TablePagination,
+  AlertMessage,
+  DataTable,
+  LoadingState,
+  RowActionButton,
+  RowActions,
+  TablePagination,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -23,12 +25,14 @@ import type { ColumnDef } from "../../components/ui";
 import { FiltroSelect, FiltrosBar } from "../../components/ui";
 
 interface ListadoIncidentesProps {
-    onVer?: (incidente: Incidente) => void;
-    onGestionarTipos?: () => void;
-    onCrear?: () => void;
-    endpoint?: string;
-    titulo?: string;
-    // Agregar las props del listado
+  onVer?: (incidente: Incidente) => void;
+  onGestionarTipos?: () => void;
+  onCrear?: () => void;
+  onCerrar?: (incidente: Incidente) => void;
+  onReabrir?: (incidente: Incidente) => void;
+  endpoint?: string;
+  titulo?: string;
+  refreshKey?: number;
 }
 
 const API_BASE_URL = "http://127.0.0.1:8000";
@@ -76,12 +80,14 @@ const obtenerColorFecha = (
 };
 
 export const ListadoIncidentes = ({
-    onVer,
-    onGestionarTipos,
-    onCrear,
-    endpoint = ENDPOINT,
-    titulo = "Listado de Incidentes",
-    // Agregar las props del listado
+  onVer,
+  onGestionarTipos,
+  onCrear,
+  endpoint = ENDPOINT,
+  titulo = "Listado de Incidentes",
+  Cerrar,
+  onReabrir,
+  refreshKey
 }: ListadoIncidentesProps) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState("");
   const [estadoAplicado, setEstadoAplicado] = useState("");
@@ -91,6 +97,7 @@ export const ListadoIncidentes = ({
     useListadoData<Incidente>({
       endpoint,
       pageSize: ITEMS_POR_PAGINA,
+      refreshKey,
       errorMessage: "No se pudo cargar la lista de incidentes.",
     });
 
@@ -157,6 +164,21 @@ export const ListadoIncidentes = ({
               colorPalette="yellow"
               onClick={() => onVer?.(incidente)} 
             />
+          {incidente.abierto ? (
+            <RowActionButton
+              icon={FiCheckCircle}
+              label="Cerrar"
+              colorPalette="green"
+              onClick={() => onCerrar?.(incidente)}
+            />
+          ) : (
+            <RowActionButton
+              icon={FiRotateCcw}
+              label="Reabrir"
+              colorPalette="orange"
+              onClick={() => onReabrir?.(incidente)}
+            />
+          )}
         </RowActions>
       ),
     },
