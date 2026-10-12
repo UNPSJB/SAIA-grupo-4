@@ -25,6 +25,10 @@ class IncidenteYaCerrado(Conflict):
 class IncidenteYaAbierto(Conflict):
     DETAIL = ErrorCode.INCIDENTE_YA_ABIERTO
 
+
+class RangosFechasInvalido(BadRequest):
+    DETAIL = ErrorCode.RANGO_FECHAS_INVALIDO
+
 class ArchivoInvalido(BadRequest):
     DETAIL = ErrorCode.ARCHIVO_INVALIDO
 

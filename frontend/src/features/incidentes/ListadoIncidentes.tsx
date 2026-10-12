@@ -30,6 +30,9 @@ interface ListadoIncidentesProps {
   onCrear?: () => void;
   onCerrar?: (incidente: Incidente) => void;
   onReabrir?: (incidente: Incidente) => void;
+  tipoId?: number | null;
+  desde?: string;
+  hasta?: string;
   endpoint?: string;
   titulo?: string;
   refreshKey?: number;
@@ -87,15 +90,29 @@ export const ListadoIncidentes = ({
   titulo = "Listado de Incidentes",
   onCerrar,
   onReabrir,
+  tipoId,
+  desde,
+  hasta,
   refreshKey
 }: ListadoIncidentesProps) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState("");
   const [estadoAplicado, setEstadoAplicado] = useState("");
 
   const [incidenteConFoto, setIncidenteConFoto] = useState<Incidente | null>(null);
+  const parametros = new URLSearchParams();
+  if (tipoId !== undefined && tipoId !== null) {
+    parametros.set("tipo_id", String(tipoId));
+  }
+  if (desde) parametros.set("desde", desde);
+  if (hasta) parametros.set("hasta", hasta);
+  const endpointFiltrado = parametros.toString()
+    ? `${endpoint}?${parametros.toString()}`
+    : endpoint;
+  const filtrado = parametros.toString().length > 0;
+
   const { data, loading, error, page, setPage } =
     useListadoData<Incidente>({
-      endpoint,
+      endpoint: endpointFiltrado,
       pageSize: ITEMS_POR_PAGINA,
       refreshKey,
       errorMessage: "No se pudo cargar la lista de incidentes.",
@@ -230,7 +247,14 @@ export const ListadoIncidentes = ({
       {!loading && error && <AlertMessage type="error" message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type="info" message="Todavía no hay incidentes reportados." />
+        <AlertMessage
+          type="info"
+          message={
+            filtrado
+              ? "No hay incidentes de este tipo en el período seleccionado."
+              : "Todavía no hay incidentes reportados."
+          }
+        />
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -240,7 +264,6 @@ export const ListadoIncidentes = ({
             columns={columnas}
             getRowKey={(incidente) => incidente.id}
           />
-
           <TablePagination
             count={incidentesFiltrados.length}
             page={page}

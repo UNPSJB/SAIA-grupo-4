@@ -31,6 +31,12 @@ export interface Incidente {
     abierto: boolean;
 }
 
+export interface EstadisticaTipoIncidente {
+  tipo_id: number;
+  tipo: string;
+  cantidad: number;
+}
+
 export interface HistorialIncidente {
   id: number;
   incidente_id: number;

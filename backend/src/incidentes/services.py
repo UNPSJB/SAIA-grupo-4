@@ -1,6 +1,5 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from sqlalchemy import select, func
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from src.incidentes import schemas, exceptions
@@ -118,14 +117,6 @@ def crear_incidente(db: Session, incidente: schemas.IncidenteCreate, foto: Uploa
         raise exceptions.IncidenteErrorIntegridad()
     return _incidente
 
-
-def listar_incidentes(db: Session) -> list[Incidente]:
-    return db.scalars(
-        select(Incidente).order_by(
-            Incidente.fecha_hora_reporte.asc(), # ordena del mas viejo al mas nuevo
-            Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
-        )
-    ).all()
 
 def listar_incidentes_por_reportante(db: Session, reportante_id: int) -> list[Incidente]:
     return db.scalars(
@@ -246,19 +237,65 @@ def listar_incidentes_cerrados(db: Session) -> list[Incidente]:
         )
     ).all()
 
-# service para la E7
-def listar_incidentes_abiertos_por_tipo(db: Session):
-    stmt = (
-        select(
-            # arma la respuesta de la forma { "tipo_id", "tipo", "cantidad" } donde:
-            TipoIncidente.id.label("tipo_id"), # esto seria la id del tipo
-            TipoIncidente.nombre.label("tipo"), # esto seria el nombre del tipo
-            func.count(Incidente.id).label("cantidad"), # esta seria la cantidad de incidentes del tipo
-        )
+def listar_incidentes_abiertos_por_tipo(db: Session) -> list[schemas.IncidentesAbiertosPorTipo]:
+    cantidad = func.count(Incidente.id)
+    filas = db.execute(
+        select(TipoIncidente.id, TipoIncidente.nombre, cantidad)
         .join(Incidente, Incidente.tipo_id == TipoIncidente.id)
         .where(Incidente.abierto.is_(True))
         .group_by(TipoIncidente.id, TipoIncidente.nombre)
         .order_by(TipoIncidente.nombre.asc())
-    )
+    ).all()
+    return [
+        schemas.IncidentesAbiertosPorTipo(tipo_id=tipo_id, tipo=tipo, cantidad=total)
+        for tipo_id, tipo, total in filas
+    ]
 
-    return [dict(fila._mapping) for fila in db.execute(stmt)]
+# ESTO ES DE LA ESTADÍSTICA DEL TIPO
+def _validar_rango(desde: date | None, hasta: date | None):
+    if desde and hasta and desde > hasta:
+        raise exceptions.RangosFechasInvalido()
+
+def _aplicar_rango(query, desde: date | None, hasta: date | None):
+    # fecha_hora_reporte es DateTime: "hasta" es inclusivo, por eso < hasta + 1 día
+    if desde:
+        query = query.where(Incidente.fecha_hora_reporte >= desde)
+    if hasta:
+        query = query.where(Incidente.fecha_hora_reporte < hasta + timedelta(days=1))
+    return query
+
+def listar_incidentes(
+    db: Session,
+    tipo_id: int | None = None,
+    desde: date | None = None,
+    hasta: date | None = None,
+) -> list[Incidente]:
+    _validar_rango(desde, hasta)
+
+    query = select(Incidente).options(selectinload(Incidente.tipo))
+    if tipo_id:
+        query = query.where(Incidente.tipo_id == tipo_id)
+    query = _aplicar_rango(query, desde, hasta)
+
+    return db.scalars(query).all()
+
+def obtener_estadisticas_por_tipo(
+    db: Session, desde: date | None = None, hasta: date | None = None
+) -> list[schemas.EstadisticaTipoIncidente]:
+    _validar_rango(desde, hasta)
+
+    cantidad = func.count(Incidente.id)
+    query = (
+        select(TipoIncidente.id, TipoIncidente.nombre, cantidad)
+        .join(Incidente, Incidente.tipo_id == TipoIncidente.id)
+    )
+    query = _aplicar_rango(query, desde, hasta)
+
+    filas = db.execute(
+        query.group_by(TipoIncidente.id, TipoIncidente.nombre).order_by(cantidad.desc())
+    ).all()
+
+    return [
+        schemas.EstadisticaTipoIncidente(tipo_id=i, tipo=n, cantidad=c)
+        for i, n, c in filas
+    ]
