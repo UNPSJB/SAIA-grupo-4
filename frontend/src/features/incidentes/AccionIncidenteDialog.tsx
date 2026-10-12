@@ -61,7 +61,6 @@ export const AccionIncidenteDialog = ({
   return (
     <FormModal
       open
-      showClose
       title={esCierre ? "Cerrar incidente" : "Reabrir incidente"}
       titleIcon={esCierre ? FiCheckCircle : FiRotateCcw}
       onClose={onClose}
