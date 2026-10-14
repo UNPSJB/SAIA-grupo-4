@@ -14,6 +14,52 @@ class FrecuenciaPOES(str, Enum):
     MENSUAL = "mensual"
     DIAS_ESPECIFICOS = "dias_especificos"
 
+
+def validar_detalle_frecuencia(
+    frecuencia: "FrecuenciaPOES", detalle: Optional[str]
+) -> Optional[str]:
+    """Valida que `detalle_frecuencia` sea coherente con `frecuencia`.
+
+    Se expone a nivel de módulo para reutilizarla en el PATCH de tareas, donde
+    no aplica el validador de `TareaPOESBase` (que exige la entidad completa).
+    Lanza `ValueError` con el motivo si el detalle no es válido.
+    """
+    # Se valida frecuencia DIARIA
+    if frecuencia == FrecuenciaPOES.DIARIA:
+        if detalle is not None:
+            raise ValueError("Si la frecuencia es 'diaria', el campo detalle_frecuencia debe ser nulo.")
+
+    # Se valida frecuencia SEMANAL
+    elif frecuencia == FrecuenciaPOES.SEMANAL:
+        if not detalle:
+            raise ValueError("Si la frecuencia es 'semanal', debe especificar el día (ej: 'lunes').")
+        dias_semana = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+        if detalle.lower().strip() not in dias_semana:
+            raise ValueError(f"Día inválido para frecuencia semanal. Use uno de: {dias_semana}")
+
+    # Se valida frecuencia MENSUAL
+    elif frecuencia == FrecuenciaPOES.MENSUAL:
+        if not detalle:
+            raise ValueError("Si la frecuencia es 'mensual', debe especificar el día del mes (1 al 31).")
+        if not detalle.strip().isdigit() or not (1 <= int(detalle.strip()) <= 31):
+            raise ValueError("Detalle inválido para frecuencia mensual. Debe ser un número entre 1 y 31.")
+
+    # Se valida frecuencia DIAS ESPECIFICOS
+    elif frecuencia == FrecuenciaPOES.DIAS_ESPECIFICOS:
+        if not detalle:
+            raise ValueError("Si la frecuencia es 'dias_especificos', debe especificar los días (ej: 'lun,mar').")
+        dias_abrev = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"]
+        # Se limpian los espacios y se separa por coma
+        dias_ingresados = [d.strip().lower() for d in detalle.split(",")]
+        for d in dias_ingresados:
+            if d not in dias_abrev:
+                raise ValueError(f"Día inválido '{d}'. Use abreviaciones separadas por coma: {dias_abrev}")
+        if len(set(dias_ingresados)) != len(dias_ingresados):
+            raise ValueError("No se pueden repetir días en la lista de días específicos.")
+
+    return detalle
+
+
 # --- INSUMO QUÍMICO ---
 class TareaInsumoQuimicoBase(BaseModel):
     insumo_quimico_id: Annotated[int, Field(gt=0)]
@@ -59,43 +105,8 @@ class TareaPOESBase(BaseModel):
         return self
     
     @model_validator(mode="after")
-    def validar_detalle_frecuencia(self):
-        freq = self.frecuencia
-        detalle = self.detalle_frecuencia
-        
-        # Se valida frecuencia DIARIA
-        if freq == FrecuenciaPOES.DIARIA:
-            if detalle is not None:
-                raise ValueError("Si la frecuencia es 'diaria', el campo detalle_frecuencia debe ser nulo.")
-                
-        # Se valida frecuencia SEMANAL
-        elif freq == FrecuenciaPOES.SEMANAL:
-            if not detalle:
-                raise ValueError("Si la frecuencia es 'semanal', debe especificar el día (ej: 'lunes').")
-            dias_semana = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
-            if detalle.lower().strip() not in dias_semana:
-                raise ValueError(f"Día inválido para frecuencia semanal. Use uno de: {dias_semana}")
-                
-        # Se valida frecuencia MENSUAL
-        elif freq == FrecuenciaPOES.MENSUAL:
-            if not detalle:
-                raise ValueError("Si la frecuencia es 'mensual', debe especificar el día del mes (1 al 31).")
-            if not detalle.isdigit() or not (1 <= int(detalle) <= 31):
-                raise ValueError("Detalle inválido para frecuencia mensual. Debe ser un número entre 1 y 31.")
-                
-        # Se valida frecuencia DIAS ESPECIFICOS
-        elif freq == FrecuenciaPOES.DIAS_ESPECIFICOS:
-            if not detalle:
-                raise ValueError("Si la frecuencia es 'dias_especificos', debe especificar los días (ej: 'lun,mar').")
-            dias_abrev = ["lun", "mar", "mie", "jue", "vie", "sab", "dom"]
-            # Se limpian los espacios y se separa por coma
-            dias_ingresados = [d.strip().lower() for d in detalle.split(",")]
-            for d in dias_ingresados:
-                if d not in dias_abrev:
-                    raise ValueError(f"Día inválido '{d}'. Use abreviaciones separadas por coma: {dias_abrev}")
-            if len(set(dias_ingresados)) != len(dias_ingresados):
-                raise ValueError("No se pueden repetir días en la lista de días específicos.")
-
+    def validar_coherencia_frecuencia(self):
+        validar_detalle_frecuencia(self.frecuencia, self.detalle_frecuencia)
         return self
 
 class TareaPOESCreate(TareaPOESBase):

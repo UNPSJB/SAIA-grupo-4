@@ -20,20 +20,17 @@ export default function VencimientosPage() {
   // abrir el detalle y después renovar no vuelve a golpear el backend.
   const { ficha, loading, error } = useOrigenVencimiento(aRenovar);
 
-  // Cada renovación guardada lo sube para que el listado vuelva a pedir los
-  // vencimientos: la fila tiene que mostrar la fecha nueva.
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  // Lo mismo pero para el badge de la campana: no hay cambio de ruta que le
-  // avise, porque todo pasa dentro de esta pantalla.
-  const { notificarGuardado } = useRenovacion();
+  // El contador global de renovaciones guardadas sube tanto si se renueva desde
+  // acá como si se hace desde la campana: en ambos casos el listado tiene que
+  // volver a pedir los vencimientos para mostrar la fecha nueva.
+  const { notificarGuardado, versionGuardado } = useRenovacion();
 
   return (
     <>
       <ListadoVencimientos
         onVerDetalle={setDetalle}
         onRenovar={setARenovar}
-        refreshKey={refreshKey}
+        refreshKey={versionGuardado}
       />
 
       {detalle && (
@@ -55,7 +52,6 @@ export default function VencimientosPage() {
               onCancelar={() => setARenovar(null)}
               onGuardado={() => {
                 setARenovar(null);
-                setRefreshKey((k) => k + 1);
                 notificarGuardado();
               }}
             />

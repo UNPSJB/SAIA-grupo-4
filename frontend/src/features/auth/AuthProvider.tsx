@@ -151,9 +151,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   /**
    * Logout: elimina cookie de refresh y limpia estado local.
+   *
+   * Es "best effort": sin red el DELETE falla, pero el access token en memoria
+   * igual se limpia, así que cerramos la sesión local de todos modos.
    */
   const logout = useCallback(async (): Promise<void> => {
-    await authService.logout();
+    try {
+      await authService.logout();
+    } catch {
+      // Sin red no se pudo avisar al backend; cerramos la sesión local igual.
+    }
     setUsuario(null);
   }, []);
 

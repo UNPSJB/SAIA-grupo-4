@@ -10,10 +10,14 @@ interface EquipoDetalleProps {
 }
 
 export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
+  // Misma noción de "última" que el formulario: por fecha y, a igualdad, por id.
   const ultimaCalibracion =
     equipo.calibraciones && equipo.calibraciones.length > 0
       ? [...equipo.calibraciones].sort(
-          (a, b) => b.id - a.id )[0]
+          (a, b) =>
+            b.fecha_calibracion.localeCompare(a.fecha_calibracion) ||
+            b.id - a.id,
+        )[0]
       : null;
 
   const secciones: SeccionDetalle[] = [

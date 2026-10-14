@@ -3,10 +3,6 @@ import { useEffect, useState } from "react";
 import { ORIGEN_VENCIMIENTOS, type FichaOrigen } from "../origenVencimientos";
 import type { Vencimiento } from "../types";
 
-/** Resultado de traer la ficha de una fila. Un solo estado para los dos casos:
- *  así no queda un error viejo pegado después de que la carga funcione. */
-type Resultado = { ficha: FichaOrigen } | { error: true };
-
 /**
  * Ficha del registro de origen de una fila, con caché entre filas.
  *
@@ -19,7 +15,11 @@ type Resultado = { ficha: FichaOrigen } | { error: true };
  * donde React no marca el patrón como anti-efecto.
  */
 export const useOrigenVencimiento = (vencimiento: Vencimiento | null) => {
-  const [resultados, setResultados] = useState<Record<string, Resultado>>({});
+  // La ficha se cachea por fila (`id`). Los errores NO se guardan como si fueran
+  // una ficha: si una carga falla (p. ej. por red) y se vuelve a abrir el modal
+  // para esa fila, se reintenta en vez de quedar pegado hasta recargar.
+  const [fichas, setFichas] = useState<Record<string, FichaOrigen>>({});
+  const [errores, setErrores] = useState<Record<string, true>>({});
 
   const id = vencimiento?.id ?? null;
   const entidadId = vencimiento?.entidad_id;
@@ -29,8 +29,8 @@ export const useOrigenVencimiento = (vencimiento: Vencimiento | null) => {
 
   useEffect(() => {
     if (!id || !config || entidadId === undefined) return;
-    // Ya resuelta (con ficha o con error): no se vuelve a pedir.
-    if (resultados[id]) return;
+    // Ya tenemos la ficha de esta fila: no se vuelve a pedir.
+    if (fichas[id]) return;
 
     let activo = true;
 
@@ -42,28 +42,27 @@ export const useOrigenVencimiento = (vencimiento: Vencimiento | null) => {
       .then((registro) => {
         if (!activo) return;
         const ficha = config.aFicha(registro);
-        setResultados((r) => ({ ...r, [id]: { ficha } }));
+        setFichas((f) => ({ ...f, [id]: ficha }));
       })
       .catch(() => {
         if (!activo) return;
-        setResultados((r) => ({ ...r, [id]: { error: true } }));
+        setErrores((e) => ({ ...e, [id]: true }));
       });
 
     return () => {
       activo = false;
     };
-  }, [id, entidadId, config, resultados]);
+  }, [id, entidadId, config, fichas]);
 
-  const resultado = id ? resultados[id] : undefined;
-  const ficha = resultado && "ficha" in resultado ? resultado.ficha : null;
+  const ficha = id ? fichas[id] ?? null : null;
   const error =
-    resultado && "error" in resultado
+    id && !ficha && errores[id]
       ? "No se pudo cargar el registro de origen."
       : "";
 
   // Solo hay algo que esperar si la fila pide ficha: sin config la categoría no
   // tiene módulo de origen asociado y el modal cae al modo solo-consolidado.
-  const loading = !!id && !!config && !resultado;
+  const loading = !!id && !!config && !ficha && !errores[id];
 
   return { ficha, loading, error };
 };

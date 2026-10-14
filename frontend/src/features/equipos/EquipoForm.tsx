@@ -51,6 +51,17 @@ export const EquipoForm = ({
   const esModoCrear = modo === "crear";
   const esModoModificar = modo === "modificar";
 
+  // La "última calibración" es la de fecha más reciente (id como desempate), no
+  // simplemente la primera del array: el backend no garantiza el orden.
+  const ultimaCalibracion = useMemo(() => {
+    const calibraciones = equipo?.calibraciones ?? [];
+    if (calibraciones.length === 0) return null;
+    return [...calibraciones].sort(
+      (a, b) =>
+        b.fecha_calibracion.localeCompare(a.fecha_calibracion) || b.id - a.id,
+    )[0];
+  }, [equipo]);
+
   const defaultValues =
     esModoModificar || esModoVer
       ? {
@@ -265,14 +276,12 @@ export const EquipoForm = ({
             error={errors.fecha_ultima_calibracion?.message}
             {...(register("fecha_ultima_calibracion") as any)}
           />
-          {esModoVer &&
-            equipo?.calibraciones &&
-            equipo.calibraciones.length > 0 && (
+          {esModoVer && ultimaCalibracion && (
               <Box w='100%' mt={2}>
                 <Text fontSize='sm' fontWeight='medium' mb={2} color='gray.700'>
                   Último Certificado de Calibración
                 </Text>
-                {equipo.calibraciones[0].certificado_url ? (
+                {ultimaCalibracion.certificado_url ? (
                   <Button
                     size='sm'
                     colorPalette='blue'
@@ -281,7 +290,7 @@ export const EquipoForm = ({
                     justifyContent='flex-start'
                     onClick={() =>
                       window.open(
-                        `${BASE_URL}${equipo.calibraciones[0].certificado_url}`,
+                        `${BASE_URL}${ultimaCalibracion.certificado_url}`,
                         "_blank",
                       )
                     }

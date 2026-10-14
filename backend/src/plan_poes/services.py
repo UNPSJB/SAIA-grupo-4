@@ -437,14 +437,23 @@ def modificar_tarea(db: Session, tarea_id: int, tarea_update: schemas.TareaPOESU
         nuevo_equipo != tarea.equipo_id or nuevo_sector != tarea.sector_id
     )
 
-    # Se valida la frecuencia y si corresponde el detalle_frecuencia según la nueva frecuencia
+    # Se valida la frecuencia y, si corresponde, el detalle según la nueva
+    # frecuencia. Se reutiliza la validación de formato de los schemas (mismo
+    # criterio que en la creación) para que el PATCH tampoco acepte detalles
+    # inválidos (p. ej. un día de la semana mal escrito).
     nueva_freq = update_data.get("frecuencia", tarea.frecuencia)
     nuevo_detalle = update_data.get("detalle_frecuencia", tarea.detalle_frecuencia)
-    
-    if nueva_freq == "diaria" and nuevo_detalle is not None:
+
+    if nueva_freq == "diaria":
+        # La frecuencia diaria no lleva detalle: se limpia el que hubiera.
         update_data["detalle_frecuencia"] = None
-    elif nueva_freq != "diaria" and not nuevo_detalle:
-        raise exceptions.FrecuenciaInvalida(motivo=f"La frecuencia '{nueva_freq}' requiere obligatoriamente que se envíe un detalle_frecuencia.")
+    else:
+        try:
+            update_data["detalle_frecuencia"] = schemas.validar_detalle_frecuencia(
+                nueva_freq, nuevo_detalle
+            )
+        except ValueError as exc:
+            raise exceptions.FrecuenciaInvalida(motivo=str(exc))
     
     # Se valida que los recursos estén activos y sean compatibles con el destino.
     # Si el destino cambió y no se reenvían las listas, se revalidan los recursos

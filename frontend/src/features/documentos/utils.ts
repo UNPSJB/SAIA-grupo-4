@@ -28,6 +28,12 @@ export const descargarDocumento = async (
   url: string,
   nombreArchivo: string,
 ): Promise<void> => {
+  // Pre-abrimos una pestaña DENTRO del gesto del usuario (antes del primer
+  // await): si la descarga por blob funciona, la cerramos; si el fetch falla
+  // (p. ej. CORS), la usamos como fallback. Abrirla recién en el catch, después
+  // del await, haría que el navegador la bloquee por considerarla pop-up.
+  const ventanaFallback = window.open("", "_blank");
+
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -40,8 +46,10 @@ export const descargarDocumento = async (
     enlace.click();
     enlace.remove();
     URL.revokeObjectURL(objectUrl);
+    ventanaFallback?.close();
   } catch {
-    window.open(url, "_blank");
+    if (ventanaFallback) ventanaFallback.location.href = url;
+    else window.location.assign(url);
   }
 };
 

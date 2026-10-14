@@ -51,7 +51,6 @@ def _filtrar_tareas_por_dia(tareas: List[TareaPOES], fecha: date) -> List[TareaP
     dias_semana_abrev = {1: "lun", 2: "mar", 3: "mie", 4: "jue", 5: "vie", 6: "sab", 7: "dom"}
 
     dia_iso = fecha.isoweekday() 
-    dia_mes = str(fecha.day) 
     
     nombre_dia_completo = dias_semana_completos[dia_iso]
     nombre_dia_abrev = dias_semana_abrev[dia_iso]
@@ -68,7 +67,7 @@ def _filtrar_tareas_por_dia(tareas: List[TareaPOES], fecha: date) -> List[TareaP
             tareas_esperadas.append(tarea)
         elif freq == "semanal" and detalle and detalle.lower().strip() == nombre_dia_completo:
             tareas_esperadas.append(tarea)
-        elif freq == "mensual" and detalle and detalle.strip() == dia_mes:
+        elif freq == "mensual" and detalle and detalle.strip().isdigit() and int(detalle.strip()) == fecha.day:
             tareas_esperadas.append(tarea)
         elif freq == "dias_especificos" and detalle:
             dias_permitidos = [d.strip().lower() for d in detalle.split(",")]
@@ -247,9 +246,10 @@ def completar_ejecucion(db: Session, ejecucion_id: int, datos: schemas.Completar
     
     ruta_foto = ejecucion.foto_url # Se mantiene la actual por si no envían una nueva
 
-    #foto opcional
+    # foto opcional
     if foto:
-        if not foto.content_type.startswith("image/"):  # Se valida que el archivo que se pasa es una imagen
+        # `content_type` puede llegar en None: se normaliza antes de comparar.
+        if not (foto.content_type or "").startswith("image/"):  # Se valida que el archivo que se pasa es una imagen
             raise exceptions.ArchivoInvalido()
         ruta_foto = _guardar_foto_local(ejecucion_id, foto)
 

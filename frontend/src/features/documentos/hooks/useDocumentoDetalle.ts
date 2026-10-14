@@ -19,12 +19,19 @@ export const useDocumentoDetalle = ({
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Un id ausente o no numérico (p. ej. `/documentos/abc` -> NaN) no se pide al
+  // backend y se reporta como error, en vez de dejar la vista vacía sin aviso.
+  const idValido =
+    typeof documentoId === "number" &&
+    Number.isInteger(documentoId) &&
+    documentoId > 0;
+
   const reload = useCallback(() => {
     setReloadKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
-    if (!documentoId) return;
+    if (!idValido) return;
     let active = true;
     // Todos los setState viven en callbacks asíncronos (patrón de useListadoData)
     apiFetch(`${BASE_URL}/documentos/${documentoId}`)
@@ -53,7 +60,7 @@ export const useDocumentoDetalle = ({
     return () => {
       active = false;
     };
-  }, [documentoId, reloadKey, errorMessage]);
+  }, [documentoId, reloadKey, errorMessage, idValido]);
 
   // Versiones de la más reciente a la más antigua (el backend no garantiza orden)
   const versiones = useMemo(
@@ -64,5 +71,15 @@ export const useDocumentoDetalle = ({
     [documento],
   );
 
-  return { documento, versiones, loading, error, reload };
+  // Si el id venía informado pero no es válido, se muestra el error sin intentar
+  // la petición; si no se informó id, se mantiene el estado neutro.
+  const idInvalido = documentoId !== undefined && !idValido;
+
+  return {
+    documento,
+    versiones,
+    loading: idValido ? loading : false,
+    error: idInvalido ? errorMessage : error,
+    reload,
+  };
 };
