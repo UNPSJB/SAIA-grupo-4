@@ -8,8 +8,9 @@ from src.auth import dependencies
 from src.database import get_db
 from src.incidentes import schemas, services
 from src.personal.models import Persona
+from src.auth.dependencies import requiere_operacion
 
-router = APIRouter(prefix="/incidentes", tags=["incidentes"])
+router = APIRouter(prefix="/incidentes", tags=["incidentes"], dependencies=[Depends(requiere_operacion)])
 
 DesdeQuery = Annotated[
     date | None,

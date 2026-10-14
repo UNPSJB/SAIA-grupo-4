@@ -19,7 +19,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import type { Persona } from "../personal/types";
-import { authService, type TokenResponse } from "./authService";
+import { authService, AuthError, type TokenResponse } from "./authService";
 import { AuthContext } from "./AuthContext";
 import { esAdministrador, esOperador } from "./roles";
 
@@ -72,12 +72,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (err) {
       const msg = getErrorMessage(err);
       // Si NO es 401, no intentamos refresh automático (podría ser red).
-      // Muchos backends devuelven "Sesión no válida." o detalle 401.
+      // Detectamos el 401 por el status HTTP (AuthError) y, como respaldo,
+      // por el mensaje (cubre respuestas sin status o textos alternativos).
+      const lower = msg.toLowerCase();
       const isUnauthorized =
-        msg.toLowerCase().includes("401") ||
-        msg.toLowerCase().includes("no válida") ||
-        msg.toLowerCase().includes("no autorizado") ||
-        msg.toLowerCase().includes("unauthorized");
+        (err instanceof AuthError && err.status === 401) ||
+        lower.includes("401") ||
+        lower.includes("not authenticated") ||
+        lower.includes("no válida") ||
+        lower.includes("no válido") ||
+        lower.includes("no autorizado") ||
+        lower.includes("unauthorized");
 
       if (!isUnauthorized) {
         // Otro error (network): no levantamos sesión, dejamos loading=false.

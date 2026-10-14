@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { apiFetch } from "../../auth/apiFetch";
 
 export type SubmitResult<T = unknown> =
   | { status: "success"; data: T }
@@ -51,12 +52,12 @@ export const useIncidentesSubmit = ({
             formData.append("foto", foto);
           }
 
-          res = await fetch(url, {
+          res = await apiFetch(url, {
             method,
             body: formData,
           });
         } else if (body !== undefined) {
-          res = await fetch(url, {
+          res = await apiFetch(url, {
             method,
             headers:  { "Content-Type": "application/json" },
             body: JSON.stringify(body),

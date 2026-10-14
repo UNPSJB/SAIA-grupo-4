@@ -3,7 +3,7 @@ import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare } from "react-icons/fi";
 import { NavBar, OperadorLayout, type NavItem } from "./components/layout";
-import { AlertConfirm } from "./components/ui";
+import { AlertConfirm, LoadingState } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
 import { esAdministrador, esOperador } from "./features/auth/roles";
@@ -38,8 +38,15 @@ const CHECKLIST_ITEMS: NavItem[] = [
 ];
 
 function AppContent() {
-  const { usuario, logout } = useAuth();
+  const { usuario, logout, loading } = useAuth();
   const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
+
+  // Mientras se rehidrata la sesión (refresh por cookie al recargar) todavía no
+  // sabemos si hay sesión: mostramos un estado de carga. Evita el parpadeo del
+  // login y que la rama sin sesión redirija y pierda la URL solicitada.
+  if (loading) {
+    return <LoadingState message="Cargando sesión..." />;
+  }
 
   // RAMA SIN SESIÓN: solo existe la vista de login. Cualquier otra URL
   // redirige a "/". No se renderiza el NavBar ni contenido de gestión.

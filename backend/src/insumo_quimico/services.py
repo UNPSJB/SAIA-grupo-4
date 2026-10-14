@@ -10,7 +10,7 @@ from src.insumo_quimico.models import InsumoQuimico
 from src.insumo_quimico import schemas, exceptions
 
 from src.unidad_medida.models import UnidadMedida
-from src.unidad_medida.exceptions import UnidadMedidaReactivar, UnidadMedidaNoEncontrada
+from src.unidad_medida.exceptions import UnidadMedidaReactivar, UnidadMedidaNoEncontrada, UnidadMedidaBaja
 
 from src.equipos.models import Equipo
 from src.equipos.exceptions import EquipoNoEncontrado, EquipoInactivo
@@ -173,7 +173,8 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
     else:
         
         if update_data.get("activo") is False:
-            raise exceptions.InsumoQuimicoBajaNoPermitida()
+            #raise exceptions.InsumoQuimicoBajaNoPermitida()
+            raise exceptions.InsumoQuimicoBaja()
 
         if any(
             campo in update_data
@@ -234,7 +235,8 @@ def modificar_insumo_quimico(db: Session, insumo_quimico_id: int, insumo_quimico
                 raise UnidadMedidaNoEncontrada()
 
             if not unidad_medida_nueva.disponible:
-                raise UnidadMedidaInactiva()
+                # raise UnidadMedidaInactiva()
+                raise UnidadMedidaBaja()
 
     if update_data:
         db.execute(

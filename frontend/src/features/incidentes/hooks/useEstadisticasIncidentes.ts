@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { BASE_URL } from "../../../config";
+import { apiFetch } from "../../auth/apiFetch";
 import type { EstadisticaTipoIncidente } from "../types";
 
 const ENDPOINT = `${BASE_URL}/incidentes/estadisticas`;
@@ -32,7 +33,7 @@ export const useEstadisticasIncidentes = ({ desde, hasta }: Options) => {
     let active = true;
     const params = new URLSearchParams({ desde, hasta });
 
-    fetch(`${ENDPOINT}?${params.toString()}`)
+    apiFetch(`${ENDPOINT}?${params.toString()}`)
       .then(async (res) => {
         if (res.ok) return (await res.json()) as EstadisticaTipoIncidente[];
         const body = await res.json().catch(() => null);

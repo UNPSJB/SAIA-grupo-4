@@ -2,11 +2,12 @@ import json
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.orm import Session
 from pydantic import ValidationError
+from src.auth.dependencies import requiere_operacion
 
 from src.database import get_db
 from src.documentos import schemas, services, exceptions
 
-router = APIRouter(prefix="/documentos", tags=["documentos"])
+router = APIRouter(prefix="/documentos", tags=["documentos"], dependencies=[Depends(requiere_operacion)])
 
 # ENDPOINTS de Documentos
 

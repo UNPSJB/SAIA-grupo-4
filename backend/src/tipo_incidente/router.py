@@ -1,12 +1,17 @@
 import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from src.auth.dependencies import requiere_operacion
 from src.database import get_db
 from src.tipo_incidente import schemas, services
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/tipos-incidente", tags=["tipos-incidente"])
+router = APIRouter(
+    prefix="/tipos-incidente",
+    tags=["tipos-incidente"],
+    dependencies=[Depends(requiere_operacion)],
+)
 
 @router.post("/", response_model=schemas.TipoIncidente, status_code=201)
 def crear_tipo_incidente(tipo: schemas.TipoIncidenteCreate, db: Session = Depends(get_db)):

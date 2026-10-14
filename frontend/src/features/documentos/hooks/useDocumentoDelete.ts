@@ -1,4 +1,5 @@
 import { BASE_URL } from "../../../config";
+import { apiFetch } from "../../auth/apiFetch";
 import type { Documento } from "../types";
 
 interface HandleDeleteOptions {
@@ -14,7 +15,7 @@ export const handleDelete = async ({ documento, setLoading, setError, onSuccess 
   setError("");
 
   try {
-    const res = await fetch(`${BASE_URL}/documentos/${documento.id}/`, {
+    const res = await apiFetch(`${BASE_URL}/documentos/${documento.id}/`, {
       method: "DELETE",
     });
 

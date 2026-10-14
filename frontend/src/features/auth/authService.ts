@@ -20,6 +20,19 @@ export interface TokenResponse {
   persona: Persona;
 }
 
+// Error de la API de autenticación que conserva el status HTTP.
+// Permite distinguir un 401 (sesión inválida → intentar refresh) de un error de
+// red o de servidor sin depender del texto del mensaje.
+export class AuthError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AuthError";
+    this.status = status;
+  }
+}
+
 // Mantiene el access token en memoria únicamente (nunca en localStorage).
 // Esto minimiza el riesgo de exposición por XSS y es coherente con refresh
 // viajando solo en httpOnly cookie.
@@ -84,7 +97,7 @@ export const authService = {
       // Errores 401: CredencialesIncorrectas o CapacidadesNoHabilitadas
       // (mensajes genéricos según backend). Se propaga el detalle para mostrar
       // en LoginPage sin filtrar información.
-      throw new Error(detail || "No se pudo iniciar sesión.");
+      throw new AuthError(detail || "No se pudo iniciar sesión.", res.status);
     }
 
     const tokenResp = data as TokenResponse;
@@ -116,7 +129,7 @@ export const authService = {
       const detail = extractErrorDetail(data);
       // 401 -> SesionNoValida (o cookie ausente). Limpiamos token en memoria.
       setAccessToken(null);
-      throw new Error(detail || "No se pudo renovar la sesión.");
+      throw new AuthError(detail || "No se pudo renovar la sesión.", res.status);
     }
 
     const tokenResp = data as TokenResponse;
@@ -154,7 +167,7 @@ export const authService = {
       const detail = extractErrorDetail(data);
       // 401 -> token ausente/inválido/expirado. No limpiamos aquí: apiFetch
       // decide si intentar refresh o forzar logout.
-      throw new Error(detail || "Sesión no válida.");
+      throw new AuthError(detail || "Sesión no válida.", res.status);
     }
 
     return data as Persona;

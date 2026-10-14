@@ -1,4 +1,5 @@
 import { BASE_URL } from "../../../config";
+import { apiFetch } from "../../auth/apiFetch";
 import type { TipoIncidente } from "../types";
 
 interface HandleDeleteTipoIncidenteOptions {
@@ -14,7 +15,7 @@ export const handleDeleteTipoIncidente = async ({ tipo, setLoading, setError, on
     setError("");
 
     try {
-        const res = await fetch(`${BASE_URL}/tipos-incidente/${tipo.id}`, {
+        const res = await apiFetch(`${BASE_URL}/tipos-incidente/${tipo.id}`, {
             method: "DELETE",
         });
 

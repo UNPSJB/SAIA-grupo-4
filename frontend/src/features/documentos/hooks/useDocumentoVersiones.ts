@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { BASE_URL } from "../../../config";
+import { apiFetch } from "../../auth/apiFetch";
 import type { RegistrarRevisionFormData, SubirVersionFormData } from "../types";
 import { extraerMensajeError } from "./useDocumentoSubmit";
 
@@ -53,7 +54,7 @@ export const useDocumentoVersiones = () => {
         formData.append("datos", JSON.stringify(datos));
         formData.append("archivo", data.archivo);
 
-        const res = await fetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones`, {
+        const res = await apiFetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones`, {
           method: "POST",
           // Sin Content-Type manual: fetch agrega el boundary del multipart
           body: formData,
@@ -66,7 +67,7 @@ export const useDocumentoVersiones = () => {
         }
 
         // Segundo paso: activar la recién subida (la anterior queda histórica)
-        const resVigencia = await fetch(
+        const resVigencia = await apiFetch(
           `${BASE_DOCUMENTOS}/${documentoId}/versiones/${nuevaVersion.id}/vigencia`,
           { method: "PATCH" },
         );
@@ -103,7 +104,7 @@ export const useDocumentoVersiones = () => {
         if (data.observaciones?.trim()) payload.observaciones = data.observaciones.trim();
         if (data.registrado_por_id) payload.registrado_por_id = data.registrado_por_id;
 
-        const res = await fetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones/${versionId}/renovar`, {
+        const res = await apiFetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones/${versionId}/renovar`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -126,7 +127,7 @@ export const useDocumentoVersiones = () => {
     async (documentoId: number, versionId: number): Promise<VersionSubmitResult> => {
       setIsSubmitting(true);
       try {
-        const res = await fetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones/${versionId}/vigencia`, {
+        const res = await apiFetch(`${BASE_DOCUMENTOS}/${documentoId}/versiones/${versionId}/vigencia`, {
           method: "PATCH",
         });
 

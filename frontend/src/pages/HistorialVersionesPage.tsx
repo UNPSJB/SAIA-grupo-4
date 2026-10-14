@@ -26,6 +26,7 @@ import {
 } from "../components/layout";
 import { useDocumentoDetalle } from "../features/documentos/hooks/useDocumentoDetalle";
 import { useDocumentoVersiones } from "../features/documentos/hooks/useDocumentoVersiones";
+import { apiFetch } from "../features/auth/apiFetch";
 import { formatearFecha, formatearFechaHora } from "../features/documentos/utils";
 import { BASE_URL } from "../config";
 import type { RevisionDocumento, VersionDocumento } from "../features/documentos/types";
@@ -67,7 +68,7 @@ export default function HistorialVersionesPage() {
     setErrorRevisiones("");
     setCargandoRevisiones(true);
     try {
-      const res = await fetch(`${API_BASE}/${documentoId}/versiones/${version.id}/revisiones`);
+      const res = await apiFetch(`${API_BASE}/${documentoId}/versiones/${version.id}/revisiones`);
       if (!res.ok) throw new Error(`Error ${res.status}`);
       setRevisiones((await res.json()) as RevisionDocumento[]);
     } catch {

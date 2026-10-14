@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { BASE_URL } from "../../../config";
+import { apiFetch } from "../../auth/apiFetch";
 import type { DocumentoDetalle } from "../types";
 
 interface UseDocumentoDetalleOptions {
@@ -26,7 +27,7 @@ export const useDocumentoDetalle = ({
     if (!documentoId) return;
     let active = true;
     // Todos los setState viven en callbacks asíncronos (patrón de useListadoData)
-    fetch(`${BASE_URL}/documentos/${documentoId}`)
+    apiFetch(`${BASE_URL}/documentos/${documentoId}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Error ${res.status}`);
