@@ -1,5 +1,6 @@
 import logging
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +28,15 @@ class Settings(BaseSettings):
     TOKEN_URL: str = "auth/token"
     REFRESH_TOKEN_COOKIE_NAME: str = "refresh_token"
 
+    # Orígenes permitidos por CORS, separados por coma. En producción se define
+    # el dominio real del frontend sin tocar el código.
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # Atributo SameSite de la cookie de refresh. En dev alcanza "lax"; si el
+    # frontend y el backend viven en sitios distintos hace falta "none" (que a su
+    # vez exige SECURE_COOKIES=true).
+    COOKIE_SAMESITE: str = "lax"
+
     # False en DEV (http sobre localhost); True en producción (https).
     SECURE_COOKIES: bool = False
 
@@ -36,6 +46,14 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",  # Ignora otras variables que estén en el .env y no definamos en este archivo
     )
+
+    @model_validator(mode="after")
+    def _endurecer_cookies_en_produccion(self):
+        # Red de seguridad: fuera de DEV la cookie de refresh solo debe viajar
+        # por HTTPS. Si no se definió SECURE_COOKIES explícitamente, se fuerza.
+        if self.ENV.upper() != "DEV" and not self.SECURE_COOKIES:
+            self.SECURE_COOKIES = True
+        return self
 
 
 # Instancia global que reutilizaremos en el proyecto

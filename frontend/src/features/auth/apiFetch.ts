@@ -1,5 +1,5 @@
 /**
-   frontend/src/lib/apiFetch.ts
+   frontend/src/features/auth/apiFetch.ts
    Wrapper centralizado de fetch para toda la aplicación.
 
    Funcionalidad:
@@ -8,18 +8,26 @@
    - Ante un 401, intenta renovar el access token con PUT /auth/token (refresh)
      UNA única vez (evita loops infinitos), reintenta la request original y
      devuelve la respuesta del reintento.
-   - Si el refresh también falla (401/403 u otro error), limpia la sesión y
-     redirige al login (/). No propaga el error en ese caso para evitar
-     renders inconsistentes. 
+   - Si el backend confirma que el refresh no es válido (401/403), limpia la
+     sesión y redirige al login (/). Un fallo de red o 5xx NO cierra la sesión:
+     se devuelve el 401 original para que el caller muestre el error.
  */
 
-import { authService } from "./authService";
+import { AuthError, authService } from "./authService";
+
+// Resultado de un intento de refresh.
+interface RefreshResult {
+  token: string | null;
+  // true cuando no se pudo contactar/concluir el refresh (red caída, 5xx):
+  // transitorio, no implica que la sesión sea inválida.
+  unreachable: boolean;
+}
 
 // Flag global para evitar múltiples refresh en paralelo (race condition).
 let isRefreshing = false;
 // Promesa compartida mientras se está renovando el token: todas las requests
 // que reciban 401 durante ese lapso esperan el mismo refresh.
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 /**
  * Obtiene el access token actual almacenado en memoria por authService.
@@ -31,7 +39,7 @@ function getAccessToken(): string | null {
 
 /**
  * Limpia el estado de auth y redirige al login.
- * Se usa cuando el refresh no logra rehidratar la sesión.
+ * Se usa cuando el refresh confirma que la sesión ya no es válida.
  */
 function forceLogoutAndRedirect(): void {
   try {
@@ -41,7 +49,8 @@ function forceLogoutAndRedirect(): void {
     // No bloquear el redirect por errores internos.
   }
 
-  // Redirige a la pantalla de login (ruta raíz).
+  // Redirige a la pantalla de login (ruta raíz). El reload completo reinicia
+  // también el estado de React (AuthProvider) que vive fuera de este módulo.
   if (typeof window !== "undefined" && window.location.pathname !== "/") {
     window.location.assign("/");
   }
@@ -49,17 +58,32 @@ function forceLogoutAndRedirect(): void {
 
 /**
  * Intenta renovar el access token usando la cookie httpOnly de refresh.
- * Devuelve el nuevo access token o null si el refresh falló.
+ * Distingue una sesión inválida (401/403) de un fallo transitorio (red/5xx).
  */
-async function performRefresh(): Promise<string | null> {
+async function performRefresh(): Promise<RefreshResult> {
   try {
     const refreshed = await authService.refresh();
     // authService.refresh ya guarda el nuevo access token internamente.
-    return refreshed?.access_token ?? null;
-  } catch {
-    // Cualquier error (401, red, etc.) indica que no hay sesión válida.
-    return null;
+    return { token: refreshed?.access_token ?? null, unreachable: false };
+  } catch (err) {
+    // Solo un 401/403 del backend significa que la sesión dejó de valer.
+    const sesionInvalida =
+      err instanceof AuthError && (err.status === 401 || err.status === 403);
+    return { token: null, unreachable: !sesionInvalida };
   }
+}
+
+/**
+ * Reintenta la request original con el access token renovado.
+ */
+async function retryWithToken(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  token: string,
+): Promise<Response> {
+  const headers = new Headers(init.headers ?? {});
+  headers.set("Authorization", `Bearer ${token}`);
+  return await fetch(input, { ...init, headers, credentials: "include" });
 }
 
 /**
@@ -78,8 +102,7 @@ export async function apiFetch(
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  // Asegura que la cookie de refresh (httpOnly) viaje en requests cross-origin
-  // (igual que hace el frontend actual con credentials: 'include').
+  // Asegura que la cookie de refresh (httpOnly) viaje en requests cross-origin.
   const requestInit: RequestInit = {
     ...init,
     headers,
@@ -87,64 +110,42 @@ export async function apiFetch(
   };
 
   // Primer intento de la request.
-  let response = await fetch(input, requestInit);
+  const response = await fetch(input, requestInit);
 
   // Si no es 401, devolvemos la respuesta tal cual.
   if (response.status !== 401) {
     return response;
   }
 
-  // Recibimos 401: intentar refresh UNA sola vez y reintentar la request original.
-  // 1) Si ya hay un refresh en curso, esperamos esa promesa compartida.
+  // Recibimos 401: intentar refresh UNA sola vez y reintentar la request.
+  // Si ya hay un refresh en curso, esperamos esa misma promesa en vez de
+  // disparar uno nuevo. La promesa se captura en una variable local para no
+  // depender de `refreshPromise`, que el que inició el refresh limpia al terminar.
+  let refresco: Promise<RefreshResult>;
   if (isRefreshing && refreshPromise) {
-    const newToken = await refreshPromise;
-    if (!newToken) {
-      // El refresh en curso falló → forzamos logout/redirect.
-      forceLogoutAndRedirect();
-      // Devolvemos la respuesta 401 original para evitar romper flujos que
-      // esperan manejar el error (aunque en este caso redirigimos).
-      return response;
-    }
-
-    // Tenemos nuevo token: reintentar con el token renovado.
-    const retryHeaders = new Headers(init.headers ?? {});
-    retryHeaders.set("Authorization", `Bearer ${newToken}`);
-    const retryInit: RequestInit = {
-      ...init,
-      headers: retryHeaders,
-      credentials: "include",
-    };
-    return await fetch(input, retryInit);
+    refresco = refreshPromise;
+  } else {
+    isRefreshing = true;
+    refresco = performRefresh().finally(() => {
+      // Se resetean juntos: si se bajara isRefreshing antes que refreshPromise,
+      // una request que caiga en esa ventana iniciaría un segundo refresh.
+      isRefreshing = false;
+      refreshPromise = null;
+    });
+    refreshPromise = refresco;
   }
 
-  // 2) No hay refresh en curso → iniciamos uno nuevo (único reintento).
-  isRefreshing = true;
-  refreshPromise = performRefresh().finally(() => {
-    // El flag se mantiene en true mientras la promesa está activa; lo
-    // bajamos una vez resuelta para permitir futuros refresh si hiciera
-    // falta en otra navegación (aunque el diseño es 1 retry por 401).
-    isRefreshing = false;
-  });
-
-  const newToken = await refreshPromise;
-  refreshPromise = null;
+  const { token: newToken, unreachable } = await refresco;
 
   if (!newToken) {
-    // Refresh fallido → sesión inválida/expirada. Forzamos logout y redirect.
-    forceLogoutAndRedirect();
-    // Devolvemos la respuesta 401 original.
+    // Solo cerramos la sesión si el backend confirmó que el refresh no vale.
+    // Ante un fallo transitorio devolvemos el 401 original sin desloguear.
+    if (!unreachable) {
+      forceLogoutAndRedirect();
+    }
     return response;
   }
 
-  // 3) Refresh exitoso → reintentar la request original con el nuevo access token.
-  const retryHeaders2 = new Headers(init.headers ?? {});
-  retryHeaders2.set("Authorization", `Bearer ${newToken}`);
-  const retryInit2: RequestInit = {
-    ...init,
-    headers: retryHeaders2,
-    credentials: "include",
-  };
-
-  response = await fetch(input, retryInit2);
-  return response;
+  // Refresh exitoso → reintentar la request original con el nuevo access token.
+  return await retryWithToken(input, init, newToken);
 }

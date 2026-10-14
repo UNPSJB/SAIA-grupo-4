@@ -44,13 +44,14 @@ def create_refresh_token(persona_id: int) -> str:
         key=settings.REFRESH_SECRET_KEY,
     )
 
-# Atributos de la cookie de refresh: httpOnly (inaccesible desde JS), samesite=lax y sin domain (host-only, aplica a localhost:8000).
+# Atributos de la cookie de refresh: httpOnly (inaccesible desde JS), SameSite
+# configurable (ver settings.COOKIE_SAMESITE) y sin domain (host-only).
 def get_refresh_cookie_settings(token: str) -> Dict[str, Any]:
     return {
         "key": settings.REFRESH_TOKEN_COOKIE_NAME,
         "value": token,
         "httponly": True,
-        "samesite": "lax",
+        "samesite": settings.COOKIE_SAMESITE,
         "secure": settings.SECURE_COOKIES,
         "path": "/",
         "max_age": settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,

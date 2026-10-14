@@ -58,10 +58,7 @@ UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
-origins = [
-    "http://localhost:5173", # para recibir requests desde app React (puerto: 5173)
-    "http://127.0.0.1:5173",
-]
+origins = [origen.strip() for origen in settings.CORS_ORIGINS.split(",") if origen.strip()]
 
 app.add_middleware(
     CORSMiddleware,

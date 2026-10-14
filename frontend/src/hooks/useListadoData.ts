@@ -19,11 +19,34 @@ export const useListadoData = <T>(
 ) => {
   const [data, setData] = useState<T[]>([]);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
   // Identidad de la petición: cambia cuando hay que volver a pedir los datos.
   const clave = JSON.stringify([endpoint, refreshKey, reloadKey, errorMessage]);
+
+  // La página se guarda junto con la clave con la que fue elegida. Si la
+  // petición cambia (filtro, recarga, endpoint) la página vuelve a 1 sin usar un
+  // efecto (evita el patrón set-state-in-effect); así una lista más corta no
+  // deja al usuario mirando una página vacía.
+  const [paginacion, setPaginacion] = useState<{ clave: string; page: number }>({
+    clave,
+    page: 1,
+  });
+  const page = paginacion.clave === clave ? paginacion.page : 1;
+
+  const setPage = useCallback(
+    (valor: number | ((anterior: number) => number)) => {
+      setPaginacion((prev) => {
+        const actual = prev.clave === clave ? prev.page : 1;
+        const siguiente =
+          typeof valor === "function"
+            ? (valor as (anterior: number) => number)(actual)
+            : valor;
+        return { clave, page: Math.max(1, siguiente) };
+      });
+    },
+    [clave],
+  );
 
   // Clave del último request que terminó (con éxito o con error). Mientras no
   // coincida con `clave` hay una petición en vuelo.
@@ -70,10 +93,24 @@ export const useListadoData = <T>(
     };
   }, [clave, endpoint, errorMessage]);
 
-  const itemsPaginados = useMemo(() => {
-    const inicio = (page - 1) * pageSize;
-    return data.slice(inicio, inicio + pageSize);
-  }, [data, page, pageSize]);
+  // Tope de páginas según los datos recibidos. Si la lista se acorta (un delete,
+  // un filtro), la página efectiva se ajusta para no quedar fuera de rango.
+  const totalPaginas = Math.max(1, Math.ceil(data.length / pageSize));
+  const paginaActual = Math.min(page, totalPaginas);
 
-  return { data, loading, error, page, setPage, pageSize, itemsPaginados, reload };
+  const itemsPaginados = useMemo(() => {
+    const inicio = (paginaActual - 1) * pageSize;
+    return data.slice(inicio, inicio + pageSize);
+  }, [data, paginaActual, pageSize]);
+
+  return {
+    data,
+    loading,
+    error,
+    page: paginaActual,
+    setPage,
+    pageSize,
+    itemsPaginados,
+    reload,
+  };
 };
