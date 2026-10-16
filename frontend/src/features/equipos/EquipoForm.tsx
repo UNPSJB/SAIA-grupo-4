@@ -2,7 +2,15 @@ import { BASE_URL } from "../../config";
 import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack, Box, Button, Icon, HStack, Text } from "@chakra-ui/react";
+import {
+  VStack,
+  Box,
+  Button,
+  Icon,
+  HStack,
+  Text,
+  SimpleGrid,
+} from "@chakra-ui/react";
 import {
   FiEye,
   FiEdit2,
@@ -28,7 +36,11 @@ import {
 
 import { useListadoData } from "../../hooks/useListadoData";
 import { useEquipoSubmit } from "./hooks/useEquipoSubmit";
-import { equipoSchema, type EquipoFormValues } from "./validationSchema";
+import {
+  equipoSchema,
+  HOY_ISO,
+  type EquipoFormValues,
+} from "./validationSchema";
 import type { Equipo } from "./types";
 import type { Sector } from "../sectores/types";
 
@@ -89,13 +101,17 @@ export const EquipoForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
     reset,
   } = useForm<EquipoFormValues>({
     resolver: zodResolver(equipoSchema) as any,
     defaultValues: defaultValues as any,
+    // Valida en cada cambio para poder deshabilitar "Guardar" hasta que los
+    // campos obligatorios esten completos (con el modo por defecto, `isValid`
+    // solo se actualizaba al enviar).
+    mode: "onChange",
   });
 
   // Carga de sectores
@@ -185,128 +201,133 @@ export const EquipoForm = ({
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
-          <TextField
-            label='Nombre'
-            disabled={esModoVer}
-            defaultValue={defaultValues.nombre}
-            placeholder='Ej. Heladera con freezer'
-            error={errors.nombre?.message}
-            {...register("nombre")}
-          />
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <TextField
+              label='Nombre'
+              disabled={esModoVer}
+              defaultValue={defaultValues.nombre}
+              placeholder='Ej. Heladera con freezer'
+              error={errors.nombre?.message}
+              {...register("nombre")}
+            />
 
-          <TextField
-            label='Marca'
-            disabled={esModoVer}
-            defaultValue={defaultValues.marca}
-            placeholder='Ej. Samsung, Whirlpool'
-            error={errors.marca?.message}
-            {...register("marca")}
-          />
+            <TextField
+              label='Marca'
+              disabled={esModoVer}
+              defaultValue={defaultValues.marca}
+              placeholder='Ej. Samsung, Whirlpool'
+              error={errors.marca?.message}
+              {...register("marca")}
+            />
 
-          <TextField
-            label='Número de Serie'
-            disabled={esModoVer}
-            defaultValue={defaultValues.numero_serie}
-            placeholder='Ej. S/N 987654321'
-            error={errors.numero_serie?.message}
-            {...register("numero_serie")}
-          />
+            <TextField
+              label='Número de Serie'
+              disabled={esModoVer}
+              defaultValue={defaultValues.numero_serie}
+              placeholder='Ej. S/N 987654321'
+              error={errors.numero_serie?.message}
+              {...register("numero_serie")}
+            />
 
-          <SelectField
-            label='Categoría'
-            placeholder='Selecciona una opción'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.categoria}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={[
-              { label: "Heladera", value: "heladera" },
-              { label: "Horno", value: "horno" },
-              { label: "Balanza", value: "balanza" },
-              { label: "Termómetro", value: "termometro" },
-              { label: "Otro", value: "otro" },
-            ]}
-            error={errors.categoria?.message}
-            {...register("categoria")}
-          />
+            <SelectField
+              label='Categoría'
+              placeholder='Selecciona una opción'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.categoria}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={[
+                { label: "Heladera", value: "heladera" },
+                { label: "Horno", value: "horno" },
+                { label: "Balanza", value: "balanza" },
+                { label: "Termómetro", value: "termometro" },
+                { label: "Otro", value: "otro" },
+              ]}
+              error={errors.categoria?.message}
+              {...register("categoria")}
+            />
 
-          <SelectField
-            label='Sector'
-            placeholder={
-              cargandoSectores ? "Cargando sectores..." : "Seleccione un sector"
-            }
-            readOnly={esModoVer}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={opcionesSectores}
-            error={errors.sector_id?.message || errorSectores}
-            {...register("sector_id")}
-          />
+            <SelectField
+              label='Sector'
+              placeholder={
+                cargandoSectores
+                  ? "Cargando sectores..."
+                  : "Seleccione un sector"
+              }
+              readOnly={esModoVer}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={opcionesSectores}
+              error={errors.sector_id?.message || errorSectores}
+              {...register("sector_id")}
+            />
 
-          <TextField
-            label='Ubicación Específica (Opcional)'
-            disabled={esModoVer}
-            defaultValue={defaultValues.ubicacion}
-            placeholder='Ej. Cocina, Comedor 2'
-            error={errors.ubicacion?.message}
-            {...register("ubicacion")}
-          />
+            <TextField
+              label='Ubicación Específica (Opcional)'
+              disabled={esModoVer}
+              defaultValue={defaultValues.ubicacion}
+              placeholder='Ej. Cocina, Comedor 2'
+              error={errors.ubicacion?.message}
+              {...register("ubicacion")}
+            />
 
-          <TextField
-            label='Frecuencia de Calibración (en días)'
-            type='number'
-            disabled={esModoVer}
-            defaultValue={
-              defaultValues.frecuencia_calibracion_dias !== null &&
-              defaultValues.frecuencia_calibracion_dias !== undefined
-                ? String(defaultValues.frecuencia_calibracion_dias)
-                : ""
-            }
-            placeholder='Ej. 180'
-            error={errors.frecuencia_calibracion_dias?.message}
-            {...(register("frecuencia_calibracion_dias") as any)}
-          />
+            <TextField
+              label='Frecuencia de Calibración (en días)'
+              type='number'
+              min={1}
+              disabled={esModoVer}
+              defaultValue={
+                defaultValues.frecuencia_calibracion_dias !== null &&
+                defaultValues.frecuencia_calibracion_dias !== undefined
+                  ? String(defaultValues.frecuencia_calibracion_dias)
+                  : ""
+              }
+              placeholder='Ej. 180'
+              error={errors.frecuencia_calibracion_dias?.message}
+              {...(register("frecuencia_calibracion_dias") as any)}
+            />
 
-          <TextField
-            label='Fecha de Última Calibración'
-            type='date'
-            disabled={esModoVer}
-            defaultValue={defaultValues.fecha_ultima_calibracion ?? ""}
-            placeholder='AAAA-MM-DD (Ej. 2026-10-07)'
-            error={errors.fecha_ultima_calibracion?.message}
-            {...(register("fecha_ultima_calibracion") as any)}
-          />
+            <TextField
+              label='Fecha de Última Calibración'
+              type='date'
+              max={HOY_ISO}
+              disabled={esModoVer}
+              defaultValue={defaultValues.fecha_ultima_calibracion ?? ""}
+              error={errors.fecha_ultima_calibracion?.message}
+              {...(register("fecha_ultima_calibracion") as any)}
+            />
+          </SimpleGrid>
           {esModoVer && ultimaCalibracion && (
-              <Box w='100%' mt={2}>
-                <Text fontSize='sm' fontWeight='medium' mb={2} color='gray.700'>
-                  Último Certificado de Calibración
+            <Box w='100%' mt={2}>
+              <Text fontSize='sm' fontWeight='medium' mb={2} color='gray.700'>
+                Último Certificado de Calibración
+              </Text>
+              {ultimaCalibracion.certificado_url ? (
+                <Button
+                  size='sm'
+                  colorPalette='blue'
+                  variant='outline'
+                  w='full'
+                  justifyContent='flex-start'
+                  onClick={() =>
+                    window.open(
+                      `${BASE_URL}${ultimaCalibracion.certificado_url}`,
+                      "_blank",
+                    )
+                  }
+                >
+                  <HStack gap={2}>
+                    <Icon as={FiFileText} />
+                    <Text>Ver / Descargar PDF</Text>
+                  </HStack>
+                </Button>
+              ) : (
+                <Text fontSize='sm' color='gray.500'>
+                  No se adjuntó certificado en la última calibración.
                 </Text>
-                {ultimaCalibracion.certificado_url ? (
-                  <Button
-                    size='sm'
-                    colorPalette='blue'
-                    variant='outline'
-                    w='full'
-                    justifyContent='flex-start'
-                    onClick={() =>
-                      window.open(
-                        `${BASE_URL}${ultimaCalibracion.certificado_url}`,
-                        "_blank",
-                      )
-                    }
-                  >
-                    <HStack gap={2}>
-                      <Icon as={FiFileText} />
-                      <Text>Ver / Descargar PDF</Text>
-                    </HStack>
-                  </Button>
-                ) : (
-                  <Text fontSize='sm' color='gray.500'>
-                    No se adjuntó certificado en la última calibración.
-                  </Text>
-                )}
-              </Box>
-            )}
+              )}
+            </Box>
+          )}
 
           <FormActions>
             {esModoVer ? (
@@ -323,6 +344,7 @@ export const EquipoForm = ({
                   text='Guardar'
                   icon={FiSave}
                   loading={isSubmitting}
+                  disabled={!isValid}
                   type='submit'
                   colorPalette='green'
                 />

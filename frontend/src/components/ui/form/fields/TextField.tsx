@@ -4,6 +4,16 @@ interface TextFieldProps {
   label: string;
   placeholder?: string;
   name?: string;
+  /**
+   * Tipo de input nativo. Por defecto `text`; para fecha usar `date` (abre el
+   * calendario del navegador) y para numeros `number`. Antes estaba fijo en
+   * `text`, lo que descartaba el `type` que pasaban los formularios.
+   */
+  type?: React.HTMLInputTypeAttribute;
+  /** Limites nativos del input (utiles en `date` y `number`). */
+  min?: string | number;
+  max?: string | number;
+  step?: string | number;
   value?: string;
   defaultValue?: string;
   onChange?: (
@@ -19,6 +29,10 @@ export const TextField = ({
   label,
   placeholder,
   name,
+  type = 'text',
+  min,
+  max,
+  step,
   value,
   defaultValue,
   onChange,
@@ -32,7 +46,10 @@ export const TextField = ({
       {label}
     </Field.Label>
     <Input
-      type='text'
+      type={type}
+      min={min}
+      max={max}
+      step={step}
       name={name}
       placeholder={placeholder}
       value={value}

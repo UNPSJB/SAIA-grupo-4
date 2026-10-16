@@ -38,8 +38,11 @@ export const FiltrosBar = ({
   textoAplicar = "Filtrar",
 }: FiltrosBarProps) => (
   <HStack
-    gap={2}
+    w='fit-content'
+    ml='auto'
+    gap={5}
     align='center'
+    justify='flex-end'
     p={2}
     borderWidth='1px'
     borderRadius='md'
@@ -49,17 +52,22 @@ export const FiltrosBar = ({
 
     <Button
       size='sm'
+      variant='ghost'
+      colorPalette='gray'
+      onClick={onLimpiar}
+      borderColor='gray'
+      disabled={!hayFiltrosActivos ? true : false}
+    >
+      <FiRefreshCw /> Limpiar
+    </Button>
+
+    <Button
+      size='sm'
       colorPalette='green'
       onClick={onAplicar}
       loading={loading}
     >
       {!loading && <FiFilter />} {textoAplicar}
     </Button>
-
-    {hayFiltrosActivos && (
-      <Button size='sm' variant='ghost' colorPalette='gray' onClick={onLimpiar}>
-        <FiRefreshCw /> Limpiar
-      </Button>
-    )}
   </HStack>
 );

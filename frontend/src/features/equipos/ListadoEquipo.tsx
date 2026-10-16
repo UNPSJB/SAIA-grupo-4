@@ -1,15 +1,6 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { useState, useEffect, useMemo } from "react";
-import {
-  Badge,
-  Button,
-  Box,
-  HStack,
-  Text,
-  VStack,
-  NativeSelectRoot,
-  NativeSelectField,
-} from "@chakra-ui/react";
+import { useState } from "react";
+import { Badge, Button, Box, HStack, Text, VStack } from "@chakra-ui/react";
 import {
   FiThermometer,
   FiEdit2,
@@ -22,6 +13,9 @@ import {
 import {
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
   RowActionButton,
   RowActions,
@@ -30,6 +24,7 @@ import {
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Equipo } from "./types";
+import type { Sector } from "../sectores/types";
 import type { ColumnDef } from "../../components/ui";
 
 const formatearFechaISO = (fecha: string | null | undefined) => {
@@ -55,7 +50,7 @@ const renderProximaCalibracion = (equipo: Equipo) => {
   const diffTiempo = proxima.getTime() - hoy.getTime();
   const diasRestantes = Math.round(diffTiempo / (1000 * 60 * 60 * 24));
 
-  let color = "green";
+  let color: string;
   let leyenda = "";
 
   if (diasRestantes < 0) {
@@ -93,6 +88,33 @@ const renderProximaCalibracion = (equipo: Equipo) => {
   );
 };
 
+type FiltrosEquipo = {
+  busqueda: string;
+  estado: string;
+  sectorId: string;
+  vencimiento: string;
+};
+
+const FILTROS_INICIALES: FiltrosEquipo = {
+  busqueda: "",
+  estado: "",
+  sectorId: "",
+  vencimiento: "",
+};
+
+// Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
+const construirEndpoint = (filtros: FiltrosEquipo) => {
+  const params = new URLSearchParams();
+  if (filtros.busqueda.trim()) params.set("busqueda", filtros.busqueda.trim());
+  if (filtros.estado === "activos") params.set("activo", "true");
+  if (filtros.estado === "inactivos") params.set("activo", "false");
+  if (filtros.sectorId) params.set("sector_id", filtros.sectorId);
+  if (filtros.vencimiento) params.set("vencimiento", filtros.vencimiento);
+
+  const query = params.toString();
+  return `${BASE_URL}/equipos/${query ? `?${query}` : ""}`;
+};
+
 interface ListadoEquiposProps {
   onCrear?: () => void;
   onModificar?: (equipo: Equipo) => void;
@@ -102,7 +124,6 @@ interface ListadoEquiposProps {
   onRegistrarCalibracion?: (equipo: Equipo) => void;
 }
 
-const ENDPOINT = `${BASE_URL}/equipos/`;
 export const ListadoEquipos = ({
   onCrear,
   onModificar,
@@ -111,33 +132,38 @@ export const ListadoEquipos = ({
   onDarAlta,
   onRegistrarCalibracion,
 }: ListadoEquiposProps) => {
-  const { data, loading, error, page, setPage } = useListadoData<Equipo>({
-    endpoint: ENDPOINT,
-    pageSize: ITEMS_POR_PAGINA,
-    errorMessage: "No se pudo cargar la lista de equipos.",
+  // Borrador: lo que el usuario está por aplicar. Aplicados: lo único que llega al endpoint.
+  const [borrador, setBorrador] = useState<FiltrosEquipo>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] = useState<FiltrosEquipo>(FILTROS_INICIALES);
+
+  const { data, loading, error, page, setPage, itemsPaginados } =
+    useListadoData<Equipo>({
+      endpoint: construirEndpoint(aplicados),
+      pageSize: ITEMS_POR_PAGINA,
+      errorMessage: "No se pudo cargar la lista de equipos.",
+    });
+
+  // Sectores para poblar el filtro. Se traen todos (incluso inactivos) para
+  // poder filtrar equipos que hayan quedado en un sector dado de baja.
+  const { data: sectores } = useListadoData<Sector>({
+    endpoint: `${BASE_URL}/sectores/`,
+    errorMessage: "No se pudieron cargar los sectores.",
   });
 
-  const [filtroEstado, setFiltroEstado] = useState<
-    "activos" | "inactivos" | "todos"
-  >("activos");
+  const hayFiltros = Object.values(borrador).some((valor) => valor !== "");
+  const hayAplicados = Object.values(aplicados).some((valor) => valor !== "");
 
-  useEffect(() => {
+  // Cada aplicación vuelve a la primera página, para no caer en una página vacía.
+  const aplicar = () => {
+    setAplicados(borrador);
     setPage(1);
-  }, [filtroEstado, setPage]);
+  };
 
-  const equiposFiltrados = useMemo(() => {
-    return data.filter((equipo) => {
-      if (filtroEstado === "activos") return equipo.activo;
-      if (filtroEstado === "inactivos") return !equipo.activo;
-      return true;
-    });
-  }, [data, filtroEstado]);
-
-  const inicio = (page - 1) * ITEMS_POR_PAGINA;
-  const itemsMostrados = equiposFiltrados.slice(
-    inicio,
-    inicio + ITEMS_POR_PAGINA,
-  );
+  const limpiar = () => {
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
+    setPage(1);
+  };
 
   const columnas: ColumnDef<Equipo>[] = [
     {
@@ -198,8 +224,17 @@ export const ListadoEquipos = ({
       render: (equipo) => (
         <RowActions>
           <RowActionButton
+            icon={FiFilePlus}
+            label='Registrar calibración'
+            title='Registrar calibracion del equipo'
+            colorPalette='purple'
+            onClick={() => onRegistrarCalibracion?.(equipo)}
+            visible={equipo.activo}
+          />
+          <RowActionButton
             icon={FiEdit2}
             label='Modificar'
+            title='Modificar el equipo'
             colorPalette='blue'
             onClick={() => onModificar?.(equipo)}
             visible={equipo.activo}
@@ -207,12 +242,14 @@ export const ListadoEquipos = ({
           <RowActionButton
             icon={FiEye}
             label='Ver'
+            title='Ver detalle del equipo'
             colorPalette='yellow'
             onClick={() => onVer?.(equipo)}
           />
           <RowActionButton
             icon={FiTrash2}
             label='Eliminar'
+            title='Dar de baja el equipo'
             colorPalette='red'
             onClick={() => onEliminar?.(equipo)}
             visible={equipo.activo}
@@ -220,20 +257,11 @@ export const ListadoEquipos = ({
           <RowActionButton
             icon={FiCheckCircle}
             label='Dar de alta'
+            title='Dar de alta el equipo'
             colorPalette='green'
             onClick={() => onDarAlta?.(equipo)}
             visible={!equipo.activo}
           />
-          <Button
-            size='sm'
-            variant='ghost'
-            colorPalette='purple'
-            onClick={() => onRegistrarCalibracion?.(equipo)}
-            title='Registrar calibración'
-            disabled={!equipo.activo}
-          >
-            <FiFilePlus />
-          </Button>
         </RowActions>
       ),
     },
@@ -241,52 +269,91 @@ export const ListadoEquipos = ({
 
   return (
     <ListadoContainer maxW='6xl'>
-      <ListadoHeader
-        title='Equipos'
-        icon={FiThermometer}
-        /* ¡Acá borramos buttonLabel y onCrear para que no dibuje el botón doble! */
-      >
-        <HStack gap={4}>
-          <NativeSelectRoot size='sm' w='130px' bg='white'>
-            <NativeSelectField
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value as any)}
-            >
-              <option value='activos'>Activos</option>
-              <option value='inactivos'>Inactivos</option>
-              <option value='todos'>Todos</option>
-            </NativeSelectField>
-          </NativeSelectRoot>
-
-          {onCrear && (
-            <Button colorPalette='green' onClick={onCrear}>
-              <FiPlus /> Nuevo equipo
-            </Button>
-          )}
-        </HStack>
+      <ListadoHeader title='Equipos' icon={FiThermometer}>
+        {onCrear && (
+          <Button colorPalette='green' onClick={onCrear}>
+            <FiPlus /> Nuevo equipo
+          </Button>
+        )}
       </ListadoHeader>
+
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel='Buscar equipo'
+            placeholder='Nombre, marca o N° de serie'
+            value={borrador.busqueda}
+            onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel='Estado del equipo'
+            placeholder='Todos los estados'
+            options={[
+              { label: "Activos", value: "activos" },
+              { label: "Inactivos", value: "inactivos" },
+            ]}
+            value={borrador.estado}
+            onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
+          />
+          <FiltroSelect
+            ariaLabel='Sector'
+            placeholder='Todos los sectores'
+            options={sectores.map((sector) => ({
+              label: sector.nombre,
+              value: String(sector.id),
+            }))}
+            value={borrador.sectorId}
+            onChange={(valor) => setBorrador({ ...borrador, sectorId: valor })}
+          />
+          <FiltroSelect
+            ariaLabel='Estado de calibración'
+            placeholder='Todos los vencimientos'
+            options={[
+              { label: "Vencidos", value: "vencido" },
+              { label: "Próximos a vencer", value: "proximo" },
+              { label: "Vigentes", value: "al_dia" },
+            ]}
+            value={borrador.vencimiento}
+            onChange={(valor) =>
+              setBorrador({ ...borrador, vencimiento: valor })
+            }
+          />
+        </FiltrosBar>
+      </Box>
 
       {loading && <LoadingState message='Cargando equipos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
-      {!loading && !error && equiposFiltrados.length === 0 && (
+      {!loading && !error && data.length === 0 && (
         <AlertMessage
           type='info'
-          message='No se encontraron equipos para el filtro seleccionado.'
+          message={
+            hayAplicados
+              ? "No hay equipos que coincidan con los filtros seleccionados."
+              : "Todavía no hay equipos cargados."
+          }
         />
       )}
 
-      {!loading && !error && equiposFiltrados.length > 0 && (
+      {!loading && !error && data.length > 0 && (
         <>
           <DataTable
-            items={itemsMostrados}
+            items={itemsPaginados}
             columns={columnas}
             getRowKey={(equipo) => equipo.id}
           />
 
           <TablePagination
-            count={equiposFiltrados.length}
+            count={data.length}
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}

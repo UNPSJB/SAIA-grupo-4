@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, UploadFile, File, Form
-from typing import Optional
+from typing import Optional, Literal
 from datetime import date
 from sqlalchemy.orm import Session
 from src.database import get_db
@@ -15,8 +15,14 @@ def create_equipo(equipo: schemas.EquipoCreate, db: Session = Depends(get_db)):
     return services.crear_equipo(db, equipo)
 
 @router.get("/", response_model=list[schemas.Equipo])
-def read_equipos(db: Session = Depends(get_db)):
-    return services.listar_equipos(db)
+def read_equipos(
+    busqueda: str | None = None,
+    activo: bool | None = None,
+    sector_id: int | None = None,
+    vencimiento: Literal["vencido", "proximo", "al_dia"] | None = None,
+    db: Session = Depends(get_db),
+):
+    return services.listar_equipos(db, busqueda, activo, sector_id, vencimiento)
 
 @router.get("/{equipo_id}", response_model=schemas.Equipo)
 def read_equipo(equipo_id: int, db: Session = Depends(get_db)):

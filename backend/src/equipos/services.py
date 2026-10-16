@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional   
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from src.equipos.models import Equipo
@@ -68,8 +68,52 @@ def crear_equipo(db: Session, equipo: schemas.EquipoCreate) -> Equipo:
     return _equipo
 
 
-def listar_equipos(db: Session) -> List[Equipo]:
-    return db.scalars(select(Equipo)).all()
+def listar_equipos(
+    db: Session,
+    busqueda: str | None = None,
+    activo: bool | None = None,
+    sector_id: int | None = None,
+    vencimiento: str | None = None,
+) -> List[Equipo]:
+    consulta = select(Equipo)
+
+    # Filtro por texto: coincidencia parcial en nombre, marca o número de serie.
+    if busqueda:
+        patron = f"%{busqueda}%"
+        consulta = consulta.where(
+            or_(
+                Equipo.nombre.ilike(patron),
+                Equipo.marca.ilike(patron),
+                Equipo.numero_serie.ilike(patron),
+            )
+        )
+
+    # Filtro por estado: activos (True), inactivos (False) o todos (None).
+    if activo is not None:
+        consulta = consulta.where(Equipo.activo.is_(activo))
+
+    # Filtro por sector.
+    if sector_id is not None:
+        consulta = consulta.where(Equipo.sector_id == sector_id)
+
+    equipos = db.scalars(consulta).all()
+
+    # El estado de calibración se calcula, no se guarda: se filtra en memoria,
+    # igual que el estado de vencimientos en personal. Un equipo sin frecuencia
+    # o sin fecha de última calibración no entra en ningún estado puntual.
+    if vencimiento is not None:
+        equipos = [
+            eq
+            for eq in equipos
+            if eq.frecuencia_calibracion_dias
+            and eq.fecha_ultima_calibracion
+            and calcular_semaforo_equipo(
+                eq.fecha_ultima_calibracion, eq.frecuencia_calibracion_dias
+            )[2]
+            == vencimiento
+        ]
+
+    return equipos
 
 
 def leer_equipo(db: Session, equipo_id: int) -> Equipo:

@@ -4,6 +4,8 @@ interface SubmitButtonProps {
   text: string;
   icon?: React.ElementType;
   loading?: boolean;
+  /** Deshabilita el boton (por ejemplo, hasta que el formulario sea valido). */
+  disabled?: boolean;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   colorPalette?: string;
@@ -14,6 +16,7 @@ export const SubmitButton = ({
   text,
   icon,
   loading = false,
+  disabled = false,
   onClick,
   type = 'button',
   colorPalette = 'green',
@@ -25,6 +28,7 @@ export const SubmitButton = ({
     colorPalette={colorPalette}
     variant={variant}
     loading={loading}
+    disabled={disabled || loading}
     loadingText={loading ? 'Guardando...' : undefined}
   >
     {icon && <Icon as={icon} style={{ display: 'inline', marginRight: 4 }} />}

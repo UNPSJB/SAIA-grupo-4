@@ -18,6 +18,11 @@ interface FiltroSelectProps {
  * `Field.Label`, que es justo lo que hace que la barra de filtros ocupe dos
  * filas. El nombre del filtro va en `aria-label` y el control se identifica por
  * su opción vacía.
+ *
+ * El ancho se fija en el `Root` y no en el `Field`: el `Root` trae
+ * `width: 100%` por receta y, al ser el elemento flexible de la barra, se
+ * estiraba y dejaba un hueco a la derecha de cada desplegable. Con el ancho en
+ * el `Root`, cada control mide lo que necesita y quedan agrupados.
  */
 export const FiltroSelect = ({
   ariaLabel,
@@ -27,13 +32,11 @@ export const FiltroSelect = ({
   onChange,
   disabled = false,
 }: FiltroSelectProps) => (
-  <NativeSelectRoot size='sm' disabled={disabled}>
+  <NativeSelectRoot size='sm' disabled={disabled} w='auto' minW='9rem'>
     <NativeSelectField
       aria-label={ariaLabel}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      w='auto'
-      minW='9rem'
       bg='white'
     >
       <option value=''>{placeholder}</option>
