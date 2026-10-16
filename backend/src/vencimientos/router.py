@@ -36,12 +36,16 @@ def listar_categorias(
 
 # Vista consolidada
 
+# `busqueda` es texto libre contra concepto y detalle, para el buscador del
+# tablero. El resto de los parametros siguen la semantica descrita arriba.
+
 @router.get("/", response_model=list[schemas.Vencimiento])
 def listar_vencimientos(
+    busqueda: str | None = None,
     estado: FiltroEstadoVencimiento | None = None,
     categoria: CategoriaVencimiento | None = None,
     dias_max: int | None = Query(default=None, ge=0),
     dias_ventana: int | None = Query(default=None, ge=0),
     db: Session = Depends(get_db),
 ):
-    return services.listar_vencimientos(db, estado, categoria, dias_max, dias_ventana)
+    return services.listar_vencimientos(db, busqueda, estado, categoria, dias_max, dias_ventana)

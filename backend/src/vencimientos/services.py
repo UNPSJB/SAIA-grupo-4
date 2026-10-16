@@ -46,6 +46,7 @@ def _resolver_corte(
 # global entre categorias.
 def listar_vencimientos(
     db: Session,
+    busqueda: str | None = None,
     estado: FiltroEstadoVencimiento | None = None,
     categoria: CategoriaVencimiento | None = None,
     dias_max: int | None = None,
@@ -75,6 +76,17 @@ def listar_vencimientos(
 
     if categoria is not None:
         vencimientos = [v for v in vencimientos if v.categoria == categoria]
+
+    # Busqueda libre: coincide parcialmente con el concepto o con el detalle de
+    # la fila, sin distinguir mayusculas. El texto se normaliza aca para que un
+    # valor en blanco no filtre de mas.
+    texto = (busqueda or "").strip().lower()
+    if texto:
+        vencimientos = [
+            v
+            for v in vencimientos
+            if texto in v.concepto.lower() or texto in (v.detalle or "").lower()
+        ]
 
     if estado is not None:
         if estado == FiltroEstadoVencimiento.POR_VENCER:

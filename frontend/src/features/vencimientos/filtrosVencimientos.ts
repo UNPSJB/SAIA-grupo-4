@@ -7,6 +7,8 @@ import type { FiltroEstadoVencimiento } from "./types";
  * exige que un archivo de componente exporte únicamente componentes.
  */
 export type FiltrosVencimientos = {
+  /** Texto libre contra concepto y detalle. Vacío es "sin búsqueda". */
+  busqueda: string;
   estado: FiltroEstadoVencimiento | "";
   categoria: string;
   /**
@@ -21,6 +23,7 @@ export type FiltrosVencimientos = {
 
 /** Sin filtros: todo el listado, sin recorte de ventana. */
 export const FILTROS_INICIALES: FiltrosVencimientos = {
+  busqueda: "",
   estado: "",
   categoria: "",
   dias: "",
@@ -28,4 +31,7 @@ export const FILTROS_INICIALES: FiltrosVencimientos = {
 
 /** Si hay algo que limpiar en la barra de filtros. */
 export const tieneFiltros = (filtros: FiltrosVencimientos) =>
-  filtros.estado !== "" || filtros.categoria !== "" || filtros.dias !== "";
+  filtros.busqueda !== "" ||
+  filtros.estado !== "" ||
+  filtros.categoria !== "" ||
+  filtros.dias !== "";

@@ -15,13 +15,17 @@ export { BASE_URL };
  * ventana tiene efecto en todos los estados, incluido "vigente". Un valor
  * negativo o con decimales se ignora en vez de mandarse a error: el filtro no
  * deberia poder romper la consulta.
+ *
+ * `busqueda` es texto libre contra concepto y detalle; en blanco no se manda.
  */
 export const construirEndpoint = (
   estado: FiltroEstadoVencimiento | "",
   categoria: string,
   dias: string,
+  busqueda: string,
 ) => {
   const params = new URLSearchParams();
+  if (busqueda.trim()) params.set("busqueda", busqueda.trim());
   if (estado) params.set("estado", estado);
   if (categoria) params.set("categoria", categoria);
 

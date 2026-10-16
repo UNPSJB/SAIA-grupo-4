@@ -1,4 +1,9 @@
-import { FiltroNumero, FiltroSelect, FiltrosBar } from "../../components/ui";
+import {
+  FiltroNumero,
+  FiltroSelect,
+  FiltroTexto,
+  FiltrosBar,
+} from "../../components/ui";
 import { tieneFiltros, type FiltrosVencimientos } from "./filtrosVencimientos";
 import type { CategoriaDisponible, FiltroEstadoVencimiento } from "./types";
 
@@ -40,6 +45,17 @@ export const VencimientosFiltros = ({
     hayFiltrosActivos={tieneFiltros(filtros)}
     loading={loading}
   >
+    {/* Búsqueda libre: coincide con el concepto y con el detalle de la fila. */}
+    <FiltroTexto
+      ariaLabel='Buscar en concepto o detalle'
+      placeholder='Buscar concepto o detalle'
+      value={filtros.busqueda}
+      onChange={(valor) => onCambiar({ ...filtros, busqueda: valor })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onAplicar();
+      }}
+    />
+
     <FiltroSelect
       ariaLabel='Estado del vencimiento'
       placeholder='Todos los estados'

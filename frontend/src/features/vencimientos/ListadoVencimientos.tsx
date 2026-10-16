@@ -1,6 +1,6 @@
 import { BASE_URL } from "../../config";
 import { useState } from "react";
-import { Badge, HStack } from "@chakra-ui/react";
+import { Badge, Box } from "@chakra-ui/react";
 import { FiAlertCircle, FiEye, FiRefreshCw } from "react-icons/fi";
 import {
   AlertMessage,
@@ -54,6 +54,7 @@ export const ListadoVencimientos = ({
         aplicados.estado,
         aplicados.categoria,
         aplicados.dias,
+        aplicados.busqueda,
       ),
       refreshKey,
       errorMessage: "No se pudo cargar la lista de vencimientos.",
@@ -163,9 +164,9 @@ export const ListadoVencimientos = ({
 
   return (
     <ListadoContainer maxW='6xl'>
-      <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Vencimientos' icon={FiAlertCircle} />
+      <ListadoHeader title='Vencimientos' icon={FiAlertCircle} />
 
+      <Box mb={4}>
         <VencimientosFiltros
           filtros={borrador}
           categorias={categorias}
@@ -174,7 +175,7 @@ export const ListadoVencimientos = ({
           onLimpiar={limpiar}
           loading={loading}
         />
-      </HStack>
+      </Box>
 
       {loading && <LoadingState message='Cargando vencimientos...' />}
       {!loading && error && <AlertMessage type='error' message={error} />}
