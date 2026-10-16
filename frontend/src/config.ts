@@ -5,12 +5,15 @@
 
 // Direccion unica del backend.
 //
-// Se toma de la variable de entorno VITE_API_URL para poder apuntar a otro
-// entorno (staging/produccion) sin tocar el codigo; en desarrollo cae al
-// backend local. Se centraliza aca para que la campana y el resto de las vistas
-// hablen con el mismo servidor sin que haya dos lugares donde cambiarla.
+// En desarrollo se usa el proxy de Vite (`/api`): las peticiones salen desde el
+// mismo origen que la app y la cookie httpOnly de refresh viaja siempre, sin el
+// bloqueo de SameSite=Lax que aparece cuando el front esta en localhost:5173 y
+// el backend en 127.0.0.1:8000 (sitios distintos). En produccion se toma la
+// variable VITE_API_URL para apuntar al dominio real de la API sin tocar el
+// codigo; si no esta definida se cae a la URL local del backend.
 export const BASE_URL =
-  import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? "/api" : "http://127.0.0.1:8000");
 
 // Filas por pagina en los listados con paginacion.
 export const ITEMS_POR_PAGINA = 6;

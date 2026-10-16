@@ -3,18 +3,25 @@
   Contexto de autenticación con rehidratación asíncrona de sesión.
 
   Inicialización (al montar):
-  1. Intenta GET /auth/me con el access token en memoria (si existiera por
-      algún estado previo). Si OK → sesión activa.
+  1. Si hay un access token en memoria, lo valida con GET /auth/me.
   2. Si falla con 401 → intenta PUT /auth/token (refresh) usando la cookie
       httpOnly para rehidratar sesión automáticamente (útil al recargar página).
   3. Mientras esto ocurre, `loading = true` para evitar parpadeos en rutas protegidas.
-  4. Expone login/logout, usuario, isAuthenticated, loading, esAdmin, esOperador.
+
+  Renovación:
+  - Tras cada login/refresh se programa un refresh proactivo poco antes de que
+    venza el access token, para no depender de que llegue un 401.
+  - Un fallo transitorio (red/5xx) nunca cierra la sesión: se reintenta. Sólo un
+    401/403 confirmado por el backend desloguea.
+
+  Expone login/logout, usuario, isAuthenticated, loading, esAdmin, esOperador.
  */
 
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { ReactNode } from "react";
@@ -27,17 +34,27 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-/**
- * Extrae mensaje de error para logs (sin exponer datos sensibles).
- */
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
+// Margen con el que se renueva el access token antes de que venza: evita
+// depender de que llegue un 401 para refrescar.
+const MARGEN_REFRESCO_MS = 2 * 60 * 1000;
+
+// Espera antes de reintentar un refresh que falló de forma transitoria.
+const REINTENTO_REFRESCO_MS = 60 * 1000;
+
+// true sólo cuando el backend confirmó que la sesión dejó de valer (401/403).
+// Un error de red o un 5xx es transitorio y no debe cerrar la sesión.
+function esSesionInvalida(err: unknown): boolean {
+  return err instanceof AuthError && (err.status === 401 || err.status === 403);
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [usuario, setUsuario] = useState<Persona | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Timer del refresh proactivo y referencia estable al callback que lo dispara
+  // (rompe la dependencia circular entre programar y renovar).
+  const refreshTimer = useRef<number | null>(null);
+  const renovarRef = useRef<() => void>(() => {});
 
   // Helpers derivados del usuario actual
   const esAdmin = useMemo(() => esAdministrador(usuario), [usuario]);
@@ -54,68 +71,111 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   /**
-   * Rehidrata la sesión al montar el provider.
-   * Estrategia: intentar me() primero; si 401 → intentar refresh().
+   * Cancela el refresh proactivo pendiente (logout o desmontaje).
    */
-  const rehydrateSession = useCallback(async () => {
-    // No se setea loading=true acá: el estado inicial ya arranca en true y
-    // hacerlo de forma síncrona dentro del useEffect de montaje dispara el
-    // lint (react-hooks/set-state-in-effect). Todas las rutas de abajo
-    // terminan en setLoading(false) tras un await.
+  const limpiarRefresco = useCallback(() => {
+    if (refreshTimer.current !== null) {
+      window.clearTimeout(refreshTimer.current);
+      refreshTimer.current = null;
+    }
+  }, []);
 
-    // 1) Intentar obtener usuario con access token actual (si lo hubiera).
+  /**
+   * Programa el próximo refresh proactivo a partir del vencimiento del access
+   * token, para renovarlo antes de que caduque en vez de esperar un 401.
+   */
+  const programarRefresco = useCallback(() => {
+    limpiarRefresco();
+    const expira = authService.getAccessTokenExpiryMs();
+    if (expira === null) return;
+    // Nunca menos de 5s: evita un loop si el token ya venció o está por vencer.
+    const espera = Math.max(expira - Date.now() - MARGEN_REFRESCO_MS, 5_000);
+    refreshTimer.current = window.setTimeout(() => renovarRef.current(), espera);
+  }, [limpiarRefresco]);
+
+  /**
+   * Renueva el access token antes de que venza. Si el backend confirma que la
+   * sesión es inválida (401/403) cierra sesión; si falla de forma transitoria
+   * (red/5xx) reintenta más tarde sin desloguear.
+   */
+  const renovarProactivamente = useCallback(async () => {
     try {
-      const personaActual = await authService.me();
-      setUsuario(personaActual);
-      setLoading(false);
-      return;
+      const tokenResp = await authService.refresh();
+      if (tokenResp?.persona) setUsuario(tokenResp.persona);
+      programarRefresco();
     } catch (err) {
-      const msg = getErrorMessage(err);
-      // Si NO es 401, no intentamos refresh automático (podría ser red).
-      // Detectamos el 401 por el status HTTP (AuthError) y, como respaldo,
-      // por el mensaje (cubre respuestas sin status o textos alternativos).
-      const lower = msg.toLowerCase();
-      const isUnauthorized =
-        (err instanceof AuthError && err.status === 401) ||
-        lower.includes("401") ||
-        lower.includes("not authenticated") ||
-        lower.includes("no válida") ||
-        lower.includes("no válido") ||
-        lower.includes("no autorizado") ||
-        lower.includes("unauthorized");
-
-      if (!isUnauthorized) {
-        // Otro error (network): no levantamos sesión, dejamos loading=false.
+      if (esSesionInvalida(err)) {
         clearSession();
-        setLoading(false);
         return;
       }
-      // Es 401 → pasar a intentar refresh vía cookie.
+      // Fallo transitorio: reintentar sin cerrar la sesión.
+      limpiarRefresco();
+      refreshTimer.current = window.setTimeout(
+        () => renovarRef.current(),
+        REINTENTO_REFRESCO_MS,
+      );
+    }
+  }, [clearSession, programarRefresco, limpiarRefresco]);
+
+  // Mantiene la referencia apuntando al callback vigente de renovación.
+  useEffect(() => {
+    renovarRef.current = () => void renovarProactivamente();
+  }, [renovarProactivamente]);
+
+  /**
+   * Rehidrata la sesión al montar el provider.
+   * Estrategia: intentar me() primero (si hay token); si 401 → refresh().
+   */
+  const rehydrateSession = useCallback(async () => {
+    // 1) Si hay access token en memoria, validarlo con /auth/me.
+    if (authService.getAccessToken()) {
+      try {
+        const personaActual = await authService.me();
+        setUsuario(personaActual);
+        setLoading(false);
+        programarRefresco();
+        return;
+      } catch (err) {
+        // 401/403 → probar refresh. Otro error (red) → no levantamos sesión,
+        // pero tampoco la pisamos: pudo haber sido un fallo transitorio.
+        if (!esSesionInvalida(err)) {
+          setLoading(false);
+          return;
+        }
+      }
     }
 
     // 2) Intentar refresh con cookie httpOnly (rehidratación post-recarga).
     try {
       const refreshed = await authService.refresh();
-      // Tras refresh exitoso, traemos /auth/me para tener datos completos
-      // (refresh ya devuelve persona, pero usamos me() para ser consistente).
-      try {
-        const personaActual2 = await authService.me();
-        setUsuario(personaActual2);
-      } catch {
-        // Si me() falla tras refresh (caso raro), usamos persona del refresh.
-        if (refreshed?.persona) {
-          setUsuario(refreshed.persona);
-        } else {
-          clearSession();
+      if (refreshed?.persona) {
+        setUsuario(refreshed.persona);
+      } else {
+        // Sin persona en la respuesta, la completamos con /auth/me.
+        const personaActual = await authService.me();
+        setUsuario(personaActual);
+      }
+      programarRefresco();
+    } catch (err) {
+      if (esSesionInvalida(err)) {
+        // Sesión inválida (cookie ausente/expirada): no hay nada que rehidratar.
+        clearSession();
+      } else {
+        // Fallo transitorio: reintentar una vez antes de rendirse.
+        try {
+          const reintento = await authService.refresh();
+          if (reintento?.persona) {
+            setUsuario(reintento.persona);
+            programarRefresco();
+          }
+        } catch (err2) {
+          if (esSesionInvalida(err2)) clearSession();
         }
       }
-    } catch {
-      // Refresh fallido → no hay sesión válida (cookie ausente/expirada).
-      clearSession();
     } finally {
       setLoading(false);
     }
-  }, [clearSession]);
+  }, [clearSession, programarRefresco]);
 
   // Ejecuta rehidratación una única vez al montar el AuthProvider.
   useEffect(() => {
@@ -125,6 +185,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     void rehydrateSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Limpia el refresh proactivo pendiente al desmontar el provider.
+  useEffect(() => limpiarRefresco, [limpiarRefresco]);
 
   /**
    * Login: envía DNI+contraseña, guarda access token y setea usuario.
@@ -144,9 +207,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUsuario(null);
         }
       }
+      // Programa el refresh proactivo para esta nueva sesión.
+      programarRefresco();
       return tokenResp;
     },
-    [],
+    [programarRefresco],
   );
 
   /**
@@ -156,13 +221,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
    * igual se limpia, así que cerramos la sesión local de todos modos.
    */
   const logout = useCallback(async (): Promise<void> => {
+    limpiarRefresco();
     try {
       await authService.logout();
     } catch {
       // Sin red no se pudo avisar al backend; cerramos la sesión local igual.
     }
     setUsuario(null);
-  }, []);
+  }, [limpiarRefresco]);
 
   /**
    * Refresh manual (expone acción). Útil si algún componente necesita forzar renovación.
@@ -179,8 +245,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUsuario(null);
       }
     }
+    // Reprograma el refresh proactivo con el token recién renovado.
+    programarRefresco();
     return tokenResp;
-  }, []);
+  }, [programarRefresco]);
 
   const value = useMemo(
     () => ({

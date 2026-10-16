@@ -65,6 +65,26 @@ export const authService = {
   },
 
   /**
+   * Devuelve el instante de vencimiento del access token (ms epoch) leído del
+   * propio JWT, o null si no hay token o no se puede decodificar. La firma no se
+   * verifica: sólo se usa para programar el refresh proactivo antes de que caduque.
+   */
+  getAccessTokenExpiryMs(): number | null {
+    if (!accessTokenInMemory) return null;
+    try {
+      const payload = accessTokenInMemory.split(".")[1];
+      if (!payload) return null;
+      // base64url -> base64 con el relleno que exige atob.
+      const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const relleno = "=".repeat((4 - (base64.length % 4)) % 4);
+      const json = JSON.parse(atob(base64 + relleno)) as { exp?: unknown };
+      return typeof json.exp === "number" ? json.exp * 1000 : null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
    * Limpia el access token de memoria (usado en logout o refresh fallido).
    */
   clearAccessToken(): void {

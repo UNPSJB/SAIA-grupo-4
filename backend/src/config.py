@@ -49,9 +49,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _endurecer_cookies_en_produccion(self):
-        # Red de seguridad: fuera de DEV la cookie de refresh solo debe viajar
-        # por HTTPS. Si no se definió SECURE_COOKIES explícitamente, se fuerza.
-        if self.ENV.upper() != "DEV" and not self.SECURE_COOKIES:
+        # Fuera de DEV la cookie de refresh viaja por HTTPS y, como el frontend
+        # suele estar en otro sitio, necesita SameSite=None para enviarse en
+        # requests cross-site. Se fuerza la configuración segura sin tocar el
+        # código ni depender de que el .env la recuerde.
+        if self.ENV.upper() != "DEV":
+            self.SECURE_COOKIES = True
+            if self.COOKIE_SAMESITE.strip().lower() != "none":
+                self.COOKIE_SAMESITE = "none"
+        # SameSite=None exige Secure: el navegador descarta la cookie si no.
+        if self.COOKIE_SAMESITE.strip().lower() == "none" and not self.SECURE_COOKIES:
             self.SECURE_COOKIES = True
         return self
 
