@@ -135,3 +135,12 @@ def modificar_producto(db: Session, producto_id: int, producto: schemas.Producto
 
 def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto = leer_producto(db, producto_id)
+    db_producto.activo = False
+    try:
+        db.commit()
+        db.refresh(db_producto)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.ProductoErrorIntegridad()
+
+    return db_producto
