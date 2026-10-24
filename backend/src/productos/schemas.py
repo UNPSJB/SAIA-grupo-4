@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from src.unidad_medida.schemas import UnidadMedida
 
 class ProductoBase(BaseModel):
@@ -15,6 +15,13 @@ class ProductoUpdate(ProductoBase):
     descripcion: Annotated[Optional[str], Field(default=None, min_length=1, max_length=250)]
     unidad_medida_id: Annotated[Optional[int], Field(default=None, gt=0)]
     activo: Annotated[Optional[bool], Field(default=None)]
+
+    @field_validator("nombre", "descripcion", "unidad_medida_id", "activo", mode="before")
+    @classmethod
+    def rechazar_null_explicito(cls, valor):
+        if valor is None:
+            raise ValueError("El campo no puede ser null")
+        return valor
 
 class Producto(ProductoBase):
     id: int

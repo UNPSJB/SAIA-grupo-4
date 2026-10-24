@@ -1,0 +1,229 @@
+from fastapi.testclient import TestClient
+from src.main import app
+from tests.database import session
+
+cli = TestClient(app)
+
+def crear_unidad_medida_auxiliar() -> int:
+    res = cli.post(
+        "/unidades-de-medida/",
+        json={
+            "nombre": "Unidad de prueba",
+            "simbolo": "L",
+            "tipo_magnitud": "volumen"
+        },
+    )
+    assert res.status_code == 201, res.text
+    return res.json()["id"]
+
+def crear_producto_auxiliar (unidad_id: int) -> int:
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+    assert res.status_code == 201, res.text
+    return res.json()["id"]
+
+def test_crear_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+
+    assert res.status_code == 201
+    data = res.json()
+    assert data["nombre"] == "Producto de prueba"
+
+def test_crear_producto_duplicado():
+    unidad_id = crear_unidad_medida_auxiliar()
+    res_post = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+
+    assert res_post.status_code == 201
+
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+
+    assert res.status_code == 400
+
+def test_crear_producto_duplicado_inactivo():
+    unidad_id = crear_unidad_medida_auxiliar()
+    res_post = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+    prod_id = res_post.json()["id"]
+
+    res_del = cli.delete(f"/productos/{prod_id}")
+    assert res_del.status_code == 200
+
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+
+    assert res.status_code == 409
+    data = res.json()
+    assert data["detail"]["producto_id"] == prod_id
+    assert "code" in data["detail"]
+    assert res.headers.get("X-Producto-Id") == str(prod_id)
+
+def test_crear_producto_sin_unidad_medida():
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+        },
+    )
+
+    assert res.status_code == 422
+
+def test_crear_producto_con_unidad_inexistente():
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": 999,
+        },
+    )
+    assert res.status_code == 404
+
+def test_crear_producto_con_unidad_inactiva():
+    unidad_id = crear_unidad_medida_auxiliar()
+
+    res_del = cli.delete(f"/unidades-de-medida/{unidad_id}")
+    assert res_del.status_code == 200
+
+    res = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Producto de prueba",
+            "descripcion": "Descripcion de prueba",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+
+    assert res.status_code == 400
+
+def test_dar_alta_producto_con_unidad_inactiva():
+    unidad_id = crear_unidad_medida_auxiliar()
+    producto_id = crear_producto_auxiliar(unidad_id)
+
+    res_del_prod = cli.delete(f"/productos/{producto_id}")
+    assert res_del_prod.status_code == 200
+
+    res_del_uni = cli.delete(f"/unidades-de-medida/{unidad_id}")
+    assert res_del_uni.status_code == 200
+
+    res_put = cli.put(
+        f"/productos/{producto_id}",
+        json={"activo": True},
+    )
+    assert res_put.status_code == 400
+    assert res_put.json()["detail"] == "La unidad de medida asociada se encuentra dada de baja. Debe reactivarse la unidad de medida primero"
+
+def test_dar_alta_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    producto_id = crear_producto_auxiliar(unidad_id)
+
+    res_del_prod = cli.delete(f"/productos/{producto_id}")
+    assert res_del_prod.status_code == 200
+
+    res_put = cli.put(
+        f"/productos/{producto_id}",
+        json={"activo": True},
+    )
+    assert res_put.status_code == 200
+    assert res_put.json()["activo"] is True
+
+def test_listar_productos():
+    unidad_id = crear_unidad_medida_auxiliar()
+    crear_producto_auxiliar(unidad_id)
+
+    res = cli.get("/productos/")
+    assert res.status_code == 200
+    assert len(res.json()) > 0
+
+def test_listar_sin_productos():
+    res = cli.get("/productos/")
+    assert res.status_code == 200
+    assert len(res.json()) == 0
+
+def test_leer_un_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    producto_id = crear_producto_auxiliar(unidad_id)
+
+    res = cli.get(f"/productos/{producto_id}")
+    assert res.status_code == 200
+
+    prod = res.json()
+    assert prod["id"] == producto_id
+
+def test_leer_producto_inexistente():
+
+    res = cli.get(f"/productos/{999}")
+    assert res.status_code == 404
+
+def test_modificar_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    prod_id = crear_producto_auxiliar(unidad_id)
+
+    res = cli.put(
+        f"/productos/{prod_id}",
+        json={
+            "nombre": "Producto modificado"
+        }
+    )
+    assert res.status_code == 200
+
+def test_modificar_producto_inexistente():
+    res = cli.put(
+        f"/productos/{999}",
+        json={
+            "nombre": "Producto inexistente"
+        }
+    )
+    assert res.status_code == 404
+
+def test_modificar_producto_vaciando_datos():
+    unidad_id = crear_unidad_medida_auxiliar()
+    prod_id = crear_producto_auxiliar(unidad_id)
+
+    res = cli.put(
+        f"/productos/{prod_id}",
+        json={
+            "nombre": None,
+        }
+    )
+    assert res.status_code == 422
