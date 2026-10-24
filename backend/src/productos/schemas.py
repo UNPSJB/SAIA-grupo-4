@@ -14,6 +14,7 @@ class ProductoUpdate(ProductoBase):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100)]
     descripcion: Annotated[Optional[str], Field(default=None, min_length=1, max_length=250)]
     unidad_medida_id: Annotated[Optional[int], Field(default=None, gt=0)]
+    activo: Annotated[Optional[bool], Field(default=None)]
 
 class Producto(ProductoBase):
     id: int

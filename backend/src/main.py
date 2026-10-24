@@ -33,6 +33,7 @@ from src.documentos_personal.router import router as documentos_personal_router
 from src.incidentes.router import router as incidentes_router
 from src.tipo_incidente.router import router as tipo_incidente_router
 from src.documentos.router import router as documentos_router
+from src.productos.router import router as productos_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -88,3 +89,4 @@ app.include_router(documentos_router)
 app.include_router(documentos_personal_router)
 app.include_router(incidentes_router)
 app.include_router(tipo_incidente_router)
+app.include_router(productos_router)
