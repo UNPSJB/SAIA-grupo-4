@@ -152,3 +152,40 @@ def test_dar_alta_producto_con_unidad_inactiva():
     )
     assert res_put.status_code == 400
     assert res_put.json()["detail"] == "La unidad de medida asociada se encuentra dada de baja. Debe reactivarse la unidad de medida primero"
+
+def test_dar_alta_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    producto_id = crear_producto_auxiliar(unidad_id)
+
+    res_del_prod = cli.delete(f"/productos/{producto_id}")
+    assert res_del_prod.status_code == 200
+
+    res_put = cli.put(
+        f"/productos/{producto_id}",
+        json={"activo": True},
+    )
+    assert res_put.status_code == 200
+    assert res_put.json()["activo"] is True
+
+def test_listar_productos():
+    unidad_id = crear_unidad_medida_auxiliar()
+    crear_producto_auxiliar(unidad_id)
+
+    res = cli.get("/productos/")
+    assert res.status_code == 200
+    assert len(res.json()) > 0
+
+def test_listar_sin_productos():
+    res = cli.get("/productos/")
+    assert res.status_code == 200
+    assert len(res.json()) == 0
+
+def test_leer_un_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    producto_id = crear_producto_auxiliar(unidad_id)
+
+    res = cli.get(f"/productos/{producto_id}")
+    assert res.status_code == 200
+
+    prod = res.json()
+    assert prod["id"] == producto_id
