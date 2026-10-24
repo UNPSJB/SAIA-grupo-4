@@ -189,3 +189,41 @@ def test_leer_un_producto():
 
     prod = res.json()
     assert prod["id"] == producto_id
+
+def test_leer_producto_inexistente():
+
+    res = cli.get(f"/productos/{999}")
+    assert res.status_code == 404
+
+def test_modificar_producto():
+    unidad_id = crear_unidad_medida_auxiliar()
+    prod_id = crear_producto_auxiliar(unidad_id)
+
+    res = cli.put(
+        f"/productos/{prod_id}",
+        json={
+            "nombre": "Producto modificado"
+        }
+    )
+    assert res.status_code == 200
+
+def test_modificar_producto_inexistente():
+    res = cli.put(
+        f"/productos/{999}",
+        json={
+            "nombre": "Producto inexistente"
+        }
+    )
+    assert res.status_code == 404
+
+def test_modificar_producto_vaciando_datos():
+    unidad_id = crear_unidad_medida_auxiliar()
+    prod_id = crear_producto_auxiliar(unidad_id)
+
+    res = cli.put(
+        f"/productos/{prod_id}",
+        json={
+            "nombre": None,
+        }
+    )
+    assert res.status_code == 422
