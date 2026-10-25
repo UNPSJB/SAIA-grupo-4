@@ -25,6 +25,7 @@ import {
   FiPackage,
 } from "react-icons/fi";
 import { VStack } from "@chakra-ui/react";
+import { useForm } from "react-hook-form";
 
 type ProductoFormProps = {
   modo: "crear" | "modificar" | "ver";
@@ -91,9 +92,8 @@ export const ProductoForm = ({
     setError,
     clearErrors,
     reset,
-    setValue,
   } = useForm<ProductoFormValues>({
-    resolver: zodResolver(productoSchema),
+    resolver: zodResolver(ProductoSchema),
     defaultValues,
   });
 
@@ -113,11 +113,9 @@ export const ProductoForm = ({
       setErrorConfirmar("");
       setConfirmAltaAbierto(true);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setSuccess(true);
-      if (data) {
-        onGuardado?.(data as Producto);
-      }
+      onGuardado?.(producto!);
     },
   });
 
