@@ -23,6 +23,7 @@ from src.unidad_medida.router import router as unidades_de_medidas_router
 from src.elementos_limpieza.router import router as elementos_limpieza_router
 from src.insumo_quimico.router import router as insumo_quimico_router
 from src.plan_poes.router import router as plan_poes_router
+from src.recetas.router import router as recetas_router
 from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_router
 from src.recambios.router import router as recambios_router
 from src.checklists.router import router as checklists_router
@@ -33,6 +34,8 @@ from src.documentos_personal.router import router as documentos_personal_router
 from src.incidentes.router import router as incidentes_router
 from src.tipo_incidente.router import router as tipo_incidente_router
 from src.documentos.router import router as documentos_router
+# Importar modelos para que SQLAlchemy los registre
+import src.recetas.models  # noqa
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -79,6 +82,7 @@ app.include_router(unidades_de_medidas_router)
 app.include_router(elementos_limpieza_router)
 app.include_router(insumo_quimico_router)
 app.include_router(plan_poes_router)
+app.include_router(recetas_router)
 app.include_router(tipo_elemento_limpieza_router)
 app.include_router(recambios_router)
 app.include_router(checklists_router)
