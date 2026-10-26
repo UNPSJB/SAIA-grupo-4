@@ -15,8 +15,13 @@ def create_producto(producto: schemas.ProductoCreate, db: Session = Depends(get_
     return services.crear_producto(db, producto)
 
 @router.get("/", response_model=list[schemas.Producto])
-def read_productos(db: Session = Depends(get_db)):
-    return services.listar_productos(db)
+def read_productos(
+    busqueda: str | None = None,
+    unidad_de_medida_id: int | None = None,
+    estado: bool | None = None,
+    db: Session = Depends(get_db),
+):
+    return services.listar_productos(db, busqueda, unidad_de_medida_id, estado)
 
 @router.get("/{producto_id}", response_model=schemas.Producto)
 def read_producto(producto_id: int, db: Session = Depends(get_db)):

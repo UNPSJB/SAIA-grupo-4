@@ -180,6 +180,77 @@ def test_listar_sin_productos():
     assert res.status_code == 200
     assert len(res.json()) == 0
 
+def test_listar_productos_con_filtros():
+    unidad_id = crear_unidad_medida_auxiliar()
+    otra_unidad = cli.post(
+        "/unidades-de-medida/",
+        json={
+            "nombre": "Otra unidad de prueba",
+            "simbolo": "g",
+            "tipo_magnitud": "masa",
+        },
+    )
+    assert otra_unidad.status_code == 201, otra_unidad.text
+    otra_unidad_id = otra_unidad.json()["id"]
+
+    producto_activo = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Pan de prueba",
+            "descripcion": "Producto activo",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+    producto_otra_unidad = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Galleta de prueba",
+            "descripcion": "Producto de otra unidad",
+            "unidad_medida_id": otra_unidad_id,
+        },
+    )
+    producto_inactivo = cli.post(
+        "/productos/",
+        json={
+            "nombre": "Pan inactivo",
+            "descripcion": "Producto dado de baja",
+            "unidad_medida_id": unidad_id,
+        },
+    )
+    assert producto_activo.status_code == 201, producto_activo.text
+    assert producto_otra_unidad.status_code == 201, producto_otra_unidad.text
+    assert producto_inactivo.status_code == 201, producto_inactivo.text
+    baja = cli.delete(f"/productos/{producto_inactivo.json()['id']}")
+    assert baja.status_code == 200, baja.text
+
+    por_nombre = cli.get("/productos/", params={"busqueda": "Pan"})
+    assert por_nombre.status_code == 200, por_nombre.text
+    assert {producto["nombre"] for producto in por_nombre.json()} == {
+        "Pan de prueba",
+        "Pan inactivo",
+    }
+
+    por_unidad = cli.get(
+        "/productos/",
+        params={"unidad_de_medida_id": unidad_id},
+    )
+    assert por_unidad.status_code == 200, por_unidad.text
+    assert {producto["nombre"] for producto in por_unidad.json()} == {
+        "Pan de prueba",
+        "Pan inactivo",
+    }
+
+    activos = cli.get("/productos/", params={"estado": "true"})
+    assert activos.status_code == 200, activos.text
+    assert {producto["nombre"] for producto in activos.json()} == {
+        "Pan de prueba",
+        "Galleta de prueba",
+    }
+
+    inactivos = cli.get("/productos/", params={"estado": "false"})
+    assert inactivos.status_code == 200, inactivos.text
+    assert [producto["nombre"] for producto in inactivos.json()] == ["Pan inactivo"]
+
 def test_leer_un_producto():
     unidad_id = crear_unidad_medida_auxiliar()
     producto_id = crear_producto_auxiliar(unidad_id)

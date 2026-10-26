@@ -36,8 +36,8 @@ type FiltrosProducto = {
 const FILTROS_INICIALES: FiltrosProducto = { busqueda: "", unidadId: "", estado: "" };
 
 const OPCIONES_ESTADO = [
-  { label: "Activo", value: "activo" },
-  { label: "Inactivo", value: "inactivo" },
+  { label: "Activo", value: "true" },
+  { label: "Inactivo", value: "false" },
 ];
 
 const construirEndpoint = (filtros: FiltrosProducto) => {
