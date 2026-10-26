@@ -27,6 +27,8 @@ from src.tipo_elemento_limpieza.router import router as tipo_elemento_limpieza_r
 from src.recambios.router import router as recambios_router
 from src.checklists.router import router as checklists_router
 from src.vencimientos.router import router as vencimientos_router
+from src.productos.router import router as productos_router
+from src.lotes.router import router as lotes_router
 # Router de autenticación: login/refresh/logout con JWT y endpoint /auth/me
 from src.auth.router import router as auth_router
 from src.documentos_personal.router import router as documentos_personal_router
@@ -88,3 +90,5 @@ app.include_router(documentos_router)
 app.include_router(documentos_personal_router)
 app.include_router(incidentes_router)
 app.include_router(tipo_incidente_router)
+app.include_router(productos_router)
+app.include_router(lotes_router)

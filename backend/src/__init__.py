@@ -10,3 +10,5 @@ from src.checklists.schemas import EjecucionTarea, CompletarEjecucion
 from src.vencimientos.schemas import Vencimiento, CategoriaDisponible
 from src.incidentes.schemas import Incidente
 from src.documentos.schemas import Documento, VersionDocumento
+from src.productos.models import Producto
+from src.lotes.models import Lote
