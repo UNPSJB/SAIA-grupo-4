@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -53,9 +53,21 @@ def leer_producto(db: Session, producto_id: int) -> schemas.Producto:
 
     return db_producto
 
-def listar_productos(db: Session):
-    # Lista todos los productos (sin filtro)
-    return db.scalars(select(Producto)).all()
+def listar_productos(db: Session, busqueda: str | None = None, unidad_id: int | None = None, estado: bool | None = None) -> List[schemas.Producto]:
+    consulta = select(Producto)
+
+    if busqueda:
+        patron = f"%{busqueda}%"
+        consulta = consulta.where(or_(Producto.nombre.ilike(patron)))
+
+    if unidad_id is not None:
+        consulta = consulta.where(Producto.unidad_medida.any(UnidadMedida.id == unidad_id))
+
+    productos = []
+    for db_prod in db.scalars(consulta).all():
+        datos = schemas.Producto.model_validate(db_prod).model_dump()
+        productos.append(schemas.Producto(**datos))
+    return productos
 
 def modificar_producto(db: Session, producto_id: int, producto: schemas.ProductoUpdate) -> schemas.ProductoUpdate:
     # Busco el producto
