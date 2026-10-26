@@ -1,4 +1,6 @@
-export { NavBar, type NavItem } from "./SideBar";
+export { SideBar } from "./SideBar";
+export type { NavItem } from "./SideBar";
+export { TopNavBar } from "./TopNavBar";
 export {
   OperadorLayout,
   OPERADOR_MOBILE_BAR_HEIGHT,

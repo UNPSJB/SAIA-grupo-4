@@ -5,7 +5,6 @@ import {
   Button,
   Collapsible,
   Flex,
-  HStack,
   Icon,
   IconButton,
   Text,
@@ -18,7 +17,6 @@ import {
   FiChevronRight,
   FiClipboard,
   FiClock,
-  FiLogOut,
   FiMenu,
   FiPackage,
   FiPlus,
@@ -33,7 +31,7 @@ import {
   FiFileText,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
-import { CampanaNotificaciones } from "./CampanaNotificaciones";
+
 interface LinkNavItem {
   to: string;
   label: string;
@@ -48,7 +46,7 @@ interface ParentNavItem {
 
 type NavItem = LinkNavItem | ParentNavItem;
 
-interface NavBarProps {
+interface SideBarProps {
   title?: string;
   brandIcon?: ElementType;
   items?: NavItem[];
@@ -56,7 +54,6 @@ interface NavBarProps {
   checklistColapsable?: boolean;
   version?: string;
   username?: string;
-  onLogout?: () => void;
 }
 
 const defaultItems: NavItem[] = [
@@ -313,7 +310,7 @@ const NavSection = ({
   );
 };
 
-export const NavBar = ({
+export const SideBar = ({
   title = "SAIA-4",
   brandIcon = FiShield,
   items = defaultItems,
@@ -321,8 +318,7 @@ export const NavBar = ({
   checklistColapsable = true,
   version = "v0.1.0",
   username = "Usuario",
-  onLogout,
-}: NavBarProps) => {
+}: SideBarProps) => {
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
@@ -394,32 +390,25 @@ export const NavBar = ({
           </NavTooltip>
         ) : (
           <>
-            {/*
-              Campana a la derecha del título, agrupada con el NavLink para que
-              `justify: space-between` no la separe y la mande al medio.
-            */}
-            <HStack gap={2} align='center' minWidth={0}>
-              <NavLink
-                to='/'
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  minWidth: 0,
-                }}
+            <NavLink
+              to='/'
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                minWidth: 0,
+              }}
+            >
+              <Icon as={brandIcon} boxSize={6} color='white' flexShrink={0} />
+              <Text
+                color='white'
+                fontSize='xl'
+                fontWeight='bold'
+                whiteSpace='nowrap'
               >
-                <Icon as={brandIcon} boxSize={6} color='white' flexShrink={0} />
-                <Text
-                  color='white'
-                  fontSize='xl'
-                  fontWeight='bold'
-                  whiteSpace='nowrap'
-                >
-                  {title}
-                </Text>
-              </NavLink>
-              <CampanaNotificaciones />
-            </HStack>
+                {title}
+              </Text>
+            </NavLink>
             <NavTooltip label='Colapsar menú'>
               <IconButton
                 aria-label='Colapsar menú'
@@ -435,19 +424,6 @@ export const NavBar = ({
           </>
         )}
       </Flex>
-
-      {/*
-        Con el sidebar colapsado el contenido mide 40px (64px menos el p={3}) y
-        solo entra UN boton de iconos: no hay lugar para campana + chevron lado
-        a lado. La campana baja a su propia fila centrada, igual que los botones
-        de navegacion. Solo monta esta instancia (el header no la trae cuando
-        esta colapsado), asi que sigue habiendo un solo request.
-      */}
-      {isCollapsed && (
-        <Box display='flex' justifyContent='center'>
-          <CampanaNotificaciones />
-        </Box>
-      )}
 
       {!isCollapsed && (
         <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
@@ -554,53 +530,25 @@ export const NavBar = ({
       )}
 
       <Box mt='auto' pt={3} borderTop='1px solid' borderColor='whiteAlpha.300'>
-        <VStack align='stretch' gap={2}>
-          <Flex
-            align='center'
-            justify={isCollapsed ? "center" : "flex-start"}
-            gap={2}
-            px={isCollapsed ? 0 : 2}
-          >
-            {isCollapsed ? (
-              <NavTooltip label={username}>
-                <Icon as={FiUser} boxSize={5} color='white' />
-              </NavTooltip>
-            ) : (
-              <>
-                <Icon as={FiUser} boxSize={5} color='white' flexShrink={0} />
-                <Text color='white' fontSize='sm' truncate>
-                  {username}
-                </Text>
-              </>
-            )}
-          </Flex>
+        <Flex
+          align='center'
+          justify={isCollapsed ? "center" : "flex-start"}
+          gap={2}
+          px={isCollapsed ? 0 : 2}
+        >
           {isCollapsed ? (
-            <NavTooltip label='Cerrar sesión'>
-              <Button
-                variant='ghost'
-                color='white'
-                w='100%'
-                aria-label='Cerrar sesión'
-                onClick={onLogout}
-                _hover={{ bg: "whiteAlpha.200" }}
-              >
-                <Icon as={FiLogOut} />
-              </Button>
+            <NavTooltip label={username}>
+              <Icon as={FiUser} boxSize={5} color='white' />
             </NavTooltip>
           ) : (
-            <Button
-              variant='ghost'
-              color='white'
-              w='100%'
-              justifyContent='flex-start'
-              onClick={onLogout}
-              _hover={{ bg: "whiteAlpha.200" }}
-            >
-              <Icon as={FiLogOut} />
-              Cerrar sesión
-            </Button>
+            <>
+              <Icon as={FiUser} boxSize={5} color='white' flexShrink={0} />
+              <Text color='white' fontSize='sm' truncate>
+                {username}
+              </Text>
+            </>
           )}
-        </VStack>
+        </Flex>
         {!isCollapsed && (
           <Text fontSize='xs' color='whiteAlpha.600' textAlign='center' mt={2}>
             {version}

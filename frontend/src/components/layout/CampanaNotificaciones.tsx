@@ -161,7 +161,7 @@ export const CampanaNotificaciones = () => {
                 : "Notificaciones y alertas"
             }
             variant='ghost'
-            color='white'
+            color='green.600'
             position='relative'
             _hover={{ bg: "whiteAlpha.200" }}
           >
