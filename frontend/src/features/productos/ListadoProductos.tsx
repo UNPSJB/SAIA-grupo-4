@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { HStack, Button, Badge } from "@chakra-ui/react";
+import { HStack, Button, Badge, Box } from "@chakra-ui/react";
 import {
   FiPackage,
   FiEdit2,
@@ -16,11 +17,38 @@ import {
   RowActionButton,
   RowActions,
   TablePagination,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Producto } from "./types";
 import type { ColumnDef } from "../../components/ui";
+import type { UnidadMedida } from "../unidadMedida/types";
+
+type FiltrosProducto = {
+  busqueda: string;
+  unidadId: string;
+  estado: string;
+};
+
+const FILTROS_INICIALES: FiltrosProducto = { busqueda: "", unidadId: "", estado: "" };
+
+const OPCIONES_ESTADO = [
+  { label: "Activo", value: "activo" },
+  { label: "Inactivo", value: "inactivo" },
+];
+
+const construirEndpoint = (filtros: FiltrosProducto) => {
+  const params = new URLSearchParams();
+  if (filtros.busqueda.trim()) params.set("busqueda", filtros.busqueda.trim());
+  if (filtros.unidadId) params.set("unidad_de_medida_id", filtros.unidadId);
+  if (filtros.estado) params.set("estado", filtros.estado);
+
+  const query = params.toString();
+  return `${BASE_URL}/productos/${query ? `?${query}` : ""}`;
+};
 
 interface ListadoProductosProps {
   onCrear?: () => void;
@@ -31,7 +59,6 @@ interface ListadoProductosProps {
   onVerUnidades?: () => void;
 }
 
-const ENDPOINT = `${BASE_URL}/productos/`;
 export const ListadoProductos = ({
   onCrear,
   onModificar,
@@ -40,12 +67,34 @@ export const ListadoProductos = ({
   onDarAlta,
   onVerUnidades,
 }: ListadoProductosProps) => {
+  const [borrador, setBorrador] = useState<FiltrosProducto>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] = useState<FiltrosProducto>(FILTROS_INICIALES);
+
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Producto>({
-      endpoint: ENDPOINT,
+      endpoint: construirEndpoint(aplicados),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de productos.",
     });
+
+  const { data: unidades } = useListadoData<UnidadMedida>({
+    endpoint: `${BASE_URL}/unidades-de-medida/`,
+    errorMessage: "No se pudieron cargar las unidades de medida.",
+  });
+
+  const hayFiltros = borrador.busqueda !== "" || borrador.unidadId !== "" || borrador.estado !== "";
+  const hayAplicados = aplicados.busqueda !== "" || aplicados.unidadId !== "" || aplicados.estado !== "";
+
+  const aplicar = () => {
+    setAplicados(borrador);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
+    setPage(1);
+  };
 
   const columnas: ColumnDef<Producto>[] = [
     {
@@ -124,12 +173,40 @@ export const ListadoProductos = ({
         </HStack>
       </HStack>
 
+      <Box mb={4}>
+        <FiltrosBar onAplicar={aplicar} onLimpiar={limpiar} hayFiltrosActivos={hayFiltros} loading={loading}>
+          <FiltroTexto 
+            ariaLabel="Buscar Producto"
+            placeholder="Nombre"
+            value={borrador.busqueda}
+            onChange={(valor) => setBorrador({ ...borrador, busqueda: valor})}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect 
+            ariaLabel="Unidad de medida"
+            placeholder="Todas las unidades"
+            options={unidades.filter((u) => u.disponible).map((u) => ({ label: u.nombre, value: String(u.id) }))}
+            value={borrador.unidadId}
+            onChange={(valor) => setBorrador({ ...borrador, unidadId: valor })}
+          />
+          <FiltroSelect 
+            ariaLabel="Estado del producto"
+            placeholder="Todos los estados"
+            options={OPCIONES_ESTADO}
+            value={borrador.estado}
+            onChange={(valor) => setBorrador({ ...borrador, estado: valor})}
+          />
+        </FiltrosBar>
+      </Box>
+      
       {loading && <LoadingState message='Cargando productos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type='info' message='Todavía no hay productos cargados.' />
+        <AlertMessage type='info' message={hayAplicados ? "No hay productos que coincida con los filtros seleccionados." : "Todavía no hay productos cargados."} />
       )}
 
       {!loading && !error && data.length > 0 && (
