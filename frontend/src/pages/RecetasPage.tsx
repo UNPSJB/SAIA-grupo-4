@@ -185,14 +185,6 @@ export default function RecetasPage() {
 
         return (
           <RowActions>
-            {puedeEditar && (
-              <RowActionButton
-                icon={FiEdit2}
-                label="Editar"
-                colorPalette="blue"
-                onClick={() => void editarReceta(r)}
-              />
-            )}
             {puedeCopiar && (
               <RowActionButton
                 icon={FiCopy}
@@ -203,6 +195,14 @@ export default function RecetasPage() {
                   setErrorCopiar("");
                   setErrorRetomar("");
                 }}
+              />
+            )}
+            {puedeEditar && (
+              <RowActionButton
+                icon={FiEdit2}
+                label="Editar"
+                colorPalette="blue"
+                onClick={() => void editarReceta(r)}
               />
             )}
             <RowActionButton
