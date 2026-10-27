@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FiActivity,
@@ -6,8 +6,10 @@ import {
   FiBox,
   FiCalendar,
   FiCheckCircle,
-  FiClock,
+  FiEdit2,
   FiEdit3,
+  FiEye,
+  FiHash,
   FiList,
   FiPlus,
   FiTrash2,
@@ -26,14 +28,24 @@ import {
 import type { ElementType } from "react";
 import {
   AlertConfirm,
+  AlertDelete,
   AlertMessage,
+  DataTable,
   FormModal,
   LoadingState,
+  RowActionButton,
+  RowActions,
+  type ColumnDef,
 } from "../../components/ui";
 import { ListadoContainer } from "../../components/layout";
 import { recetasApi } from "./hooks/recetaApi";
+import {
+  PasoRecetaModal,
+  type ModoPasoForm,
+} from "./PasoRecetaModal";
+import { PasoRecetaDetalle } from "./PasoRecetaDetalle";
 import { RecetaForm } from "./RecetaForm";
-import type { Receta } from "./types";
+import type { PasoReceta, Receta } from "./types";
 
 const estadoInfo: Record<
   Receta["estado"],
@@ -110,9 +122,12 @@ export default function RecetaWorkspace({
   const { recetaId } = useParams();
   const id = Number(recetaId);
 
-  const [loading, setLoading] = useState(!initialReceta);
+  const idInvalido = !initialReceta && (!recetaId || Number.isNaN(id));
+  const [loading, setLoading] = useState(!initialReceta && !idInvalido);
   const [receta, setReceta] = useState<Receta | null>(initialReceta ?? null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    idInvalido ? "La receta solicitada no es válida." : "",
+  );
   const [success, setSuccess] = useState("");
 
   const [modificarAbierto, setModificarAbierto] = useState(false);
@@ -123,24 +138,22 @@ export default function RecetaWorkspace({
   const [confirmarActivar, setConfirmarActivar] = useState(false);
   const [confirmarBaja, setConfirmarBaja] = useState(false);
 
-  useEffect(() => {
-    if (!initialReceta) return;
-    setReceta(initialReceta);
-    setLoading(false);
-    setError("");
-  }, [initialReceta]);
+  const [modalPasoAbierto, setModalPasoAbierto] = useState(false);
+  const [modoPaso, setModoPaso] = useState<ModoPasoForm>("crear");
+  const [pasoSeleccionado, setPasoSeleccionado] = useState<
+    PasoReceta | undefined
+  >(undefined);
+
+  const [pasoEliminar, setPasoEliminar] = useState<PasoReceta | null>(null);
+  const [eliminandoPaso, setEliminandoPaso] = useState(false);
+  const [errorEliminarPaso, setErrorEliminarPaso] = useState("");
+
+  const [pasoVer, setPasoVer] = useState<PasoReceta | null>(null);
 
   useEffect(() => {
-    if (initialReceta) return;
-    if (!recetaId || Number.isNaN(id)) {
-      setError("La receta solicitada no es válida.");
-      setLoading(false);
-      return;
-    }
+    if (initialReceta || !recetaId || Number.isNaN(id)) return;
 
     let active = true;
-    setLoading(true);
-    setError("");
     recetasApi
       .obtenerReceta(id)
       .then((data) => {
@@ -162,6 +175,63 @@ export default function RecetaWorkspace({
   }, [id, initialReceta, recetaId]);
 
   const volver = () => navigate("/recetas");
+
+  const pasosOrdenados = useMemo(
+    () =>
+      [...(receta?.pasos ?? [])].sort(
+        (a, b) => a.numero_orden - b.numero_orden,
+      ),
+    [receta?.pasos],
+  );
+
+  const siguienteOrden = useMemo(() => {
+    if (pasosOrdenados.length === 0) return 1;
+    return (
+      Math.max(...pasosOrdenados.map((p) => p.numero_orden)) + 1
+    );
+  }, [pasosOrdenados]);
+
+  const recursosInactivosPorPaso = useMemo(() => {
+    const lista: Array<{
+      pasoNumero: number;
+      pasoTitulo: string;
+      recursos: Array<{ tipo: "equipo" | "insumo"; nombre: string }>;
+    }> = [];
+
+    (receta?.pasos ?? []).forEach((paso) => {
+      if (!paso.activo) return;
+      const recursos: Array<{ tipo: "equipo" | "insumo"; nombre: string }> = [];
+
+      paso.equipos?.forEach((pe) => {
+        if (pe.equipo && pe.equipo.activo === false) {
+          recursos.push({
+            tipo: "equipo",
+            nombre: pe.equipo.nombre,
+          });
+        }
+      });
+      paso.insumos?.forEach((pi) => {
+        if (pi.insumo && pi.insumo.disponible === false) {
+          recursos.push({
+            tipo: "insumo",
+            nombre: pi.insumo.nombre,
+          });
+        }
+      });
+
+      if (recursos.length > 0) {
+        lista.push({
+          pasoNumero: paso.numero_orden,
+          pasoTitulo: paso.titulo,
+          recursos,
+        });
+      }
+    });
+
+    return lista;
+  }, [receta?.pasos]);
+
+  const tieneRecursosInactivos = recursosInactivosPorPaso.length > 0;
 
   if (loading) {
     return (
@@ -195,9 +265,176 @@ export default function RecetaWorkspace({
   const esActiva = receta.estado === "ACTIVA";
   const esInhabilitada = receta.estado === "INHABILITADA";
   const estado = estadoInfo[receta.estado];
-  const pasos = receta.pasos ?? [];
+  const pasos = pasosOrdenados;
   const tienePasos = pasos.length > 0;
   const puedeModificar = esBorrador || (esActiva && !receta.tiene_lotes);
+
+
+
+  const abrirCrearPaso = () => {
+    setError("");
+    setSuccess("");
+    setPasoSeleccionado(undefined);
+    setModoPaso("crear");
+    setModalPasoAbierto(true);
+  };
+
+  const abrirModificarPaso = (paso: PasoReceta) => {
+    setError("");
+    setSuccess("");
+    setPasoSeleccionado(paso);
+    setModoPaso("modificar");
+    setModalPasoAbierto(true);
+  };
+
+  const abrirVerPaso = (paso: PasoReceta) => {
+    setPasoVer(paso);
+  };
+
+  const guardarPaso = (pasoGuardado: PasoReceta) => {
+    setReceta((prev) => {
+      if (!prev) return prev;
+      const actuales = prev.pasos ?? [];
+      const existe = actuales.some((p) => p.id === pasoGuardado.id);
+      const nuevosPasos = existe
+        ? actuales.map((p) => (p.id === pasoGuardado.id ? pasoGuardado : p))
+        : [...actuales, pasoGuardado];
+      return { ...prev, pasos: nuevosPasos };
+    });
+    setModalPasoAbierto(false);
+    setPasoSeleccionado(undefined);
+    setSuccess(
+      modoPaso === "crear"
+        ? "El paso fue agregado correctamente."
+        : "El paso fue actualizado correctamente.",
+    );
+    onCambio?.();
+  };
+
+  const confirmarEliminarPaso = async () => {
+    if (!pasoEliminar) return;
+    setEliminandoPaso(true);
+    setErrorEliminarPaso("");
+    try {
+      await recetasApi.eliminarPaso(pasoEliminar.id);
+      const eliminadoId = pasoEliminar.id;
+      setReceta((prev) =>
+        prev
+          ? {
+              ...prev,
+              pasos: (prev.pasos ?? []).filter((p) => p.id !== eliminadoId),
+            }
+          : prev,
+      );
+      setPasoEliminar(null);
+      setSuccess("El paso fue eliminado correctamente.");
+      onCambio?.();
+    } catch (e) {
+      setErrorEliminarPaso(
+        e instanceof Error ? e.message : "No se pudo eliminar el paso.",
+      );
+    } finally {
+      setEliminandoPaso(false);
+    }
+  };
+
+  const columnasPasos: ColumnDef<PasoReceta>[] = [
+    {
+      key: "numero_orden",
+      label: "Orden",
+      render: (p) => (
+        <Text>{p.numero_orden}</Text>
+      ),
+    },
+    {
+      key: "titulo",
+      label: "Título",
+      render: (p) => <Text fontWeight="semibold">{p.titulo}</Text>,
+    },
+    {
+      key: "insumos",
+      label: "Insumos Teóricos",
+      render: (p) =>
+        p.insumos?.length ? (
+          <HStack gap={1} flexWrap="wrap">
+            {p.insumos.map((i, idx) => {
+              const inactivo = i.insumo?.disponible === false;
+              return (
+                <Text
+                  key={i.id}
+                  color={inactivo ? "red.600" : undefined}
+                  fontWeight={inactivo ? "medium" : undefined}
+                >
+                  {i.insumo?.nombre ?? `Insumo #${i.insumo_id}`} ({i.cantidad_consumo_estimada}
+                  {i.insumo?.unidad_medida ? ` ${i.insumo.unidad_medida}` : ""})
+                  {idx < (p.insumos?.length ?? 0) - 1 ? "," : ""}
+                </Text>
+              );
+            })}
+          </HStack>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "equipos",
+      label: "Equipos",
+      render: (p) =>
+        p.equipos?.length ? (
+          <HStack gap={1} flexWrap="wrap">
+            {p.equipos.map((e, idx) => {
+              const inactivo = e.equipo?.activo === false;
+              return (
+                <Text
+                  key={e.id}
+                  color={inactivo ? "red.600" : undefined}
+                  fontWeight={inactivo ? "medium" : undefined}
+                >
+                  {e.equipo?.nombre ?? `Equipo #${e.equipo_id}`} (x{e.cantidad})
+                  {idx < (p.equipos?.length ?? 0) - 1 ? "," : ""}
+                </Text>
+              );
+            })}
+          </HStack>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "acciones",
+      label: "Acciones",
+      align: "end",
+      render: (p) => (
+        <RowActions>
+          {esBorrador && (
+            <RowActionButton
+              icon={FiEdit2}
+              label="Editar"
+              colorPalette="blue"
+              onClick={() => abrirModificarPaso(p)}
+            />
+          )}
+          <RowActionButton
+            icon={FiEye}
+            label="Ver"
+            colorPalette="yellow"
+            onClick={() => abrirVerPaso(p)}
+          />
+          {esBorrador && (
+            <RowActionButton
+              icon={FiTrash2}
+              label="Eliminar"
+              colorPalette="red"
+              onClick={() => {
+                setErrorEliminarPaso("");
+                setPasoEliminar(p);
+              }}
+            />
+          )}
+        </RowActions>
+      ),
+    },
+  ];
 
   const activar = async () => {
     setActivando(true);
@@ -278,10 +515,12 @@ export default function RecetaWorkspace({
               <Button
                 variant="ghost"
                 colorPalette="green"
-                disabled={!tienePasos}
+                disabled={!tienePasos || tieneRecursosInactivos}
                 title={
                   !tienePasos
                     ? "Agregá al menos un paso para poder activar la receta."
+                    : tieneRecursosInactivos
+                    ? "Hay pasos con recursos dados de baja. Modificalos para poder activar la receta."
                     : undefined
                 }
                 onClick={() => {
@@ -368,12 +607,40 @@ export default function RecetaWorkspace({
           />
         )}
 
+        {esBorrador && tieneRecursosInactivos && (
+          <AlertMessage
+            type="warning"
+            message={
+              recursosInactivosPorPaso.length === 1
+                ? recursosInactivosPorPaso[0].recursos.length === 1
+                  ? `El paso ${recursosInactivosPorPaso[0].pasoNumero} tiene el ${recursosInactivosPorPaso[0].recursos[0].tipo} "${recursosInactivosPorPaso[0].recursos[0].nombre}" dado de baja. Modificalo para poder activar la receta.`
+                  : `El paso ${recursosInactivosPorPaso[0].pasoNumero} tiene recursos dados de baja: ${recursosInactivosPorPaso[0].recursos
+                      .map((r) => `${r.tipo}: ${r.nombre}`)
+                      .join(", ")}. Modificalo para poder activar la receta.`
+                : `Los siguientes pasos tienen recursos dados de baja: ${recursosInactivosPorPaso
+                    .map(
+                      (p) =>
+                        `Paso ${p.pasoNumero} (${p.recursos
+                          .map((r) => `${r.tipo}: ${r.nombre}`)
+                          .join(", ")})`,
+                    )
+                    .join(", ")}. Modificalos para poder activar la receta.`
+            }
+          />
+        )}
+
         {error && <AlertMessage type="error" message={error} />}
         {success && <AlertMessage type="success" message={success} />}
       </ListadoContainer>
 
       <ListadoContainer maxW="6xl" mt={4}>
-        <HStack justify="space-between" align="center" flexWrap="wrap" gap={2}>
+        <HStack
+          justify="space-between"
+          align="center"
+          flexWrap="wrap"
+          gap={2}
+          mb={4}
+        >
           <Heading
             size="lg"
             color="green"
@@ -381,18 +648,63 @@ export default function RecetaWorkspace({
             alignItems="center"
             gap={2}
           >
-            <Icon as={FiClock} />
+            <Icon as={FiHash} />
             Pasos de la receta
           </Heading>
+          {esBorrador && (
+            <Button colorPalette="green" onClick={abrirCrearPaso}>
+              <FiPlus /> Agregar paso
+            </Button>
+          )}
         </HStack>
 
-        <Box mt={4}>
+        {!tienePasos ? (
           <AlertMessage
             type="info"
-            message="Los pasos se agregarán en la siguiente etapa."
+            message="La receta no tiene pasos cargados todavía."
           />
-        </Box>
+        ) : (
+          <DataTable
+            items={pasos}
+            columns={columnasPasos}
+            getRowKey={(p) => p.id}
+          />
+        )}
       </ListadoContainer>
+
+      <PasoRecetaModal
+        open={modalPasoAbierto}
+        modo={modoPaso}
+        recetaId={receta.id}
+        paso={pasoSeleccionado}
+        pasosExistentes={receta.pasos ?? []}
+        ordenSugerido={siguienteOrden}
+        onClose={() => {
+          setModalPasoAbierto(false);
+          setPasoSeleccionado(undefined);
+        }}
+        onGuardado={guardarPaso}
+      />
+
+      {pasoVer && (
+        <PasoRecetaDetalle
+          paso={pasoVer}
+          onCerrar={() => setPasoVer(null)}
+        />
+      )}
+
+      <AlertDelete
+        open={pasoEliminar !== null}
+        title="Eliminar paso de la receta"
+        name={pasoEliminar?.titulo ?? null}
+        loading={eliminandoPaso}
+        error={errorEliminarPaso}
+        onConfirm={() => void confirmarEliminarPaso()}
+        onCancel={() => {
+          setPasoEliminar(null);
+          setErrorEliminarPaso("");
+        }}
+      />
 
       <FormModal
         open={modificarAbierto}
