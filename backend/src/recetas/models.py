@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum as SQLAlchemyEnum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Enum as SQLAlchemyEnum, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import ModeloBase
@@ -34,8 +34,12 @@ class Receta(ModeloBase):
 
     # Relaciones
     usuario_creador: Mapped["Persona"] = relationship()
-    # TODO: Descomentar cuando exista el modelo PasoReceta y quitar la @property pasos
-    # pasos: Mapped[list["PasoReceta"]] = relationship(back_populates="receta", cascade="all, delete-orphan")
+    
+    # Relación hacia los pasos, con borrado en cascada
+    pasos: Mapped[list["PasoReceta"]] = relationship(
+        back_populates="receta", 
+        cascade="all, delete-orphan"
+    )
 
     @property
     def usuario_creador_nombre(self) -> str:
@@ -52,10 +56,58 @@ class Receta(ModeloBase):
         """
         return False
 
-    @property
-    def pasos(self) -> list:
-        """Lista de pasos de la receta.
 
-        TODO: Eliminar esta property cuando se descomente el relationship 'pasos'.
-        """
-        return []
+class PasoReceta(ModeloBase):
+    __tablename__ = "pasos_receta"
+    __table_args__ = (
+        UniqueConstraint("receta_id", "numero_orden", name="uq_receta_paso_numero_orden"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    receta_id: Mapped[int] = mapped_column(ForeignKey("recetas.id"), nullable=False)
+    
+    numero_orden: Mapped[int] = mapped_column(Integer, nullable=False) 
+    titulo: Mapped[str] = mapped_column(String(100), nullable=False)
+    instrucciones: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    
+    receta: Mapped["Receta"] = relationship(back_populates="pasos")
+    
+    # Relaciones hacia abajo con cascade para simplificar el CRUD
+    equipos: Mapped[list["PasoEquipo"]] = relationship(
+        "PasoEquipo", 
+        back_populates="paso",
+        cascade="all, delete-orphan"
+    )
+    insumos: Mapped[list["PasoInsumo"]] = relationship(
+        "PasoInsumo", 
+        back_populates="paso",
+        cascade="all, delete-orphan"
+    )
+
+
+class PasoEquipo(ModeloBase):
+    __tablename__ = "pasos_equipos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    paso_id: Mapped[int] = mapped_column(ForeignKey("pasos_receta.id"), nullable=False)
+    equipo_id: Mapped[int] = mapped_column(ForeignKey("equipos.id"), nullable=False)
+    
+    cantidad: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    
+    paso: Mapped["PasoReceta"] = relationship(back_populates="equipos")
+    equipo: Mapped["Equipo"] = relationship()
+
+
+class PasoInsumo(ModeloBase):
+    __tablename__ = "pasos_insumos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    paso_id: Mapped[int] = mapped_column(ForeignKey("pasos_receta.id"), nullable=False)
+    insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"), nullable=False)
+    
+    cantidad_consumo_estimada: Mapped[float] = mapped_column(Float, nullable=False)
+    
+    paso: Mapped["PasoReceta"] = relationship(back_populates="insumos")
+    insumo: Mapped["Insumo"] = relationship()

@@ -18,3 +18,14 @@ class ErrorCode:
     RECETA_SIN_PASOS = "No se puede activar una receta que no tiene pasos asignados."
     CODIGO_RECETA_DUPLICADO = "El código de receta ya existe."
     PRODUCTO_INVALIDO = "El producto indicado no es válido."
+    
+    # Errores de Pasos de Receta
+    PASO_NO_ENCONTRADO = "El paso de la receta no fue encontrado."
+    PASO_INACTIVO = "El paso se encuentra dado de baja. Para modificarlo, debe reactivarlo."
+    BAJA_PASO_POR_PATCH_NO_PERMITIDA = "No está permitido dar de baja un paso mediante edición (PATCH). Utilice el endpoint de eliminación (DELETE) correspondiente."
+    RECURSO_ASOCIADO_INACTIVO = "El recurso que intenta asociar se encuentra inactivo. Debe reactivarlo para poder asignarlo al paso."
+    NUMERO_ORDEN_DUPLICADO = "Ya existe un paso con el número de orden ingresado en esta receta."
+
+class TipoRecurso:
+    EQUIPO = "Equipo"
+    INSUMO = "Insumo"

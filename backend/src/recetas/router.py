@@ -8,6 +8,7 @@ from src.recetas import exceptions, schemas, services
 
 router = APIRouter(prefix="/recetas", tags=["recetas"], dependencies=[Depends(requiere_administracion)])
 
+# RUTAS DE RECETA
 
 @router.get("/", response_model=list[schemas.Receta])
 def listar_recetas(db: Session = Depends(get_db)):
@@ -52,7 +53,7 @@ def modificar_receta(receta_id: int, receta: schemas.RecetaUpdate, db: Session =
     return services.modificar_receta(db, receta_id, receta)
 
 
-# --- ACCIONES DE ESTADO DE LA RECETA ---
+# ACCIONES DE ESTADO DE LA RECETA
 
 @router.post("/{receta_id}/activar", response_model=schemas.Receta)
 def activar_receta(receta_id: int, db: Session = Depends(get_db)):
@@ -92,4 +93,37 @@ def clonar_receta(
 def descartar_receta(receta_id: int, db: Session = Depends(get_db)):
     """Elimina físicamente una receta en estado BORRADOR."""
     services.descartar_receta(db, receta_id)
+    return None
+
+
+# RUTAS DE PASOS DE RECETA
+
+@router.get("/{receta_id}/pasos", response_model=list[schemas.PasoRecetaOut])
+def listar_pasos_de_receta(receta_id: int, db: Session = Depends(get_db)):
+    """Lista todos los pasos cronológicos de una receta específica."""
+    return services.listar_pasos_por_receta(db, receta_id)
+
+
+@router.post("/{receta_id}/pasos", response_model=schemas.PasoRecetaOut, status_code=status.HTTP_201_CREATED)
+def agregar_paso(receta_id: int, paso: schemas.PasoRecetaCreate, db: Session = Depends(get_db)):
+    """Agrega un nuevo paso a una receta en estado borrador."""
+    return services.agregar_paso_a_receta(db, receta_id, paso)
+
+
+@router.get("/pasos/{paso_id}", response_model=schemas.PasoRecetaOut)
+def obtener_paso(paso_id: int, db: Session = Depends(get_db)):
+    """Obtiene el detalle de un paso específico con sus insumos y equipos."""
+    return services.obtener_paso_por_id(db, paso_id)
+
+
+@router.patch("/pasos/{paso_id}", response_model=schemas.PasoRecetaOut)
+def modificar_paso(paso_id: int, paso: schemas.PasoRecetaUpdate, db: Session = Depends(get_db)):
+    """Modifica un paso existente. Reemplaza por completo sus listas de insumos y equipos."""
+    return services.modificar_paso(db, paso_id, paso)
+
+
+@router.delete("/pasos/{paso_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_paso(paso_id: int, db: Session = Depends(get_db)):
+    """Elimina físicamente un paso de una receta en estado borrador."""
+    services.eliminar_paso(db, paso_id)
     return None

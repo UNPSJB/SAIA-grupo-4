@@ -38,3 +38,25 @@ class CodigoRecetaDuplicado(Conflict):
 
 class ProductoInvalido(BadRequest):
     DETAIL = ErrorCode.PRODUCTO_INVALIDO
+    
+class PasoRecetaNoEncontrado(NotFound):
+    DETAIL = ErrorCode.PASO_NO_ENCONTRADO
+
+class PasoInactivo(Conflict):
+    DETAIL = ErrorCode.PASO_INACTIVO
+
+class BajaPasoPorPatchNoPermitida(BadRequest):
+    DETAIL = ErrorCode.BAJA_PASO_POR_PATCH_NO_PERMITIDA
+    
+class RecursoInactivo(Conflict):
+    def __init__(self, tipo_recurso: str, recurso_id: int):
+        super().__init__(
+            detail={
+                "code": ErrorCode.RECURSO_ASOCIADO_INACTIVO,
+                "tipo_recurso": tipo_recurso,
+                "recurso_id": recurso_id,
+            }
+        )
+
+class NumeroOrdenPasoDuplicado(Conflict):
+    DETAIL = ErrorCode.NUMERO_ORDEN_DUPLICADO
