@@ -21,6 +21,9 @@ import InsumoQuimicoPage from "./pages/InsumoQuimicoPage";
 import PlanPage from "./pages/PlanPage";
 import NuevoPlanPage from "./pages/NuevoPlanPage";
 import HistorialPlanesPage from "./pages/HistorialPlanesPage";
+import RecetasPage from "./pages/RecetasPage";
+import NuevaRecetaPage from "./pages/NuevaRecetaPage";
+import RecetaWorkspace from "./features/recetas/RecetaWorkspace";
 import ChecklistPage from "./pages/ChecklistPage";
 import HistorialChecklistPage from "./pages/HistorialChecklistPage";
 import IncidentesPage from "./pages/IncidentesPage";
@@ -226,6 +229,39 @@ function AppContent() {
                   <HistorialPlanesPage />
                 </RequireAuth>
               }
+            />
+            {/* Rutas Recetas */}
+            <Route
+              path='/recetas'
+              element={
+                <RequireAuth>
+                  <RecetasPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/recetas/:recetaId'
+              element={
+                <RequireAuth>
+                  <RecetaWorkspace />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/nueva-receta'
+              element={
+                <RequireAuth>
+                  <NuevaRecetaPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/historial-recetas'
+              element={<Navigate to='/recetas' replace />}
+            />
+            <Route
+              path='/receta-workspace'
+              element={<Navigate to='/recetas' replace />}
             />
             <Route
               path='/vencimientos'
