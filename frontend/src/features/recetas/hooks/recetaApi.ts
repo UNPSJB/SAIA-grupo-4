@@ -1,6 +1,15 @@
 import { BASE_URL, JSON_HEADERS } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
-import type { Receta, RecetaCreatePayload, RecetaUpdatePayload } from "../types";
+import type { Equipo } from "../../equipos/types";
+import type { Insumo } from "../../insumo/types";
+import type {
+  PasoReceta,
+  PasoRecetaCreatePayload,
+  PasoRecetaUpdatePayload,
+  Receta,
+  RecetaCreatePayload,
+  RecetaUpdatePayload,
+} from "../types";
 
 export class ApiError extends Error {
   status: number;
@@ -92,6 +101,26 @@ export const recetasApi = {
     request<Receta>(`/recetas/${id}/clonar`, { method: "POST" }),
   descartarReceta: (id: number) =>
     request<void>(`/recetas/${id}/descartar`, { method: "DELETE" }),
+
+  listarPasos: (recetaId: number) =>
+    request<PasoReceta[]>(`/recetas/${recetaId}/pasos`),
+  obtenerPaso: (pasoId: number) =>
+    request<PasoReceta>(`/recetas/pasos/${pasoId}`),
+  agregarPaso: (recetaId: number, payload: PasoRecetaCreatePayload) =>
+    request<PasoReceta>(`/recetas/${recetaId}/pasos`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  modificarPaso: (pasoId: number, payload: PasoRecetaUpdatePayload) =>
+    request<PasoReceta>(`/recetas/pasos/${pasoId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  eliminarPaso: (pasoId: number) =>
+    request<void>(`/recetas/pasos/${pasoId}`, { method: "DELETE" }),
+
+  obtenerInsumos: () => request<Insumo[]>("/insumos/"),
+  obtenerEquipos: () => request<Equipo[]>("/equipos/"),
 };
 
 export const obtenerBorradorRecetaOpcional = async (): Promise<Receta | null> => {

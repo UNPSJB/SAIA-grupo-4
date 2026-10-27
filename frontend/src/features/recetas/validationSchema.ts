@@ -29,3 +29,31 @@ export const recetaSchema = z.object({
 
 export type RecetaFormInput = z.input<typeof recetaSchema>;
 export type RecetaFormValues = z.output<typeof recetaSchema>;
+
+export const pasoRecetaSchema = z.object({
+  numero_orden: z
+    .union([
+      z.string().min(1, "El número de orden es obligatorio"),
+      z.number(),
+    ])
+    .transform((val) => Number(val))
+    .refine(
+      (val) => !Number.isNaN(val) && Number.isInteger(val) && val > 0,
+      "El número de orden debe ser un entero mayor a 0",
+    ),
+  titulo: z
+    .string()
+    .trim()
+    .min(3, "El título del paso debe tener al menos 3 caracteres")
+    .max(100, "El título no puede superar los 100 caracteres"),
+  instrucciones: z
+    .string()
+    .trim()
+    .min(5, "Las instrucciones deben tener al menos 5 caracteres"),
+  insumos: z.array(z.coerce.number().int()).default([]),
+  equipos: z.array(z.coerce.number().int()).default([]),
+});
+
+export type PasoRecetaFormInput = z.input<typeof pasoRecetaSchema>;
+export type PasoRecetaFormValues = z.output<typeof pasoRecetaSchema>;
+
