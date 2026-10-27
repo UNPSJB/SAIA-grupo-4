@@ -20,6 +20,10 @@ interface TextFieldProps {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  onPaste?: React.ClipboardEventHandler<HTMLInputElement>;
+  /** Oculta las flechas nativas de los inputs numéricos. */
+  hideSpinners?: boolean;
   ref?: React.Ref<HTMLInputElement>;
   error?: string;
   disabled?: boolean;
@@ -37,6 +41,9 @@ export const TextField = ({
   defaultValue,
   onChange,
   onBlur,
+  onKeyDown,
+  onPaste,
+  hideSpinners = false,
   ref,
   error,
   disabled = false,
@@ -56,7 +63,21 @@ export const TextField = ({
       defaultValue={defaultValue}
       onChange={onChange}
       onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      onPaste={onPaste}
       ref={ref}
+      css={
+        hideSpinners
+          ? {
+              "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
+                display: "none",
+              },
+              "&": {
+                MozAppearance: "textfield",
+              },
+            }
+          : undefined
+      }
       readOnly={disabled}
     />
     {error && (

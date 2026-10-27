@@ -31,6 +31,7 @@ import {
   FiAlertCircle,
   FiAlertTriangle,
   FiFileText,
+  FiBookOpen,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -82,6 +83,11 @@ const planItems: NavItem[] = [
   { to: "/nuevo-plan", label: "Nuevo Plan", icon: FiPlus },
   { to: "/plan-poes", label: "Plan Vigente", icon: FiClipboard },
   { to: "/historial-planes", label: "Historial", icon: FiClock },
+];
+
+const recetasItems: NavItem[] = [
+  { to: "/nueva-receta", label: "Nueva Receta", icon: FiPlus },
+  { to: "/recetas", label: "Recetas", icon: FiBookOpen },
 ];
 
 // Acceso directo ubicado debajo del grupo "Plan POE".
@@ -327,10 +333,12 @@ export const NavBar = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
   const [planOpen, setPlanOpen] = useState(true);
+  const [recetasOpen, setRecetasOpen] = useState(true);
   const [checklistOpen, setChecklistOpen] = useState(true);
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const planAccordionOpen = isCollapsed ? true : planOpen;
+  const recetasAccordionOpen = isCollapsed ? true : recetasOpen;
   const checklistAccordionOpen = isCollapsed ? true : checklistOpen;
 
   const sidebarW = isCollapsed ? "64px" : "260px";
@@ -341,6 +349,10 @@ export const NavBar = ({
 
   const handlePlanOpenChange = (open: boolean) => {
     if (!isCollapsed) setPlanOpen(open);
+  };
+
+  const handleRecetasOpenChange = (open: boolean) => {
+    if (!isCollapsed) setRecetasOpen(open);
   };
 
   const handleChecklistOpenChange = (open: boolean) => {
@@ -484,6 +496,21 @@ export const NavBar = ({
         isCollapsed={isCollapsed}
         open={planAccordionOpen}
         onOpenChange={handlePlanOpenChange}
+        onCollapsedClick={() => setIsCollapsed(false)}
+      />
+
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Recetas
+        </Text>
+      )}
+      <NavSection
+        label='Recetas'
+        icon={FiBookOpen}
+        items={recetasItems}
+        isCollapsed={isCollapsed}
+        open={recetasAccordionOpen}
+        onOpenChange={handleRecetasOpenChange}
         onCollapsedClick={() => setIsCollapsed(false)}
       />
 

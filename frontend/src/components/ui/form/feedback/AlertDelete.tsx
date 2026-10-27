@@ -5,6 +5,10 @@ interface AlertDeleteProps {
   open: boolean;
   title?: string; // default "Eliminar"
   name: string | null; // nombre del elemento a eliminar
+  /** Texto de confirmación. Si no se envía, se usa el mensaje genérico. */
+  message?: string;
+  confirmLabel?: string;
+  loadingText?: string;
   loading?: boolean;
   error?: string;
   onConfirm: () => void; // función de borrado (ej: eliminar del hook)
@@ -15,6 +19,9 @@ export const AlertDelete = ({
   open,
   title = "Eliminar",
   name,
+  message,
+  confirmLabel = "Eliminar",
+  loadingText = "Eliminando...",
   loading = false,
   error = "",
   onConfirm,
@@ -29,13 +36,17 @@ export const AlertDelete = ({
             <Dialog.Title>{title}</Dialog.Title>
           </Dialog.Header>
           <Dialog.Body>
-            <Text>
-              ¿Estás seguro que querés eliminar{" "}
-              <Text as='span' fontWeight='bold' textTransform='capitalize'>
-                {name}
+            {message ? (
+              <Text>{message}</Text>
+            ) : (
+              <Text>
+                ¿Estás seguro que querés eliminar{" "}
+                <Text as='span' fontWeight='bold' textTransform='capitalize'>
+                  {name}
+                </Text>
+                ? Esta acción no se puede deshacer.
               </Text>
-              ? Esta acción no se puede deshacer.
-            </Text>
+            )}
             {error && (
               <Alert.Root status='error' mt={4}>
                 <Alert.Indicator />
@@ -58,9 +69,9 @@ export const AlertDelete = ({
                   colorPalette='red'
                   onClick={onConfirm}
                   loading={loading}
-                  loadingText='Eliminando...'
+                  loadingText={loadingText}
                 >
-                  <FiTrash2 /> Eliminar
+                  <FiTrash2 /> {confirmLabel}
                 </Button>
               )}
             </HStack>

@@ -6,6 +6,8 @@ interface AlertConfirmProps {
   title?: string; // default "Dar de alta"
   message?: string; // texto de confirmación
   loading?: boolean;
+  loadingText?: string;
+  confirmLabel?: string;
   error?: string;
   onConfirm: () => void; // función de confirmación (ej: reactivar del hook)
   onCancel: () => void;
@@ -16,6 +18,8 @@ export const AlertConfirm = ({
   title,
   message,
   loading = false,
+  loadingText = "Procesando...",
+  confirmLabel = "Confirmar",
   error = "",
   onConfirm,
   onCancel,
@@ -53,9 +57,9 @@ export const AlertConfirm = ({
                   colorPalette='green'
                   onClick={onConfirm}
                   loading={loading}
-                  loadingText='Dando de alta...'
+                  loadingText={loadingText}
                 >
-                  <FiCheck /> Confirmar
+                  <FiCheck /> {confirmLabel}
                 </Button>
               )}
             </HStack>
