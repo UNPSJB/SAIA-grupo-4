@@ -66,16 +66,6 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
           mt={1}
         >
           <VStack align="stretch" w="full" minW="0" gap={2}>
-            {/* Estado */}
-            <HStack justify="space-between" borderBottomWidth="1px" pb={1} w="full">
-              <Text fontSize="xs" fontWeight="bold" color="gray.500">
-                Estado:
-              </Text>
-              <Badge colorPalette={paso.activo ? "green" : "red"}>
-                {paso.activo ? "Activo" : "Inactivo"}
-              </Badge>
-            </HStack>
-
             {/* Instrucciones / Procedimiento */}
             <Box borderBottomWidth="1px" pb={2} w="full" minW="0">
               <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={1}>

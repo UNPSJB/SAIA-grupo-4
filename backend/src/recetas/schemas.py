@@ -70,7 +70,6 @@ class PasoRecetaUpdate(BaseModel):
     numero_orden: Annotated[Optional[int], Field(default=None, gt=0)]
     titulo: Annotated[Optional[str], Field(default=None, min_length=3, max_length=100)]
     instrucciones: Annotated[Optional[str], Field(default=None, min_length=5)]
-    activo: Annotated[Optional[bool], Field(default=None)]
     
     equipos: Annotated[Optional[List[PasoEquipoCreate]], Field(default=None)]
     insumos: Annotated[Optional[List[PasoInsumoCreate]], Field(default=None)]
@@ -78,7 +77,6 @@ class PasoRecetaUpdate(BaseModel):
 class PasoRecetaOut(PasoRecetaBase):
     id: int
     receta_id: int
-    activo: bool
     equipos: List[PasoEquipoOut] = []
     insumos: List[PasoInsumoOut] = []
     model_config = ConfigDict(from_attributes=True)

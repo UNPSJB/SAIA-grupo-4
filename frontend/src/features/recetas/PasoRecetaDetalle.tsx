@@ -1,4 +1,4 @@
-import { Badge, Text } from "@chakra-ui/react";
+import { Text } from "@chakra-ui/react";
 import { FiEye, FiFileText, FiTag, FiTool } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import type { PasoReceta } from "./types";
@@ -22,14 +22,6 @@ export const PasoRecetaDetalle = ({
           valor: String(paso.numero_orden),
         },
         { label: "Título del paso", valor: paso.titulo },
-        {
-          label: "Estado",
-          valor: (
-            <Badge colorPalette={paso.activo ? "green" : "red"}>
-              {paso.activo ? "Activo" : "Inactivo"}
-            </Badge>
-          ),
-        },
       ],
     },
     {

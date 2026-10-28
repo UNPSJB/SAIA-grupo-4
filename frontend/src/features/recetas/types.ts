@@ -35,7 +35,6 @@ export interface PasoReceta {
   numero_orden: number;
   titulo: string;
   instrucciones: string;
-  activo: boolean;
   equipos: PasoEquipo[];
   insumos: PasoInsumo[];
 }
@@ -62,7 +61,6 @@ export interface PasoRecetaUpdatePayload {
   numero_orden?: number;
   titulo?: string;
   instrucciones?: string;
-  activo?: boolean;
   equipos?: PasoEquipoCreatePayload[];
   insumos?: PasoInsumoCreatePayload[];
 }

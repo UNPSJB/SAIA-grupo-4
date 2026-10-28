@@ -70,8 +70,6 @@ class PasoReceta(ModeloBase):
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
     instrucciones: Mapped[str] = mapped_column(Text, nullable=False)
     
-    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    
     receta: Mapped["Receta"] = relationship(back_populates="pasos")
     
     # Relaciones hacia abajo con cascade para simplificar el CRUD

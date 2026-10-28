@@ -85,7 +85,6 @@ def _clonar_paso(paso_antiguo: PasoReceta) -> PasoReceta:
         numero_orden=paso_antiguo.numero_orden,
         titulo=paso_antiguo.titulo,
         instrucciones=paso_antiguo.instrucciones,
-        activo=True,
         equipos=[
             PasoEquipo(
                 equipo_id=e.equipo_id, 
@@ -209,8 +208,7 @@ def activar_receta(db: Session, receta_id: int) -> Receta:
 
     # Validación 2: Todos los recursos usados en los pasos deben estar activos
     for paso in receta.pasos:
-        if paso.activo:
-            _validar_recursos_activos(db, equipos=paso.equipos, insumos=paso.insumos)
+        _validar_recursos_activos(db, equipos=paso.equipos, insumos=paso.insumos)
 
     try:
         # Si ya había una receta ACTIVA para este mismo producto, pasa a INHABILITADA
@@ -304,8 +302,6 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
     origen = obtener_receta_por_id(db, receta_id)
     _validar_usuario_creador(db, usuario_id)
     
-    pasos_activos = [p for p in origen.pasos if p.activo]
-
     nueva_receta = Receta(
         codigo_receta=_generar_codigo_receta(db),
         nombre_receta=origen.nombre_receta,
@@ -316,7 +312,7 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
         observaciones=origen.observaciones,
         fecha_creacion=datetime.now(),
         usuario_creador_id=usuario_id,
-        pasos=[_clonar_paso(p) for p in pasos_activos]
+        pasos=[_clonar_paso(p) for p in origen.pasos]
     )
 
     db.add(nueva_receta)
@@ -387,7 +383,6 @@ def agregar_paso_a_receta(db: Session, receta_id: int, paso_data: schemas.PasoRe
         numero_orden=paso_data.numero_orden,
         titulo=paso_data.titulo,
         instrucciones=paso_data.instrucciones,
-        activo=True,
         equipos=_filtrar_recursos_unicos(paso_data.equipos, "equipo_id", PasoEquipo),
         insumos=_filtrar_recursos_unicos(paso_data.insumos, "insumo_id", PasoInsumo)
     )
@@ -410,13 +405,6 @@ def modificar_paso(db: Session, paso_id: int, paso_update: schemas.PasoRecetaUpd
         raise exceptions.RecetaNoEsBorrador()
         
     update_data = paso_update.model_dump(exclude_unset=True)
-    
-    if not paso.activo:
-        if update_data != {"activo": True}:
-            raise exceptions.PasoInactivo()
-    else:
-        if update_data.get("activo") is False:
-            raise exceptions.BajaPasoPorPatchNoPermitida()
 
     if "numero_orden" in update_data and update_data["numero_orden"] != paso.numero_orden:
         paso_con_mismo_orden = db.scalar(

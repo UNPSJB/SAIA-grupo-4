@@ -199,7 +199,6 @@ export default function RecetaWorkspace({
     }> = [];
 
     (receta?.pasos ?? []).forEach((paso) => {
-      if (!paso.activo) return;
       const recursos: Array<{ tipo: "equipo" | "insumo"; nombre: string }> = [];
 
       paso.equipos?.forEach((pe) => {

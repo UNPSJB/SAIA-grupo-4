@@ -605,40 +605,6 @@ def test_paso_filtra_recursos_duplicados(datos_base):
     assert len(res_patch.json()["equipos"]) == 1
 
 
-def test_bloquear_baja_paso_por_patch(datos_base):
-    res_receta = client.post("/recetas/", json={
-        "nombre_receta": "Baja Patch",
-        "producto_id": datos_base["producto_id"],
-        "rendimiento_estandar": 50,
-    })
-    res_paso = client.post(f"/recetas/{res_receta.json()['id']}/pasos", json={
-        "numero_orden": 1, "titulo": "Activo", "instrucciones": "Activo.",
-    })
-    paso_id = res_paso.json()["id"]
-
-    res_patch = client.patch(f"/recetas/pasos/{paso_id}", json={"activo": False})
-    assert res_patch.status_code == 400
-
-
-def test_reactivacion_estricta_paso(datos_base, session):
-    res_receta = client.post("/recetas/", json={
-        "nombre_receta": "Reactivación",
-        "producto_id": datos_base["producto_id"],
-        "rendimiento_estandar": 50,
-    })
-    res_paso = client.post(f"/recetas/{res_receta.json()['id']}/pasos", json={
-        "numero_orden": 1, "titulo": "Zombie", "instrucciones": "Instrucciones de prueba",
-    })
-    paso_id = res_paso.json()["id"]
-
-    paso_db = session.get(PasoReceta, paso_id)
-    paso_db.activo = False
-    session.commit()
-
-    assert client.patch(f"/recetas/pasos/{paso_id}", json={"activo": True, "titulo": "Trampa"}).status_code == 409
-    assert client.patch(f"/recetas/pasos/{paso_id}", json={"activo": True}).status_code == 200
-
-
 def test_modificar_y_eliminar_paso_de_receta_no_borrador_falla(datos_base):
     res_receta = client.post("/recetas/", json={
         "nombre_receta": "Inmutable",
