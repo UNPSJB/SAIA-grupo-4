@@ -1,17 +1,17 @@
 from datetime import date
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 # === REUTILIZACIÓN DE SERVICIOS EXISTENTES ===
-from src.checklists.constants import EstadoEjecucion
-from src.checklists.models import EjecucionTarea
 from src.dashboard import schemas
-from src.incidentes.services import listar_incidentes
+from src.dashboard.metrics import (
+    calcular_resumen_tareas,
+    calcular_resumen_vencimientos,
+)
 from src.incidentes.models import Incidente
 from src.tipo_incidente.models import TipoIncidente
-from src.vencimientos import providers
-from src.vencimientos.constants import CategoriaVencimiento
+from src.vencimientos.constants import CategoriaVencimiento, Constantes
 
 
 # === VENCIMIENTOS POR CATEGORÍA ===
@@ -23,18 +23,17 @@ def _calcular_metricas_vencimientos_por_categoria(db: Session, hoy: date) -> lis
         (CategoriaVencimiento.DOCUMENTO, "vencimientos_documentos", "Vencimientos - Documentos", "/vencimientos"),
         (CategoriaVencimiento.ELEMENTO_LIMPIEZA, "vencimientos_elementos_limpieza", "Vencimientos - Recambio de elementos de limpieza", "/vencimientos"),
     ]
-    
+
+    resumenes = {
+        resumen.categoria: resumen
+        for resumen in calcular_resumen_vencimientos(db, hoy)
+    }
     resultados = []
-    proveedores = providers.proveedores()
-    
+
     for categoria, key, titulo, link in categorias_config:
-        prov_categoria = None
-        for prov in proveedores:
-            if getattr(prov, 'categoria', None) == categoria:
-                prov_categoria = prov
-                break
-        
-        if not prov_categoria:
+        resumen = resumenes[categoria]
+
+        if resumen.total == 0:
             card = schemas.MetricaCard(
                 key=key,
                 titulo=titulo,
@@ -50,57 +49,51 @@ def _calcular_metricas_vencimientos_por_categoria(db: Session, hoy: date) -> lis
             )
             resultados.append((card, grafico))
             continue
-        
-        items = prov_categoria.listar(db, hoy)
-        total = len(items)
-        
-        if total == 0:
-            card = schemas.MetricaCard(
-                key=key,
-                titulo=titulo,
-                valor=0.0,
-                unidad="porcentaje",
-                detalle="Sin vencimientos registrados",
-                link=link,
-            )
-            grafico = schemas.GraficoConfig(
-                tipo="pie",
-                datos=[],
-                leyendas=[schemas.LeyendaItem(label="Sin datos")],
-            )
-            resultados.append((card, grafico))
-            continue
-        
-        vencidos = sum(1 for v in items if v.dias_restantes < 0)
-        proximos = sum(1 for v in items if 0 <= v.dias_restantes <= 15)
-        vigentes = sum(1 for v in items if v.dias_restantes > 15)
-        requieren_atencion = vencidos + proximos
-        porcentaje_requieren = round((requieren_atencion / total) * 100, 1) if total > 0 else 0.0
-        
+
+        requieren_atencion = resumen.vencidos + resumen.proximos
+        porcentaje_requieren = (
+            round((requieren_atencion / resumen.total) * 100, 1)
+            if resumen.total > 0
+            else 0.0
+        )
+
         card = schemas.MetricaCard(
             key=key,
             titulo=titulo,
             valor=porcentaje_requieren,
             unidad="porcentaje",
-            detalle=f"{requieren_atencion} de {total} ítems requieren atención",
+            detalle=f"{requieren_atencion} de {resumen.total} ítems requieren atención",
             link=link,
         )
-        
+
         grafico = schemas.GraficoConfig(
             tipo="pie",
             datos=[
-                schemas.GraficoDato(label="Vencidos", valor=float(vencidos)),
-                schemas.GraficoDato(label="Próximos a vencer", valor=float(proximos)),
-                schemas.GraficoDato(label="Vigentes", valor=float(vigentes)),
+                schemas.GraficoDato(label="Vencidos", valor=float(resumen.vencidos)),
+                schemas.GraficoDato(label="Próximos a vencer", valor=float(resumen.proximos)),
+                schemas.GraficoDato(label="Vigentes", valor=float(resumen.vigentes)),
             ],
             leyendas=[
-                schemas.LeyendaItem(label="Vencidos - Requieren atención inmediata (< 0 días)", valor=float(vencidos)),
-                schemas.LeyendaItem(label="Próximos a vencer - Atender en los próximos 15 días (0 a 15 días)", valor=float(proximos)),
-                schemas.LeyendaItem(label="Vigentes - Fuera de la ventana de aviso (> 15 días)", valor=float(vigentes)),
+                schemas.LeyendaItem(label="Vencidos - Requieren atención inmediata (< 0 días)", valor=float(resumen.vencidos)),
+                schemas.LeyendaItem(
+                    label=(
+                        "Próximos a vencer - Atender en los próximos "
+                        f"{Constantes.DIAS_AVISO_PROXIMO} días "
+                        f"(0 a {Constantes.DIAS_AVISO_PROXIMO} días)"
+                    ),
+                    valor=float(resumen.proximos),
+                ),
+                schemas.LeyendaItem(
+                    label=(
+                        "Vigentes - Fuera de la ventana de aviso "
+                        f"(> {Constantes.DIAS_AVISO_PROXIMO} días)"
+                    ),
+                    valor=float(resumen.vigentes),
+                ),
             ],
         )
         resultados.append((card, grafico))
-    
+
     return resultados
 
 
@@ -178,18 +171,9 @@ def _calcular_metricas_incidentes(db: Session, desde: date | None, hasta: date |
 # === CUMPLIMIENTO DE TAREAS ===
 def _calcular_metricas_tareas(db: Session, desde: date | None, hasta: date | None) -> tuple[schemas.MetricaCard, schemas.GraficoConfig]:
     """Calcula % de cumplimiento de tareas por fecha_programada."""
-    query = select(EjecucionTarea)
-    if desde and hasta:
-        query = query.where(EjecucionTarea.fecha_programada.between(desde, hasta))
-    elif desde:
-        query = query.where(EjecucionTarea.fecha_programada >= desde)
-    elif hasta:
-        query = query.where(EjecucionTarea.fecha_programada <= hasta)
+    resumen = calcular_resumen_tareas(db, desde, hasta)
 
-    ejecuciones = db.scalars(query).all()
-    total = len(ejecuciones)
-
-    if total == 0:
+    if resumen.total_tareas + resumen.pendientes == 0:
         card = schemas.MetricaCard(
             key="tareas",
             titulo="Cumplimiento de tareas",
@@ -205,22 +189,18 @@ def _calcular_metricas_tareas(db: Session, desde: date | None, hasta: date | Non
         )
         return card, grafico
 
-    completadas = sum(1 for e in ejecuciones if e.estado == EstadoEjecucion.COMPLETADA)
-    no_realizadas = sum(1 for e in ejecuciones if e.estado == EstadoEjecucion.NO_REALIZADA)
-    pendientes = sum(1 for e in ejecuciones if e.estado == EstadoEjecucion.PENDIENTE)
-
-    cerradas = completadas + no_realizadas
-    if cerradas == 0:
-        porcentaje_cumplimiento = 0.0
-        detalle = f"{pendientes} tareas pendientes sin cerrar en el rango"
+    if resumen.total_tareas == 0:
+        detalle = f"{resumen.pendientes} tareas pendientes sin cerrar en el rango"
     else:
-        porcentaje_cumplimiento = round((completadas / cerradas) * 100, 1)
-        detalle = f"{completadas} de {cerradas} tareas cerradas fueron completadas ({pendientes} aún pendientes)"
+        detalle = (
+            f"{resumen.completadas} de {resumen.total_tareas} tareas cerradas "
+            f"fueron completadas ({resumen.pendientes} aún pendientes)"
+        )
 
     card = schemas.MetricaCard(
         key="tareas",
         titulo="Cumplimiento de tareas",
-        valor=porcentaje_cumplimiento,
+        valor=resumen.porcentaje_cumplimiento,
         unidad="porcentaje",
         detalle=detalle,
         link="/historial",
@@ -229,14 +209,14 @@ def _calcular_metricas_tareas(db: Session, desde: date | None, hasta: date | Non
     grafico = schemas.GraficoConfig(
         tipo="pie",
         datos=[
-            schemas.GraficoDato(label="Completadas", valor=float(completadas)),
-            schemas.GraficoDato(label="No realizadas", valor=float(no_realizadas)),
-            schemas.GraficoDato(label="Pendientes", valor=float(pendientes)),
+            schemas.GraficoDato(label="Completadas", valor=float(resumen.completadas)),
+            schemas.GraficoDato(label="No realizadas", valor=float(resumen.incumplidas)),
+            schemas.GraficoDato(label="Pendientes", valor=float(resumen.pendientes)),
         ],
         leyendas=[
-            schemas.LeyendaItem(label="Completadas - Ejecutadas correctamente", valor=float(completadas)),
-            schemas.LeyendaItem(label="No realizadas - Vencidas o marcadas como no realizadas", valor=float(no_realizadas)),
-            schemas.LeyendaItem(label="Pendientes - Aún por ejecutar", valor=float(pendientes)),
+            schemas.LeyendaItem(label="Completadas - Ejecutadas correctamente", valor=float(resumen.completadas)),
+            schemas.LeyendaItem(label="No realizadas - Vencidas o marcadas como no realizadas", valor=float(resumen.incumplidas)),
+            schemas.LeyendaItem(label="Pendientes - Aún por ejecutar", valor=float(resumen.pendientes)),
         ],
     )
     return card, grafico

@@ -35,6 +35,11 @@ from src.tipo_incidente.router import router as tipo_incidente_router
 from src.documentos.router import router as documentos_router
 # Dashboard consolidado de métricas (solo para administradores)
 from src.dashboard.router import router as dashboard_router
+from src.vista_publica.router import (
+    router as vista_publica_router,
+    router_publico as vista_publica_publico_router,
+)
+from src.vista_publica.services import inicializar_vista_publica
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -49,6 +54,7 @@ async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
     with Session(engine) as db:
         inicializar_capacidades_sistema(db)
+        inicializar_vista_publica(db)
     yield
 
 
@@ -91,3 +97,5 @@ app.include_router(documentos_personal_router)
 app.include_router(incidentes_router)
 app.include_router(tipo_incidente_router)
 app.include_router(dashboard_router)  # Dashboard consolidado de métricas
+app.include_router(vista_publica_router)  # Configuración admin de la vista pública
+app.include_router(vista_publica_publico_router)  # Indicadores públicos sin auth
