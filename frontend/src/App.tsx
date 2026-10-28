@@ -31,6 +31,7 @@ import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
 import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
+import DashboardPage from "./pages/DashboardPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -125,10 +126,18 @@ function AppContent() {
         />
         <Box bg='gray.100' flex='1' minW='0'>
           <Routes>
-            {/* La raíz, estando logueado, va a /checklist/historial */}
-            <Route path='/' element={<Navigate to='/historial' replace />} />
+            {/* La raíz, estando logueado, va a /dashboard */}
+            <Route path='/' element={<Navigate to='/dashboard' replace />} />
 
             {/* Rutas activas (con guardia de autenticación) */}
+            <Route
+              path='/dashboard'
+              element={
+                <RequireAuth>
+                  <DashboardPage />
+                </RequireAuth>
+              }
+            />
             <Route
               path='/equipos'
               element={
