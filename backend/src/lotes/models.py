@@ -1,7 +1,11 @@
 from datetime import date
+from typing import TYPE_CHECKING
 from sqlalchemy import Date, Float, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+
+if TYPE_CHECKING:
+    from src.productos.models import Producto
 
 class Lote(ModeloBase):
     __tablename__ = "lotes_produccion"
@@ -11,5 +15,4 @@ class Lote(ModeloBase):
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
     cantidad: Mapped[float] = mapped_column(Float, nullable=False)
 
-    #relacion con productos
-    producto = relationship("Producto", back_populates="lotes")
+    producto: Mapped["Producto"] = relationship("Producto", back_populates="lotes")

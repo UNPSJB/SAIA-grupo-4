@@ -29,6 +29,7 @@ from src.checklists.router import router as checklists_router
 from src.vencimientos.router import router as vencimientos_router
 from src.productos.router import router as productos_router
 from src.lotes.router import router as lotes_router
+
 # Router de autenticación: login/refresh/logout con JWT y endpoint /auth/me
 from src.auth.router import router as auth_router
 from src.documentos_personal.router import router as documentos_personal_router

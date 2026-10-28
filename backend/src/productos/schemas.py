@@ -9,5 +9,4 @@ class ProductoCreate(ProductoBase):
 
 class ProductoOut(ProductoBase):
     id: int
-    
     model_config = ConfigDict(from_attributes=True)
