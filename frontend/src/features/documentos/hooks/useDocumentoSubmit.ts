@@ -72,7 +72,7 @@ export const useDocumentoSubmit = ({
           descripcion: values?.descripcion || null,
         };
 
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         const res = await apiFetch(url, formData
           // Sin Content-Type manual: el navegador agrega el boundary del multipart
           ? { method, body: formData }

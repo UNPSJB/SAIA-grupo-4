@@ -51,7 +51,7 @@ export const useUnidadMedidaSubmit = ({
           tipo_magnitud: values?.tipo_magnitud ?? "",
         };
 
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,

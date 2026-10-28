@@ -26,7 +26,7 @@ export const useTipoIncidenteSubmit = ({ endpoint, method = "POST", id, body, on
         setIsSubmitting(true);
         try {
         const payload = body ?? values;
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         const res = await apiFetch(url, {
             method,
             headers: { "Content-Type": "application/json" },

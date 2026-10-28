@@ -48,7 +48,7 @@ export const usePersonalSubmit = ({ endpoint, method = "POST", id, body, onInact
           ...(values?.password ? { password: values.password } : {}),
         };
 
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,

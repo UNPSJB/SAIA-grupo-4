@@ -32,7 +32,7 @@ export const useCapacidadSubmit = ({ endpoint, method = "POST", id, body, onInac
           descripcion: values?.descripcion ?? "",
         };
 
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,
