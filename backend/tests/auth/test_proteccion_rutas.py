@@ -78,9 +78,17 @@ def test_sin_token_es_401():
     assert client.get("/documentos-personal/").status_code == 401
     assert client.get("/checklists/hoy").status_code == 401
     assert client.get("/incidentes/mis-reportes").status_code == 401
+    assert client.get("/vista-publica/").status_code == 401
     res = client.get("/equipos/")
     assert res.status_code == 401
     assert res.headers.get("www-authenticate") == "Bearer"
+
+
+def test_publico_no_requiere_autenticacion():
+    """El endpoint público no debe responder 401 aunque no haya sesión."""
+    res = client.get("/publico/token-inexistente/indicadores")
+    assert res.status_code == 404
+    assert res.json()["detail"] == "La vista pública no existe."
 
 
 def test_token_invalido_es_401():
@@ -95,6 +103,7 @@ def test_admin_accede_a_gestion_y_checklists(credenciales):
     assert client.get("/personal/", headers=headers).status_code == 200
     # requiere_operacion admite 'administrar': admin-solo tambien ve checklists.
     assert client.get("/checklists/hoy", headers=headers).status_code == 200
+    assert client.get("/vista-publica/", headers=headers).status_code == 200
 
 
 def test_operador_solo_checklists(credenciales):
@@ -108,3 +117,10 @@ def test_operador_solo_checklists(credenciales):
     assert res.status_code == 403
     assert res.json()["detail"] == "Permiso denegado"
     assert client.get("/personal/", headers=headers).status_code == 403
+    assert client.get("/vista-publica/", headers=headers).status_code == 403
+    assert (
+        client.put(
+            "/vista-publica/", headers=headers, json={"activo": True}
+        ).status_code
+        == 403
+    )
