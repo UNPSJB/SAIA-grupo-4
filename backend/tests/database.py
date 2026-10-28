@@ -14,6 +14,8 @@ from src.capacidades.constants import RolesSistema
 from src.capacidades.models import Capacidad
 from src.capacidades.services import inicializar_capacidades_sistema
 from src.personal.models import Persona, PersonaCapacidad
+from src.productos.models import Producto
+from src.lotes.models import Lote
 
 # creamos una db para testing
 engine = create_engine(
