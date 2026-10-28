@@ -23,6 +23,7 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { Equipo } from "./types";
 import type { Sector } from "../sectores/types";
 import type { ColumnDef } from "../../components/ui";
@@ -89,23 +90,21 @@ const renderProximaCalibracion = (equipo: Equipo) => {
 };
 
 type FiltrosEquipo = {
-  busqueda: string;
   estado: string;
   sectorId: string;
   vencimiento: string;
 };
 
 const FILTROS_INICIALES: FiltrosEquipo = {
-  busqueda: "",
   estado: "",
   sectorId: "",
   vencimiento: "",
 };
 
 // Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
-const construirEndpoint = (filtros: FiltrosEquipo) => {
+const construirEndpoint = (filtros: FiltrosEquipo, busqueda: string) => {
   const params = new URLSearchParams();
-  if (filtros.busqueda.trim()) params.set("busqueda", filtros.busqueda.trim());
+  if (busqueda) params.set("busqueda", busqueda);
   if (filtros.estado === "activos") params.set("activo", "true");
   if (filtros.estado === "inactivos") params.set("activo", "false");
   if (filtros.sectorId) params.set("sector_id", filtros.sectorId);
@@ -136,9 +135,13 @@ export const ListadoEquipos = ({
   const [borrador, setBorrador] = useState<FiltrosEquipo>(FILTROS_INICIALES);
   const [aplicados, setAplicados] = useState<FiltrosEquipo>(FILTROS_INICIALES);
 
+  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Equipo>({
-      endpoint: construirEndpoint(aplicados),
+      endpoint: construirEndpoint(aplicados, busquedaAplicada),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de equipos.",
     });
@@ -150,8 +153,10 @@ export const ListadoEquipos = ({
     errorMessage: "No se pudieron cargar los sectores.",
   });
 
-  const hayFiltros = Object.values(borrador).some((valor) => valor !== "");
-  const hayAplicados = Object.values(aplicados).some((valor) => valor !== "");
+  const hayFiltros =
+    busqueda !== "" || Object.values(borrador).some((valor) => valor !== "");
+  const hayAplicados =
+    busquedaAplicada !== "" || Object.values(aplicados).some((valor) => valor !== "");
 
   // Cada aplicación vuelve a la primera página, para no caer en una página vacía.
   const aplicar = () => {
@@ -160,6 +165,7 @@ export const ListadoEquipos = ({
   };
 
   const limpiar = () => {
+    setBusqueda("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);
@@ -287,8 +293,8 @@ export const ListadoEquipos = ({
           <FiltroTexto
             ariaLabel='Buscar equipo'
             placeholder='Nombre, marca o N° de serie'
-            value={borrador.busqueda}
-            onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
+            value={busqueda}
+            onChange={setBusqueda}
             onKeyDown={(e) => {
               if (e.key === "Enter") aplicar();
             }}
