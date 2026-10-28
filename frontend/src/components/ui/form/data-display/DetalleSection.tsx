@@ -14,6 +14,8 @@ export const DetalleSection = ({ title, icon, children }: DetalleSectionProps) =
     borderColor='border.subtle'
     borderRadius='md'
     p={4}
+    minW="0"
+    overflow="hidden"
   >
     <Heading
       size='sm'
@@ -27,7 +29,7 @@ export const DetalleSection = ({ title, icon, children }: DetalleSectionProps) =
       {icon && <Icon as={icon} />}
       {title}
     </Heading>
-    <VStack align='start' gap={1.5}>
+    <VStack align='stretch' w="full" gap={1.5} minW="0">
       {children}
     </VStack>
   </Box>

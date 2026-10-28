@@ -16,6 +16,7 @@ interface DetalleModalProps {
   onClose: () => void;
   secciones: SeccionDetalle[];
   icon?: ElementType;
+  maxW?: string;
 }
 
 export const DetalleModal = ({
@@ -24,6 +25,7 @@ export const DetalleModal = ({
   onClose,
   secciones,
   icon,
+  maxW,
 }: DetalleModalProps) => (
   <FormModal
     open={open}
@@ -31,8 +33,9 @@ export const DetalleModal = ({
     titleIcon={icon}
     showClose
     onClose={onClose}
+    maxW={maxW}
   >
-    <VStack gap={4} align='stretch'>
+    <VStack gap={4} align='stretch' w="full" minW="0">
       {secciones.map((seccion) => (
         <DetalleSection
           key={seccion.titulo}
