@@ -29,6 +29,22 @@ let isRefreshing = false;
 // que reciban 401 durante ese lapso esperan el mismo refresh.
 let refreshPromise: Promise<RefreshResult> | null = null;
 
+// --- NUEVO: CONFIGURACIÓN DE LA URL BASE ---
+// Cambia esto si tu backend de FastAPI corre en otro puerto que no sea el 8000
+const API_BASE_URL = "http://localhost:8000"; 
+// ------------------------------------------
+
+/**
+ * Función auxiliar para formatear la URL
+ */
+function buildUrl(input: RequestInfo | URL): RequestInfo | URL {
+  if (typeof input === "string" && input.startsWith("/")) {
+    return `${API_BASE_URL}${input}`;
+  }
+  return input;
+}
+
+
 /**
  * Obtiene el access token actual almacenado en memoria por authService.
  * El refresh token NUNCA se guarda en JS (viaja solo en cookie httpOnly).
@@ -83,7 +99,12 @@ async function retryWithToken(
 ): Promise<Response> {
   const headers = new Headers(init.headers ?? {});
   headers.set("Authorization", `Bearer ${token}`);
-  return await fetch(input, { ...init, headers, credentials: "include" });
+  
+  // --- NUEVO: Construir la URL completa ---
+  const fullUrl = buildUrl(input);
+  // ----------------------------------------
+  
+  return await fetch(fullUrl, { ...init, headers, credentials: "include" });
 }
 
 /**
@@ -94,6 +115,11 @@ export async function apiFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
 ): Promise<Response> {
+  
+  // --- NUEVO: Construir la URL completa ---
+  const fullUrl = buildUrl(input);
+  // ----------------------------------------
+
   const accessToken = getAccessToken();
   const headers = new Headers(init.headers ?? {});
 
@@ -109,8 +135,8 @@ export async function apiFetch(
     credentials: "include",
   };
 
-  // Primer intento de la request.
-  const response = await fetch(input, requestInit);
+  // Primer intento de la request usando la URL completa
+  const response = await fetch(fullUrl, requestInit);
 
   // Si no es 401, devolvemos la respuesta tal cual.
   if (response.status !== 401) {
@@ -147,5 +173,5 @@ export async function apiFetch(
   }
 
   // Refresh exitoso → reintentar la request original con el nuevo access token.
-  return await retryWithToken(input, init, newToken);
+  return await retryWithToken(input, init, newToken); // Ojo: le pasamos 'input' porque retryWithToken ya usa buildUrl internamente
 }

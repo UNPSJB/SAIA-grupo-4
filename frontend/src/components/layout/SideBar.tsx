@@ -31,6 +31,7 @@ import {
   FiAlertCircle,
   FiAlertTriangle,
   FiFileText,
+  FiBox,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -76,6 +77,9 @@ const defaultItems: NavItem[] = [
     label: "Elementos de limpieza",
     icon: MdOutlineCleaningServices,
   },
+  { to: "/lotes", 
+    label: "Lotes", 
+    icon: FiBox },
 ];
 
 const planItems: NavItem[] = [

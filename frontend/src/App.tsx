@@ -31,6 +31,7 @@ import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
 import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
+import { LotesPage } from './pages/LotesPage';
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -142,6 +143,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <InsumoPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/lotes'
+              element={
+                <RequireAuth>
+                  <LotesPage />
                 </RequireAuth>
               }
             />
