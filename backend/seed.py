@@ -102,6 +102,7 @@ from src.equipos.models import CalibracionEquipo, Equipo
 from src.incidentes.models import Incidente
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
+from src.productos.models import Producto
 from src.models import ModeloBase
 # El alias evita el choque con EstadoVencimiento de vencimientos.constants, que
 # es el que usan las categorias consolidadas (equipos, elementos, documentos).
@@ -149,6 +150,7 @@ TABLAS_CON_CANTIDAD_FIJA = (
     "equipos",
     "insumos",
     "insumos_quimicos",
+    "productos",
     "elementos_limpieza",
     "personal",
     "documentos",
@@ -232,6 +234,19 @@ INSUMOS = (
     ("Film Retractil", 0, "envase", "Film para pallets de producto terminado."),
     ("Agua Tratada", 4, "otro", "Agua tratada para el circuito de limpieza."),
     ("Concentrado de Aroma", 9, "aditivo", "Aroma dosificado para el horneado."),
+)
+
+PRODUCTOS = (
+    ("Pan de Campo", "Pan artesanal elaborado con harina de trigo.", 0),
+    ("Galletas de Vainilla", "Galletas dulces sabor vainilla.", 6),
+    ("Pan Integral", "Pan elaborado con harina integral.", 0),
+    ("Bizcochos Salados", "Bizcochos horneados con sal fina.", 1),
+    ("Torta de Chocolate", "Torta de chocolate para venta por porcion.", 0),
+    ("Alfajores de Maicena", "Alfajores rellenos con dulce de leche.", 6),
+    ("Medialunas", "Medialunas de masa hojaldrada.", 6),
+    ("Budin de Limon", "Budin horneado con aroma de limon.", 0),
+    ("Pepas de Membrillo", "Galletas con dulce de membrillo.", 1),
+    ("Pan de Molde", "Pan de molde envasado para despacho.", 0),
 )
 
 INSUMOS_QUIMICOS = (
@@ -745,6 +760,16 @@ def _crear_prerrequisitos(db, cantidad, hoy):
         for nombre, indice_unidad, categoria, descripcion in _ciclar(INSUMOS, cantidad)
     ]
 
+    productos = [
+        Producto(
+            nombre=nombre,
+            descripcion=descripcion,
+            unidad_medida=unidades[indice_unidad % len(unidades)],
+            activo=True,
+        )
+        for nombre, descripcion, indice_unidad in _ciclar(PRODUCTOS, cantidad)
+    ]
+
     insumos_quimicos = []
     for indice, (nombre, tipo, indice_unidad) in enumerate(_ciclar(INSUMOS_QUIMICOS, cantidad)):
         sector, equipo = _alcance_del_recurso(indice, sectores, equipos)
@@ -790,7 +815,7 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             )
         )
 
-    db.add_all(equipos + insumos + insumos_quimicos + elementos)
+    db.add_all(equipos + insumos + insumos_quimicos + elementos + productos)
     db.flush()
     return {
         "sectores": sectores,

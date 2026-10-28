@@ -1,7 +1,6 @@
 from typing import List
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
-import src
 
 
 
@@ -14,5 +13,6 @@ class UnidadMedida(ModeloBase):
     tipo_magnitud: Mapped[str] = mapped_column(index=True)
     disponible: Mapped[bool] = mapped_column(default=True)
 
-    insumos: Mapped[List["src.Insumo"]] = relationship(back_populates="unidad_medida")
-    insumos_quimicos: Mapped[List["src.InsumoQuimico"]] = relationship(back_populates="unidad_medida")
+    insumos: Mapped[List["Insumo"]] = relationship(back_populates="unidad_medida")
+    insumos_quimicos: Mapped[List["InsumoQuimico"]] = relationship(back_populates="unidad_medida")
+    productos: Mapped[List["Producto"]] = relationship(back_populates="unidad_medida")

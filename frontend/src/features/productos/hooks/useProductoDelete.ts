@@ -1,0 +1,72 @@
+import { apiFetch } from "../../../features/auth/apiFetch";
+import { BASE_URL } from "../../../config";
+import type { Producto } from "../types";
+
+type FastApiError = {
+  detail?: string | { code?: string; producto_id?: number };
+};
+
+interface HandleDeleteOptions {
+  producto: Producto | null;
+  setLoading: (v: boolean) => void;
+  setError: (msg: string) => void;
+  onSuccess?: () => void;
+}
+
+export const handleDelete = async ({
+  producto,
+  setLoading,
+  setError,
+  onSuccess,
+}: HandleDeleteOptions) => {
+  if (!producto) return;
+  setLoading(true);
+  setError("");
+
+  try {
+    const res = await apiFetch(`${BASE_URL}/productos/${producto.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      let bodyRes: FastApiError | null = null;
+      try {
+        bodyRes = await res.json();
+      } catch {
+        // Si la respuesta no es JSON, bodyRes queda en null
+      }
+
+      let mensajeError = "Ocurrió un error inesperado";
+      if (bodyRes?.detail) {
+        if (typeof bodyRes.detail === "string") {
+          mensajeError = bodyRes.detail;
+        } else if (typeof bodyRes.detail.code === "string") {
+          mensajeError = bodyRes.detail.code;
+        }
+      } else {
+        switch (res.status) {
+          case 400:
+            mensajeError = "El producto ya esta dado de baja.";
+            break;
+          case 404:
+            mensajeError = "El producto no existe.";
+            break;
+          case 500:
+            mensajeError = "Error interno del servidor.";
+            break;
+          default:
+            mensajeError = `Error ${res.status || "desconocido"}`;
+        }
+      }
+
+      setError(mensajeError);
+      return;
+    }
+
+    onSuccess?.();
+  } catch {
+    setError("Ocurrió un error de red o inesperado");
+  } finally {
+    setLoading(false);
+  }
+};      

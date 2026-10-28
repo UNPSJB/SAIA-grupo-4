@@ -2,7 +2,6 @@ from typing import Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
-import src
 
 
 class Insumo(ModeloBase):
@@ -15,4 +14,4 @@ class Insumo(ModeloBase):
     descripcion: Mapped[Optional[str]] = mapped_column(nullable=True)
     disponible: Mapped[bool] = mapped_column(default=True)
 
-    unidad_medida: Mapped["src.UnidadMedida"] = relationship(back_populates="insumos")
+    unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="insumos")
