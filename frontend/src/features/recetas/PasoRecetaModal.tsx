@@ -350,7 +350,7 @@ export const PasoRecetaForm = ({
             )}
           </Seccion>
 
-          <FormActions justify="end">
+          <FormActions justify="center">
             {esModoVer ? (
               <CancelButton
                 text="Cerrar"

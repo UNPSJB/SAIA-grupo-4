@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Box, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiList } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
@@ -26,7 +26,7 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
   const [abierto, setAbierto] = useState(false);
 
   return (
-    <VStack align="stretch" w="full" gap={1}>
+    <VStack align="stretch" w="full" minW="0" gap={1}>
       {/* Cabecera */}
       <HStack
         cursor="pointer"
@@ -36,14 +36,15 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
         borderRadius="md"
         _hover={{ bg: "gray.100" }}
         userSelect="none"
+        w="full"
       >
-        <HStack gap={2}>
-          <Badge colorPalette="green">Paso {paso.numero_orden}</Badge>
-          <Text fontWeight="semibold" fontSize="sm" color="gray.800">
+        <HStack gap={2} minW="0" flex="1">
+          <Badge colorPalette="green" flexShrink={0}>Paso {paso.numero_orden}</Badge>
+          <Text fontWeight="semibold" fontSize="sm" color="gray.800" wordBreak="break-word" overflowWrap="anywhere">
             {paso.titulo}
           </Text>
         </HStack>
-        <HStack gap={2}>
+        <HStack gap={2} flexShrink={0}>
           <Text fontSize="xs" color="gray.500">
             {abierto ? "Ocultar detalle" : "Ver detalle"}
           </Text>
@@ -55,16 +56,18 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
       {abierto && (
         <Box
           p={4}
-          ml={4}
+          w="full"
+          minW="0"
           bg="white"
           borderRadius="md"
           borderWidth="1px"
           borderColor="gray.200"
           boxShadow="sm"
+          mt={1}
         >
-          <VStack align="stretch" gap={2}>
+          <VStack align="stretch" w="full" minW="0" gap={2}>
             {/* Estado */}
-            <HStack justify="space-between" borderBottomWidth="1px" pb={1}>
+            <HStack justify="space-between" borderBottomWidth="1px" pb={1} w="full">
               <Text fontSize="xs" fontWeight="bold" color="gray.500">
                 Estado:
               </Text>
@@ -74,23 +77,35 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
             </HStack>
 
             {/* Instrucciones / Procedimiento */}
-            <Box borderBottomWidth="1px" pb={1}>
+            <Box borderBottomWidth="1px" pb={2} w="full" minW="0">
               <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={1}>
                 Instrucciones / Procedimiento:
               </Text>
-              <Box bg="gray.50" p={2} borderRadius="sm">
-                <Text fontSize="sm" color="gray.700" whiteSpace="pre-wrap">
+              <Box bg="gray.50" p={2} borderRadius="sm" w="full" minW="0">
+                <Text
+                  fontSize="sm"
+                  color="gray.700"
+                  whiteSpace="pre-wrap"
+                  wordBreak="break-word"
+                  overflowWrap="anywhere"
+                  w="full"
+                >
                   {paso.instrucciones}
                 </Text>
               </Box>
             </Box>
 
             {/* Recursos requeridos */}
-            <VStack align="stretch" gap={1} pt={1}>
+            <VStack align="stretch" gap={1} pt={1} w="full" minW="0">
               <Text fontSize="xs" fontWeight="bold" color="gray.500">
                 Recursos requeridos:
               </Text>
-              <Text fontSize="sm" color="gray.700">
+              <Text
+                fontSize="sm"
+                color="gray.700"
+                wordBreak="break-word"
+                overflowWrap="anywhere"
+              >
                 • <strong>Insumos teóricos:</strong>{" "}
                 {paso.insumos && paso.insumos.length > 0
                   ? paso.insumos
@@ -103,7 +118,12 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
                       .join(", ")
                   : "Sin insumos teóricos"}
               </Text>
-              <Text fontSize="sm" color="gray.700">
+              <Text
+                fontSize="sm"
+                color="gray.700"
+                wordBreak="break-word"
+                overflowWrap="anywhere"
+              >
                 • <strong>Equipos utilizados:</strong>{" "}
                 {paso.equipos && paso.equipos.length > 0
                   ? paso.equipos
@@ -194,7 +214,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
     },
     {
       titulo: "Pasos de la Receta",
-      icono: FiList,
+      icono: FiHash,
       items:
         cargandoPasos && pasos.length === 0
           ? [{ label: "", valor: "Cargando pasos..." }]
