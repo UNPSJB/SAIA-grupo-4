@@ -3,8 +3,8 @@ from src.main import app
 from src.personal.models import PersonaCapacidad
 from datetime import datetime, timedelta
 from tests.database import session, TestingSessionLocal
-import uuid
-import random
+from src.utils.busqueda import normalizar
+import uuid, random
 
 client = TestClient(app)
 
@@ -214,3 +214,64 @@ def test_reactivar_persona_distinto_dia_crea_historial():
     assert inactivos[0]["fecha_hasta"] is not None
     # El activo debe ser el nuevo creado hoy
     assert activos[0]["fecha_hasta"] is None
+
+def _sufijo():
+    return uuid.uuid4().hex[:8]
+
+def crear_persona_auxiliar(nombre="Carlos", apellido="Lopez"):
+    cap_id = crear_capacidad_auxiliar()
+    payload = {
+        "nombre": nombre,
+        "apellido": apellido,
+        "dni": str(random.randint(10000000, 99999999)),
+        "legajo": random.randint(10000, 99999),
+        "capacidades_ids": [cap_id],
+    }
+    response = client.post("/personal/", json=payload)
+    assert response.status_code == 201
+    return response.json()
+
+def ids_buscados(**params):
+    response = client.get("/personal/", params=params)
+    assert response.status_code == 200
+    return {p["id"] for p in response.json()}
+
+# --- Búsqueda de texto libre ---
+
+def test_normalizar():
+    assert normalizar("  ÁLVAREZ Pérez ") == "alvarez perez"
+    assert normalizar(None) == ""
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos():
+    sufijo = _sufijo()
+    persona = crear_persona_auxiliar(nombre="José", apellido=f"Pérez{sufijo}")
+
+    for texto in [f"perez{sufijo}", f"PÉREZ{sufijo.upper()}", f"rez{sufijo}", f"jose perez{sufijo}"]:
+        assert persona["id"] in ids_buscados(busqueda=texto)
+
+def test_busqueda_por_dni_y_legajo():
+    persona = crear_persona_auxiliar(apellido=f"Lopez{_sufijo()}")
+
+    assert persona["id"] in ids_buscados(busqueda=persona["dni"][:5])
+    assert persona["id"] in ids_buscados(busqueda=str(persona["legajo"]))
+
+def test_busqueda_sin_resultados():
+    assert ids_buscados(busqueda=f"zzz{_sufijo()}") == set()
+
+def test_busqueda_no_interpreta_comodines():
+    crear_persona_auxiliar(apellido=f"Gomez{_sufijo()}")
+
+    # Si "%" o "_" fueran comodines, devolverían a todo el personal
+    assert ids_buscados(busqueda="%") == set()
+    assert ids_buscados(busqueda="_") == set()
+
+def test_busqueda_convive_con_otros_filtros():
+    sufijo = _sufijo()
+    persona = crear_persona_auxiliar(apellido=f"Suarez{sufijo}")
+
+    # Solo con la búsqueda aparece
+    assert persona["id"] in ids_buscados(busqueda=f"suarez{sufijo}")
+
+    # Con la misma búsqueda más un documento_id que no tiene, los filtros
+    # se combinan (AND) y la persona queda afuera
+    assert ids_buscados(busqueda=f"suarez{sufijo}", documento_id=999999) == set()
