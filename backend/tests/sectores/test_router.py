@@ -116,3 +116,44 @@ def test_reactivar_sector():
     res_put = client.put(f"/sectores/{sector_id}", json={"activo": True})
     assert res_put.status_code == 200
     assert res_put.json()["activo"] is True
+
+# --- Búsqueda de texto libre ---
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+def crear_sector_con_nombre(nombre):
+    res = client.post("/sectores/", json={"nombre": nombre})
+    assert res.status_code == 201
+    return res.json()
+
+def ids_buscados(**params):
+    res = client.get("/sectores/", params=params)
+    assert res.status_code == 200
+    return {s["id"] for s in res.json()}
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos():
+    sufijo = sufijo_unico()
+    sector = crear_sector_con_nombre(f"Cámara Frigorífica {sufijo}")
+
+    for texto in [f"camara frigorifica {sufijo}", f"CÁMARA FRIGORÍFICA {sufijo.upper()}", f"frigor", f"mara fri"]:
+        assert sector["id"] in ids_buscados(busqueda=texto)
+
+def test_busqueda_sin_resultados():
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+def test_busqueda_no_interpreta_comodines():
+    # Sin "_" ni "%" en el nombre
+    sector = crear_sector_con_nombre(f"Deposito{sufijo_unico()}")
+
+    # Si "%" o "_" fueran comodines, este sector aparecería en los resultados
+    assert sector["id"] not in ids_buscados(busqueda="%")
+    assert sector["id"] not in ids_buscados(busqueda="_")
+
+def test_busqueda_incluye_sectores_inactivos():
+    # El listado devuelve activos e inactivos, y la búsqueda no cambia eso
+    sufijo = sufijo_unico()
+    sector = crear_sector_con_nombre(f"Archivo{sufijo}")
+    client.delete(f"/sectores/{sector['id']}")
+
+    assert sector["id"] in ids_buscados(busqueda=f"archivo{sufijo}")

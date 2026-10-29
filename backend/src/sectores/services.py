@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from src.sectores.models import Sector
 from src.sectores import schemas, exceptions
 from src.equipos.models import Equipo
+from src.utils.busqueda import condicion_busqueda
+
 
 
 def crear_sector(db: Session, sector: schemas.SectorCreate) -> Sector:
@@ -36,9 +38,15 @@ def crear_sector(db: Session, sector: schemas.SectorCreate) -> Sector:
 
     return _sector
 
+def listar_sectores(db: Session, busqueda: str | None = None) -> List[Sector]:
+    consulta = select(Sector)
 
-def listar_sectores(db: Session) -> List[Sector]:
-    return db.scalars(select(Sector)).all()
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos,
+    # en las columnas de texto visibles del listado.
+    if busqueda and busqueda.strip():
+        consulta = consulta.where(condicion_busqueda([Sector.nombre], busqueda))
+
+    return db.scalars(consulta).all()
 
 def leer_sector(db: Session, sector_id: int) -> Sector:
     db_sector = db.scalar(
