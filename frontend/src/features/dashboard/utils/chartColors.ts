@@ -43,6 +43,14 @@ export const getCardColor = (key: string): string => {
     vencimientos: "blue.500",
     incidentes: "red.500",
     tareas: "green.500",
+    cumplimiento: "green.500",
+    tareas_cerradas: "blue.500",
+    completadas: "green.500",
+    incumplidas: "red.500",
+    vencimientos_total: "blue.500",
+    vencimientos_vencidos: "red.500",
+    vencimientos_proximos: "yellow.500",
+    vencimientos_vigentes: "green.500",
     lotes: "gray.400",
   };
   return colorMap[key] || "gray.500";

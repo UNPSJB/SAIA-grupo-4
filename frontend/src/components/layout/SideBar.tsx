@@ -32,6 +32,7 @@ import {
   FiAlertTriangle,
   FiFileText,
   FiBarChart2,
+  FiGlobe,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -102,6 +103,13 @@ const dashboardItem: LinkNavItem = {
   to: "/dashboard",
   label: "Dashboard",
   icon: FiBarChart2,
+};
+
+// Configuración del enlace público de indicadores agregados.
+const vistaPublicaItem: LinkNavItem = {
+  to: "/vista-publica",
+  label: "Vista pública",
+  icon: FiGlobe,
 };
 
 // Acceso directo a Gestión Documental: se muestra como link simple bajo el
@@ -457,17 +465,23 @@ export const NavBar = ({
         </Box>
       )}
 
+      {!isCollapsed && (
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
+          Gestión
+        </Text>
+      )}
+
       <SingleNavLink
         item={dashboardItem}
         isCollapsed={isCollapsed}
         pathname={pathname}
       />
 
-      {!isCollapsed && (
-        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
-          Gestión
-        </Text>
-      )}
+      <SingleNavLink
+        item={vistaPublicaItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
 
       <NavSection
         label='Datos Maestros'

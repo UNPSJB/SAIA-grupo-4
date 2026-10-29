@@ -32,6 +32,8 @@ import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import DashboardPage from "./pages/DashboardPage";
+import VistaPublicaPage from "./pages/VistaPublicaPage";
+import VistaPublicaPublicaPage from "./pages/VistaPublicaVisitantePage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -46,7 +48,7 @@ function AppContent() {
   // sabemos si hay sesión: mostramos un estado de carga. Evita el parpadeo del
   // login y que la rama sin sesión redirija y pierda la URL solicitada.
   if (loading) {
-    return <LoadingState message="Cargando sesión..." />;
+    return <LoadingState message='Cargando sesión...' />;
   }
 
   // RAMA SIN SESIÓN: solo existe la vista de login. Cualquier otra URL
@@ -135,6 +137,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <DashboardPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/vista-publica'
+              element={
+                <RequireAuth>
+                  <VistaPublicaPage />
                 </RequireAuth>
               }
             />
@@ -332,23 +342,37 @@ function AppContent() {
   );
 }
 
+function AppInterno() {
+  return (
+    <AuthProvider>
+      {/*
+        El modal de renovacion vive aca y no en la campana: la campana esta
+        dentro de un Popover que se cierra en el mismo tick que el modal se
+        abre, y los dos overlays se pisan. Fuera del NavBar el Dialog no
+        comparte arbol con nadie.
+      */}
+      <RenovacionProvider>
+        <AppContent />
+      </RenovacionProvider>
+    </AuthProvider>
+  );
+}
+
 export default function App() {
   return (
     <ChakraProvider value={defaultSystem}>
-      {/* AuthProvider para que cualquier componente use useAuth() */}
-      <AuthProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <Routes>
           {/*
-            El modal de renovacion vive aca y no en la campana: la campana esta
-            dentro de un Popover que se cierra en el mismo tick que el modal se
-            abre, y los dos overlays se pisan. Fuera del NavBar el Dialog no
-            comparte arbol con nadie.
+            La vista pública se resuelve antes del árbol de autenticación: no
+            debe intentar rehidratar sesión, redirigir al login ni enviar
+            credenciales.
           */}
-          <RenovacionProvider>
-            <AppContent />
-          </RenovacionProvider>
-        </BrowserRouter>
-      </AuthProvider>
+          <Route path='/publico/:token' element={<VistaPublicaPublicaPage />} />
+          <Route path='/publico/*' element={<VistaPublicaPublicaPage />} />
+          <Route path='*' element={<AppInterno />} />
+        </Routes>
+      </BrowserRouter>
     </ChakraProvider>
   );
 }
