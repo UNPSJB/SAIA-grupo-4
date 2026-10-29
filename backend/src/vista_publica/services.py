@@ -67,6 +67,13 @@ def _obtener_vista_por_token(db: Session, token: str) -> VistaPublica:
     return vista
 
 
+def _porcentaje(parte: int, total: int) -> float:
+    """Devuelve un porcentaje redondeado y evita dividir por cero."""
+    if total <= 0:
+        return 0.0
+    return round((parte / total) * 100, 1)
+
+
 def _construir_indicadores(
     db: Session,
 ) -> schemas.IndicadoresPublicos:
@@ -77,31 +84,32 @@ def _construir_indicadores(
     resumen_tareas = calcular_resumen_tareas(db, desde, hasta)
     resumen_vencimientos = calcular_resumen_vencimientos(db, hoy)
 
+    # Solo se publican los conteos "al dia" (vigentes) por categoria. Los
+    # vencidos y proximos a vencer quedan fuera del contrato publico.
     categorias = [
         schemas.CategoriaVencimientosPublica(
-            categoria=resumen.categoria,
             nombre=ETIQUETA_CATEGORIA[resumen.categoria.value],
+            al_dia=resumen.vigentes,
             total=resumen.total,
-            vencidos=resumen.vencidos,
-            proximos=resumen.proximos,
-            vigentes=resumen.vigentes,
+            porcentaje_al_dia=_porcentaje(resumen.vigentes, resumen.total),
         )
         for resumen in resumen_vencimientos
     ]
 
+    total_vencimientos = sum(categoria.total for categoria in categorias)
+    al_dia = sum(categoria.al_dia for categoria in categorias)
+
     return schemas.IndicadoresPublicos(
         periodo=schemas.PeriodoPublico(desde=desde, hasta=hasta),
         metricas=schemas.MetricasPublicas(
-            total_tareas=resumen_tareas.total_tareas,
-            completadas=resumen_tareas.completadas,
-            incumplidas=resumen_tareas.incumplidas,
             porcentaje_cumplimiento=resumen_tareas.porcentaje_cumplimiento,
+            tareas_completadas=resumen_tareas.completadas,
+            tareas_totales=resumen_tareas.total_tareas,
         ),
         vencimientos=schemas.VencimientosPublicos(
-            total=sum(categoria.total for categoria in categorias),
-            vencidos=sum(categoria.vencidos for categoria in categorias),
-            proximos=sum(categoria.proximos for categoria in categorias),
-            vigentes=sum(categoria.vigentes for categoria in categorias),
+            al_dia=al_dia,
+            total=total_vencimientos,
+            porcentaje_al_dia=_porcentaje(al_dia, total_vencimientos),
             por_categoria=categorias,
         ),
     )
