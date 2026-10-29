@@ -10,8 +10,8 @@ def generar_string_unico(prefijo: str):
     return f"{prefijo}_{uuid.uuid4().hex[:6]}"
 
 # Función auxiliar para crear un sector rápido para los tests
-def crear_sector_auxiliar():
-    nombre_sector = generar_string_unico("Sector")
+def crear_sector_auxiliar(nombre: str | None = None):
+    nombre_sector = nombre or generar_string_unico("Sector")
     res = client.post("/sectores/", json={"nombre": nombre_sector})
     return res.json()["id"]
 
@@ -186,3 +186,81 @@ def test_reactivar_equipo():
     res_put = client.put(f"/equipos/{equipo_id}", json={"activo": True})
     assert res_put.status_code == 200
     assert res_put.json()["activo"] is True
+
+# --- Búsqueda de texto libre ---
+
+def crear_equipo_auxiliar(sector_id, nombre="Balanza", marca="Ohaus", numero_serie=None, categoria="otro"):
+    res = client.post("/equipos/", json={
+        "nombre": nombre,
+        "marca": marca,
+        "numero_serie": numero_serie or generar_string_unico("SN"),
+        "categoria": categoria,
+        "sector_id": sector_id,
+    })
+    assert res.status_code == 201
+    return res.json()
+
+def ids_buscados(**params):
+    res = client.get("/equipos/", params=params)
+    assert res.status_code == 200
+    return {e["id"] for e in res.json()}
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos():
+    sufijo = sufijo_unico()
+    equipo = crear_equipo_auxiliar(crear_sector_auxiliar(), nombre=f"Balanza Analítica {sufijo}")
+
+    for texto in [f"analitica {sufijo}", f"ANALÍTICA {sufijo.upper()}", f"lanza analitica {sufijo}"]:
+        assert equipo["id"] in ids_buscados(busqueda=texto)
+
+def test_busqueda_por_marca_y_numero_de_serie():
+    sufijo = sufijo_unico()
+    equipo = crear_equipo_auxiliar(
+        crear_sector_auxiliar(), marca=f"Mettler{sufijo}", numero_serie=f"NS-{sufijo}"
+    )
+
+    assert equipo["id"] in ids_buscados(busqueda=f"mettler{sufijo}")
+    assert equipo["id"] in ids_buscados(busqueda=f"ns-{sufijo}")
+
+def test_busqueda_por_nombre_de_sector():
+    sufijo = sufijo_unico()
+    sector_id = crear_sector_auxiliar(nombre=f"Laboratorio Químico {sufijo}")
+    equipo = crear_equipo_auxiliar(sector_id)
+
+    assert equipo["id"] in ids_buscados(busqueda=f"quimico {sufijo}")
+
+def test_busqueda_sin_resultados():
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+def test_busqueda_no_interpreta_comodines():
+    sufijo = sufijo_unico()
+    # Sin guiones bajos ni % en ningún campo visible del equipo
+    sector_id = crear_sector_auxiliar(nombre=f"Sector{sufijo}")
+    equipo = crear_equipo_auxiliar(
+        sector_id, nombre=f"Horno{sufijo}", marca=f"Pauna{sufijo}", numero_serie=f"NS{sufijo}"
+    )
+
+    # Si "%" o "_" fueran comodines, este equipo aparecería en los resultados
+    assert equipo["id"] not in ids_buscados(busqueda="%")
+    assert equipo["id"] not in ids_buscados(busqueda="_")
+
+def test_busqueda_convive_con_otros_filtros():
+    sufijo = sufijo_unico()
+    sector_a = crear_sector_auxiliar()
+    sector_b = crear_sector_auxiliar()
+    en_a = crear_equipo_auxiliar(sector_a, nombre=f"Termómetro {sufijo}")
+    en_b = crear_equipo_auxiliar(sector_b, nombre=f"Termómetro {sufijo}")
+    texto = f"termometro {sufijo}"
+
+    # Solo con la búsqueda aparecen los dos
+    assert ids_buscados(busqueda=texto) == {en_a["id"], en_b["id"]}
+
+    # Con sector_id se combinan (AND): solo el del sector pedido
+    assert ids_buscados(busqueda=texto, sector_id=sector_a) == {en_a["id"]}
+
+    # Con activo: al dar de baja uno, el filtro de estado también se respeta
+    client.delete(f"/equipos/{en_a['id']}")
+    assert ids_buscados(busqueda=texto, activo="true") == {en_b["id"]}
+    assert ids_buscados(busqueda=texto, activo="false") == {en_a["id"]}
