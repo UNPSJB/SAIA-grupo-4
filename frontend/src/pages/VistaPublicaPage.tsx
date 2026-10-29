@@ -11,12 +11,13 @@ import {
 } from "@chakra-ui/react";
 import { FiGlobe, FiRefreshCw, FiShield } from "react-icons/fi";
 import { AlertConfirm, AlertMessage, LoadingState } from "../components/ui";
+import { PUBLIC_APP_URL } from "../config";
 import { EnlacePublicoCard } from "../features/vistaPublica/EnlacePublicoCard";
 import { EstadoVistaPublicaCard } from "../features/vistaPublica/EstadoVistaPublicaCard";
 import { useVistaPublicaConfig } from "../features/vistaPublica/hooks/useVistaPublicaConfig";
 
 function construirUrlPublica(token: string): string {
-  return `${window.location.origin}/publico/${encodeURIComponent(token)}`;
+  return `${PUBLIC_APP_URL}/publico/${encodeURIComponent(token)}`;
 }
 
 export default function VistaPublicaPage() {
