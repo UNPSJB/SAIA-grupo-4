@@ -13,6 +13,11 @@ export default defineConfig({
   // y viaja siempre: evita el bloqueo de SameSite=Lax cuando la app corre en
   // localhost:5173 y el backend vive en 127.0.0.1:8000 (sitios distintos).
   server: {
+    // Escucha en la red local para poder abrir la vista publica desde un
+    // celular usando la IP LAN de la maquina.
+    host: true,
+    port: 5173,
+    strictPort: true,
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8000",

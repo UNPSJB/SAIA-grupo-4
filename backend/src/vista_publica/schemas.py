@@ -1,14 +1,13 @@
-"""Schemas de la vista pública.
+"""Schemas de la vista publica.
 
-El contrato público es deliberadamente cerrado: no expone incidentes, datos
-internos, IDs, conceptos ni rutas de detalle.
+El contrato publico es deliberadamente cerrado: no expone incidentes, datos
+internos, IDs, conceptos ni rutas de detalle. Tampoco publica conteos negativos:
+solo indicadores agregados y positivos.
 """
 
 from datetime import date
 
 from pydantic import BaseModel
-
-from src.vencimientos.constants import CategoriaVencimiento
 
 
 class VistaPublicaEstado(BaseModel):
@@ -21,10 +20,9 @@ class VistaPublicaUpdate(BaseModel):
 
 
 class MetricasPublicas(BaseModel):
-    total_tareas: int
-    completadas: int
-    incumplidas: int
     porcentaje_cumplimiento: float
+    tareas_completadas: int
+    tareas_totales: int
 
 
 class PeriodoPublico(BaseModel):
@@ -33,19 +31,16 @@ class PeriodoPublico(BaseModel):
 
 
 class CategoriaVencimientosPublica(BaseModel):
-    categoria: CategoriaVencimiento
     nombre: str
+    al_dia: int
     total: int
-    vencidos: int
-    proximos: int
-    vigentes: int
+    porcentaje_al_dia: float
 
 
 class VencimientosPublicos(BaseModel):
+    al_dia: int
     total: int
-    vencidos: int
-    proximos: int
-    vigentes: int
+    porcentaje_al_dia: float
     por_categoria: list[CategoriaVencimientosPublica]
 
 

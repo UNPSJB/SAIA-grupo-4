@@ -78,7 +78,7 @@ export function useIndicadoresPublicos(token: string | undefined) {
     data,
     loading,
     error,
-    noEncontrada: !token || noEncontrada,
+    noEncontrada,
     recargar: () => {
       void cargar();
     },

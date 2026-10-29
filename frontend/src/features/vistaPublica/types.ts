@@ -1,8 +1,9 @@
-// Contratos de la vista pública de cumplimiento.
+// Contratos de la vista publica de cumplimiento.
 //
-// La vista pública tiene un contrato propio y deliberadamente acotado: solo
-// expone métricas agregadas. No reutiliza `DashboardResponse` para evitar que
-// datos internos (incidentes, links, detalles) se filtren al frontend público.
+// La vista publica tiene un contrato propio y deliberadamente acotado: solo
+// expone metricas agregadas y positivas. No reutiliza `DashboardResponse` para
+// evitar que datos internos (incidentes, links, detalles) se filtren al
+// frontend publico.
 
 export interface EstadoVistaPublica {
   activo: boolean;
@@ -15,26 +16,22 @@ export interface PeriodoPublico {
 }
 
 export interface MetricasPublicas {
-  total_tareas: number;
-  completadas: number;
-  incumplidas: number;
   porcentaje_cumplimiento: number;
+  tareas_completadas: number;
+  tareas_totales: number;
 }
 
 export interface CategoriaVencimientosPublica {
-  categoria: string;
   nombre: string;
+  al_dia: number;
   total: number;
-  vigentes: number;
-  proximos: number;
-  vencidos: number;
+  porcentaje_al_dia: number;
 }
 
 export interface VencimientosPublicos {
+  al_dia: number;
   total: number;
-  vigentes: number;
-  proximos: number;
-  vencidos: number;
+  porcentaje_al_dia: number;
   por_categoria: CategoriaVencimientosPublica[];
 }
 
