@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiBookOpen,
@@ -8,12 +8,15 @@ import {
   FiPlus,
   FiTrash2,
 } from "react-icons/fi";
-import { Badge, Button, HStack } from "@chakra-ui/react";
+import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import {
   AlertConfirm,
   AlertDelete,
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto,
   FormModal,
   LoadingState,
   RowActionButton,
@@ -23,19 +26,70 @@ import {
 } from "../components/ui";
 import { ListadoContainer, ListadoHeader } from "../components/layout";
 import { ITEMS_POR_PAGINA } from "../config";
+import type { Equipo } from "../features/equipos/types";
+import type { Insumo } from "../features/insumo/types";
 import { RecetaDetalle } from "../features/recetas/RecetaDetalle";
 import { RecetaForm } from "../features/recetas/RecetaForm";
 import { ESTADOS_RECETA } from "../features/recetas/constants";
 import { recetasApi } from "../features/recetas/hooks/recetaApi";
 import { useRecetaData } from "../features/recetas/hooks/useRecetaData";
-import type { Receta } from "../features/recetas/types";
+import type { FiltrosReceta, Receta } from "../features/recetas/types";
+
+interface FiltrosEstado {
+  busqueda: string;
+  insumo_id: string;
+  equipo_id: string;
+  estado: string;
+}
+
+const FILTROS_INICIALES: FiltrosEstado = {
+  busqueda: "",
+  insumo_id: "",
+  equipo_id: "",
+  estado: "",
+};
 
 export default function RecetasPage() {
   const navigate = useNavigate();
 
-  const { loading, error, recetas, recargar } = useRecetaData();
+  const [borrador, setBorrador] = useState<FiltrosEstado>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] = useState<FiltrosEstado>(FILTROS_INICIALES);
+
+  const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+
+  useEffect(() => {
+    recetasApi.obtenerInsumos().then(setInsumos).catch(() => setInsumos([]));
+    recetasApi.obtenerEquipos().then(setEquipos).catch(() => setEquipos([]));
+  }, []);
+
+  const filtrosParaApi: FiltrosReceta = useMemo(
+    () => ({
+      busqueda: aplicados.busqueda || undefined,
+      insumo_id: aplicados.insumo_id ? Number(aplicados.insumo_id) : undefined,
+      equipo_id: aplicados.equipo_id ? Number(aplicados.equipo_id) : undefined,
+      estado: aplicados.estado || undefined,
+    }),
+    [aplicados],
+  );
+
+  const { loading, error, recetas, recargar } = useRecetaData(filtrosParaApi);
   const [crearAbierto, setCrearAbierto] = useState(false);
   const [page, setPage] = useState(1);
+
+  const hayFiltros = Object.values(borrador).some((valor) => valor !== "");
+  const hayAplicados = Object.values(aplicados).some((valor) => valor !== "");
+
+  const aplicar = () => {
+    setAplicados(borrador);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
+    setPage(1);
+  };
 
   const [recetaVer, setRecetaVer] = useState<Receta | null>(null);
 
@@ -148,17 +202,79 @@ export default function RecetasPage() {
 
   const columnas: ColumnDef<Receta>[] = [
     { key: "codigo_receta", label: "Código", render: (r) => r.codigo_receta },
-    { key: "nombre_receta", label: "Nombre", render: (r) => r.nombre_receta },
-    { key: "producto_id", label: "Producto ID", render: (r) => r.producto_id },
+    {
+      key: "nombre_receta",
+      label: "Nombre",
+      render: (r) => {
+        const coincidenciaInsumo = (() => {
+          if (!aplicados.insumo_id) return null;
+          const insumoObj = insumos.find(
+            (i) => String(i.id) === String(aplicados.insumo_id),
+          );
+          const pasosCoincidentes = (r.pasos || [])
+            .filter((p) =>
+              p.insumos?.some(
+                (i) => String(i.insumo_id) === String(aplicados.insumo_id),
+              ),
+            )
+            .map((p) => `Paso ${p.numero_orden}`);
+
+          if (pasosCoincidentes.length === 0) return null;
+          return `Coincidencia: Insumo "${insumoObj?.nombre || "seleccionado"}" en ${pasosCoincidentes.join(", ")}`;
+        })();
+
+        const coincidenciaEquipo = (() => {
+          if (!aplicados.equipo_id) return null;
+          const equipoObj = equipos.find(
+            (e) => String(e.id) === String(aplicados.equipo_id),
+          );
+          const pasosCoincidentes = (r.pasos || [])
+            .filter((p) =>
+              p.equipos?.some(
+                (e) => String(e.equipo_id) === String(aplicados.equipo_id),
+              ),
+            )
+            .map((p) => `Paso ${p.numero_orden}`);
+
+          if (pasosCoincidentes.length === 0) return null;
+          return `Coincidencia: Equipo "${equipoObj?.nombre || "seleccionado"}" en ${pasosCoincidentes.join(", ")}`;
+        })();
+
+        return (
+          <VStack align="start" gap={0.5}>
+            <Text>{r.nombre_receta}</Text>
+            {coincidenciaInsumo && (
+              <Text fontSize="xs" color="blue.600" fontWeight="medium">
+                {coincidenciaInsumo}
+              </Text>
+            )}
+            {coincidenciaEquipo && (
+              <Text fontSize="xs" color="purple.600" fontWeight="medium">
+                {coincidenciaEquipo}
+              </Text>
+            )}
+          </VStack>
+        );
+      },
+    },
+    {
+      key: "producto",
+      label: "Producto",
+      render: (r) => r.producto?.nombre || r.producto_id,
+    },
     {
       key: "rendimiento_estandar",
       label: "Rendimiento",
-      render: (r) => r.rendimiento_estandar,
+      render: (r) => {
+        const unidad = r.producto?.unidad_medida?.simbolo;
+        return unidad ? `${r.rendimiento_estandar} ${unidad}` : r.rendimiento_estandar;
+      },
     },
     {
-      key: "fecha_creacion",
-      label: "Fecha",
-      render: (r) => r.fecha_creacion?.split("T")[0],
+      key: "tiempo_estimado_total",
+      label: "Tiempo estimado",
+      render: (r) =>
+        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—",
     },
     {
       key: "estado",
@@ -243,6 +359,56 @@ export default function RecetasPage() {
         </HStack>
       </ListadoHeader>
 
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel="Buscar por código, receta o producto"
+            placeholder="Código, nombre o producto..."
+            value={borrador.busqueda}
+            onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel="Insumo utilizado"
+            placeholder="Todos los insumos"
+            options={insumos.map((ins) => ({
+              label: ins.nombre,
+              value: String(ins.id),
+            }))}
+            value={borrador.insumo_id}
+            onChange={(valor) => setBorrador({ ...borrador, insumo_id: valor })}
+          />
+          <FiltroSelect
+            ariaLabel="Equipo utilizado"
+            placeholder="Todos los equipos"
+            options={equipos.map((eq) => ({
+              label: eq.nombre,
+              value: String(eq.id),
+            }))}
+            value={borrador.equipo_id}
+            onChange={(valor) => setBorrador({ ...borrador, equipo_id: valor })}
+          />
+          <FiltroSelect
+            ariaLabel="Estado de la receta"
+            placeholder="Todos los estados"
+            options={[
+              { label: "Borrador", value: "BORRADOR" },
+              { label: "Activa", value: "ACTIVA" },
+              { label: "Inhabilitada", value: "INHABILITADA" },
+            ]}
+            value={borrador.estado}
+            onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
+          />
+        </FiltrosBar>
+      </Box>
+
       {error && <AlertMessage type="error" message={error} />}
       {errorRetomar && <AlertMessage type="error" message={errorRetomar} />}
       {retomando && (
@@ -254,7 +420,11 @@ export default function RecetasPage() {
       {!loading && recetas.length === 0 && (
         <AlertMessage
           type="info"
-          message="Todavía no hay recetas cargadas. Para empezar, creá una nueva receta."
+          message={
+            hayAplicados
+              ? "No se encontraron recetas con los filtros aplicados."
+              : "Todavía no hay recetas cargadas. Para empezar, creá una nueva receta."
+          }
         />
       )}
 

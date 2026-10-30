@@ -2,7 +2,9 @@ import { BASE_URL, JSON_HEADERS } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
 import type { Equipo } from "../../equipos/types";
 import type { Insumo } from "../../insumo/types";
+import type { Producto } from "../../productos/types";
 import type {
+  FiltrosReceta,
   PasoReceta,
   PasoRecetaCreatePayload,
   PasoRecetaUpdatePayload,
@@ -75,7 +77,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const recetasApi = {
-  listarRecetas: () => request<Receta[]>("/recetas/"),
+  listarRecetas: (filtros?: FiltrosReceta) => {
+    const params = new URLSearchParams();
+    if (filtros?.busqueda?.trim()) params.append("busqueda", filtros.busqueda.trim());
+    if (filtros?.estado) params.append("estado", String(filtros.estado));
+    if (filtros?.insumo_id) params.append("insumo_id", String(filtros.insumo_id));
+    if (filtros?.equipo_id) params.append("equipo_id", String(filtros.equipo_id));
+    if (filtros?.producto_id) params.append("producto_id", String(filtros.producto_id));
+    const qs = params.toString();
+    return request<Receta[]>(`/recetas/${qs ? `?${qs}` : ""}`);
+  },
   obtenerRecetasActivas: () => request<Receta[]>("/recetas/activas"),
   obtenerBorrador: () => request<Receta>("/recetas/borrador"),
   obtenerReceta: (id: number) => request<Receta>(`/recetas/${id}`),
@@ -121,6 +132,7 @@ export const recetasApi = {
 
   obtenerInsumos: () => request<Insumo[]>("/insumos/"),
   obtenerEquipos: () => request<Equipo[]>("/equipos/"),
+  obtenerProductosActivos: () => request<Producto[]>("/productos/?estado=true"),
 };
 
 export const obtenerBorradorRecetaOpcional = async (): Promise<Receta | null> => {
