@@ -6,7 +6,7 @@ personal. El contrato publico solo expone indicadores agregados y positivos.
 """
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -14,10 +14,12 @@ from src.checklists.constants import EstadoEjecucion
 from src.checklists.models import EjecucionTarea
 from src.documentos_personal.models import DocumentoPersonal
 from src.equipos.models import Equipo
+from src.incidentes.models import Incidente
 from src.main import app
 from src.personal.models import Persona, VencimientoPersonal
 from src.plan_poes.models import PlanPOES, TareaPOES
 from src.sectores.models import Sector
+from src.tipo_incidente.models import TipoIncidente
 from tests.database import session  # noqa: F401
 
 client = TestClient(app)
@@ -147,7 +149,7 @@ class TestVistaPublicaPublica:
         data = client.get(f"/publico/{token}/indicadores").json()
 
         assert data["activo"] is False
-        assert data["indicadores"] is None
+        assert data.get("indicadores") is None
 
     def test_desactivar_corta_el_acceso_inmediatamente(self):
         token = client.get("/vista-publica/").json()["token"]
@@ -160,8 +162,8 @@ class TestVistaPublicaPublica:
         data = res.json()
 
         assert data["activo"] is False
-        assert data["indicadores"] is None
-        assert data["mensaje"] == "La vista pública está desactivada."
+        assert data.get("indicadores") is None
+        assert data.get("mensaje") == "La vista pública está desactivada."
 
         # Reactivar reutiliza el mismo token y vuelve a habilitar los indicadores.
         assert _activar(True)["token"] == token
@@ -176,7 +178,7 @@ class TestVistaPublicaPublica:
         data = res.json()
 
         assert data["activo"] is True
-        assert data["mensaje"] is None
+        assert data.get("mensaje") is None
         assert data["indicadores"] is not None
         assert res.headers["cache-control"] == "no-store"
         assert res.headers["referrer-policy"] == "no-referrer"
@@ -364,3 +366,219 @@ class TestVistaPublicaPublica:
         assert "Apellido Secreto" not in payload
         assert "39000002" not in payload
         assert "990002" not in payload
+
+
+CLAVES_CATALOGO = {
+    "cumplimiento_tareas",
+    "vencimientos_resumen",
+    "vencimientos_equipos",
+    "vencimientos_documentos",
+    "vencimientos_elementos_limpieza",
+    "vencimientos_personal",
+    "incidentes",
+}
+
+
+def _crear_datos_incidentes(db) -> None:
+    """Crea 3 incidentes en la ventana: 2 abiertos y 1 cerrado."""
+    reportante = Persona(
+        nombre="Reportante",
+        apellido="Secreto",
+        dni="39000003",
+        legajo=990003,
+        activo=True,
+    )
+    tipo = TipoIncidente(
+        nombre="Tipo Secreto",
+        descripcion="Descripción interna del tipo",
+        activo=True,
+    )
+    db.add_all([reportante, tipo])
+    db.flush()
+
+    for indice, abierto in enumerate((True, True, False)):
+        db.add(
+            Incidente(
+                titulo=f"Incidente Secreto {indice}",
+                descripcion="Descripción interna del incidente",
+                fecha_hora_reporte=datetime.now() - timedelta(days=2),
+                reportante_id=reportante.id,
+                tipo_id=tipo.id,
+                abierto=abierto,
+            )
+        )
+    db.commit()
+
+
+def _guardar_indicadores(activos: list[str]) -> dict:
+    res = client.put("/vista-publica/indicadores", json={"activos": activos})
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+class TestIndicadoresConfigurables:
+    def test_get_admin_devuelve_catalogo_con_defaults(self):
+        data = client.get("/vista-publica/").json()
+        assert {indicador["clave"] for indicador in data["indicadores"]} == (
+            CLAVES_CATALOGO
+        )
+
+        por_clave = {
+            indicador["clave"]: indicador for indicador in data["indicadores"]
+        }
+        incidentes = por_clave["incidentes"]
+        assert incidentes["activo"] is False
+        assert incidentes["por_defecto"] is False
+        assert incidentes["sensible"] is True
+
+        for clave in CLAVES_CATALOGO - {"incidentes"}:
+            indicador = por_clave[clave]
+            assert indicador["activo"] is True
+            assert indicador["por_defecto"] is True
+            assert indicador["sensible"] is False
+
+        for indicador in data["indicadores"]:
+            assert set(indicador) == {
+                "clave",
+                "nombre",
+                "descripcion",
+                "por_defecto",
+                "sensible",
+                "activo",
+            }
+
+    def test_put_guarda_y_se_refleja_en_el_get(self):
+        activos = [
+            "cumplimiento_tareas",
+            "vencimientos_equipos",
+            "incidentes",
+        ]
+        data = _guardar_indicadores(activos)
+        estados = {
+            indicador["clave"]: indicador["activo"]
+            for indicador in data["indicadores"]
+        }
+
+        assert {clave for clave, activo in estados.items() if activo} == set(
+            activos
+        )
+        assert {
+            indicador["clave"]: indicador["activo"]
+            for indicador in client.get("/vista-publica/").json()["indicadores"]
+        } == estados
+
+    def test_put_rechaza_clave_desconocida(self):
+        res = client.put(
+            "/vista-publica/indicadores",
+            json={"activos": ["cumplimiento_tareas", "no_existe"]},
+        )
+        assert res.status_code == 400
+        assert res.json()["detail"] == (
+            "Uno o más indicadores no existen en el catálogo de la vista pública."
+        )
+
+    def test_por_defecto_no_expone_incidentes(self, session):
+        _crear_datos_incidentes(session)
+        token = client.get("/vista-publica/").json()["token"]
+        _activar(True)
+
+        data = client.get(f"/publico/{token}/indicadores").json()
+        assert "incidentes" not in data["indicadores"]
+        assert "Incidente Secreto" not in json.dumps(data, ensure_ascii=False)
+
+    def test_incidentes_solo_expone_totales_globales(self, session):
+        _crear_datos_incidentes(session)
+        token = client.get("/vista-publica/").json()["token"]
+        _activar(True)
+        _guardar_indicadores(["incidentes"])
+
+        data = client.get(f"/publico/{token}/indicadores").json()
+        indicadores = data["indicadores"]
+
+        assert set(indicadores) == {"periodo", "incidentes"}
+        assert indicadores["incidentes"] == {
+            "total": 3,
+            "abiertos": 2,
+            "cerrados": 1,
+            "porcentaje_cerrados": 33.3,
+        }
+
+        payload = json.dumps(data, ensure_ascii=False).lower()
+        for prohibido in (
+            "titulo",
+            "reportante",
+            "secreto",
+            "dni",
+            "legajo",
+            "accion_correctiva",
+            "tipo secreto",
+            "fecha_hora_reporte",
+            "descripcion",
+        ):
+            assert prohibido not in payload
+
+    def test_apagar_una_categoria_la_quita_de_la_respuesta(self):
+        token = client.get("/vista-publica/").json()["token"]
+        _activar(True)
+        _guardar_indicadores(["vencimientos_personal"])
+
+        indicadores = client.get(f"/publico/{token}/indicadores").json()[
+            "indicadores"
+        ]
+
+        assert set(indicadores) == {"periodo", "vencimientos"}
+        assert set(indicadores["vencimientos"]) == {"por_categoria"}
+        assert [
+            categoria["nombre"]
+            for categoria in indicadores["vencimientos"]["por_categoria"]
+        ] == ["Personal"]
+
+    def test_resumen_y_categorias_se_configuran_independientemente(self):
+        token = client.get("/vista-publica/").json()["token"]
+        _activar(True)
+
+        _guardar_indicadores(["vencimientos_equipos"])
+        vencimientos = client.get(f"/publico/{token}/indicadores").json()[
+            "indicadores"
+        ]["vencimientos"]
+        assert set(vencimientos) == {"por_categoria"}
+        assert vencimientos["por_categoria"][0]["nombre"] == "Equipos"
+
+        _guardar_indicadores(["vencimientos_resumen"])
+        vencimientos = client.get(f"/publico/{token}/indicadores").json()[
+            "indicadores"
+        ]["vencimientos"]
+        assert set(vencimientos) == {
+            "al_dia",
+            "total",
+            "porcentaje_al_dia",
+        }
+
+    def test_todos_apagados_devuelve_solo_periodo(self):
+        token = client.get("/vista-publica/").json()["token"]
+        _activar(True)
+        _guardar_indicadores([])
+
+        data = client.get(f"/publico/{token}/indicadores").json()
+
+        assert data["activo"] is True
+        assert set(data["indicadores"]) == {"periodo"}
+
+    def test_los_cambios_se_reflejan_sin_cache(self):
+        token = client.get("/vista-publica/").json()["token"]
+        _activar(True)
+
+        assert "incidentes" not in client.get(
+            f"/publico/{token}/indicadores"
+        ).json()["indicadores"]
+
+        _guardar_indicadores(["incidentes"])
+
+        res = client.get(f"/publico/{token}/indicadores")
+        assert "incidentes" in res.json()["indicadores"]
+        assert res.headers["cache-control"] == "no-store"
+
+        _guardar_indicadores([])
+        assert "incidentes" not in client.get(
+            f"/publico/{token}/indicadores"
+        ).json()["indicadores"]

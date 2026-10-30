@@ -124,3 +124,36 @@ def test_operador_solo_checklists(credenciales):
         ).status_code
         == 403
     )
+
+
+def test_operador_no_puede_modificar_indicadores(credenciales):
+    token = _login(credenciales["operador_dni"], credenciales["operador_password"])
+    headers = _headers(token)
+
+    res = client.put(
+        "/vista-publica/indicadores",
+        headers=headers,
+        json={"activos": ["incidentes"]},
+    )
+
+    assert res.status_code == 403
+    assert res.json()["detail"] == "Permiso denegado"
+
+
+def test_admin_puede_modificar_indicadores(credenciales):
+    token = _login(credenciales["admin_dni"], credenciales["admin_password"])
+    headers = _headers(token)
+
+    res = client.put(
+        "/vista-publica/indicadores",
+        headers=headers,
+        json={"activos": ["cumplimiento_tareas"]},
+    )
+
+    assert res.status_code == 200, res.text
+    estados = {
+        indicador["clave"]: indicador["activo"]
+        for indicador in res.json()["indicadores"]
+    }
+    assert estados["cumplimiento_tareas"] is True
+    assert estados["incidentes"] is False
