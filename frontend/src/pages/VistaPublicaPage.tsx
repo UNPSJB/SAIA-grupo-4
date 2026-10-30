@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -14,6 +14,7 @@ import { AlertConfirm, AlertMessage, LoadingState } from "../components/ui";
 import { PUBLIC_APP_URL } from "../config";
 import { EnlacePublicoCard } from "../features/vistaPublica/EnlacePublicoCard";
 import { EstadoVistaPublicaCard } from "../features/vistaPublica/EstadoVistaPublicaCard";
+import { IndicadoresVistaPublicaCard } from "../features/vistaPublica/IndicadoresVistaPublicaCard";
 import { useVistaPublicaConfig } from "../features/vistaPublica/hooks/useVistaPublicaConfig";
 
 function construirUrlPublica(token: string): string {
@@ -21,9 +22,33 @@ function construirUrlPublica(token: string): string {
 }
 
 export default function VistaPublicaPage() {
-  const { estado, loading, guardando, error, mensaje, cargar, actualizar } =
-    useVistaPublicaConfig();
+  const {
+    estado,
+    loading,
+    guardando,
+    guardandoIndicadores,
+    error,
+    mensaje,
+    cargar,
+    actualizar,
+    guardarIndicadores,
+  } = useVistaPublicaConfig();
   const [confirmarDesactivar, setConfirmarDesactivar] = useState(false);
+  const [seleccion, setSeleccion] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!estado) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSeleccion(
+      Object.fromEntries(
+        estado.indicadores.map((indicador) => [
+          indicador.clave,
+          indicador.activo,
+        ]),
+      ),
+    );
+  }, [estado]);
 
   const handleToggle = (nuevoEstado: boolean) => {
     if (!nuevoEstado) {
@@ -37,6 +62,20 @@ export default function VistaPublicaPage() {
   const confirmarDesactivacion = () => {
     setConfirmarDesactivar(false);
     void actualizar(false);
+  };
+
+  const toggleIndicador = (clave: string, activo: boolean) => {
+    setSeleccion((anterior) => ({ ...anterior, [clave]: activo }));
+  };
+
+  const guardarSeleccion = () => {
+    if (!estado) return;
+
+    const activos = estado.indicadores
+      .filter((indicador) => seleccion[indicador.clave] ?? indicador.activo)
+      .map((indicador) => indicador.clave);
+
+    void guardarIndicadores(activos);
   };
 
   if (loading && !estado) {
@@ -81,8 +120,8 @@ export default function VistaPublicaPage() {
               </Text>
             </HStack>
             <Text fontSize='sm' color='gray.500'>
-              Compartí indicadores agregados de cumplimiento y vencimientos sin
-              exponer datos internos.
+              Compartí indicadores agregados de cumplimiento, vencimientos e
+              incidentes sin exponer datos internos.
             </Text>
           </Box>
 
@@ -97,6 +136,14 @@ export default function VistaPublicaPage() {
 
           <EnlacePublicoCard url={url} activo={estado.activo} />
 
+          <IndicadoresVistaPublicaCard
+            indicadores={estado.indicadores}
+            seleccion={seleccion}
+            guardando={guardandoIndicadores}
+            onToggle={toggleIndicador}
+            onGuardar={guardarSeleccion}
+          />
+
           <Card.Root
             shadow='md'
             borderLeft='4px solid'
@@ -110,8 +157,10 @@ export default function VistaPublicaPage() {
                     Privacidad de la vista pública
                   </Text>
                   <Text fontSize='sm' color='gray.600' mt={1}>
-                    Solo se publican métricas agregadas de tareas y
-                    vencimientos. No se exponen incidentes, no conformidades,
+                    Solo se publican métricas agregadas de tareas,
+                    vencimientos e incidentes habilitados. Los indicadores de
+                    incidentes están apagados por defecto y, si se activan,
+                    solo exponen totales globales. No se exponen
                     identificadores internos, detalles ni enlaces a otras
                     secciones del sistema.
                   </Text>

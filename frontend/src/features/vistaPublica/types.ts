@@ -4,10 +4,23 @@
 // expone metricas agregadas y positivas. No reutiliza `DashboardResponse` para
 // evitar que datos internos (incidentes, links, detalles) se filtren al
 // frontend publico.
+//
+// Los indicadores apagados por el administrador no llegan en la respuesta, por
+// eso las secciones de `IndicadoresPublicos` son opcionales.
+
+export interface IndicadorCatalogo {
+  clave: string;
+  nombre: string;
+  descripcion: string;
+  por_defecto: boolean;
+  sensible: boolean;
+  activo: boolean;
+}
 
 export interface EstadoVistaPublica {
   activo: boolean;
   token: string;
+  indicadores: IndicadorCatalogo[];
 }
 
 export interface PeriodoPublico {
@@ -29,20 +42,29 @@ export interface CategoriaVencimientosPublica {
 }
 
 export interface VencimientosPublicos {
-  al_dia: number;
+  // El resumen general puede apagarse sin apagar las tarjetas por categoría.
+  al_dia?: number | null;
+  total?: number | null;
+  porcentaje_al_dia?: number | null;
+  por_categoria?: CategoriaVencimientosPublica[] | null;
+}
+
+export interface IncidentesPublicos {
   total: number;
-  porcentaje_al_dia: number;
-  por_categoria: CategoriaVencimientosPublica[];
+  abiertos: number;
+  cerrados: number;
+  porcentaje_cerrados: number;
 }
 
 export interface IndicadoresPublicos {
   periodo: PeriodoPublico;
-  metricas: MetricasPublicas;
-  vencimientos: VencimientosPublicos;
+  metricas?: MetricasPublicas | null;
+  vencimientos?: VencimientosPublicos | null;
+  incidentes?: IncidentesPublicos | null;
 }
 
 export interface RespuestaIndicadoresPublicos {
   activo: boolean;
-  mensaje: string | null;
-  indicadores: IndicadoresPublicos | null;
+  mensaje?: string | null;
+  indicadores?: IndicadoresPublicos | null;
 }

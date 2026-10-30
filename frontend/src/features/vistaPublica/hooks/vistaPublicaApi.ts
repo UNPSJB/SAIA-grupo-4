@@ -3,6 +3,7 @@ import { apiFetch } from "../../auth/apiFetch";
 import type { EstadoVistaPublica } from "../types";
 
 const ENDPOINT = `${BASE_URL}/vista-publica/`;
+const ENDPOINT_INDICADORES = `${BASE_URL}/vista-publica/indicadores`;
 
 async function leerError(response: Response): Promise<string> {
   try {
@@ -40,6 +41,25 @@ export async function actualizarEstadoVistaPublica(
       Accept: "application/json",
     },
     body: JSON.stringify({ activo }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await leerError(response));
+  }
+
+  return response.json();
+}
+
+export async function actualizarIndicadoresVistaPublica(
+  activos: string[],
+): Promise<EstadoVistaPublica> {
+  const response = await apiFetch(ENDPOINT_INDICADORES, {
+    method: "PUT",
+    headers: {
+      ...JSON_HEADERS,
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ activos }),
   });
 
   if (!response.ok) {

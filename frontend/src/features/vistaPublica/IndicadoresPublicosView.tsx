@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import {
   FiActivity,
+  FiAlertCircle,
   FiCheckCircle,
   FiFileText,
   FiPackage,
@@ -21,7 +22,10 @@ import {
 } from "react-icons/fi";
 import type {
   CategoriaVencimientosPublica,
+  IncidentesPublicos,
   IndicadoresPublicos,
+  MetricasPublicas,
+  VencimientosPublicos,
 } from "./types";
 
 const TITULOS_CATEGORIA: Record<string, string> = {
@@ -147,153 +151,270 @@ function IndicadorAlDiaCard({
   );
 }
 
-export function IndicadoresPublicosView({
-  indicadores,
-}: {
-  indicadores: IndicadoresPublicos;
-}) {
-  const { metricas, vencimientos } = indicadores;
+function CumplimientoCard({ metricas }: { metricas: MetricasPublicas }) {
   const sinTareas = metricas.tareas_totales === 0;
-  const sinVencimientos = vencimientos.total === 0;
   const cumplimientoOptimo = metricas.porcentaje_cumplimiento >= 80;
   const detalleCumplimiento = sinTareas
     ? "Sin tareas cerradas en el período"
     : `${metricas.tareas_completadas} de ${metricas.tareas_totales} tareas cerradas`;
 
   return (
-    <VStack align='stretch' gap={6}>
-      <Card.Root shadow='sm' borderWidth='1px' borderColor='gray.200'>
-        <Card.Body>
-          <Flex
-            direction={{ base: "column", md: "row" }}
-            justify='space-between'
-            align={{ base: "stretch", md: "center" }}
-            gap={5}
-          >
-            <HStack gap={3} align='flex-start'>
-              <Box
-                p={3}
-                borderRadius='lg'
-                bg='green.50'
-                color='green.600'
-                flexShrink={0}
-              >
-                <FiTrendingUp size={24} />
-              </Box>
-              <VStack align='start' gap={1}>
-                <Text
-                  fontSize='xs'
-                  fontWeight='semibold'
-                  color='gray.500'
-                  textTransform='uppercase'
-                >
-                  Cumplimiento de checklists
-                </Text>
-                <HStack gap={2} wrap='wrap'>
-                  <Text
-                    fontSize='3xl'
-                    fontWeight='extrabold'
-                    color='gray.800'
-                    lineHeight='1'
-                  >
-                    {sinTareas ? "—" : `${metricas.porcentaje_cumplimiento}%`}
-                  </Text>
-                  <Badge
-                    colorPalette={cumplimientoOptimo ? "green" : "gray"}
-                    variant='subtle'
-                    fontSize='xs'
-                  >
-                    {sinTareas
-                      ? "Sin datos"
-                      : cumplimientoOptimo
-                        ? "Óptimo"
-                        : "En seguimiento"}
-                  </Badge>
-                </HStack>
-                <Text fontSize='sm' color='gray.600'>
-                  {detalleCumplimiento}
-                </Text>
-              </VStack>
-            </HStack>
-
-            <SimpleGrid
-              columns={2}
-              gap={3}
-              minW={{ base: "100%", md: "260px" }}
-            >
-              <MiniStat
-                label='Realizadas'
-                valor={metricas.tareas_completadas}
-              />
-              <MiniStat label='Cerradas' valor={metricas.tareas_totales} />
-            </SimpleGrid>
-          </Flex>
-
-          <Box mt={4}>
-            <BarraProgreso
-              porcentaje={metricas.porcentaje_cumplimiento}
-              sinDatos={sinTareas}
-            />
-          </Box>
-        </Card.Body>
-      </Card.Root>
-
-      <Box>
-        <HStack gap={2} mb={3}>
-          <Icon as={FiCheckCircle} color='green.600' boxSize={5} />
-          <Text as='h2' fontSize='lg' fontWeight='semibold' color='gray.800'>
-            Vencimientos al día
-          </Text>
-        </HStack>
-
-        <Card.Root
-          shadow='sm'
-          borderWidth='1px'
-          borderColor='gray.200'
-          mb={4}
+    <Card.Root shadow='sm' borderWidth='1px' borderColor='gray.200'>
+      <Card.Body>
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify='space-between'
+          align={{ base: "stretch", md: "center" }}
+          gap={5}
         >
-          <Card.Body>
-            <Flex justify='space-between' align='center' gap={4} wrap='wrap'>
-              <VStack align='start' gap={1}>
-                <Text fontSize='sm' fontWeight='medium' color='gray.600'>
-                  Resumen general
-                </Text>
-                <HStack gap={2} wrap='wrap'>
-                  <Text
-                    fontSize='2xl'
-                    fontWeight='extrabold'
-                    color={sinVencimientos ? "gray.400" : "green.700"}
-                  >
-                    {sinVencimientos ? "—" : `${vencimientos.porcentaje_al_dia}%`}
-                  </Text>
-                  <Text fontSize='sm' color='gray.500'>
-                    {sinVencimientos
-                      ? "Sin registros"
-                      : `${vencimientos.al_dia} de ${vencimientos.total} al día`}
-                  </Text>
-                </HStack>
-              </VStack>
-              <Icon as={FiCheckCircle} color='green.500' boxSize={8} />
-            </Flex>
-
-            <Box mt={3}>
-              <BarraProgreso
-                porcentaje={vencimientos.porcentaje_al_dia}
-                sinDatos={sinVencimientos}
-              />
+          <HStack gap={3} align='flex-start'>
+            <Box
+              p={3}
+              borderRadius='lg'
+              bg='green.50'
+              color='green.600'
+              flexShrink={0}
+            >
+              <FiTrendingUp size={24} />
             </Box>
-          </Card.Body>
-        </Card.Root>
+            <VStack align='start' gap={1}>
+              <Text
+                fontSize='xs'
+                fontWeight='semibold'
+                color='gray.500'
+                textTransform='uppercase'
+              >
+                Cumplimiento de checklists
+              </Text>
+              <HStack gap={2} wrap='wrap'>
+                <Text
+                  fontSize='3xl'
+                  fontWeight='extrabold'
+                  color='gray.800'
+                  lineHeight='1'
+                >
+                  {sinTareas ? "—" : `${metricas.porcentaje_cumplimiento}%`}
+                </Text>
+                <Badge
+                  colorPalette={cumplimientoOptimo ? "green" : "gray"}
+                  variant='subtle'
+                  fontSize='xs'
+                >
+                  {sinTareas
+                    ? "Sin datos"
+                    : cumplimientoOptimo
+                      ? "Óptimo"
+                      : "En seguimiento"}
+                </Badge>
+              </HStack>
+              <Text fontSize='sm' color='gray.600'>
+                {detalleCumplimiento}
+              </Text>
+            </VStack>
+          </HStack>
 
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-          {vencimientos.por_categoria.map((categoria) => (
-            <IndicadorAlDiaCard
-              key={categoria.nombre}
-              categoria={categoria}
+          <SimpleGrid
+            columns={2}
+            gap={3}
+            minW={{ base: "100%", md: "260px" }}
+          >
+            <MiniStat
+              label='Realizadas'
+              valor={metricas.tareas_completadas}
             />
-          ))}
-        </SimpleGrid>
-      </Box>
+            <MiniStat label='Cerradas' valor={metricas.tareas_totales} />
+          </SimpleGrid>
+        </Flex>
+
+        <Box mt={4}>
+          <BarraProgreso
+            porcentaje={metricas.porcentaje_cumplimiento}
+            sinDatos={sinTareas}
+          />
+        </Box>
+      </Card.Body>
+    </Card.Root>
+  );
+}
+
+function ResumenVencimientosCard({
+  vencimientos,
+}: {
+  vencimientos: VencimientosPublicos;
+}) {
+  const alDia = vencimientos.al_dia ?? 0;
+  const total = vencimientos.total ?? 0;
+  const porcentaje = vencimientos.porcentaje_al_dia ?? 0;
+  const sinVencimientos = total === 0;
+
+  return (
+    <Card.Root
+      shadow='sm'
+      borderWidth='1px'
+      borderColor='gray.200'
+      mb={4}
+    >
+      <Card.Body>
+        <Flex justify='space-between' align='center' gap={4} wrap='wrap'>
+          <VStack align='start' gap={1}>
+            <Text fontSize='sm' fontWeight='medium' color='gray.600'>
+              Resumen general
+            </Text>
+            <HStack gap={2} wrap='wrap'>
+              <Text
+                fontSize='2xl'
+                fontWeight='extrabold'
+                color={sinVencimientos ? "gray.400" : "green.700"}
+              >
+                {sinVencimientos ? "—" : `${porcentaje}%`}
+              </Text>
+              <Text fontSize='sm' color='gray.500'>
+                {sinVencimientos
+                  ? "Sin registros"
+                  : `${alDia} de ${total} al día`}
+              </Text>
+            </HStack>
+          </VStack>
+          <Icon as={FiCheckCircle} color='green.500' boxSize={8} />
+        </Flex>
+
+        <Box mt={3}>
+          <BarraProgreso
+            porcentaje={porcentaje}
+            sinDatos={sinVencimientos}
+          />
+        </Box>
+      </Card.Body>
+    </Card.Root>
+  );
+}
+
+function IncidentesCard({
+  incidentes,
+}: {
+  incidentes: IncidentesPublicos;
+}) {
+  const sinDatos = incidentes.total === 0;
+  const cerradosOptimo = incidentes.porcentaje_cerrados >= 80;
+
+  return (
+    <Card.Root shadow='sm' borderWidth='1px' borderColor='gray.200'>
+      <Card.Body>
+        <Flex
+          direction={{ base: "column", md: "row" }}
+          justify='space-between'
+          align={{ base: "stretch", md: "center" }}
+          gap={5}
+        >
+          <HStack gap={3} align='flex-start'>
+            <Box
+              p={3}
+              borderRadius='lg'
+              bg='orange.50'
+              color='orange.600'
+              flexShrink={0}
+            >
+              <FiAlertCircle size={24} />
+            </Box>
+            <VStack align='start' gap={1}>
+              <Text
+                fontSize='xs'
+                fontWeight='semibold'
+                color='gray.500'
+                textTransform='uppercase'
+              >
+                Incidentes
+              </Text>
+              <HStack gap={2} wrap='wrap'>
+                <Text
+                  fontSize='3xl'
+                  fontWeight='extrabold'
+                  color='gray.800'
+                  lineHeight='1'
+                >
+                  {sinDatos ? "—" : `${incidentes.porcentaje_cerrados}%`}
+                </Text>
+                <Badge
+                  colorPalette={cerradosOptimo ? "green" : "gray"}
+                  variant='subtle'
+                  fontSize='xs'
+                >
+                  {sinDatos
+                    ? "Sin datos"
+                    : cerradosOptimo
+                      ? "Cerrados"
+                      : "En seguimiento"}
+                </Badge>
+              </HStack>
+              <Text fontSize='sm' color='gray.600'>
+                {sinDatos
+                  ? "Sin incidentes en el período"
+                  : `${incidentes.cerrados} de ${incidentes.total} incidentes cerrados`}
+              </Text>
+            </VStack>
+          </HStack>
+
+          <SimpleGrid
+            columns={2}
+            gap={3}
+            minW={{ base: "100%", md: "260px" }}
+          >
+            <MiniStat label='Abiertos' valor={incidentes.abiertos} />
+            <MiniStat label='Cerrados' valor={incidentes.cerrados} />
+          </SimpleGrid>
+        </Flex>
+
+        <Box mt={4}>
+          <BarraProgreso
+            porcentaje={incidentes.porcentaje_cerrados}
+            sinDatos={sinDatos}
+          />
+        </Box>
+      </Card.Body>
+    </Card.Root>
+  );
+}
+
+export function IndicadoresPublicosView({
+  indicadores,
+}: {
+  indicadores: IndicadoresPublicos;
+}) {
+  const { metricas, vencimientos, incidentes } = indicadores;
+  const categorias = vencimientos?.por_categoria ?? [];
+  const hayResumenVencimientos = vencimientos?.porcentaje_al_dia != null;
+
+  return (
+    <VStack align='stretch' gap={6}>
+      {metricas && <CumplimientoCard metricas={metricas} />}
+
+      {vencimientos && (hayResumenVencimientos || categorias.length > 0) && (
+        <Box>
+          <HStack gap={2} mb={3}>
+            <Icon as={FiCheckCircle} color='green.600' boxSize={5} />
+            <Text as='h2' fontSize='lg' fontWeight='semibold' color='gray.800'>
+              Vencimientos al día
+            </Text>
+          </HStack>
+
+          {hayResumenVencimientos && (
+            <ResumenVencimientosCard vencimientos={vencimientos} />
+          )}
+
+          {categorias.length > 0 && (
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+              {categorias.map((categoria) => (
+                <IndicadorAlDiaCard
+                  key={categoria.nombre}
+                  categoria={categoria}
+                />
+              ))}
+            </SimpleGrid>
+          )}
+        </Box>
+      )}
+
+      {incidentes && <IncidentesCard incidentes={incidentes} />}
     </VStack>
   );
 }

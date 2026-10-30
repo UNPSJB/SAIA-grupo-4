@@ -22,6 +22,7 @@ import { useParams } from "react-router-dom";
 import { AlertMessage, LoadingState } from "../components/ui";
 import { IndicadoresPublicosView } from "../features/vistaPublica/IndicadoresPublicosView";
 import { useIndicadoresPublicos } from "../features/vistaPublica/hooks/useIndicadoresPublicos";
+import type { IndicadoresPublicos } from "../features/vistaPublica/types";
 import { formatearFecha } from "../utils/fecha";
 
 function EstadoCard({
@@ -54,6 +55,20 @@ function EstadoCard({
         </VStack>
       </Card.Body>
     </Card.Root>
+  );
+}
+
+// La respuesta pública omite las secciones que el administrador apagó. Si solo
+// llega el período, no hay ningún indicador habilitado para mostrar.
+function tieneIndicadores(indicadores: IndicadoresPublicos): boolean {
+  const vencimientos = indicadores.vencimientos;
+  const hayVencimientos =
+    vencimientos != null &&
+    (vencimientos.porcentaje_al_dia != null ||
+      (vencimientos.por_categoria?.length ?? 0) > 0);
+
+  return Boolean(
+    indicadores.metricas || indicadores.incidentes || hayVencimientos,
   );
 }
 
@@ -146,7 +161,11 @@ export default function VistaPublicaPublicaPage() {
             />
           )}
 
-          {!enlaceInvalido && data && data.activo && data.indicadores && (
+          {!enlaceInvalido &&
+            data &&
+            data.activo &&
+            data.indicadores &&
+            tieneIndicadores(data.indicadores) && (
             <VStack align='stretch' gap={6}>
               <Box>
                 <Text
@@ -185,6 +204,19 @@ export default function VistaPublicaPublicaPage() {
                 </Button>
               </Flex>
             </VStack>
+          )}
+
+          {!enlaceInvalido &&
+            data &&
+            data.activo &&
+            data.indicadores &&
+            !tieneIndicadores(data.indicadores) && (
+            <EstadoCard
+              icon={FiAlertCircle}
+              iconColor='gray.500'
+              title='Sin indicadores habilitados'
+              message='El administrador no habilitó indicadores para esta vista pública.'
+            />
           )}
 
           {!enlaceInvalido && data && data.activo && !data.indicadores && (
