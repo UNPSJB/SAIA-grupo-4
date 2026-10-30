@@ -47,9 +47,20 @@ def actualizar_estado(
     return services.actualizar_estado(db, payload.activo)
 
 
+@router.put("/indicadores", response_model=schemas.VistaPublicaEstado)
+def actualizar_indicadores(
+    payload: schemas.IndicadoresUpdate,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    _sin_cache(response)
+    return services.actualizar_indicadores(db, payload.activos)
+
+
 @router_publico.get(
     "/{token}/indicadores",
     response_model=schemas.RespuestaIndicadoresPublicos,
+    response_model_exclude_none=True,
 )
 def obtener_indicadores_publicos(
     token: str,
