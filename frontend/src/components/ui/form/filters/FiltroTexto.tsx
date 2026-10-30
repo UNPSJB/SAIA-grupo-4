@@ -34,7 +34,7 @@ export const FiltroTexto = ({
     onKeyDown={onKeyDown}
     disabled={disabled}
     w='auto'
-    minW='12rem'
+    minW='16rem'
     bg='white'
   />
 );
