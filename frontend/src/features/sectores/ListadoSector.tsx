@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge } from "@chakra-ui/react";
+import { Badge, Box } from "@chakra-ui/react";
 import {
     FiMap,
     FiEdit2,
@@ -10,6 +11,8 @@ import {
 import {
     AlertMessage,
     DataTable,
+    FiltrosBar,
+    FiltroTexto,
     LoadingState,
     RowActionButton,
     RowActions,
@@ -17,6 +20,7 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { Sector } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
@@ -28,7 +32,15 @@ interface ListadoSectoresProps {
     onDarAlta?: (sector: Sector) => void;
 }
 
-const ENDPOINT = `${BASE_URL}/sectores/`;
+
+const construirEndpoint = (busqueda: string) => {
+    const params = new URLSearchParams();
+    if (busqueda) params.set("busqueda", busqueda);
+
+    const query = params.toString();
+    return `${BASE_URL}/sectores/${query ? `?${query}` : ""}`;
+};
+
 export const ListadoSectores = ({
     onCrear,
     onModificar,
@@ -36,9 +48,13 @@ export const ListadoSectores = ({
     onVer,
     onDarAlta,
 }: ListadoSectoresProps) => {
+    // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+    const [busqueda, setBusqueda] = useState("");
+    const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
     const { data, loading, error, page, setPage, itemsPaginados } =
         useListadoData<Sector>({
-            endpoint: ENDPOINT,
+            endpoint: construirEndpoint(busquedaAplicada),
             pageSize: ITEMS_POR_PAGINA,
             errorMessage: "No se pudo cargar la lista de sectores.",
         });
@@ -104,13 +120,36 @@ export const ListadoSectores = ({
                 buttonLabel="Nuevo sector"
                 onCrear={onCrear}
             />
+            <Box mb={4}>
+               <FiltrosBar
+                    ocultarAplicar
+                    onAplicar={() => {}}
+                    onLimpiar={() => setBusqueda("")}
+                    hayFiltrosActivos={busqueda !== ""}
+                    loading={loading}
+                >
+                <FiltroTexto
+                    ariaLabel="Buscar sector"
+                    placeholder="Nombre del sector"
+                    value={busqueda}
+                    onChange={setBusqueda}
+                />
+                </FiltrosBar>
+            </Box>
 
             {loading && <LoadingState message="Cargando sectores..." />}
 
             {!loading && error && <AlertMessage type="error" message={error} />}
 
             {!loading && !error && data.length === 0 && (
-                <AlertMessage type="info" message="Todavía no hay sectores cargados." />
+                <AlertMessage
+                    type="info"
+                    message={
+                        busquedaAplicada
+                            ? "No hay sectores que coincidan con la búsqueda."
+                            : "Todavía no hay sectores cargados."
+                    }
+                />
             )}
 
             {!loading && !error && data.length > 0 && (
