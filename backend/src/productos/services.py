@@ -7,6 +7,9 @@ from typing import List
 from src.productos.models import Producto
 from src.productos import schemas, exceptions
 
+from src.recetas.models import Receta
+from src.recetas.constants import EstadoReceta
+
 from src.unidad_medida.models import UnidadMedida
 from src.unidad_medida import exceptions as exc
 
@@ -155,6 +158,18 @@ def modificar_producto(db: Session, producto_id: int, producto: schemas.Producto
 
 def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto = leer_producto(db, producto_id)
+
+    # Validar que no tenga recetas activas asociada
+
+    receta_activa = db.scalar(
+        select(Receta).where(
+            Receta.producto_id == producto_id,
+            Receta.estado == EstadoReceta.ACTIVA,
+        )
+    )
+    if receta_activa:
+        raise exceptions.ProductoConRecetaActiva()
+
     db_producto.activo = False
     try:
         db.commit()

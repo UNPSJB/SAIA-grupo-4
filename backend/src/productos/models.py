@@ -16,7 +16,7 @@ class Producto(ModeloBase):
 
     # Relaciones
     unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="productos")
-    # aca irian las relaciones con las otras tablas
+    recetas: Mapped[list["Receta"]] = relationship("Receta", back_populates="producto")
     
     # Checks
     __table_args__ = (

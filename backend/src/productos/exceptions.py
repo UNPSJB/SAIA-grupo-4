@@ -19,5 +19,8 @@ class ProductoDuplicadoInactivo(Conflict):
         }
         super().__init__(headers={"X-Producto-Id": str(producto_id)})
 
+class ProductoConRecetaActiva(Conflict):
+    DETAIL = ErrorCode.PRODUCTO_CON_RECETA_ACTIVA
+
 class ProductoErrorIntegridad(Conflict):
     DETAIL = ErrorCode.PRODUCTO_ERROR_INTEGRIDAD

@@ -298,3 +298,48 @@ def test_modificar_producto_vaciando_datos():
         }
     )
     assert res.status_code == 422
+
+
+def test_eliminar_producto_con_receta_activa_falla():
+    unidad_id = crear_unidad_medida_auxiliar()
+    prod_id = crear_producto_auxiliar(unidad_id)
+
+    # Creamos receta para este producto y la activamos
+    res_receta = cli.post("/recetas/", json={
+        "nombre_receta": "Receta Bloqueante",
+        "producto_id": prod_id,
+        "rendimiento_estandar": 50,
+    })
+    receta_id = res_receta.json()["id"]
+
+    # Agregar paso para poder activarla
+    cli.post(f"/recetas/{receta_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Paso 1",
+        "instrucciones": "Hacer paso",
+    })
+    res_act = cli.post(f"/recetas/{receta_id}/activar")
+    assert res_act.status_code == 200
+
+    # Intentar eliminar producto con receta activa -> 409 Conflict
+    res_del = cli.delete(f"/productos/{prod_id}")
+    assert res_del.status_code == 409
+    assert res_del.json()["detail"] == "No se puede dar de baja el producto porque tiene una o más recetas activas asociadas."
+
+
+def test_filtrar_productos_por_parametro_activo():
+    unidad_id = crear_unidad_medida_auxiliar()
+    prod_id = crear_producto_auxiliar(unidad_id)
+
+    # Filtrar activo=true
+    res_activos = cli.get("/productos/", params={"activo": "true"})
+    assert res_activos.status_code == 200
+    assert any(p["id"] == prod_id for p in res_activos.json())
+
+    # Damos de baja (no tiene recetas activas)
+    cli.delete(f"/productos/{prod_id}")
+
+    # Filtrar activo=false
+    res_inactivos = cli.get("/productos/", params={"activo": "false"})
+    assert res_inactivos.status_code == 200
+    assert any(p["id"] == prod_id for p in res_inactivos.json())
