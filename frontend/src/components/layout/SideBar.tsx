@@ -79,7 +79,11 @@ const defaultItems: NavItem[] = [
   },
   { to: "/lotes", 
     label: "Lotes", 
-    icon: FiBox },
+    icon: FiBox 
+  },
+  { to: "/productos", 
+    label: "Productos", 
+    icon: FiPackage },
 ];
 
 const planItems: NavItem[] = [

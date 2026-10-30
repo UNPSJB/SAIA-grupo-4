@@ -32,6 +32,7 @@ import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import { LotesPage } from './pages/LotesPage';
+import { ProductosPage } from './pages/ProductosPage';
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -151,6 +152,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <LotesPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/productos'
+              element={
+                <RequireAuth>
+                  <ProductosPage />
                 </RequireAuth>
               }
             />
