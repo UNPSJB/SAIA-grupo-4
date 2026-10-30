@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from src.main import app
 from tests.database import session
+import uuid
 
 client = TestClient(app)
 
@@ -236,3 +237,104 @@ def test_eliminar_insumo():
     res_del = client.delete(f"/insumos/{insumo_id}")
     assert res_del.status_code == 200
     assert res_del.json()["disponible"] is False
+
+
+# --- Búsqueda de texto libre ---
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+
+def crear_insumo_con_nombre(nombre, categoria="materia prima"):
+    res = client.post(
+        "/insumos/",
+        json={
+            "nombre": nombre,
+            "unidad_medida_id": crear_unidad_medida(),
+            "categoria": categoria,
+        },
+    )
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def ids_buscados(**params):
+    res = client.get("/insumos/", params=params)
+    assert res.status_code == 200, res.text
+    return {i["id"] for i in res.json()}
+
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos():
+    sufijo = sufijo_unico()
+    insumo = crear_insumo_con_nombre(f"Azúcar Impalpable {sufijo}")
+
+    for texto in [f"azucar impalpable {sufijo}", f"AZÚCAR IMPALPABLE {sufijo.upper()}", f"palpable {sufijo}"]:
+        assert insumo["id"] in ids_buscados(busqueda=texto)
+
+
+def test_busqueda_por_categoria():
+    insumo = crear_insumo_con_nombre(f"Levadura {sufijo_unico()}")
+
+    assert insumo["id"] in ids_buscados(busqueda="materia prima")
+
+
+def test_busqueda_por_unidad_de_medida():
+    insumo = crear_insumo_con_nombre(f"Sal {sufijo_unico()}")
+
+    assert insumo["id"] in ids_buscados(busqueda="kilogramo")
+
+
+def test_busqueda_excluye_los_que_no_coinciden():
+    sufijo = sufijo_unico()
+    coincide = crear_insumo_con_nombre(f"Harina {sufijo}")
+    no_coincide = crear_insumo_con_nombre(f"Aceite {sufijo_unico()}")
+
+    resultado = ids_buscados(busqueda=f"harina {sufijo}")
+    assert coincide["id"] in resultado
+    assert no_coincide["id"] not in resultado
+
+
+def test_busqueda_sin_resultados():
+    crear_insumo_con_nombre(f"Manteca {sufijo_unico()}")
+
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+
+def test_busqueda_no_interpreta_comodines():
+    insumo = crear_insumo_con_nombre(f"Cacao{sufijo_unico()}")
+
+    # Si "%" fuera comodín, devolvería todo el listado
+    assert insumo["id"] not in ids_buscados(busqueda="%")
+
+
+def test_busqueda_incluye_insumos_no_disponibles():
+    # El listado devuelve disponibles y no disponibles, y la búsqueda no cambia eso
+    sufijo = sufijo_unico()
+    insumo = crear_insumo_con_nombre(f"Vainilla {sufijo}")
+    assert client.delete(f"/insumos/{insumo['id']}").status_code == 200
+
+    assert insumo["id"] in ids_buscados(busqueda=f"vainilla {sufijo}")
+
+
+def crear_insumo_con_nombre(nombre, categoria="materia prima", unidad_id=None):
+    res = client.post(
+        "/insumos/",
+        json={
+            "nombre": nombre,
+            "unidad_medida_id": unidad_id or crear_unidad_medida(),
+            "categoria": categoria,
+        },
+    )
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def test_busqueda_excluye_los_que_no_coinciden():
+    sufijo = sufijo_unico()
+    unidad_id = crear_unidad_medida()
+    coincide = crear_insumo_con_nombre(f"Harina {sufijo}", unidad_id=unidad_id)
+    no_coincide = crear_insumo_con_nombre(f"Aceite {sufijo_unico()}", unidad_id=unidad_id)
+
+    resultado = ids_buscados(busqueda=f"harina {sufijo}")
+    assert coincide["id"] in resultado
+    assert no_coincide["id"] not in resultado
