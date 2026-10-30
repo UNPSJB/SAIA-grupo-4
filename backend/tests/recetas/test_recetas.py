@@ -13,6 +13,7 @@ from src.sectores.models import Sector
 from src.equipos.models import Equipo
 from src.insumos.models import Insumo
 from src.unidad_medida.models import UnidadMedida
+from src.productos.models import Producto
 
 client = TestClient(app)
 
@@ -27,7 +28,7 @@ def datos_base(session):
     um = UnidadMedida(
         nombre=generar_string_unico("Kilogramo"),
         simbolo="kg",
-        tipo_magnitud="Masa",
+        tipo_magnitud="masa",
         disponible=True,
     )
     session.add_all([s, um])
@@ -64,14 +65,36 @@ def datos_base(session):
         disponible=False,
     )
 
-    session.add_all([eq, eq_inactivo, ins, ins_inactivo])
+    prod = Producto(
+        nombre="Pan de Molde",
+        descripcion="Pan blanco",
+        unidad_medida_id=um.id,
+        activo=True,
+    )
+    otro_prod = Producto(
+        nombre="Medialunas de Grasa",
+        descripcion="Medialunas",
+        unidad_medida_id=um.id,
+        activo=True,
+    )
+    prod_inactivo = Producto(
+        nombre="Producto Inactivo",
+        descripcion="Inactivo",
+        unidad_medida_id=um.id,
+        activo=False,
+    )
+
+    session.add_all([eq, eq_inactivo, ins, ins_inactivo, prod, otro_prod, prod_inactivo])
     session.commit()
-    for entidad in (eq, eq_inactivo, ins, ins_inactivo):
+    for entidad in (eq, eq_inactivo, ins, ins_inactivo, prod, otro_prod, prod_inactivo):
         session.refresh(entidad)
 
     return {
-        "producto_id": random.randint(1, 5000),
-        "otro_producto_id": random.randint(5001, 9999),
+        "producto_id": prod.id,
+        "otro_producto_id": otro_prod.id,
+        "producto_inactivo_id": prod_inactivo.id,
+        "producto_nombre": prod.nombre,
+        "otro_producto_nombre": otro_prod.nombre,
         "sector_id": s.id,
         "unidad_medida_id": um.id,
         "equipo_id": eq.id,
@@ -119,8 +142,8 @@ def test_codigo_receta_es_incremental(datos_base):
     assert res1.status_code == 201
     assert res2.status_code == 201
 
-    num1 = int(res1.json()["codigo_receta"].split("-")[1])
-    num2 = int(res2.json()["codigo_receta"].split("-")[1])
+    num1 = int(res1.json()["codigo_receta"].split("-")[-1])
+    num2 = int(res2.json()["codigo_receta"].split("-")[-1])
     assert num2 == num1 + 1
 
 
@@ -218,10 +241,12 @@ def test_activar_receta_inhabilita_anterior_del_mismo_producto(datos_base):
     # 4. V1 del Producto A debió pasar a INHABILITADA
     r1_final = client.get(f"/recetas/{r1['id']}").json()
     assert r1_final["estado"] == EstadoReceta.INHABILITADA.value
+    assert r1_final["fecha_baja"] is not None
 
     # 5. La receta activa del Producto B NO debe verse afectada
     r_otro_final = client.get(f"/recetas/{r_otro['id']}").json()
     assert r_otro_final["estado"] == EstadoReceta.ACTIVA.value
+    assert r_otro_final["fecha_baja"] is None
 
 
 # EDICIÓN, ESTADOS E INMUTABILIDAD CON LOTES
@@ -263,6 +288,7 @@ def test_modificar_receta_inhabilitada_falla(datos_base):
     client.post(f"/recetas/{receta_id}/activar")
     res_inh = client.post(f"/recetas/{receta_id}/inhabilitar")
     assert res_inh.status_code == 200
+    assert res_inh.json()["fecha_baja"] is not None
 
     res_patch = client.patch(f"/recetas/{receta_id}", json={"nombre_receta": "Intento edición"})
     assert res_patch.status_code == 400
@@ -646,4 +672,102 @@ def test_activar_receta_sin_pasos_falla(datos_base):
         "producto_id": datos_base["producto_id"],
         "rendimiento_estandar": 50,
     })
-    assert client.post(f"/recetas/{res_receta.json()['id']}/activar").status_code == 400
+    receta_id = res_receta.json()["id"]
+    res_activar = client.post(f"/recetas/{receta_id}/activar")
+    assert res_activar.status_code == 400
+
+
+def test_autogeneracion_codigo_receta_con_prefijo_producto(datos_base):
+    # prod1 es "Pan de Molde" -> prefijo PM -> REC-PM-001
+    res1 = client.post("/recetas/", json={
+        "nombre_receta": "Receta Pan Molde 1",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 100,
+    })
+    assert res1.status_code == 201
+    assert res1.json()["codigo_receta"].startswith("REC-PM-")
+    assert res1.json()["producto"]["nombre"] == "Pan de Molde"
+
+    # Segunda receta de Pan de Molde
+    res2 = client.post("/recetas/", json={
+        "nombre_receta": "Receta Pan Molde 2",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 120,
+    })
+    assert res2.status_code == 201
+    assert res2.json()["codigo_receta"].startswith("REC-PM-")
+
+    # prod2 es "Medialunas de Grasa" -> prefijo MG -> REC-MG-001
+    res3 = client.post("/recetas/", json={
+        "nombre_receta": "Receta Medialunas",
+        "producto_id": datos_base["otro_producto_id"],
+        "rendimiento_estandar": 50,
+    })
+    assert res3.status_code == 201
+    assert res3.json()["codigo_receta"].startswith("REC-MG-")
+
+
+def test_crear_receta_con_producto_inactivo_o_inexistente_falla(datos_base):
+    res_inactivo = client.post("/recetas/", json={
+        "nombre_receta": "Receta Producto Inactivo",
+        "producto_id": datos_base["producto_inactivo_id"],
+        "rendimiento_estandar": 100,
+    })
+    assert res_inactivo.status_code == 400
+
+    res_inexistente = client.post("/recetas/", json={
+        "nombre_receta": "Receta Producto Inexistente",
+        "producto_id": 999999,
+        "rendimiento_estandar": 100,
+    })
+    assert res_inexistente.status_code == 400
+
+
+def test_buscador_multicriterio_recetas(datos_base):
+    # Creamos una receta con insumo y equipo
+    res_receta = client.post("/recetas/", json={
+        "nombre_receta": "Especial Integral",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 80,
+    })
+    receta_id = res_receta.json()["id"]
+    codigo = res_receta.json()["codigo_receta"]
+
+    # Agregamos paso con insumo y equipo
+    client.post(f"/recetas/{receta_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Amasado inicial",
+        "instrucciones": "Mezclar ingredientes",
+        "equipos": [{"equipo_id": datos_base["equipo_id"], "cantidad": 1}],
+        "insumos": [{"insumo_id": datos_base["insumo_id"], "cantidad_consumo_estimada": 10}],
+    })
+
+    # 1. Búsqueda por código
+    res_busq_cod = client.get("/recetas/", params={"busqueda": codigo})
+    assert res_busq_cod.status_code == 200
+    assert any(r["id"] == receta_id for r in res_busq_cod.json())
+
+    # 2. Búsqueda por nombre de receta
+    res_busq_nom = client.get("/recetas/", params={"busqueda": "Especial Integral"})
+    assert res_busq_nom.status_code == 200
+    assert any(r["id"] == receta_id for r in res_busq_nom.json())
+
+    # 3. Búsqueda por nombre de producto
+    res_busq_prod = client.get("/recetas/", params={"busqueda": "Pan de Molde"})
+    assert res_busq_prod.status_code == 200
+    assert any(r["id"] == receta_id for r in res_busq_prod.json())
+
+    # 4. Filtro por insumo_id
+    res_insumo = client.get("/recetas/", params={"insumo_id": datos_base["insumo_id"]})
+    assert res_insumo.status_code == 200
+    assert any(r["id"] == receta_id for r in res_insumo.json())
+
+    # 5. Filtro por equipo_id
+    res_equipo = client.get("/recetas/", params={"equipo_id": datos_base["equipo_id"]})
+    assert res_equipo.status_code == 200
+    assert any(r["id"] == receta_id for r in res_equipo.json())
+
+    # 6. Filtro por estado
+    res_estado = client.get("/recetas/", params={"estado": "BORRADOR"})
+    assert res_estado.status_code == 200
+    assert any(r["id"] == receta_id for r in res_estado.json())

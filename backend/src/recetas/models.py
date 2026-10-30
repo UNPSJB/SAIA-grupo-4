@@ -16,8 +16,7 @@ class Receta(ModeloBase):
     nombre_receta: Mapped[str] = mapped_column(String(150), nullable=False)
 
     # Relación 1 a N con Producto (pueden existir varios borradores/históricos y 1 activa por producto)
-    # TODO: Cuando se mergee el módulo de Producto, pasar a ForeignKey("productos.id")
-    producto_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"), nullable=False, index=True)
 
     rendimiento_estandar: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     tiempo_estimado_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -30,10 +29,12 @@ class Receta(ModeloBase):
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+    fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     usuario_creador_id: Mapped[int] = mapped_column(ForeignKey("personal.id"), nullable=False)
 
     # Relaciones
     usuario_creador: Mapped["Persona"] = relationship()
+    producto: Mapped["Producto"] = relationship("Producto", back_populates="recetas")
     
     # Relación hacia los pasos, con borrado en cascada
     pasos: Mapped[list["PasoReceta"]] = relationship(
@@ -47,6 +48,13 @@ class Receta(ModeloBase):
         if not self.usuario_creador:
             return ""
         return f"{self.usuario_creador.nombre} {self.usuario_creador.apellido}"
+
+    @property
+    def producto_nombre(self) -> str:
+        """Nombre del producto asociado a la receta."""
+        if not self.producto:
+            return ""
+        return self.producto.nombre
 
     @property
     def tiene_lotes(self) -> bool:

@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -5,15 +6,30 @@ from src.auth.dependencies import get_current_user, requiere_administracion
 from src.database import get_db
 from src.personal.models import Persona
 from src.recetas import exceptions, schemas, services
+from src.recetas.constants import EstadoReceta
 
 router = APIRouter(prefix="/recetas", tags=["recetas"], dependencies=[Depends(requiere_administracion)])
 
 # RUTAS DE RECETA
 
 @router.get("/", response_model=list[schemas.Receta])
-def listar_recetas(db: Session = Depends(get_db)):
-    """Lista todas las recetas (historial unificado)."""
-    return services.listar_recetas(db)
+def listar_recetas(
+    busqueda: Optional[str] = None,
+    estado: Optional[EstadoReceta] = None,
+    insumo_id: Optional[int] = None,
+    equipo_id: Optional[int] = None,
+    producto_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """Lista todas las recetas (historial unificado) con filtros opcionales."""
+    return services.listar_recetas(
+        db,
+        busqueda=busqueda,
+        estado=estado,
+        insumo_id=insumo_id,
+        equipo_id=equipo_id,
+        producto_id=producto_id,
+    )
 
 
 @router.get("/activas", response_model=list[schemas.Receta])

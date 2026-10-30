@@ -1,5 +1,7 @@
 from datetime import datetime
+import re
 from typing import List, Optional
+import unicodedata
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +14,7 @@ from src.recetas.constants import EstadoReceta, TipoRecurso
 from src.recetas.models import Receta, PasoReceta, PasoEquipo, PasoInsumo
 from src.equipos.models import Equipo
 from src.insumos.models import Insumo 
+from src.productos.models import Producto
 
 # --- FUNCIONES AUXILIARES ---
 
@@ -25,22 +28,50 @@ def _validar_usuario_creador(db: Session, usuario_id: int) -> Persona:
     return usuario
 
 
-def _generar_codigo_receta(db: Session) -> str:
-    recetas = db.scalars(select(Receta.codigo_receta).order_by(Receta.id.desc())).all()
+def _extraer_prefijo_producto(nombre: str) -> str:
+    """Extrae un prefijo en mayúsculas a partir del nombre del producto.
+    
+    Ejemplos:
+    - 'Pan de Molde' -> 'PM'
+    - 'Medialunas de Grasa' -> 'MG'
+    - 'Bagel' -> 'BAG'
+    - 'Pan' -> 'PAN'
+    """
+    nombre_limpio = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode("ascii")
+    palabras = re.findall(r"[A-Za-z0-9]+", nombre_limpio)
+    stop_words = {"DE", "DEL", "LA", "LAS", "EL", "LOS", "CON", "Y", "EN", "PARA", "POR", "A", "AL"}
+    palabras_significativas = [p for p in palabras if p.upper() not in stop_words]
+
+    if not palabras_significativas:
+        palabras_significativas = palabras or ["REC"]
+
+    if len(palabras_significativas) >= 2:
+        prefijo = "".join(p[0].upper() for p in palabras_significativas[:4])
+    else:
+        prefijo = palabras_significativas[0][:3].upper()
+
+    return prefijo or "REC"
+
+
+def _generar_codigo_receta(db: Session, producto: Producto) -> str:
+    prefijo = _extraer_prefijo_producto(producto.nombre)
+    prefijo_patron = f"REC-{prefijo}-"
+    recetas = db.scalars(
+        select(Receta.codigo_receta).where(Receta.codigo_receta.like(f"{prefijo_patron}%"))
+    ).all()
     ultimo_numero = 0
     for codigo in recetas:
-        if codigo and codigo.startswith("REC-"):
+        if codigo and codigo.startswith(prefijo_patron):
             try:
-                parte = codigo.split("-")[1]
+                parte = codigo[len(prefijo_patron):]
                 if parte.isdigit():
                     num = int(parte)
                     if num > ultimo_numero:
                         ultimo_numero = num
-                    break
             except Exception:
                 continue
     nuevo_numero = ultimo_numero + 1
-    return f"REC-{nuevo_numero:03d}"
+    return f"REC-{prefijo}-{nuevo_numero:03d}"
 
 
 def _estado_actual(receta: Receta) -> str:
@@ -105,7 +136,12 @@ def _clonar_paso(paso_antiguo: PasoReceta) -> PasoReceta:
 def obtener_receta_por_id(db: Session, receta_id: int) -> Receta:
     receta = db.scalar(
         select(Receta)
-        .options(joinedload(Receta.usuario_creador))
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos),
+        )
         .where(Receta.id == receta_id)
     )
     if not receta:
@@ -113,20 +149,63 @@ def obtener_receta_por_id(db: Session, receta_id: int) -> Receta:
     return receta
 
 
-def listar_recetas(db: Session) -> List[Receta]:
-    return list(
-        db.scalars(
-            select(Receta)
-            .options(joinedload(Receta.usuario_creador))
-            .order_by(Receta.fecha_creacion.desc())
-        ).all()
+def listar_recetas(
+    db: Session,
+    busqueda: Optional[str] = None,
+    estado: Optional[EstadoReceta] = None,
+    insumo_id: Optional[int] = None,
+    equipo_id: Optional[int] = None,
+    producto_id: Optional[int] = None,
+) -> List[Receta]:
+    query = (
+        select(Receta)
+        .join(Receta.producto)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos),
+        )
     )
+
+    if busqueda and busqueda.strip():
+        termino = f"%{busqueda.strip()}%"
+        query = query.where(
+            Receta.codigo_receta.ilike(termino)
+            | Receta.nombre_receta.ilike(termino)
+            | Producto.nombre.ilike(termino)
+        )
+
+    if estado:
+        query = query.where(Receta.estado == estado)
+
+    if producto_id:
+        query = query.where(Receta.producto_id == producto_id)
+
+    if insumo_id:
+        query = query.where(
+            Receta.pasos.any(
+                PasoReceta.insumos.any(PasoInsumo.insumo_id == insumo_id)
+            )
+        )
+
+    if equipo_id:
+        query = query.where(
+            Receta.pasos.any(
+                PasoReceta.equipos.any(PasoEquipo.equipo_id == equipo_id)
+            )
+        )
+
+    return list(db.scalars(query.order_by(Receta.fecha_creacion.desc())).unique().all())
 
 
 def obtener_receta_borrador(db: Session) -> Optional[Receta]:
     return db.scalar(
         select(Receta)
-        .options(joinedload(Receta.usuario_creador))
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+        )
         .where(Receta.estado == EstadoReceta.BORRADOR)
         .order_by(Receta.fecha_creacion.desc())
     )
@@ -136,16 +215,23 @@ def obtener_recetas_activas(db: Session) -> List[Receta]:
     return list(
         db.scalars(
             select(Receta)
-            .options(joinedload(Receta.usuario_creador))
+            .options(
+                joinedload(Receta.usuario_creador),
+                joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            )
             .where(Receta.estado == EstadoReceta.ACTIVA)
-        ).all()
+        ).unique().all()
     )
 
 
 def crear_receta_borrador(db: Session, receta: schemas.RecetaCreate, usuario_id: int) -> Receta:
     _validar_usuario_creador(db, usuario_id)
 
-    codigo_receta = _generar_codigo_receta(db)
+    producto = db.scalar(select(Producto).where(Producto.id == receta.producto_id))
+    if not producto or not producto.activo:
+        raise exceptions.ProductoInvalido()
+
+    codigo_receta = _generar_codigo_receta(db, producto)
 
     nueva_receta = Receta(
         codigo_receta=codigo_receta,
@@ -202,6 +288,10 @@ def activar_receta(db: Session, receta_id: int) -> Receta:
     if estado_actual != EstadoReceta.BORRADOR.value:
         raise exceptions.RecetaNoEsBorrador()
 
+    # Validación 0: El producto debe existir y encontrarse activo
+    if not receta.producto or not receta.producto.activo:
+        raise exceptions.ProductoInvalido()
+
     # Validación 1: Debe tener pasos
     if not receta.pasos:
         raise exceptions.RecetaSinPasos()
@@ -220,8 +310,10 @@ def activar_receta(db: Session, receta_id: int) -> Receta:
         )
         if receta_vigente:
             receta_vigente.estado = EstadoReceta.INHABILITADA
+            receta_vigente.fecha_baja = datetime.now()
 
         receta.estado = EstadoReceta.ACTIVA
+        receta.fecha_baja = None
         db.commit()
         db.refresh(receta)
     except IntegrityError:
@@ -239,6 +331,7 @@ def inhabilitar_receta(db: Session, receta_id: int) -> Receta:
         raise exceptions.RecetaNoActiva()
 
     receta.estado = EstadoReceta.INHABILITADA
+    receta.fecha_baja = datetime.now()
     try:
         db.commit()
         db.refresh(receta)
@@ -301,9 +394,13 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
     """
     origen = obtener_receta_por_id(db, receta_id)
     _validar_usuario_creador(db, usuario_id)
+
+    producto = db.scalar(select(Producto).where(Producto.id == origen.producto_id))
+    if not producto or not producto.activo:
+        raise exceptions.ProductoInvalido()
     
     nueva_receta = Receta(
-        codigo_receta=_generar_codigo_receta(db),
+        codigo_receta=_generar_codigo_receta(db, producto),
         nombre_receta=origen.nombre_receta,
         producto_id=origen.producto_id,
         rendimiento_estandar=origen.rendimiento_estandar,

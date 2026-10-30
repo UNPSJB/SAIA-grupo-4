@@ -83,6 +83,21 @@ class PasoRecetaOut(PasoRecetaBase):
 
 
 # ESQUEMAS DE RECETA
+class UnidadMedidaResumen(BaseModel):
+    id: int
+    nombre: str
+    simbolo: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductoResumenOut(BaseModel):
+    id: int
+    nombre: str
+    activo: bool
+    unidad_medida: Optional[UnidadMedidaResumen] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class RecetaBase(BaseModel):
     nombre_receta: Annotated[str, Field(min_length=1, max_length=150)]
     rendimiento_estandar: Annotated[Decimal, Field(gt=0)]
@@ -102,8 +117,11 @@ class Receta(RecetaBase):
     id: int
     codigo_receta: str
     producto_id: int
+    producto: Optional[ProductoResumenOut] = None
+    producto_nombre: Optional[str] = None
     estado: EstadoReceta
     fecha_creacion: datetime
+    fecha_baja: Optional[datetime] = None
     usuario_creador_id: int
     usuario_creador_nombre: Optional[str] = None
     tiene_lotes: bool = False
