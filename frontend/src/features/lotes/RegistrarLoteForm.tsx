@@ -41,7 +41,6 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     cargarProductos();
   }, []);
 
-  // Handler para crear producto rápido
   const handleCrearProducto = async () => {
     if (!nuevoNombreProducto.trim()) {
       setErrorProducto('Ingrese un nombre válido para el producto');
@@ -52,11 +51,15 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     try {
       const prodNuevo = await createProducto({ nombre: nuevoNombreProducto.trim() });
       await cargarProductos();
-      setProductoId(prodNuevo.id.toString()); // Seleccionar automáticamente el recién creado
+      setProductoId(prodNuevo.id.toString()); 
       setNuevoNombreProducto('');
       setOpenNuevoProducto(false);
     } catch (err: any) {
-      setErrorProducto('Ya existe un producto con ese nombre o hubo un error.');
+      if (err instanceof Error) {
+        setErrorProducto(err.message);
+      } else {
+        setErrorProducto('Error al crear producto');
+      }
     } finally {
       setLoadingProducto(false);
     }
@@ -199,6 +202,12 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                       placeholder="Ej: Pan Francés" 
                       value={nuevoNombreProducto} 
                       onChange={(e) => setNuevoNombreProducto(e.target.value)} 
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleCrearProducto();
+                        } 
+                      }}
                     />
                   </Field.Root>
                   {errorProducto && (

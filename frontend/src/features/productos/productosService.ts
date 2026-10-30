@@ -9,7 +9,7 @@ export const getProductos = async (): Promise<Producto[]> => {
   return await res.json();
 };
 
-export const createProducto = async (data: any) => { // Asegúrate de que los tipos sean correctos
+export const createProducto = async (data: any) => { 
   const res = await apiFetch("/productos/", {
     method: "POST",
     headers: {
@@ -19,6 +19,12 @@ export const createProducto = async (data: any) => { // Asegúrate de que los ti
   });
   
   if (!res.ok) {
+    const errorData = await res.json();
+    const mensaje =
+      typeof errorData.detail === "string"
+        ? errorData.detail
+        : "Error al crear producto (${res.status}) al crear producto";
+    throw new Error(mensaje);
   }
   
   return await res.json();
