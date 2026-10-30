@@ -172,10 +172,17 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
       items: [
         { label: "Código", valor: receta.codigo_receta },
         { label: "Nombre", valor: receta.nombre_receta },
-        { label: "Producto ID", valor: receta.producto_id },
+        {
+          label: "Producto",
+          valor: `${receta.producto?.nombre || receta.producto_id}${
+            receta.producto?.activo === false ? " (Dado de baja)" : ""
+          }`,
+        },
         {
           label: "Rendimiento estándar",
-          valor: receta.rendimiento_estandar,
+          valor: receta.producto?.unidad_medida?.simbolo
+            ? `${receta.rendimiento_estandar} ${receta.producto.unidad_medida.simbolo}`
+            : receta.rendimiento_estandar,
         },
         {
           label: "Tiempo estimado total",
@@ -189,9 +196,17 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           valor: <Badge colorPalette={estado.color}>{estado.texto}</Badge>,
         },
         {
-          label: "Fecha",
+          label: "Fecha de creación",
           valor: formatearFecha(receta.fecha_creacion),
         },
+        ...(receta.fecha_baja
+          ? [
+              {
+                label: "Fecha de baja",
+                valor: formatearFecha(receta.fecha_baja),
+              },
+            ]
+          : []),
         {
           label: "Creado por",
           valor: receta.usuario_creador_nombre || "—",

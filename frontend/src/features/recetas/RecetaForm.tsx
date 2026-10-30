@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack } from "@chakra-ui/react";
@@ -9,11 +9,13 @@ import {
   FormActions,
   FormContainer,
   FormHeader,
+  SelectField,
   SubmitButton,
   TextField,
 } from "../../components/ui";
 import { recetaSchema, type RecetaFormInput, type RecetaFormValues } from "./validationSchema";
 import type { Receta } from "./types";
+import type { Producto } from "../productos/types";
 import { recetasApi } from "./hooks/recetaApi";
 
 interface RecetaFormProps {
@@ -33,10 +35,24 @@ export const RecetaForm = ({
 }: RecetaFormProps) => {
   const esModoCrear = modo === "crear";
   const [success, setSuccess] = useState(false);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [cargandoProductos, setCargandoProductos] = useState(false);
+
+  useEffect(() => {
+    if (esModoCrear) {
+      setCargandoProductos(true);
+      recetasApi
+        .obtenerProductosActivos()
+        .then(setProductos)
+        .catch(() => setProductos([]))
+        .finally(() => setCargandoProductos(false));
+    }
+  }, [esModoCrear]);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
     setError,
     clearErrors,
@@ -50,6 +66,27 @@ export const RecetaForm = ({
       observaciones: receta?.observaciones || "",
     },
   });
+
+  const productoIdSeleccionado = watch("producto_id");
+
+  const simboloUnidad = useMemo(() => {
+    if (productoIdSeleccionado) {
+      const prod = productos.find(
+        (p) => String(p.id) === String(productoIdSeleccionado),
+      );
+      if (prod?.unidad_medida) {
+        return prod.unidad_medida.simbolo || prod.unidad_medida.nombre || "";
+      }
+    }
+    if (receta?.producto?.unidad_medida) {
+      return (
+        receta.producto.unidad_medida.simbolo ||
+        receta.producto.unidad_medida.nombre ||
+        ""
+      );
+    }
+    return "";
+  }, [productoIdSeleccionado, productos, receta]);
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors("root");
@@ -94,19 +131,46 @@ export const RecetaForm = ({
             error={errors.nombre_receta?.message}
             {...register("nombre_receta")}
           />
-          {esModoCrear && (
-            <TextField
-              label="Producto ID"
+          {esModoCrear ? (
+            <SelectField
+              label="Producto elaborado"
+              placeholder={cargandoProductos ? "Cargando productos..." : "Seleccione un producto"}
               defaultValue={receta?.producto_id ? String(receta.producto_id) : ""}
-              placeholder="ID del producto elaborado"
               error={errors.producto_id?.message}
+              options={productos.map((p) => ({
+                value: String(p.id),
+                label: p.unidad_medida?.simbolo
+                  ? `${p.nombre} (${p.unidad_medida.simbolo})`
+                  : p.nombre,
+              }))}
+              disabled={cargandoProductos}
               {...register("producto_id")}
+            />
+          ) : (
+            <TextField
+              label="Producto elaborado"
+              defaultValue={
+                receta?.producto?.nombre
+                  ? `${receta.producto.nombre}${
+                      receta.producto.unidad_medida?.simbolo
+                        ? ` (${receta.producto.unidad_medida.simbolo})`
+                        : ""
+                    }`
+                  : receta?.producto_id
+                  ? String(receta.producto_id)
+                  : ""
+              }
+              disabled
             />
           )}
           <TextField
-            label="Rendimiento estándar"
+            label={
+              simboloUnidad
+                ? `Rendimiento estándar (${simboloUnidad})`
+                : "Rendimiento estándar"
+            }
             defaultValue={receta?.rendimiento_estandar ? String(receta.rendimiento_estandar) : ""}
-            placeholder="Ej. 100.00"
+            placeholder={simboloUnidad ? `Ej. 100.00 ${simboloUnidad}` : "Ej. 100.00"}
             error={errors.rendimiento_estandar?.message}
             {...register("rendimiento_estandar")}
           />

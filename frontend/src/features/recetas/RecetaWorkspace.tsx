@@ -35,9 +35,11 @@ import {
   LoadingState,
   RowActionButton,
   RowActions,
+  TablePagination,
   type ColumnDef,
 } from "../../components/ui";
 import { ListadoContainer } from "../../components/layout";
+import { ITEMS_POR_PAGINA } from "../../config";
 import { recetasApi } from "./hooks/recetaApi";
 import {
   PasoRecetaModal,
@@ -267,6 +269,21 @@ export default function RecetaWorkspace({
   const pasos = pasosOrdenados;
   const tienePasos = pasos.length > 0;
   const puedeModificar = esBorrador || (esActiva && !receta.tiene_lotes);
+  const productoInactivo = receta.producto ? receta.producto.activo === false : false;
+
+  const [page, setPage] = useState(1);
+
+  const pasosPaginados = useMemo(() => {
+    const inicio = (page - 1) * ITEMS_POR_PAGINA;
+    return pasos.slice(inicio, inicio + ITEMS_POR_PAGINA);
+  }, [pasos, page]);
+
+  useEffect(() => {
+    const totalPages = Math.ceil(pasos.length / ITEMS_POR_PAGINA) || 1;
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [pasos.length, page]);
 
 
 
@@ -514,9 +531,11 @@ export default function RecetaWorkspace({
               <Button
                 variant="ghost"
                 colorPalette="green"
-                disabled={!tienePasos || tieneRecursosInactivos}
+                disabled={!tienePasos || tieneRecursosInactivos || productoInactivo}
                 title={
-                  !tienePasos
+                  productoInactivo
+                    ? "El producto asociado está dado de baja. No se puede activar la receta."
+                    : !tienePasos
                     ? "Agregá al menos un paso para poder activar la receta."
                     : tieneRecursosInactivos
                     ? "Hay pasos con recursos dados de baja. Modificalos para poder activar la receta."
@@ -562,14 +581,21 @@ export default function RecetaWorkspace({
           />
           <Chip
             icon={FiBox}
-            texto={`Producto: ${receta.producto_id}`}
-            colorPalette="purple"
+            texto={`Producto: ${receta.producto?.nombre || receta.producto_id}${productoInactivo ? " (Dado de baja)" : ""}`}
+            colorPalette={productoInactivo ? "red" : "purple"}
           />
           <Chip
             icon={FiCalendar}
             texto={`Fecha: ${formatFecha(receta.fecha_creacion)}`}
             colorPalette="blue"
           />
+          {receta.fecha_baja && (
+            <Chip
+              icon={FiCalendar}
+              texto={`Fecha de baja: ${formatFecha(receta.fecha_baja)}`}
+              colorPalette="red"
+            />
+          )}
           <Chip
             icon={FiUser}
             texto={`Creado por: ${
@@ -582,13 +608,18 @@ export default function RecetaWorkspace({
         <VStack align="stretch" gap={2} mb={2}>
           <Dato label="Código">{receta.codigo_receta}</Dato>
           <Dato label="Rendimiento estándar">
-            {receta.rendimiento_estandar}
+            {receta.producto?.unidad_medida?.simbolo
+              ? `${receta.rendimiento_estandar} ${receta.producto.unidad_medida.simbolo}`
+              : receta.rendimiento_estandar}
           </Dato>
           <Dato label="Tiempo estimado total">
             {receta.tiempo_estimado_total != null
               ? `${receta.tiempo_estimado_total} min`
               : "—"}
           </Dato>
+          {receta.fecha_baja && (
+            <Dato label="Fecha de baja">{formatFecha(receta.fecha_baja)}</Dato>
+          )}
           <Dato label="Observaciones">{receta.observaciones || "—"}</Dato>
         </VStack>
 
@@ -599,33 +630,38 @@ export default function RecetaWorkspace({
           />
         )}
 
-        {esBorrador && !tienePasos && (
-          <AlertMessage
-            type="info"
-            message="Agregá al menos un paso para poder activar la receta."
-          />
-        )}
-
-        {esBorrador && tieneRecursosInactivos && (
-          <AlertMessage
-            type="warning"
-            message={
-              recursosInactivosPorPaso.length === 1
-                ? recursosInactivosPorPaso[0].recursos.length === 1
-                  ? `El paso ${recursosInactivosPorPaso[0].pasoNumero} tiene el ${recursosInactivosPorPaso[0].recursos[0].tipo} "${recursosInactivosPorPaso[0].recursos[0].nombre}" dado de baja. Modificalo para poder activar la receta.`
-                  : `El paso ${recursosInactivosPorPaso[0].pasoNumero} tiene recursos dados de baja: ${recursosInactivosPorPaso[0].recursos
-                      .map((r) => `${r.tipo}: ${r.nombre}`)
-                      .join(", ")}. Modificalo para poder activar la receta.`
-                : `Los siguientes pasos tienen recursos dados de baja: ${recursosInactivosPorPaso
-                    .map(
-                      (p) =>
-                        `Paso ${p.pasoNumero} (${p.recursos
-                          .map((r) => `${r.tipo}: ${r.nombre}`)
-                          .join(", ")})`,
-                    )
-                    .join(", ")}. Modificalos para poder activar la receta.`
-            }
-          />
+        {esBorrador && (
+          productoInactivo ? (
+            <AlertMessage
+              type="warning"
+              message={`El producto "${receta.producto?.nombre || "asociado"}" está dado de baja. No se puede activar la receta ya que el producto está dado de baja.`}
+            />
+          ) : !tienePasos ? (
+            <AlertMessage
+              type="info"
+              message="Agregá al menos un paso para poder activar la receta."
+            />
+          ) : tieneRecursosInactivos ? (
+            <AlertMessage
+              type="warning"
+              message={
+                recursosInactivosPorPaso.length === 1
+                  ? recursosInactivosPorPaso[0].recursos.length === 1
+                    ? `El paso ${recursosInactivosPorPaso[0].pasoNumero} tiene el ${recursosInactivosPorPaso[0].recursos[0].tipo} "${recursosInactivosPorPaso[0].recursos[0].nombre}" dado de baja. Modificalo para poder activar la receta.`
+                    : `El paso ${recursosInactivosPorPaso[0].pasoNumero} tiene recursos dados de baja: ${recursosInactivosPorPaso[0].recursos
+                        .map((r) => `${r.tipo}: ${r.nombre}`)
+                        .join(", ")}. Modificalo para poder activar la receta.`
+                  : `Los siguientes pasos tienen recursos dados de baja: ${recursosInactivosPorPaso
+                      .map(
+                        (p) =>
+                          `Paso ${p.pasoNumero} (${p.recursos
+                            .map((r) => `${r.tipo}: ${r.nombre}`)
+                            .join(", ")})`,
+                      )
+                      .join(", ")}. Modificalos para poder activar la receta.`
+              }
+            />
+          ) : null
         )}
 
         {error && <AlertMessage type="error" message={error} />}
@@ -663,11 +699,21 @@ export default function RecetaWorkspace({
             message="La receta no tiene pasos cargados todavía."
           />
         ) : (
-          <DataTable
-            items={pasos}
-            columns={columnasPasos}
-            getRowKey={(p) => p.id}
-          />
+          <>
+            <DataTable
+              items={pasosPaginados}
+              columns={columnasPasos}
+              getRowKey={(p) => p.id}
+            />
+            <TablePagination
+              count={pasos.length}
+              page={page}
+              pageSize={ITEMS_POR_PAGINA}
+              onPageChange={setPage}
+              labelSingular="paso"
+              labelPlural="pasos"
+            />
+          </>
         )}
       </ListadoContainer>
 
