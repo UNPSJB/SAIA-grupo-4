@@ -103,6 +103,9 @@ from src.incidentes.models import Incidente
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.productos.models import Producto
+from src.recetas.constants import EstadoReceta
+from src.recetas.models import PasoEquipo, PasoInsumo, PasoReceta, Receta
+from src.recetas.services import _extraer_prefijo_producto
 from src.models import ModeloBase
 # El alias evita el choque con EstadoVencimiento de vencimientos.constants, que
 # es el que usan las categorias consolidadas (equipos, elementos, documentos).
@@ -224,16 +227,16 @@ EQUIPOS = (
 )
 
 INSUMOS = (
-    ("Harina 000", 0, "materia prima", "Harina de trigo para masas."),
-    ("Azucar Impalpable", 0, "materia prima", "Azucar refinada para scorpia."),
-    ("Sal Fina", 0, "aditivo", "Sal de mesa para curado."),
-    ("Levadura Seca", 1, "aditivo", "Levadura comprimida para fermentacion."),
-    ("Bolsa para Rotular", 6, "envase", "Bolsa de polietileno para producto terminado."),
-    ("Caja de Carton", 6, "envase", "Caja corrugada para transporte."),
-    ("Etiqueta Adhesiva", 6, "envase", "Etiqueta con el codigo de trazabilidad."),
-    ("Film Retractil", 0, "envase", "Film para pallets de producto terminado."),
-    ("Agua Tratada", 4, "otro", "Agua tratada para el circuito de limpieza."),
-    ("Concentrado de Aroma", 9, "aditivo", "Aroma dosificado para el horneado."),
+    ("Harina de Trigo 000", 0, "materia prima", "Harina de trigo de fuerza para panificados."),
+    ("Manteca de Primera", 0, "materia prima", "Manteca pasteurizada sin sal."),
+    ("Azucar Comun", 0, "materia prima", "Azucar blanco refinado standard."),
+    ("Levadura Prensada", 1, "aditivo", "Levadura prensada fresca para panaderia."),
+    ("Huevos Frescos", 6, "materia prima", "Huevos de granja seleccionados tamano grande."),
+    ("Cacao Amargo en Polvo", 1, "materia prima", "Cacao puro amargo desgrasado."),
+    ("Leche Entera Pasteurizada", 3, "materia prima", "Leche entera fluida pasteurizada."),
+    ("Esencia de Vainilla", 4, "aditivo", "Aromatizante de extracto de vainilla natural."),
+    ("Sal Fina Marina", 1, "aditivo", "Sal fina pura secada al vacio."),
+    ("Semillas de Sesamo", 1, "materia prima", "Semillas tostadas seleccionadas."),
 )
 
 PRODUCTOS = (
@@ -820,8 +823,10 @@ def _crear_prerrequisitos(db, cantidad, hoy):
     return {
         "sectores": sectores,
         "equipos": equipos,
+        "insumos": insumos,
         "insumos_quimicos": insumos_quimicos,
         "elementos": elementos,
+        "productos": productos,
     }
 
 
@@ -1478,6 +1483,453 @@ def _crear_incidentes(db, personas, cantidad, hoy):
     db.flush()
     return incidentes
 
+
+def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
+    reportantes = [p for p in personas if p.activo]
+    if not reportantes:
+        raise RuntimeError("Se necesita al menos una persona activa para crear recetas.")
+    creador = reportantes[0]
+
+    # Insumos especificos de panaderia y reposteria
+    ins_harina = insumos[0]
+    ins_manteca = insumos[1]
+    ins_azucar = insumos[2]
+    ins_levadura = insumos[3]
+    ins_huevos = insumos[4]
+    ins_cacao = insumos[5]
+    ins_leche = insumos[6]
+    ins_vainilla = insumos[7]
+    ins_sal = insumos[8]
+    ins_sesamo = insumos[9]
+
+    # Equipos de produccion y laboratorio
+    eq_heladera1 = equipos[0]
+    eq_mesa = equipos[1]
+    eq_balanza_plat = equipos[2]
+    eq_heladera2 = equipos[3]
+    eq_amasadora = equipos[5]
+    eq_horno = equipos[6]
+    eq_balanza_lab = equipos[8]
+
+    # Productos base
+    prod_pc = productos[0]   # Pan de Campo
+    pref_pc = _extraer_prefijo_producto(prod_pc.nombre)
+
+    prod_gv = productos[1]   # Galletas de Vainilla
+    pref_gv = _extraer_prefijo_producto(prod_gv.nombre)
+
+    prod_pi = productos[2]   # Pan Integral
+    pref_pi = _extraer_prefijo_producto(prod_pi.nombre)
+
+    prod_tc = productos[4]   # Torta de Chocolate
+    pref_tc = _extraer_prefijo_producto(prod_tc.nombre)
+
+    prod_med = productos[6]  # Medialunas
+    pref_med = _extraer_prefijo_producto(prod_med.nombre)
+
+    prod_bl = productos[7]   # Budin de Limon
+    pref_bl = _extraer_prefijo_producto(prod_bl.nombre)
+
+    # 7 recetas:
+    # 2 del mismo producto (prod_pc: una inhabilitada v1 y una activa v2)
+    # 5 de otros productos (2 activas, 1 inhabilitada, 2 borradores)
+    definicion_recetas = [
+        # (cabecera, lista_pasos)
+        (
+            (
+                "Pan de Campo Tradicional v1",
+                prod_pc,
+                f"REC-{pref_pc}-001",
+                EstadoReceta.INHABILITADA,
+                Decimal("45.00"),
+                180,
+                60,
+                "Formula previa inhabilitada tras la introduccion de la version optimizada v2.",
+            ),
+            [
+                (
+                    1,
+                    "Pesaje de ingredientes secos",
+                    "Pesar y verificar la harina de trigo y sal marina en balanza segun la formula.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_harina, Decimal("15.000")), (ins_sal, Decimal("300.000"))],
+                ),
+                (
+                    2,
+                    "Mezclado inicial de masa",
+                    "Incorporar agua y levadura fresca en la amasadora a baja velocidad.",
+                    [(eq_amasadora, 1)],
+                    [(ins_levadura, Decimal("400.000"))],
+                ),
+                (
+                    3,
+                    "Reposo en bloque sobre mesa",
+                    "Dejar reposar la masa cubierta sobre mesa de acero para relajar el gluten.",
+                    [(eq_mesa, 1)],
+                    [],
+                ),
+                (
+                    4,
+                    "Corte y grenado manual de piezas",
+                    "Realizar incisiones superficiales longitudinales en cada hogaza a mano.",
+                    [],
+                    [],
+                ),
+                (
+                    5,
+                    "Coccion en horno rotativo",
+                    "Hornear a 210C durante 35 minutos con aplicacion de vapor inicial.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Pan de Campo Tradicional v2",
+                prod_pc,
+                f"REC-{pref_pc}-002",
+                EstadoReceta.ACTIVA,
+                Decimal("50.00"),
+                170,
+                12,
+                "Formula activa vigente con fermentacion controlada y rendimiento estandar de 50 kg.",
+            ),
+            [
+                (
+                    1,
+                    "Dosificacion de harinas y sal pura",
+                    "Control exacto de harinas seleccionadas y sal marina fina.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_harina, Decimal("20.000")), (ins_sal, Decimal("400.000"))],
+                ),
+                (
+                    2,
+                    "Amasado y oxigenacion intensiva",
+                    "Amasar a doble velocidad con agregado gradual de levadura prensada.",
+                    [(eq_amasadora, 1)],
+                    [(ins_levadura, Decimal("500.000"))],
+                ),
+                (
+                    3,
+                    "Fermentacion controlada en frio",
+                    "Maduracion de la masa en camara frigorifica a 4C durante 12 horas.",
+                    [(eq_heladera1, 1)],
+                    [],
+                ),
+                (
+                    4,
+                    "Semillado superficial artesanal",
+                    "Espolvorear semillas de sesamo tostadas sobre la corteza humedecida.",
+                    [],
+                    [(ins_sesamo, Decimal("500.000"))],
+                ),
+                (
+                    5,
+                    "Horneado con vapor constante",
+                    "Cocinar a 220C hasta lograr corteza dorada y crujiente.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Galletas de Vainilla Clasicas",
+                prod_gv,
+                f"REC-{pref_gv}-001",
+                EstadoReceta.ACTIVA,
+                Decimal("120.00"),
+                90,
+                20,
+                "Formula activa de galletas dulces con aroma a vainilla y horneado continuo.",
+            ),
+            [
+                (
+                    1,
+                    "Cremado de manteca y azucar",
+                    "Batir manteca a punto pomada con azucar comun hasta blanquear.",
+                    [(eq_balanza_lab, 1)],
+                    [(ins_manteca, Decimal("8.000")), (ins_azucar, Decimal("6.000"))],
+                ),
+                (
+                    2,
+                    "Aromatizacion con vainilla natural",
+                    "Incorporar huevos frescos y extracto de vainilla natural de forma envolvente.",
+                    [],
+                    [(ins_huevos, Decimal("30.000")), (ins_vainilla, Decimal("100.000"))],
+                ),
+                (
+                    3,
+                    "Tamizado e integracion de harina",
+                    "Unir la harina de trigo sin amasar en exceso para evitar tenacidad.",
+                    [(eq_amasadora, 1)],
+                    [(ins_harina, Decimal("12.000"))],
+                ),
+                (
+                    4,
+                    "Laminado y corte de figuras",
+                    "Estirar masa a 5 mm sobre mesa refrigerada y cortar piezas estandarizadas.",
+                    [(eq_mesa, 1)],
+                    [],
+                ),
+                (
+                    5,
+                    "Coccion suave y parejo",
+                    "Hornear a 170C por 12 minutos hasta bordes apenas dorados.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Pan Integral Multicereal",
+                prod_pi,
+                f"REC-{pref_pi}-001",
+                EstadoReceta.ACTIVA,
+                Decimal("60.00"),
+                210,
+                15,
+                "Formula activa con harina integral y semillas activadas para hogazas de campo.",
+            ),
+            [
+                (
+                    1,
+                    "Pesaje de base integral y sal",
+                    "Fraccionar harina y sal fina en balanza de plataforma calibrada.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_harina, Decimal("18.000")), (ins_sal, Decimal("350.000"))],
+                ),
+                (
+                    2,
+                    "Hidratacion y levado inicial",
+                    "Mezclar con levadura fresca y agua tibia hasta conformar bollo blando.",
+                    [(eq_amasadora, 1)],
+                    [(ins_levadura, Decimal("600.000"))],
+                ),
+                (
+                    3,
+                    "Autolisis y reposo en batea",
+                    "Reposo pasivo a temperatura ambiente sin intervencion mecanica.",
+                    [],
+                    [],
+                ),
+                (
+                    4,
+                    "Rebozado en semillas de sesamo",
+                    "Hacer rodar las piezas formadas sobre cama de semillas de sesamo.",
+                    [(eq_mesa, 1)],
+                    [(ins_sesamo, Decimal("800.000"))],
+                ),
+                (
+                    5,
+                    "Horneado con suelo radiante",
+                    "Coccion prolongada a 200C para desarrollo completo de miga integral.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Torta Humeda de Chocolate",
+                prod_tc,
+                f"REC-{pref_tc}-001",
+                EstadoReceta.INHABILITADA,
+                Decimal("15.00"),
+                150,
+                75,
+                "Inhabilitada de forma temporal por sustitucion de proveedor de cacao amargo.",
+            ),
+            [
+                (
+                    1,
+                    "Pesaje de secos y cacao puro",
+                    "Tamizar harina, azucar comun y cacao amargo desgrasado de alta pureza.",
+                    [(eq_balanza_lab, 1)],
+                    [(ins_harina, Decimal("4.000")), (ins_cacao, Decimal("2000.000")), (ins_azucar, Decimal("5.000"))],
+                ),
+                (
+                    2,
+                    "Emulsion de manteca, huevos y leche",
+                    "Mezclar liquidos a temperatura templada hasta conseguir textura cremosa.",
+                    [],
+                    [(ins_manteca, Decimal("3.000")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.000"))],
+                ),
+                (
+                    3,
+                    "Toque aromatico de vainilla",
+                    "Agregar unas gotas de extracto de vainilla pura para realzar notas de chocolate.",
+                    [],
+                    [(ins_vainilla, Decimal("50.000"))],
+                ),
+                (
+                    4,
+                    "Fraccionamiento en moldes redondos",
+                    "Verter 1.2 kg de batido por molde verificando tara y peso neto.",
+                    [(eq_balanza_lab, 1)],
+                    [],
+                ),
+                (
+                    5,
+                    "Horneado a temperatura media",
+                    "Coccion a 160C por 50 minutos con testeo de punto humedo central.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Medialunas de Manteca Portenas",
+                prod_med,
+                f"REC-{pref_med}-001",
+                EstadoReceta.BORRADOR,
+                Decimal("200.00"),
+                240,
+                4,
+                "Borrador en desarrollo de masa hojaldrada con manteca y tres pliegues simples.",
+            ),
+            [
+                (
+                    1,
+                    "Amasado del paston base con leche",
+                    "Preparar masa tierna enriquecida con leche entera y levadura.",
+                    [(eq_amasadora, 1)],
+                    [(ins_harina, Decimal("10.000")), (ins_leche, Decimal("4.000")), (ins_levadura, Decimal("400.000"))],
+                ),
+                (
+                    2,
+                    "Preparacion de placa de manteca",
+                    "Armar empaste rectangular con manteca de primera y azucar.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_manteca, Decimal("5.000")), (ins_azucar, Decimal("2.000"))],
+                ),
+                (
+                    3,
+                    "Hojaldrado y descanso en frio",
+                    "Dar tres vueltas simples con reposos de 30 minutos en heladera.",
+                    [(eq_heladera2, 1)],
+                    [],
+                ),
+                (
+                    4,
+                    "Corte y enrollado de triangulos",
+                    "Cortar bandas de hojaldre y dar forma de medialuna clasica.",
+                    [(eq_mesa, 1)],
+                    [],
+                ),
+                (
+                    5,
+                    "Dorado con huevo batido",
+                    "Pincelar suavemente la superficie antes del ingreso al fermentador.",
+                    [],
+                    [(ins_huevos, Decimal("12.000"))],
+                ),
+            ],
+        ),
+        (
+            (
+                "Budin Glaseado de Limon",
+                prod_bl,
+                f"REC-{pref_bl}-001",
+                EstadoReceta.BORRADOR,
+                Decimal("30.00"),
+                110,
+                1,
+                "Borrador de prueba para incorporar glaseado con jugo natural y ralladura fresca.",
+            ),
+            [
+                (
+                    1,
+                    "Pesaje de azucar, manteca y harina",
+                    "Pesar los ingredientes fundamentales del batido cuatro cuartos.",
+                    [(eq_balanza_lab, 1)],
+                    [(ins_harina, Decimal("6.000")), (ins_azucar, Decimal("5.000")), (ins_manteca, Decimal("4.000"))],
+                ),
+                (
+                    2,
+                    "Batido con huevos y leche fluida",
+                    "Montar hasta conseguir punto cinta agregando leche y huevos de a uno.",
+                    [(eq_amasadora, 1)],
+                    [(ins_huevos, Decimal("20.000")), (ins_leche, Decimal("2.000"))],
+                ),
+                (
+                    3,
+                    "Llenado de moldes budineros",
+                    "Enmantecar moldes descartables y dosificar con espatula.",
+                    [(eq_balanza_lab, 1)],
+                    [],
+                ),
+                (
+                    4,
+                    "Coccion suave y control de humedad",
+                    "Hornear a 165C durante 45 minutos.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+                (
+                    5,
+                    "Enfriamiento y desmoldado manual",
+                    "Dejar entibiar sobre rejilla antes de la aplicacion de almibar y glase.",
+                    [],
+                    [],
+                ),
+            ],
+        ),
+    ]
+
+    recetas_creadas = []
+    for cabecera, pasos_info in definicion_recetas:
+        (
+            nombre,
+            prod,
+            codigo,
+            estado,
+            rendimiento,
+            tiempo,
+            dias_atras,
+            observaciones,
+        ) = cabecera
+        fecha_creacion = datetime.combine(hoy - timedelta(days=dias_atras), time(9, 0))
+        fecha_baja = (
+            datetime.combine(hoy - timedelta(days=max(1, dias_atras - 20)), time(14, 0))
+            if estado == EstadoReceta.INHABILITADA
+            else None
+        )
+        receta = Receta(
+            codigo_receta=codigo,
+            nombre_receta=nombre,
+            producto_id=prod.id,
+            rendimiento_estandar=rendimiento,
+            tiempo_estimado_total=tiempo,
+            estado=estado,
+            observaciones=observaciones,
+            fecha_creacion=fecha_creacion,
+            fecha_baja=fecha_baja,
+            usuario_creador_id=creador.id,
+        )
+        for num_orden, titulo, instrucciones, eqs_data, inss_data in pasos_info:
+            paso = PasoReceta(
+                numero_orden=num_orden,
+                titulo=titulo,
+                instrucciones=instrucciones,
+            )
+            for eq, cant in eqs_data:
+                paso.equipos.append(PasoEquipo(equipo_id=eq.id, cantidad=cant))
+            for ins, cant_estimada in inss_data:
+                paso.insumos.append(
+                    PasoInsumo(insumo_id=ins.id, cantidad_consumo_estimada=cant_estimada)
+                )
+            receta.pasos.append(paso)
+
+        recetas_creadas.append(receta)
+
+    db.add_all(recetas_creadas)
+    db.flush()
+    return recetas_creadas
+
 # --------------------------------------------------------------------------
 # Verificacion
 # --------------------------------------------------------------------------
@@ -2048,6 +2500,14 @@ def main():
             documentos_personal = _crear_documentos_personal(db)
             _crear_vencimientos_personal(db, personas, documentos_personal, hoy)
             _crear_incidentes(db, personas, args.cantidad, hoy)
+            _crear_recetas(
+                db,
+                personas,
+                catalogo["productos"],
+                catalogo["equipos"],
+                catalogo["insumos"],
+                hoy,
+            )
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,
