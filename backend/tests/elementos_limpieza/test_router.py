@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from src.main import app
 # Importa la fixture autouse que recrea la base entre tests.
 from tests.database import session
-
+import uuid
 client = TestClient(app)
 
 
@@ -185,3 +185,74 @@ def test_no_permitir_elemento_con_sector_y_equipo_a_la_vez():
     # Lo corta el validador de ubicacion_exclusiva del schema, antes de
     # llegar al service.
     assert res.status_code == 422
+
+# --- Búsqueda de texto libre ---
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+
+def ids_buscados(**params):
+    res = client.get("/elementos-limpieza/", params=params)
+    assert res.status_code == 200, res.text
+    return {e["id"] for e in res.json()}
+
+
+def test_busqueda_por_nombre_parcial_sin_mayusculas_ni_acentos():
+    sufijo = sufijo_unico()
+    elemento = crear_elemento(crear_tipo(), f"Esponja Áspera {sufijo}")
+
+    for texto in [f"esponja aspera {sufijo}", f"ESPONJA ÁSPERA {sufijo.upper()}", f"pera {sufijo}"]:
+        assert elemento["id"] in ids_buscados(busqueda=texto)
+
+
+def test_busqueda_por_codigo():
+    elemento = crear_elemento(crear_tipo(), f"Cepillo {sufijo_unico()}")
+
+    assert elemento["id"] in ids_buscados(busqueda=elemento["codigo"])
+    assert elemento["id"] in ids_buscados(busqueda=elemento["codigo"].lower())
+
+
+def test_busqueda_por_nombre_de_sector():
+    sufijo = sufijo_unico()
+    sector_id = crear_sector(f"Cámara Fría {sufijo}")
+    elemento = crear_elemento(crear_tipo(), f"Trapo {sufijo}", sector_id=sector_id)
+
+    assert elemento["id"] in ids_buscados(busqueda=f"camara fria {sufijo}")
+
+
+def test_busqueda_incluye_elementos_generales():
+    # Sin sector ni equipo: es el caso que justifica el outer join
+    sufijo = sufijo_unico()
+    general = crear_elemento(crear_tipo(), f"Balde General {sufijo}")
+
+    assert general["id"] in ids_buscados(busqueda=f"balde general {sufijo}")
+
+
+def test_busqueda_sin_resultados():
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+
+def test_busqueda_no_interpreta_comodines():
+    # Sin "%" en el nombre. Si fuera comodín, devolvería todo el listado.
+    elemento = crear_elemento(crear_tipo(), f"Fregona{sufijo_unico()}")
+
+    assert elemento["id"] not in ids_buscados(busqueda="%")
+
+def test_busqueda_convive_con_filtro_activo():
+    sufijo = sufijo_unico()
+    tipo_id = crear_tipo()
+    activo = crear_elemento(tipo_id, f"Guante {sufijo} A")
+    dado_de_baja = crear_elemento(tipo_id, f"Guante {sufijo} B")
+    assert client.delete(f"/elementos-limpieza/{dado_de_baja['id']}").status_code == 200
+
+    texto = f"guante {sufijo}"
+    assert ids_buscados(busqueda=texto) == {activo["id"], dado_de_baja["id"]}
+    assert ids_buscados(busqueda=texto, activo="true") == {activo["id"]}
+    assert ids_buscados(busqueda=texto, activo="false") == {dado_de_baja["id"]}
+    
+def test_debug_comodines():
+    elemento = crear_elemento(crear_tipo(), f"Fregona{sufijo_unico()}")
+    print("ELEMENTO:", elemento)
+    res = client.get("/elementos-limpieza/", params={"busqueda": "%"})
+    print("RESPUESTA:", res.json())

@@ -9,7 +9,9 @@ from src.equipos.models import Equipo
 from src.equipos.exceptions import EquipoNoEncontrado, EquipoInactivo
 from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
 from src.equipos.services import leer_equipo
-from src.sectores.services import leer_sector 
+from src.sectores.services import leer_sector
+from src.utils.busqueda import condicion_busqueda
+
 
 
 def _validar_tipo(db: Session, tipo_id: int) -> None:
@@ -82,8 +84,29 @@ def listar_elementos_limpieza(
     sector_id: int | None = None,
     equipo_id: int | None = None,
     activo: bool | None = None,
+    busqueda: str | None = None,
 ):
     query = select(ElementoLimpieza)
+
+    # Búsqueda libre: 
+    if busqueda and busqueda.strip():
+        query = (
+            query
+            .join(TipoElementoLimpieza, ElementoLimpieza.tipo_id == TipoElementoLimpieza.id)
+            .join(Sector, ElementoLimpieza.sector_id == Sector.id, isouter=True)
+            .join(Equipo, ElementoLimpieza.equipo_id == Equipo.id, isouter=True)
+            .where(condicion_busqueda(
+                [
+                    ElementoLimpieza.nombre,
+                    ElementoLimpieza.codigo,
+                    TipoElementoLimpieza.nombre,
+                    Sector.nombre,
+                    Equipo.nombre,
+                    Equipo.numero_serie,
+                ],
+                busqueda,
+            ))
+        )
 
     if activo is not None:
         query = query.where(ElementoLimpieza.activo == activo)
