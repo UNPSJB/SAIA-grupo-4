@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Badge, Box, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash } from "react-icons/fi";
+import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
+import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash, FiPrinter } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
+import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
+import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import type { PasoReceta, Receta } from "./types";
 
 interface RecetaDetalleProps {
@@ -215,6 +217,23 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           label: "Observaciones",
           valor: receta.observaciones || "—",
         },
+        ...(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA"
+          ? [
+              {
+                label: "Ficha técnica",
+                valor: (
+                  <Button
+                    size="xs"
+                    colorPalette="blue"
+                    variant="outline"
+                    onClick={() => imprimirFichaReceta({ ...receta, pasos })}
+                  >
+                    <FiPrinter /> Imprimir / Descargar PDF
+                  </Button>
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -233,12 +252,17 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
   ];
 
   return (
-    <DetalleModal
-      open
-      title={`Detalle de Receta: ${receta.nombre_receta}`}
-      icon={FiEye}
-      onClose={onCerrar}
-      secciones={secciones}
-    />
+    <>
+      <DetalleModal
+        open
+        title={`Detalle de Receta: ${receta.nombre_receta}`}
+        icon={FiEye}
+        onClose={onCerrar}
+        secciones={secciones}
+      />
+      {(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA") && (
+        <FichaRecetaPrint receta={{ ...receta, pasos }} />
+      )}
+    </>
   );
 };

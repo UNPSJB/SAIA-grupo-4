@@ -240,6 +240,51 @@ export default function RecetasPage() {
           return `Coincidencia: Equipo "${equipoObj?.nombre || "seleccionado"}" en ${pasosCoincidentes.join(", ")}`;
         })();
 
+        // Coincidencia con insumos o equipos por texto de búsqueda
+        const coincidenciasTextoRecurso = (() => {
+          if (!aplicados.busqueda || !aplicados.busqueda.trim()) return [];
+          const query = aplicados.busqueda.trim().toLowerCase();
+          const items: { tipo: "insumo" | "equipo"; texto: string }[] = [];
+
+          const insumosMap = new Map<string, number[]>();
+          const equiposMap = new Map<string, number[]>();
+
+          (r.pasos || []).forEach((p) => {
+            p.insumos?.forEach((pi) => {
+              const nom = pi.insumo?.nombre;
+              if (nom && nom.toLowerCase().includes(query)) {
+                if (!insumosMap.has(nom)) insumosMap.set(nom, []);
+                insumosMap.get(nom)!.push(p.numero_orden);
+              }
+            });
+            p.equipos?.forEach((pe) => {
+              const nom = pe.equipo?.nombre;
+              if (nom && nom.toLowerCase().includes(query)) {
+                if (!equiposMap.has(nom)) equiposMap.set(nom, []);
+                equiposMap.get(nom)!.push(p.numero_orden);
+              }
+            });
+          });
+
+          insumosMap.forEach((pasos, nom) => {
+            const unicos = Array.from(new Set(pasos)).sort((a, b) => a - b);
+            items.push({
+              tipo: "insumo",
+              texto: `Coincidencia: Insumo "${nom}" en ${unicos.map((num) => `Paso ${num}`).join(", ")}`,
+            });
+          });
+
+          equiposMap.forEach((pasos, nom) => {
+            const unicos = Array.from(new Set(pasos)).sort((a, b) => a - b);
+            items.push({
+              tipo: "equipo",
+              texto: `Coincidencia: Equipo "${nom}" en ${unicos.map((num) => `Paso ${num}`).join(", ")}`,
+            });
+          });
+
+          return items;
+        })();
+
         return (
           <VStack align="start" gap={0.5}>
             <Text>{r.nombre_receta}</Text>
@@ -253,6 +298,16 @@ export default function RecetasPage() {
                 {coincidenciaEquipo}
               </Text>
             )}
+            {coincidenciasTextoRecurso.map((c, i) => (
+              <Text
+                key={i}
+                fontSize="xs"
+                color={c.tipo === "insumo" ? "blue.600" : "purple.600"}
+                fontWeight="medium"
+              >
+                {c.texto}
+              </Text>
+            ))}
           </VStack>
         );
       },
@@ -260,7 +315,11 @@ export default function RecetasPage() {
     {
       key: "producto",
       label: "Producto",
-      render: (r) => r.producto?.nombre || r.producto_id,
+      render: (r) => (
+        <Badge colorPalette="purple" variant="subtle">
+          {r.producto?.nombre || (r.producto_id ? `Producto #${r.producto_id}` : "—")}
+        </Badge>
+      ),
     },
     {
       key: "rendimiento_estandar",
@@ -346,7 +405,7 @@ export default function RecetasPage() {
   ];
 
   return (
-    <ListadoContainer maxW="6xl">
+    <ListadoContainer maxW="8xl">
       <ListadoHeader title="Recetas" icon={FiBookOpen}>
         <HStack justify="flex-end" mb={6} align="center">
           <Button
@@ -359,7 +418,27 @@ export default function RecetasPage() {
         </HStack>
       </ListadoHeader>
 
-      <Box mb={4}>
+      <Box
+        mb={4}
+        w="100%"
+        css={{
+          "& > div": {
+            width: "100% !important",
+            marginLeft: "0 !important",
+            flexWrap: "wrap",
+            gap: "12px",
+            justifyContent: "space-between",
+          },
+          "& input": {
+            width: { base: "100%", sm: "auto" },
+            minWidth: { base: "100%", sm: "14rem" },
+          },
+          "& [data-scope='select']": {
+            width: { base: "100%", sm: "auto" },
+            minWidth: { base: "100%", sm: "9rem" },
+          },
+        }}
+      >
         <FiltrosBar
           onAplicar={aplicar}
           onLimpiar={limpiar}
@@ -367,8 +446,8 @@ export default function RecetasPage() {
           loading={loading}
         >
           <FiltroTexto
-            ariaLabel="Buscar por código, receta o producto"
-            placeholder="Código, nombre o producto..."
+            ariaLabel="Buscar por código, receta, producto, insumo o equipo"
+            placeholder="Código, receta, producto, insumo o equipo..."
             value={borrador.busqueda}
             onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
             onKeyDown={(e) => {

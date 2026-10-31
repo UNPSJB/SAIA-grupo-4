@@ -12,6 +12,7 @@ import {
   FiHash,
   FiList,
   FiPlus,
+  FiPrinter,
   FiTrash2,
   FiUser,
 } from "react-icons/fi";
@@ -47,6 +48,8 @@ import {
 } from "./PasoRecetaModal";
 import { PasoRecetaDetalle } from "./PasoRecetaDetalle";
 import { RecetaForm } from "./RecetaForm";
+import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
+import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import type { PasoReceta, Receta } from "./types";
 
 const estadoInfo: Record<
@@ -492,7 +495,7 @@ export default function RecetaWorkspace({
 
   return (
     <Box p={10} bg="gray.100" minH="100vh">
-      <ListadoContainer maxW="6xl">
+      <ListadoContainer maxW="8xl">
         <HStack
           justify="space-between"
           align="center"
@@ -527,6 +530,15 @@ export default function RecetaWorkspace({
             <Button variant="ghost" colorPalette="yellow" onClick={volver}>
               <FiList /> Listado
             </Button>
+            {(esActiva || esInhabilitada) && (
+              <Button
+                variant="ghost"
+                colorPalette="blue"
+                onClick={() => imprimirFichaReceta(receta)}
+              >
+                <FiPrinter /> Imprimir Ficha
+              </Button>
+            )}
             {esBorrador && (
               <Button
                 variant="ghost"
@@ -668,7 +680,7 @@ export default function RecetaWorkspace({
         {success && <AlertMessage type="success" message={success} />}
       </ListadoContainer>
 
-      <ListadoContainer maxW="6xl" mt={4}>
+      <ListadoContainer maxW="8xl" mt={4}>
         <HStack
           justify="space-between"
           align="center"
@@ -800,6 +812,8 @@ export default function RecetaWorkspace({
           setErrorAccion("");
         }}
       />
+
+      {(esActiva || esInhabilitada) && <FichaRecetaPrint receta={receta} />}
     </Box>
   );
 }
