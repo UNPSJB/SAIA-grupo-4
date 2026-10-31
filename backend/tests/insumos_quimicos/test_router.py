@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from src.main import app
 from tests.database import session
+import uuid
 
 client = TestClient(app)
 
@@ -564,3 +565,140 @@ def test_consumo_con_mas_de_tres_decimales():
     )
 
     assert response.status_code == 422
+
+# --- Búsqueda de texto libre ---
+
+TIPO_VALIDO = "detergente"  
+
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+
+def crear_quimico(nombre, unidad_id, tipo=TIPO_VALIDO, sector_id=None, equipo_id=None):
+    res = client.post(
+        "/insumos-quimicos/",
+        json={
+            "nombre": nombre,
+            "tipo": tipo,
+            "unidad_medida_id": unidad_id,
+            "sector_id": sector_id,
+            "equipo_id": equipo_id,
+        },
+    )
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def ids_buscados(**params):
+    res = client.get("/insumos-quimicos/", params=params)
+    assert res.status_code == 200, res.text
+    return {q["id"] for q in res.json()}
+
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos():
+    sufijo = sufijo_unico()
+    quimico = crear_quimico(f"Hipoclorito Sódico {sufijo}", crear_unidad_medida())
+
+    for texto in [f"hipoclorito sodico {sufijo}", f"HIPOCLORITO SÓDICO {sufijo.upper()}", f"clorito sodico {sufijo}"]:
+        assert quimico["id"] in ids_buscados(busqueda=texto)
+
+
+def test_busqueda_por_unidad_de_medida():
+    quimico = crear_quimico(f"Alcohol {sufijo_unico()}", crear_unidad_medida())
+
+    assert quimico["id"] in ids_buscados(busqueda="kilogramo")
+    assert quimico["id"] in ids_buscados(busqueda="kg")
+
+
+def test_busqueda_por_tipo():
+    quimico = crear_quimico(f"Sanitizante {sufijo_unico()}", crear_unidad_medida())
+
+    assert quimico["id"] in ids_buscados(busqueda=TIPO_VALIDO)
+
+
+def test_busqueda_por_nombre_de_sector():
+    sufijo = sufijo_unico()
+    sector_id = crear_sector(f"Cámara Fría {sufijo}")
+    quimico = crear_quimico(f"Desinfectante {sufijo}", crear_unidad_medida(), sector_id=sector_id)
+
+    assert quimico["id"] in ids_buscados(busqueda=f"camara fria {sufijo}")
+
+
+def test_busqueda_por_nombre_de_equipo():
+    sufijo = sufijo_unico()
+    sector_id = crear_sector(f"Sector {sufijo}")
+    res = client.post(
+        "/equipos/",
+        json={
+            "nombre": f"Marmita {sufijo}",
+            "marca": "Marca",
+            "numero_serie": f"NS-{sufijo}",
+            "categoria": "balanza",
+            "sector_id": sector_id,
+        },
+    )
+    assert res.status_code == 201, res.text
+    quimico = crear_quimico(
+        f"Antical {sufijo}", crear_unidad_medida(), equipo_id=res.json()["id"]
+    )
+
+    assert quimico["id"] in ids_buscados(busqueda=f"marmita {sufijo}")
+
+
+def test_busqueda_incluye_insumos_generales():
+    # Sin sector ni equipo: es el caso que justifica el outer join
+    sufijo = sufijo_unico()
+    general = crear_quimico(f"Lejía General {sufijo}", crear_unidad_medida())
+
+    assert general["id"] in ids_buscados(busqueda=f"lejia general {sufijo}")
+
+
+def test_busqueda_excluye_los_que_no_coinciden():
+    sufijo = sufijo_unico()
+    unidad_id = crear_unidad_medida()
+    coincide = crear_quimico(f"Cloro {sufijo}", unidad_id)
+    no_coincide = crear_quimico(f"Soda {sufijo_unico()}", unidad_id)
+
+    resultado = ids_buscados(busqueda=f"cloro {sufijo}")
+    assert coincide["id"] in resultado
+    assert no_coincide["id"] not in resultado
+
+
+def test_busqueda_sin_resultados():
+    crear_quimico(f"Vinagre {sufijo_unico()}", crear_unidad_medida())
+
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+
+def test_busqueda_no_interpreta_comodines():
+    quimico = crear_quimico(f"Peróxido{sufijo_unico()}", crear_unidad_medida())
+
+    # Si "%" fuera comodín, devolvería todo el listado
+    assert quimico["id"] not in ids_buscados(busqueda="%")
+
+
+def test_busqueda_convive_con_filtro_de_sector():
+    sufijo = sufijo_unico()
+    unidad_id = crear_unidad_medida()
+    sector_a = crear_sector(f"Sector A {sufijo}")
+    sector_b = crear_sector(f"Sector B {sufijo}")
+    en_a = crear_quimico(f"Ácido {sufijo} 1", unidad_id, sector_id=sector_a)
+    en_b = crear_quimico(f"Ácido {sufijo} 2", unidad_id, sector_id=sector_b)
+    general = crear_quimico(f"Ácido {sufijo} 3", unidad_id)
+    texto = f"acido {sufijo}"
+
+    # Solo con la búsqueda aparecen los tres
+    assert ids_buscados(busqueda=texto) == {en_a["id"], en_b["id"], general["id"]}
+
+    # Con sector_id se combinan (AND): los del sector pedido y los generales
+    assert ids_buscados(busqueda=texto, sector_id=sector_a) == {en_a["id"], general["id"]}
+
+
+def test_busqueda_incluye_insumos_dados_de_baja():
+    # Sin filtros de sector ni equipo el listado devuelve también los inactivos
+    sufijo = sufijo_unico()
+    quimico = crear_quimico(f"Amoníaco {sufijo}", crear_unidad_medida())
+    assert client.delete(f"/insumos-quimicos/{quimico['id']}").status_code == 200
+
+    assert quimico["id"] in ids_buscados(busqueda=f"amoniaco {sufijo}")

@@ -22,6 +22,7 @@ from src.documentos_personal.models import DocumentoPersonal
 from src.capacidades.models import Capacidad
 from src.capacidades.constants import RolesSistema
 from src.capacidades import exceptions as capacidad_exceptions
+from src.utils.busqueda import condicion_busqueda
 
 # Carpeta local de comprobantes, dentro de la misma carpeta uploads que expone src/main.py
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -143,10 +144,12 @@ def vencimientos_con_estado(db_persona: Persona, hoy: date) -> List[schemas.Venc
 
 def listar_personal(db: Session, busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None) -> List[schemas.PersonaConVencimientos]:
     consulta = select(Persona)
-    # Filtro por persona: coincidencia parcial en nombre, apellido o DNI
-    if busqueda:
-        patron = f"%{busqueda}%"
-        consulta = consulta.where(or_(Persona.nombre.ilike(patron), Persona.apellido.ilike(patron), Persona.dni.ilike(patron)))
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las columnas de texto visibles
+    if busqueda and busqueda.strip():
+        consulta = consulta.where(condicion_busqueda(
+            [Persona.nombre, Persona.apellido, Persona.nombre + " " + Persona.apellido, Persona.dni, Persona.legajo],
+            busqueda,
+        ))
     # Filtro por tipo de vencimiento: personas que tienen cargado ese documento
     if documento_id is not None:
         consulta = consulta.where(Persona.vencimientos.any(VencimientoPersonal.documento_id == documento_id))

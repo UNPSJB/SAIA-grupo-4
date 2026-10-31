@@ -1,5 +1,6 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge, HStack, Button } from "@chakra-ui/react";
+import { useState } from "react";
+import { Badge, Box, HStack, Button } from "@chakra-ui/react";
 import {
   FiEdit2,
   FiEye,
@@ -12,6 +13,8 @@ import { FaRuler } from "react-icons/fa";
 import {
   AlertMessage,
   DataTable,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
   RowActionButton,
   RowActions,
@@ -19,6 +22,7 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { InsumoQuimico } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
@@ -31,7 +35,15 @@ interface ListadoInsumosQuimicosProps {
   onVerUnidades?: () => void;
 }
 
-const ENDPOINT = `${BASE_URL}/insumos-quimicos/`;
+// Arma el endpoint del listado: solo se manda la búsqueda si tiene valor.
+const construirEndpoint = (busqueda: string) => {
+  const params = new URLSearchParams();
+  if (busqueda) params.set("busqueda", busqueda);
+
+  const query = params.toString();
+  return `${BASE_URL}/insumos-quimicos/${query ? `?${query}` : ""}`;
+};
+
 const formatearConsumo = (consumo: number) =>
   Number(consumo).toLocaleString("es-AR", {
     maximumFractionDigits: 3,
@@ -45,9 +57,14 @@ export const ListadoInsumosQuimicos = ({
   onDarAlta,
   onVerUnidades,
 }: ListadoInsumosQuimicosProps) => {
+  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
+  // La página vuelve a 1 sola cuando cambia el endpoint (lo resuelve el hook)
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<InsumoQuimico>({
-      endpoint: ENDPOINT,
+      endpoint: construirEndpoint(busquedaAplicada),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de insumos químicos.",
     });
@@ -150,6 +167,23 @@ export const ListadoInsumosQuimicos = ({
         </HStack>
       </HStack>
 
+      <Box mb={4}>
+        <FiltrosBar
+          ocultarAplicar
+          onAplicar={() => {}} // la búsqueda se aplica sola mientras se escribe
+          onLimpiar={() => setBusqueda("")}
+          hayFiltrosActivos={busqueda !== ""}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel='Buscar insumo químico'
+            placeholder='Nombre, sector o equipo'
+            value={busqueda}
+            onChange={setBusqueda}
+          />
+        </FiltrosBar>
+      </Box>
+
       {loading && <LoadingState message='Cargando insumos químicos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
@@ -157,7 +191,11 @@ export const ListadoInsumosQuimicos = ({
       {!loading && !error && data.length === 0 && (
         <AlertMessage
           type='info'
-          message='Todavía no hay insumos químicos cargados.'
+          message={
+            busquedaAplicada
+              ? "No hay insumos químicos que coincidan con la búsqueda."
+              : "Todavía no hay insumos químicos cargados."
+          }
         />
       )}
 

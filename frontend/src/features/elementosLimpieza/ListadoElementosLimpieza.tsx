@@ -1,6 +1,6 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { useMemo, useState } from "react";
-import { Badge, HStack, Button } from "@chakra-ui/react";
+import { Badge, Box, HStack, Button } from "@chakra-ui/react";
 import {
   FiTrash2,
   FiEdit2,
@@ -14,14 +14,17 @@ import { MdOutlineCleaningServices } from "react-icons/md";
 import {
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
   RowActionButton,
   RowActions,
   TablePagination,
-  SelectField,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { ElementoLimpieza } from "./types";
 import { ProximoRecambio } from "../recambios/ProximoRecambio";
 import type { AlertaRecambio } from "../recambios/types";
@@ -37,6 +40,16 @@ interface ListadoElementosLimpiezaProps {
   onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
+type FiltrosElemento = { estado: string };
+
+const FILTROS_INICIALES: FiltrosElemento = { estado: "activos" };
+
+const OPCIONES_ESTADO = [
+  { label: "Activos", value: "activos" },
+  { label: "Inactivos", value: "inactivos" },
+  { label: "Todos", value: "todos" },
+];
+
 const formatearFecha = (fechaStr?: string | null) => {
   if (!fechaStr) return "—";
   try {
@@ -50,11 +63,15 @@ const formatearFecha = (fechaStr?: string | null) => {
   }
 };
 
-const construirEndpoint = (filtroEstado: "todos" | "activos" | "inactivos") => {
-  const base = `${BASE_URL}/elementos-limpieza/`;
-  if (filtroEstado === "activos") return `${base}?activo=true`;
-  if (filtroEstado === "inactivos") return `${base}?activo=false`;
-  return base;
+// Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
+const construirEndpoint = (filtros: FiltrosElemento, busqueda: string) => {
+  const params = new URLSearchParams();
+  if (filtros.estado === "activos") params.set("activo", "true");
+  if (filtros.estado === "inactivos") params.set("activo", "false");
+  if (busqueda) params.set("busqueda", busqueda);
+
+  const query = params.toString();
+  return `${BASE_URL}/elementos-limpieza/${query ? `?${query}` : ""}`;
 };
 
 export const ListadoElementosLimpieza = ({
@@ -66,15 +83,21 @@ export const ListadoElementosLimpieza = ({
   onDarAlta,
   onRegistrarRecambio,
 }: ListadoElementosLimpiezaProps) => {
-  const [filtroEstado, setFiltroEstado] = useState<
-    "todos" | "activos" | "inactivos"
-  >("activos");
-  const [page, setPage] = useState(1);
+  // Borrador: lo que el usuario está por aplicar. Aplicados: lo único que llega al endpoint.
+  const [borrador, setBorrador] = useState<FiltrosElemento>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] = useState<FiltrosElemento>(FILTROS_INICIALES);
 
-  const { data, loading, error } = useListadoData<ElementoLimpieza>({
-    endpoint: construirEndpoint(filtroEstado),
-    errorMessage: "No se pudo cargar la lista de elementos de limpieza.",
-  });
+  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
+  // La página vuelve a 1 sola cuando cambia el endpoint (estado o búsqueda)
+  const { data, loading, error, page, setPage, itemsPaginados } =
+    useListadoData<ElementoLimpieza>({
+      endpoint: construirEndpoint(aplicados, busquedaAplicada),
+      pageSize: ITEMS_POR_PAGINA,
+      errorMessage: "No se pudo cargar la lista de elementos de limpieza.",
+    });
 
   // La próxima fecha y el semáforo los calcula el backend; se cruzan por id de elemento
   const { data: alertas } = useListadoData<AlertaRecambio>({
@@ -86,14 +109,17 @@ export const ListadoElementosLimpieza = ({
     [alertas],
   );
 
-  const inicio = (page - 1) * ITEMS_POR_PAGINA;
-  const itemsPaginados = data.slice(inicio, inicio + ITEMS_POR_PAGINA);
+  const hayFiltros =
+    busqueda !== "" || borrador.estado !== FILTROS_INICIALES.estado;
+  const hayAplicados =
+    busquedaAplicada !== "" || aplicados.estado !== FILTROS_INICIALES.estado;
 
-  const handleCambiarFiltro = (
-    nuevoFiltro: "todos" | "activos" | "inactivos",
-  ) => {
-    setFiltroEstado(nuevoFiltro);
-    setPage(1);
+  const aplicar = () => setAplicados(borrador);
+
+  const limpiar = () => {
+    setBusqueda("");
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
   };
 
   const columnas: ColumnDef<ElementoLimpieza>[] = [
@@ -218,20 +244,6 @@ export const ListadoElementosLimpieza = ({
           icon={MdOutlineCleaningServices}
         />
         <HStack gap={2}>
-          <SelectField
-            label=''
-            options={[
-              { label: "Activos", value: "activos" },
-              { label: "Inactivos", value: "inactivos" },
-              { label: "Todos", value: "todos" },
-            ]}
-            value={filtroEstado}
-            onChange={(e) =>
-              handleCambiarFiltro(
-                e.target.value as "todos" | "activos" | "inactivos",
-              )
-            }
-          />
           <Button variant='outline' colorPalette='green' onClick={onCrearTipo}>
             <FiSettings /> Gestionar tipos
           </Button>
@@ -241,12 +253,39 @@ export const ListadoElementosLimpieza = ({
         </HStack>
       </HStack>
 
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel='Buscar elemento de limpieza'
+            placeholder='Nombre, código o ubicación'
+            value={busqueda}
+            onChange={setBusqueda}
+          />
+          <FiltroSelect
+            ariaLabel='Estado del elemento'
+            placeholder='Estado'
+            options={OPCIONES_ESTADO}
+            value={borrador.estado}
+            onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
+          />
+        </FiltrosBar>
+      </Box>
+
       {loading && <LoadingState message='Cargando elementos de limpieza...' />}
       {!loading && error && <AlertMessage type='error' message={error} />}
       {!loading && !error && data.length === 0 && (
         <AlertMessage
           type='info'
-          message='No hay elementos de limpieza para mostrar.'
+          message={
+            hayAplicados
+              ? "No hay elementos de limpieza que coincidan con la búsqueda o los filtros seleccionados."
+              : "No hay elementos de limpieza para mostrar."
+          }
         />
       )}
       {!loading && !error && data.length > 0 && (

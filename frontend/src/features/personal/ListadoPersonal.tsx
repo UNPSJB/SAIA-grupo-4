@@ -5,17 +5,17 @@ import { FiUser, FiEdit2, FiTrash2, FiEye, FiCheckCircle, FiAward, FiPlus, FiFil
 import { AlertMessage, COLOR_ESTADO, DataTable, ETIQUETA_ESTADO, FiltroSelect, FiltrosBar, FiltroTexto, LoadingState, RowActionButton, RowActions, TablePagination } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { Persona } from "./types";
 import type { ColumnDef } from "../../components/ui";
 import type { DocumentoPersonal } from "../documentosPersonal/types";
 
 type FiltrosPersonal = {
-    busqueda: string;
     documentoId: string;
     estado: string;
 };
 
-const FILTROS_INICIALES: FiltrosPersonal = { busqueda: "", documentoId: "", estado: "" };
+const FILTROS_INICIALES: FiltrosPersonal = { documentoId: "", estado: "" };
 
 const OPCIONES_ESTADO = [
     { label: "Con vencidos", value: "vencido" },
@@ -24,9 +24,9 @@ const OPCIONES_ESTADO = [
 ];
 
 // Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
-const construirEndpoint = (filtros: FiltrosPersonal) => {
+const construirEndpoint = (filtros: FiltrosPersonal, busqueda: string) => {
     const params = new URLSearchParams();
-    if (filtros.busqueda.trim()) params.set("busqueda", filtros.busqueda.trim());
+    if (busqueda) params.set("busqueda", busqueda);
     if (filtros.documentoId) params.set("documento_id", filtros.documentoId);
     if (filtros.estado) params.set("estado", filtros.estado);
 
@@ -50,8 +50,12 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
     const [borrador, setBorrador] = useState<FiltrosPersonal>(FILTROS_INICIALES);
     const [aplicados, setAplicados] = useState<FiltrosPersonal>(FILTROS_INICIALES);
 
+    // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+    const [busqueda, setBusqueda] = useState("");
+    const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
     const { data, loading, error, page, setPage, itemsPaginados } = useListadoData<Persona>({
-        endpoint: construirEndpoint(aplicados),
+        endpoint: construirEndpoint(aplicados, busquedaAplicada),
         pageSize: ITEMS_POR_PAGINA,
         errorMessage: "No se pudo cargar la lista de personal.",
     });
@@ -62,16 +66,16 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
         errorMessage: "No se pudieron cargar los documentos.",
     });
 
-    const hayFiltros = borrador.busqueda !== "" || borrador.documentoId !== "" || borrador.estado !== "";
-    const hayAplicados = aplicados.busqueda !== "" || aplicados.documentoId !== "" || aplicados.estado !== "";
+   const hayFiltros = busqueda !== "" || borrador.documentoId !== "" || borrador.estado !== "";
+   const hayAplicados = busquedaAplicada !== "" || aplicados.documentoId !== "" || aplicados.estado !== "";
 
-    // Cada aplicación vuelve a la primera página, para no caer en una página vacía.
     const aplicar = () => {
         setAplicados(borrador);
         setPage(1);
     };
 
     const limpiar = () => {
+        setBusqueda("");
         setBorrador(FILTROS_INICIALES);
         setAplicados(FILTROS_INICIALES);
         setPage(1);
@@ -171,12 +175,12 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
                     <FiltroTexto
                         ariaLabel="Buscar persona"
                         placeholder="Nombre, apellido o DNI"
-                        value={borrador.busqueda}
-                        onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
+                        value={busqueda}
+                        onChange={setBusqueda}
                         onKeyDown={(e) => {
-                            if (e.key === "Enter") aplicar();
+                        if (e.key === "Enter") aplicar();
                         }}
-                    />
+                    />  
                     <FiltroSelect
                         ariaLabel="Tipo de vencimiento"
                         placeholder="Todos los documentos"
@@ -197,7 +201,10 @@ export const ListadoPersonal = ({ onCrear, onModificar, onEliminar, onVer, onDar
             {loading && <LoadingState message="Cargando personal..." />}
             {!loading && error && <AlertMessage type="error" message={error} />}
             {!loading && !error && data.length === 0 && (
-                <AlertMessage type="info" message={hayAplicados ? "No hay personal que coincida con los filtros seleccionados." : "Todavía no hay personal cargado."} />
+                <AlertMessage
+                type="info"
+                message={hayAplicados ? "No hay personal que coincida con la búsqueda o los filtros seleccionados." : "Todavía no hay personal cargado."}
+                />
             )}
             {!loading && !error && data.length > 0 && (
                 <>

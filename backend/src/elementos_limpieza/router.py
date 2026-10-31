@@ -21,13 +21,6 @@ def crear_elemento_limpieza(elemento: schemas.ElementoLimpiezaCreate, db: Sessio
 def leer_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
     return services.leer_elemento_limpieza(db, elemento_id)
 
-@router.get("/", response_model=list[schemas.ElementoLimpieza])
-def listar_elementos_limpieza(
-    activo: bool | None = None,
-    db: Session = Depends(get_db)
-):
-    return services.listar_elementos_limpieza(db, activo=activo)
-
 @router.delete("/{elemento_id}", response_model=schemas.ElementoLimpieza)
 def eliminar_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
     return services.eliminar_elemento_limpieza(db, elemento_id)
@@ -45,3 +38,11 @@ def listar_elementos_por_sector(sector_id: int, db: Session = Depends(get_db)):
 @router.get("/por-equipo/{equipo_id}", response_model=list[schemas.ElementoLimpieza])
 def listar_elementos_por_equipo(equipo_id: int, db: Session = Depends(get_db)):
     return services.listar_elementos_limpieza(db, equipo_id=equipo_id, activo=True)
+
+@router.get("/", response_model=list[schemas.ElementoLimpieza])
+def listar_elementos_limpieza(
+    busqueda: str | None = None,
+    activo: bool | None = None,
+    db: Session = Depends(get_db)
+):
+    return services.listar_elementos_limpieza(db, activo=activo, busqueda=busqueda)

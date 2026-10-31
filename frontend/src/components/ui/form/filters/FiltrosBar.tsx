@@ -1,4 +1,4 @@
-import { Button, HStack } from "@chakra-ui/react";
+import { Box, Button, HStack, IconButton } from "@chakra-ui/react";
 import { FiFilter, FiRefreshCw } from "react-icons/fi";
 import type { ReactNode } from "react";
 
@@ -9,25 +9,19 @@ interface FiltrosBarProps {
   onAplicar: () => void;
   /** Vuelve todos los controles a su valor por defecto. */
   onLimpiar: () => void;
-  /** Muestra el botón "Limpiar" solo cuando hay algo aplicado. */
+  /** Habilita el botón "Limpiar" solo cuando hay algo aplicado. */
   hayFiltrosActivos: boolean;
   /** Deshabilita "Filtrar" mientras corre la consulta. */
   loading?: boolean;
   /** Texto del botón principal. Por defecto "Filtrar". */
   textoAplicar?: string;
+  /** Oculta "Filtrar", para listados donde todos los controles se aplican solos (ej. solo búsqueda). */
+  ocultarAplicar?: boolean;
 }
 
 /**
  * Barra de filtros compacta para los listados.
- *
- * A diferencia de un formulario con labels visibles, los controles van sueltos
- * en una fila y el botón "Filtrar" es el que dispara la consulta. Así el
- * listado no pide datos en cada tecla ni en cada cambio de un desplegable, que
- * es el mismo criterio que usa el historial de checklists.
- *
- * Los controles van como `children` y no se conocen acá: cada listado compone
- * los que necesita (`FiltroSelect`, `FiltroTexto`, ...), así que el mismo
- * componente sirve para vencimientos, personal, equipos o documentación.
+ * (mismo comentario de antes)
  */
 export const FiltrosBar = ({
   children,
@@ -36,38 +30,45 @@ export const FiltrosBar = ({
   hayFiltrosActivos,
   loading = false,
   textoAplicar = "Filtrar",
+  ocultarAplicar = false,
 }: FiltrosBarProps) => (
-  <HStack
-    w='fit-content'
-    ml='auto'
-    gap={5}
-    align='center'
-    justify='flex-end'
-    p={2}
-    borderWidth='1px'
-    borderRadius='md'
-    bg='white'
-  >
-    {children}
+  <Box w='100%'>
+    {/* Caja de filtros: solo los controles */}
+    <HStack
+        wrap='wrap'
+        columnGap={5}
+        rowGap={3}
+        align='center'
+        p={2}
+        borderWidth='1px'
+        borderRadius='md'
+        bg='white'
+      >
+        {children}
+    {/* Botones dentro de la caja: a la derecha si entran, y si no, bajan juntos */}
+      <HStack ml='auto' gap={2} flexShrink={0}>
+       <Button
+          size='sm'
+          variant='ghost'
+          colorPalette='green'
+          onClick={onLimpiar}
+          disabled={!hayFiltrosActivos}
+          title='Limpiar filtros'
+        >
+          <FiRefreshCw /> Limpiar
+        </Button>
 
-    <Button
-      size='sm'
-      variant='ghost'
-      colorPalette='gray'
-      onClick={onLimpiar}
-      borderColor='gray'
-      disabled={!hayFiltrosActivos ? true : false}
-    >
-      <FiRefreshCw /> Limpiar
-    </Button>
-
-    <Button
-      size='sm'
-      colorPalette='green'
-      onClick={onAplicar}
-      loading={loading}
-    >
-      {!loading && <FiFilter />} {textoAplicar}
-    </Button>
-  </HStack>
+        {!ocultarAplicar && (
+          <Button
+            size='sm'
+            colorPalette='green'
+            onClick={onAplicar}
+            loading={loading}
+          >
+            {!loading && <FiFilter />} {textoAplicar}
+          </Button>
+        )}
+      </HStack>
+    </HStack>
+  </Box>
 );
