@@ -87,7 +87,14 @@ export const recetasApi = {
     const qs = params.toString();
     return request<Receta[]>(`/recetas/${qs ? `?${qs}` : ""}`);
   },
-  obtenerRecetasActivas: () => request<Receta[]>("/recetas/activas"),
+  obtenerRecetasActivas: (filtros?: { busqueda?: string; producto_id?: number | string }) => {
+    const params = new URLSearchParams();
+    if (filtros?.busqueda?.trim()) params.append("busqueda", filtros.busqueda.trim());
+    if (filtros?.producto_id) params.append("producto_id", String(filtros.producto_id));
+    const qs = params.toString();
+    return request<Receta[]>(`/recetas/activas${qs ? `?${qs}` : ""}`);
+  },
+  obtenerRecetaActiva: (id: number) => request<Receta>(`/recetas/activas/${id}`),
   obtenerBorrador: () => request<Receta>("/recetas/borrador"),
   obtenerReceta: (id: number) => request<Receta>(`/recetas/${id}`),
   crearReceta: (payload: RecetaCreatePayload) =>

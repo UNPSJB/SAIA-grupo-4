@@ -31,6 +31,8 @@ import VencimientosPage from "./pages/VencimientosPage";
 import { RenovacionProvider } from "./features/vencimientos/RenovacionProvider";
 import DocumentosPage from "./pages/DocumentosPage";
 import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
+import RecetasOperadorPage from "./pages/RecetasOperadorPage";
+import { FichaRecetaOperador } from "./features/recetas/FichaRecetaOperador";
 import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
@@ -79,6 +81,22 @@ function AppContent() {
             element={
               <RequireAuth>
                 <ChecklistPage mostrarBarraInstitucional={false} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path='/recetas'
+            element={
+              <RequireAuth>
+                <RecetasOperadorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path='/recetas/:id'
+            element={
+              <RequireAuth>
+                <FichaRecetaOperador />
               </RequireAuth>
             }
           />

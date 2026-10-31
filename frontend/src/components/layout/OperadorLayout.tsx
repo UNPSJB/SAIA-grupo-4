@@ -16,6 +16,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import {
   FiAlertTriangle,
+  FiBookOpen,
   FiCheckSquare,
   FiChevronLeft,
   FiChevronRight,
@@ -39,6 +40,7 @@ export interface OperadorNavItem {
 
 const defaultItems: OperadorNavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
+  { to: "/recetas", label: "Recetas", icon: FiBookOpen },
   { to: "/documentos", label: "Documentos", icon: FiFileText },
   { to: "/incidentes-reportados", label: "Incidentes Reportados", icon: FiAlertTriangle },
 ];
