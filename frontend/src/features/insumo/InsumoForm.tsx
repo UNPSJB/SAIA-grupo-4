@@ -40,7 +40,7 @@ export const InsumoForm = ({
   const esModoModificar = modo === "modificar";
 
   const { data: unidades } = useListadoData<UnidadMedida>({
-    endpoint: `${BASE_URL}/unidades-de-medida/`,
+    endpoint: `/unidades-de-medida/`,
     pageSize: ITEMS_SELECT,
     errorMessage: "No se pudieron cargar las unidades de medida.",
   });
@@ -92,7 +92,7 @@ export const InsumoForm = ({
   const [nombreEnviado, setNombreEnviado] = useState("");
 
   const { submit } = useInsumoSubmit({
-    endpoint: `${BASE_URL}/insumos/`,
+    endpoint: `/insumos/`,
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? insumo!.id : undefined,
     onInactivo: (insumoId) => {
@@ -108,7 +108,7 @@ export const InsumoForm = ({
   });
 
   const reactivar = useInsumoSubmit({
-    endpoint: `${BASE_URL}/insumos/`,
+    endpoint: `/insumos/`,
     method: "PUT",
     id: insumoInactivoId ?? undefined,
     body: { disponible: true },

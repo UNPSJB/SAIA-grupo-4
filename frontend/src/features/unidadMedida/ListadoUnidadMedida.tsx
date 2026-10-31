@@ -23,7 +23,7 @@ interface ListadoUnidadMedidaProps {
   onDarAlta?: (unidad: UnidadMedida) => void;
 }
 
-const ENDPOINT = `${BASE_URL}/unidades-de-medida/`;
+const ENDPOINT = `/unidades-de-medida/`;
 export const ListadoUnidadMedida = ({
   onCrear,
   onModificar,

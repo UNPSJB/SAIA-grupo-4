@@ -12,8 +12,7 @@
 // variable VITE_API_URL para apuntar al dominio real de la API sin tocar el
 // codigo; si no esta definida se cae a la URL local del backend.
 export const BASE_URL =
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.DEV ? "/api" : "http://127.0.0.1:8000");
+  import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 // Filas por pagina en los listados con paginacion.
 export const ITEMS_POR_PAGINA = 6;

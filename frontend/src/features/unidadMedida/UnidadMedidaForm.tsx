@@ -1,4 +1,3 @@
-import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -80,7 +79,7 @@ export const UnidadMedidaForm = ({
   const [nombreEnviado, setNombreEnviado] = useState("");
 
   const { submit } = useUnidadMedidaSubmit({
-    endpoint: `${BASE_URL}/unidades-de-medida/`,
+    endpoint: `/unidades-de-medida/`,
     method: esModoCrear ? "POST" : "PUT",
     id: esModoModificar ? unidad!.id : undefined,
     onInactivo: (unidadId) => {
@@ -96,7 +95,7 @@ export const UnidadMedidaForm = ({
   });
 
   const reactivar = useUnidadMedidaSubmit({
-    endpoint: `${BASE_URL}/unidades-de-medida/`,
+    endpoint: `/unidades-de-medida/`,
     method: "PUT",
     id: unidadInactivaId ?? undefined,
     body: { disponible: true },
