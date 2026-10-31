@@ -35,42 +35,40 @@ export const FiltrosBar = ({
   <Box w='100%'>
     {/* Caja de filtros: solo los controles */}
     <HStack
-      wrap='wrap'
-      columnGap={5}
-      rowGap={3}
-      align='center'
-      p={2}
-      borderWidth='1px'
-      borderRadius='md'
-      bg='white'
-    >
-      {children}
-    </HStack>
-
-    {/* Botones por fuera de la caja */}
-    <HStack mt={2} gap={2} justify='flex-end'>
-     <IconButton
-        size='sm'
-        variant='ghost'
-        colorPalette='green'
-        onClick={onLimpiar}
-        disabled={!hayFiltrosActivos}
-        aria-label='Limpiar filtros'
-        title='Limpiar filtros'
+        wrap='wrap'
+        columnGap={5}
+        rowGap={3}
+        align='center'
+        p={2}
+        borderWidth='1px'
+        borderRadius='md'
+        bg='white'
       >
-        <FiRefreshCw />
-      </IconButton>
-
-      {!ocultarAplicar && (
-        <Button
+        {children}
+    {/* Botones dentro de la caja: a la derecha si entran, y si no, bajan juntos */}
+      <HStack ml='auto' gap={2} flexShrink={0}>
+       <Button
           size='sm'
+          variant='ghost'
           colorPalette='green'
-          onClick={onAplicar}
-          loading={loading}
+          onClick={onLimpiar}
+          disabled={!hayFiltrosActivos}
+          title='Limpiar filtros'
         >
-          {!loading && <FiFilter />} {textoAplicar}
+          <FiRefreshCw /> Limpiar
         </Button>
-      )}
+
+        {!ocultarAplicar && (
+          <Button
+            size='sm'
+            colorPalette='green'
+            onClick={onAplicar}
+            loading={loading}
+          >
+            {!loading && <FiFilter />} {textoAplicar}
+          </Button>
+        )}
+      </HStack>
     </HStack>
   </Box>
 );
