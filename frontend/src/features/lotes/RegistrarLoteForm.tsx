@@ -1,28 +1,40 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, Button, Input, VStack, Heading, Field, 
-  NativeSelectRoot, NativeSelectField, HStack, Text, Alert, Dialog, Portal 
+  NativeSelectRoot, NativeSelectField, HStack, Text, Alert, Dialog, Portal, IconButton 
 } from '@chakra-ui/react';
-import { FiSave, FiXCircle, FiPlus, FiBox } from 'react-icons/fi';
+import { FiSave, FiXCircle, FiPlus, FiBox, FiTrash2 } from 'react-icons/fi';
 import { getProductos, createProducto } from '../productos/productosService';
-import { createLote } from './lotesService';
+import { createLote, asociarInsumosALote } from './lotesService';
+import { useInsumos } from '../insumo/hooks/useInsumos';
 import type { Producto } from '../productos/types';
 
 interface RegistrarLoteFormProps {
   onSuccess?: () => void;
   onCancelar?: () => void;
+  onLoteCreado?:() => void;
 }
 
-export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormProps) => {
+interface InsumoSeleccionado {
+  insumo_id: string;
+  cantidad: string;
+}
+
+export const RegistrarLoteForm = ({ onSuccess, onCancelar, onLoteCreado }: RegistrarLoteFormProps) => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [productoId, setProductoId] = useState<string>('');
-  const [fecha, setFecha] = useState<string>(new Date().toISOString().split('T')[0]); // Fecha de hoy por defecto
+  const [fecha, setFecha] = useState<string>(new Date().toISOString().split('T')[0]);
   const [cantidad, setCantidad] = useState<string>('');
+
+  // Estados para insumos asociados
+  const { insumos: insumosMaestro } = useInsumos();
+  const [insumosSeleccionados, setInsumosSeleccionados] = useState<InsumoSeleccionado[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
 
+  // Estado para el modal de "Crear Producto Nuevo"
   const [openNuevoProducto, setOpenNuevoProducto] = useState(false);
   const [nuevoNombreProducto, setNuevoNombreProducto] = useState('');
   const [loadingProducto, setLoadingProducto] = useState(false);
@@ -51,18 +63,29 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     try {
       const prodNuevo = await createProducto({ nombre: nuevoNombreProducto.trim() });
       await cargarProductos();
-      setProductoId(prodNuevo.id.toString()); 
+      setProductoId(prodNuevo.id.toString());
       setNuevoNombreProducto('');
       setOpenNuevoProducto(false);
     } catch (err: any) {
-      if (err instanceof Error) {
-        setErrorProducto(err.message);
-      } else {
-        setErrorProducto('Error al crear producto');
-      }
+      setErrorProducto(err.message || 'Ya existe un producto con ese nombre.');
     } finally {
       setLoadingProducto(false);
     }
+  };
+
+  const agregarInsumoFila = () => {
+    setInsumosSeleccionados([...insumosSeleccionados, { insumo_id: '', cantidad: '' }]);
+  };
+
+  const eliminarInsumoFila = (index: number) => {
+    const nuevos = insumosSeleccionados.filter((_, i) => i !== index);
+    setInsumosSeleccionados(nuevos);
+  };
+
+  const actualizarInsumoFila = (index: number, campo: keyof InsumoSeleccionado, valor: string) => {
+    const nuevos = [...insumosSeleccionados];
+    nuevos[index][campo] = valor;
+    setInsumosSeleccionados(nuevos);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,17 +109,30 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
 
     setLoading(true);
     try {
-      await createLote({
+      // 1. Crear el lote principal
+      const loteCreado = await createLote({
         producto_id: parseInt(productoId, 10),
         fecha,
         cantidad: cantNum
       });
 
-      setSuccessMsg('¡Lote de producción registrado con éxito!');
+      // 2. Si hay insumos seleccionados, asociarlos
+      if (insumosSeleccionados.length > 0) {
+        const payloadInsumos = insumosSeleccionados.map((item) => ({
+          insumo_id: parseInt(item.insumo_id, 10),
+          cantidad: parseFloat(item.cantidad)
+        }));
+
+        await asociarInsumosALote(loteCreado.id, { insumos: payloadInsumos });
+      }
+
+      setSuccessMsg('¡Lote registrado y con insumos asociados con éxito!');
       setCantidad('');
+      setInsumosSeleccionados([]);
       if (onSuccess) onSuccess();
+      if (onLoteCreado) onLoteCreado();
     } catch (err: any) {
-      setError('Error al registrar el lote. Verifique los datos.');
+      setError(err.message || 'Error al registrar el lote o asociar insumos.');
     } finally {
       setLoading(false);
     }
@@ -158,6 +194,58 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
             />
           </Field.Root>
 
+          {/* Sección de Insumos Asociados */}
+          <Box borderTopWidth="1px" pt={3} mt={1}>
+            <HStack justify="space-between" mb={3}>
+              <Text fontWeight="bold" color="gray.700">Insumos Utilizados (Opcional)</Text>
+              <Button size="sm" colorPalette="teal" variant="outline" onClick={agregarInsumoFila} type="button">
+                <FiPlus /> Agregar Insumo
+              </Button>
+            </HStack>
+
+            {insumosSeleccionados.map((item, index) => (
+              <HStack key={index} mb={2} align="flex-end">
+                <Field.Root flex={2}>
+                  <Field.Label fontSize="sm">Insumo</Field.Label>
+                  <NativeSelectRoot>
+                    <NativeSelectField
+                      placeholder="Seleccione insumo"
+                      value={item.insumo_id}
+                      onChange={(e) => actualizarInsumoFila(index, 'insumo_id', e.target.value)}
+                    >
+                      {insumosMaestro.map((ins: any) => (
+                        <option key={ins.id} value={ins.id}>
+                          {ins.nombre} {ins.unidad_medida ? `(${ins.unidad_medida.simbolo})` : ''}
+                        </option>
+                      ))}
+                    </NativeSelectField>
+                  </NativeSelectRoot>
+                </Field.Root>
+
+                <Field.Root flex={1}>
+                  <Field.Label fontSize="sm">Cantidad</Field.Label>
+                  <Input
+                    type="number"
+                    step="any"
+                    placeholder="Cant."
+                    value={item.cantidad}
+                    onChange={(e) => actualizarInsumoFila(index, 'cantidad', e.target.value)}
+                  />
+                </Field.Root>
+
+                <IconButton
+                  aria-label="Eliminar insumo"
+                  colorPalette="red"
+                  variant="ghost"
+                  onClick={() => eliminarInsumoFila(index)}
+                  type="button"
+                >
+                  <FiTrash2 />
+                </IconButton>
+              </HStack>
+            ))}
+          </Box>
+
           {error && (
             <Alert.Root status="error">
               <Alert.Indicator />
@@ -185,7 +273,7 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
         </VStack>
       </form>
 
-      {/* Modal para alta rápida de Producto */}
+      {/* Modal alta rápida de Producto */}
       <Dialog.Root open={openNuevoProducto} onOpenChange={(e) => !e.open && setOpenNuevoProducto(false)}>
         <Portal>
           <Dialog.Backdrop />
@@ -203,10 +291,10 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                       value={nuevoNombreProducto} 
                       onChange={(e) => setNuevoNombreProducto(e.target.value)} 
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleCrearProducto();
-                        } 
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCrearProducto();
+                        }
                       }}
                     />
                   </Field.Root>
