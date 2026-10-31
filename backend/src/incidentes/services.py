@@ -7,6 +7,7 @@ from src.incidentes.models import Incidente, HistorialIncidente
 from src.personal.models import Persona
 from src.tipo_incidente.models import TipoIncidente
 from src.tipo_incidente.exceptions import TipoNoExiste, TipoInactivo
+from src.utils.busqueda import condicion_busqueda
 from fastapi import UploadFile
 from pathlib import Path
 import os
@@ -29,18 +30,14 @@ EXTENSIONES_POR_CONTENT_TYPE = {
     "image/webp": ".webp",
 }
 
-def obtener_incidente_por_id(db: Session, incidente_id: int) -> Incidente:
-    incidente = db.scalar(
-        select(Incidente)
-        .options(
-            selectinload(Incidente.reportante),
-            selectinload(Incidente.responsable_cierre),
+def _aplicar_busqueda(query, busqueda: str | None):
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las
+    # columnas de texto visibles del listado (título y descripción).
+    if busqueda and busqueda.strip():
+        query = query.where(
+            condicion_busqueda([Incidente.titulo, Incidente.descripcion], busqueda)
         )
-        .where(Incidente.id == incidente_id)
-    )
-    if not incidente:
-        raise exceptions.IncidenteNoEncontrado()
-    return incidente
+    return query
 
 
 def validar_persona_existe(db: Session, persona_id: int) -> None:
@@ -118,11 +115,13 @@ def crear_incidente(db: Session, incidente: schemas.IncidenteCreate, foto: Uploa
     return _incidente
 
 
-def listar_incidentes_por_reportante(db: Session, reportante_id: int) -> list[Incidente]:
+def listar_incidentes_por_reportante(
+    db: Session, reportante_id: int, busqueda: str | None = None
+) -> list[Incidente]:
+    query = select(Incidente).where(Incidente.reportante_id == reportante_id)
+    query = _aplicar_busqueda(query, busqueda)
     return db.scalars(
-        select(Incidente)
-        .where(Incidente.reportante_id == reportante_id)
-        .order_by(
+        query.order_by(
             Incidente.fecha_hora_reporte.asc(),
             Incidente.id.asc(),
         )
@@ -217,21 +216,25 @@ def listar_historial_incidente(db: Session, incidente_id: int) -> list[Historial
         .order_by(HistorialIncidente.fecha.desc(), HistorialIncidente.id.desc())
     ).all()
 
-def listar_incidentes_abiertos(db: Session) -> list[Incidente]:
+def listar_incidentes_abiertos(db: Session, busqueda: str | None = None) -> list[Incidente]:
+    query = select(Incidente).where(
+        Incidente.abierto.is_(True), # lista solo los incidentes que esten abiertos
+    )
+    query = _aplicar_busqueda(query, busqueda)
     return db.scalars(
-        select(Incidente).where(
-            Incidente.abierto.is_(True), # lista solo los incidentes que esten abiertos
-        ).order_by(
+        query.order_by(
             Incidente.fecha_hora_reporte.asc(), # ordena del mas viejo al mas nuevo
             Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
         )
     ).all()
 
-def listar_incidentes_cerrados(db: Session) -> list[Incidente]:
+def listar_incidentes_cerrados(db: Session, busqueda: str | None = None) -> list[Incidente]:
+    query = select(Incidente).where(
+        Incidente.abierto.is_(False), # lista solo los incidentes que esten cerrados
+    )
+    query = _aplicar_busqueda(query, busqueda)
     return db.scalars(
-        select(Incidente).where(
-            Incidente.abierto.is_(False), # lista solo los incidentes que esten cerrados
-        ).order_by(
+        query.order_by(
             Incidente.fecha_hora_reporte.asc(), # ordena del mas viejo al mas nuevo
             Incidente.id.asc(), # ordena por id del menor al mayor si es que la fecha coincide
         )
@@ -269,6 +272,7 @@ def listar_incidentes(
     tipo_id: int | None = None,
     desde: date | None = None,
     hasta: date | None = None,
+    busqueda: str | None = None,
 ) -> list[Incidente]:
     _validar_rango(desde, hasta)
 
@@ -276,6 +280,7 @@ def listar_incidentes(
     if tipo_id:
         query = query.where(Incidente.tipo_id == tipo_id)
     query = _aplicar_rango(query, desde, hasta)
+    query = _aplicar_busqueda(query, busqueda)
 
     return db.scalars(query).all()
 

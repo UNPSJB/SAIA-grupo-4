@@ -52,12 +52,13 @@ def create_incidente(
 # Listado con filtros opcionales
 @router.get("/", response_model=list[schemas.Incidente])
 def read_incidentes(
+    busqueda: str | None = None,
     tipo_id: TipoIdQuery = None,
     desde: DesdeQuery = None,
     hasta: HastaQuery = None,
     db: Session = Depends(get_db),
 ):
-    return services.listar_incidentes(db, tipo_id, desde, hasta)
+    return services.listar_incidentes(db, tipo_id, desde, hasta, busqueda)
 
 # Estadística por tipo (tiene que ir ANTES de "/{incidente_id}")
 @router.get("/estadisticas", response_model=list[schemas.EstadisticaTipoIncidente])
@@ -70,20 +71,20 @@ def read_estadisticas(
 
 @router.get("/mis-reportes", response_model=list[schemas.Incidente])
 def read_mis_incidentes(
+    busqueda: str | None = None,
     persona: Persona = Depends(dependencies.requiere_operacion),
     db: Session = Depends(get_db),
 ):
-    return services.listar_incidentes_por_reportante(db, persona.id)
+    return services.listar_incidentes_por_reportante(db, persona.id, busqueda)
 
 # Lista los incidentes abiertos
 @router.get("/abiertos", response_model=list[schemas.Incidente])
-def read_incidentes_abiertos(db: Session = Depends(get_db)):
-    return services.listar_incidentes_abiertos(db)
+def read_incidentes_abiertos(busqueda: str | None = None, db: Session = Depends(get_db)):
+    return services.listar_incidentes_abiertos(db, busqueda)
 
-# Lista los incidentes cerrados
 @router.get("/cerrados", response_model=list[schemas.Incidente])
-def read_incidentes_cerrados(db: Session = Depends(get_db)):
-    return services.listar_incidentes_cerrados(db)
+def read_incidentes_cerrados(busqueda: str | None = None, db: Session = Depends(get_db)):
+    return services.listar_incidentes_cerrados(db, busqueda)
 
 # Lista los incidentes abiertos agrupados por tipo como pide la E7
 @router.get("/abiertos/por-tipo", response_model=list[schemas.IncidentesAbiertosPorTipo])

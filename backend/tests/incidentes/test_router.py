@@ -6,7 +6,7 @@ from src.personal.models import Persona
 from tests.database import session
 import json
 from itertools import count
-
+import uuid
 cl = TestClient(app)
 
 contador_personas = count(1)
@@ -508,3 +508,99 @@ def test_listar_incidentes_filtrado_por_tipo_y_fechas(session):
 def test_listar_incidentes_rango_invalido(session):
     res = cl.get("/incidentes/", params={"desde": "2026-10-10", "hasta": "2026-10-01"})
     assert res.status_code == 400
+
+# --- Búsqueda de texto libre ---
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+
+def crear_incidente_con_titulo(titulo, tipo_id=None, reportante_id=None, descripcion="Descripción del incidente de prueba"):
+    data = {
+        "titulo": titulo,
+        "descripcion": descripcion,
+        "fecha_hora_reporte": datetime.now().isoformat(),
+        "reportante_id": reportante_id or crear_persona_auxiliar(),
+        "tipo_id": tipo_id or crear_tipo_incidente_auxiliar(),
+    }
+    res = cl.post("/incidentes/", data={"datos": json.dumps(data)})
+    assert res.status_code == 201, res.text
+    return res.json()
+
+def test_busqueda_por_descripcion(session):
+    sufijo = sufijo_unico()
+    incidente = crear_incidente_con_titulo(
+        f"Reporte {sufijo}", descripcion=f"Se detectó filtración en la pared {sufijo}"
+    )
+
+    assert incidente["id"] in ids_buscados(busqueda=f"filtracion en la pared {sufijo}")
+def ids_buscados(ruta="/incidentes/", **params):
+    res = cl.get(ruta, params=params)
+    assert res.status_code == 200, res.text
+    return {i["id"] for i in res.json()}
+
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos(session):
+    sufijo = sufijo_unico()
+    incidente = crear_incidente_con_titulo(f"Presencia de Murciélagos {sufijo}")
+
+    for texto in [f"murcielagos {sufijo}", f"MURCIÉLAGOS {sufijo.upper()}", f"ciélagos {sufijo}"]:
+        assert incidente["id"] in ids_buscados(busqueda=texto)
+
+
+def test_busqueda_excluye_los_que_no_coinciden(session):
+    sufijo = sufijo_unico()
+    tipo_id = crear_tipo_incidente_auxiliar()
+    coincide = crear_incidente_con_titulo(f"Moscas {sufijo}", tipo_id=tipo_id)
+    no_coincide = crear_incidente_con_titulo(f"Goteras {sufijo_unico()}", tipo_id=tipo_id)
+
+    resultado = ids_buscados(busqueda=f"moscas {sufijo}")
+    assert coincide["id"] in resultado
+    assert no_coincide["id"] not in resultado
+
+
+def test_busqueda_sin_resultados(session):
+    crear_incidente_con_titulo(f"Humedad {sufijo_unico()}")
+
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+
+def test_busqueda_no_interpreta_comodines(session):
+    incidente = crear_incidente_con_titulo(f"Polvo{sufijo_unico()}")
+
+    # Si "%" fuera comodín, devolvería todo el listado
+    assert incidente["id"] not in ids_buscados(busqueda="%")
+
+
+def test_busqueda_convive_con_filtro_de_tipo(session):
+    sufijo = sufijo_unico()
+    tipo_a = crear_tipo_incidente_auxiliar()
+    tipo_b = crear_tipo_incidente_auxiliar()
+    en_a = crear_incidente_con_titulo(f"Derrame {sufijo} A", tipo_id=tipo_a)
+    en_b = crear_incidente_con_titulo(f"Derrame {sufijo} B", tipo_id=tipo_b)
+    texto = f"derrame {sufijo}"
+
+    # Solo con la búsqueda aparecen los dos
+    assert ids_buscados(busqueda=texto) == {en_a["id"], en_b["id"]}
+
+    # Con tipo_id se combinan (AND): solo el del tipo pedido
+    assert ids_buscados(busqueda=texto, tipo_id=tipo_a) == {en_a["id"]}
+
+
+def test_busqueda_en_abiertos_y_cerrados(session):
+    sufijo = sufijo_unico()
+    tipo_id = crear_tipo_incidente_auxiliar()
+    abierto = crear_incidente_con_titulo(f"Plaga {sufijo} abierto", tipo_id=tipo_id)
+    cerrado = crear_incidente_con_titulo(f"Plaga {sufijo} cerrado", tipo_id=tipo_id)
+    res = cl.post(
+        f"/incidentes/{cerrado['id']}/cierre",
+        json={
+            "accion_correctiva": "Se fumigó la zona",
+            "responsable_cierre_id": crear_persona_auxiliar(),
+        },
+    )
+    assert res.status_code == 200, res.text
+
+    texto = f"plaga {sufijo}"
+    assert ids_buscados("/incidentes/abiertos", busqueda=texto) == {abierto["id"]}
+    assert ids_buscados("/incidentes/cerrados", busqueda=texto) == {cerrado["id"]}
