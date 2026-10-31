@@ -338,3 +338,9 @@ def test_busqueda_excluye_los_que_no_coinciden():
     resultado = ids_buscados(busqueda=f"harina {sufijo}")
     assert coincide["id"] in resultado
     assert no_coincide["id"] not in resultado
+
+
+def test_busqueda_por_simbolo_de_unidad():
+    insumo = crear_insumo_con_nombre(f"Pimienta {sufijo_unico()}")
+
+    assert insumo["id"] in ids_buscados(busqueda="kg")

@@ -101,7 +101,8 @@ def listar_insumos(db: Session, busqueda: str | None = None):
         consulta = consulta.join(
             UnidadMedida, Insumo.unidad_medida_id == UnidadMedida.id
         ).where(condicion_busqueda(
-            [Insumo.nombre, Insumo.categoria, UnidadMedida.nombre],
+            [Insumo.nombre, Insumo.categoria, UnidadMedida.nombre, UnidadMedida.simbolo],
             busqueda,
         ))
+
     return db.scalars(consulta).all()
