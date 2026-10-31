@@ -771,3 +771,68 @@ def test_buscador_multicriterio_recetas(datos_base):
     res_estado = client.get("/recetas/", params={"estado": "BORRADOR"})
     assert res_estado.status_code == 200
     assert any(r["id"] == receta_id for r in res_estado.json())
+
+
+def test_listar_recetas_activas_filtro_y_detalle(datos_base):
+    # 1. Crear y activar Receta 1
+    r1 = client.post("/recetas/", json={
+        "nombre_receta": "Pan Centeno Activo",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 40,
+    }).json()
+    r1_id = r1["id"]
+    client.post(f"/recetas/{r1_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Amasado de centeno",
+        "instrucciones": "Amasar 15 minutos",
+        "insumos": [{"insumo_id": datos_base["insumo_id"], "cantidad_consumo_estimada": 5}],
+        "equipos": [{"equipo_id": datos_base["equipo_id"], "cantidad": 1}],
+    })
+    res_act = client.post(f"/recetas/{r1_id}/activar")
+    assert res_act.status_code == 200
+
+    # 2. Crear Receta 2 en BORRADOR
+    r2 = client.post("/recetas/", json={
+        "nombre_receta": "Pan Borrador",
+        "producto_id": datos_base["otro_producto_id"],
+        "rendimiento_estandar": 30,
+    }).json()
+
+    # 3. Listar activas: solo debe venir r1
+    res_activas = client.get("/recetas/activas")
+    assert res_activas.status_code == 200
+    ids_activas = [r["id"] for r in res_activas.json()]
+    assert r1_id in ids_activas
+    assert r2["id"] not in ids_activas
+
+    # 4. Filtro por producto_id
+    res_prod = client.get("/recetas/activas", params={"producto_id": datos_base["producto_id"]})
+    assert res_prod.status_code == 200
+    assert any(r["id"] == r1_id for r in res_prod.json())
+
+    res_prod_vacio = client.get("/recetas/activas", params={"producto_id": datos_base["otro_producto_id"]})
+    assert res_prod_vacio.status_code == 200
+    assert not any(r["id"] == r1_id for r in res_prod_vacio.json())
+
+    # 5. Filtro por busqueda
+    res_busq = client.get("/recetas/activas", params={"busqueda": "Centeno"})
+    assert res_busq.status_code == 200
+    assert any(r["id"] == r1_id for r in res_busq.json())
+
+    # 6. Detalle de receta activa: debe incluir pasos con equipos e insumos
+    res_det = client.get(f"/recetas/activas/{r1_id}")
+    assert res_det.status_code == 200
+    data_det = res_det.json()
+    assert data_det["id"] == r1_id
+    assert len(data_det["pasos"]) == 1
+    paso = data_det["pasos"][0]
+    assert paso["titulo"] == "Amasado de centeno"
+    assert len(paso["insumos"]) == 1
+    assert paso["insumos"][0]["insumo"]["nombre"] is not None
+    assert paso["insumos"][0]["insumo"]["unidad_medida"] is not None
+    assert len(paso["equipos"]) == 1
+    assert paso["equipos"][0]["equipo"]["nombre"] is not None
+
+    # 7. Detalle de receta en borrador en /activas/{id} debe dar 404
+    res_det_borrador = client.get(f"/recetas/activas/{r2['id']}")
+    assert res_det_borrador.status_code == 404

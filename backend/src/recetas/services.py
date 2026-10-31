@@ -3,7 +3,7 @@ import re
 from typing import List, Optional
 import unicodedata
 
-from sqlalchemy import select
+from sqlalchemy import select, cast, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -139,10 +139,26 @@ def obtener_receta_por_id(db: Session, receta_id: int) -> Receta:
         .options(
             joinedload(Receta.usuario_creador),
             joinedload(Receta.producto).joinedload(Producto.unidad_medida),
-            joinedload(Receta.pasos).joinedload(PasoReceta.equipos),
-            joinedload(Receta.pasos).joinedload(PasoReceta.insumos),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
         )
         .where(Receta.id == receta_id)
+    )
+    if not receta:
+        raise exceptions.RecetaNoEncontrada()
+    return receta
+
+
+def obtener_receta_activa_por_id(db: Session, receta_id: int) -> Receta:
+    receta = db.scalar(
+        select(Receta)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+        )
+        .where(Receta.id == receta_id, Receta.estado == EstadoReceta.ACTIVA)
     )
     if not receta:
         raise exceptions.RecetaNoEncontrada()
@@ -163,8 +179,8 @@ def listar_recetas(
         .options(
             joinedload(Receta.usuario_creador),
             joinedload(Receta.producto).joinedload(Producto.unidad_medida),
-            joinedload(Receta.pasos).joinedload(PasoReceta.equipos),
-            joinedload(Receta.pasos).joinedload(PasoReceta.insumos),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
         )
     )
 
@@ -174,6 +190,12 @@ def listar_recetas(
             Receta.codigo_receta.ilike(termino)
             | Receta.nombre_receta.ilike(termino)
             | Producto.nombre.ilike(termino)
+            | cast(Receta.rendimiento_estandar, String).ilike(termino)
+            | cast(Receta.tiempo_estimado_total, String).ilike(termino)
+            | Receta.pasos.any(
+                PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
+                | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
+            )
         )
 
     if estado:
@@ -211,17 +233,41 @@ def obtener_receta_borrador(db: Session) -> Optional[Receta]:
     )
 
 
-def obtener_recetas_activas(db: Session) -> List[Receta]:
-    return list(
-        db.scalars(
-            select(Receta)
-            .options(
-                joinedload(Receta.usuario_creador),
-                joinedload(Receta.producto).joinedload(Producto.unidad_medida),
-            )
-            .where(Receta.estado == EstadoReceta.ACTIVA)
-        ).unique().all()
+def obtener_recetas_activas(
+    db: Session,
+    busqueda: Optional[str] = None,
+    producto_id: Optional[int] = None,
+) -> List[Receta]:
+    query = (
+        select(Receta)
+        .join(Receta.producto)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+        )
+        .where(Receta.estado == EstadoReceta.ACTIVA)
     )
+
+    if busqueda and busqueda.strip():
+        termino = f"%{busqueda.strip()}%"
+        query = query.where(
+            Receta.codigo_receta.ilike(termino)
+            | Receta.nombre_receta.ilike(termino)
+            | Producto.nombre.ilike(termino)
+            | cast(Receta.rendimiento_estandar, String).ilike(termino)
+            | cast(Receta.tiempo_estimado_total, String).ilike(termino)
+            | Receta.pasos.any(
+                PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
+                | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
+            )
+        )
+
+    if producto_id:
+        query = query.where(Receta.producto_id == producto_id)
+
+    return list(db.scalars(query.order_by(Receta.nombre_receta.asc())).unique().all())
 
 
 def crear_receta_borrador(db: Session, receta: schemas.RecetaCreate, usuario_id: int) -> Receta:

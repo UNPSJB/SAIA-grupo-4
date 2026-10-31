@@ -108,3 +108,16 @@ def test_operador_solo_checklists(credenciales):
     assert res.status_code == 403
     assert res.json()["detail"] == "Permiso denegado"
     assert client.get("/personal/", headers=headers).status_code == 403
+
+
+def test_operador_acceso_recetas_activas(credenciales):
+    token = _login(credenciales["operador_dni"], credenciales["operador_password"])
+    headers = _headers(token)
+
+    # El operador puede consultar el catalogo de recetas activas
+    assert client.get("/recetas/activas", headers=headers).status_code == 200
+
+    # Pero tiene prohibido el listado general / gestion
+    assert client.get("/recetas/", headers=headers).status_code == 403
+    assert client.get("/recetas/borrador", headers=headers).status_code == 403
+    assert client.post("/recetas/", json={}, headers=headers).status_code == 403
