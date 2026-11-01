@@ -152,3 +152,34 @@ def test_asociar_insumos_cantidad_invalida():
     }
     response = client.post(f"/lotes/{lote_id}/insumos", json=payload)
     assert response.status_code in [400, 422]
+
+def test_filtrar_lotes_por_producto_y_fechas():
+    # Creamos dos productos distintos (con nombres únicos por si corre varias veces)
+    res_p1 = client.post("/productos/", json={"nombre": "Producto Filtro A"})
+    res_p2 = client.post("/productos/", json={"nombre": "Producto Filtro B"})
+    prod1_id = res_p1.json()["id"]
+    prod2_id = res_p2.json()["id"]
+
+    # Creamos lotes en distintas fechas
+    client.post(
+        "/lotes/",
+        json={"producto_id": prod1_id, "fecha": "2026-10-01", "cantidad": 50},
+    )
+    client.post(
+        "/lotes/",
+        json={"producto_id": prod2_id, "fecha": "2026-10-15", "cantidad": 120},
+    )
+
+    # 1. Filtrar por producto_id
+    res_prod = client.get(f"/lotes/?producto_id={prod1_id}")
+    assert res_prod.status_code == 200
+    datos_prod = res_prod.json()
+    assert len(datos_prod) >= 1
+    assert all(l["producto_id"] == prod1_id for l in datos_prod)
+
+    # 2. Filtrar por rango de fechas (desde / hasta)
+    res_fechas = client.get("/lotes/?desde=2026-10-10&hasta=2026-10-20")
+    assert res_fechas.status_code == 200
+    datos_fechas = res_fechas.json()
+    assert any(l["producto_id"] == prod2_id for l in datos_fechas)
+    assert all("2026-10-10" <= l["fecha"] <= "2026-10-20" for l in datos_fechas)

@@ -1,3 +1,5 @@
+from datetime import date
+from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from src.lotes.models import Lote, LoteInsumo
@@ -47,8 +49,24 @@ def crear_lote(db: Session, lote_in: LoteCreate):
     db.refresh(nuevo_lote)
     return mapear_lote_out(nuevo_lote)
 
-def listar_lotes(db: Session):
-    lotes = db.query(Lote).order_by(Lote.fecha.desc()).all()
+def listar_lotes(
+    db: Session,
+    producto_id: Optional[int] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None
+):
+    query = db.query(Lote)
+    
+    if producto_id is not None:
+        query = query.filter(Lote.producto_id == producto_id)
+        
+    if desde is not None:
+        query = query.filter(Lote.fecha >= desde)
+        
+    if hasta is not None:
+        query = query.filter(Lote.fecha <= hasta)
+        
+    lotes = query.order_by(Lote.fecha.desc(), Lote.id.desc()).all()
     return [mapear_lote_out(l) for l in lotes]
 
 def obtener_lote_por_id(db: Session, lote_id: int) -> Lote:
