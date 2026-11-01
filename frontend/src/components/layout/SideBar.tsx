@@ -89,7 +89,8 @@ const defaultItems: NavItem[] = [
 const planItems: NavItem[] = [
   { to: "/nuevo-plan", label: "Nuevo Plan", icon: FiPlus },
   { to: "/plan-poes", label: "Plan Vigente", icon: FiClipboard },
-  { to: "/historial-planes", label: "Historial", icon: FiClock },
+  { to: "/historial-planes", label: "Historial de Planes POES", icon: FiClock },
+  { to: "/historial-lotes", label: "Historial de Lotes", icon: FiFileText },
 ];
 
 // Acceso directo ubicado debajo del grupo "Plan POE".

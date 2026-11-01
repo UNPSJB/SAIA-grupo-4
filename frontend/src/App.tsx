@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
+import { Box, ChakraProvider, Flex, defaultSystem, Container } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare } from "react-icons/fi";
 import { NavBar, OperadorLayout, type NavItem } from "./components/layout";
@@ -33,6 +33,7 @@ import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import { LotesPage } from './pages/LotesPage';
 import { ProductosPage } from './pages/ProductosPage';
+import { ListadoLotes } from './features/lotes/ListadoLotes';
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -155,6 +156,14 @@ function AppContent() {
                 </RequireAuth>
               }
             />
+            <Route
+              path='/historial-lotes'
+              element={
+                <Container maxW="5xl" py={8}>
+                  <ListadoLotes />
+                 </Container>
+              }
+            />      
             <Route
               path='/productos'
               element={
