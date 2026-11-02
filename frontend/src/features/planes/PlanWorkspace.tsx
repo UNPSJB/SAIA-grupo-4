@@ -285,6 +285,7 @@ export const PlanWorkspace = ({
       {(vista === "crearTarea" || vista === "modificarTarea") && (
         <FormModal
           open
+          maxW='3xl'
           onClose={() => {
             setVista("listado");
             setTareaSeleccionada(null);
