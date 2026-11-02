@@ -206,7 +206,6 @@ export default function LotesOperadorPage() {
             open={crearAbierto}
             onClose={handleCerrarCrear}
             showClose
-            maxW="xl"
           >
             <RegistrarLoteForm
               onSuccess={() => {

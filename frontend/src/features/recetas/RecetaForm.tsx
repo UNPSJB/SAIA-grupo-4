@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
 import { FiBookOpen, FiEdit3, FiSave, FiXCircle } from "react-icons/fi";
 import {
   AlertMessage,
   CancelButton,
   FormActions,
   FormContainer,
+  FormGrid,
+  FormGridFull,
   FormHeader,
   SelectField,
   SubmitButton,
@@ -123,7 +124,7 @@ export const RecetaForm = ({
     <FormContainer modal={enModal}>
       <FormHeader title={esModoCrear ? "Nueva Receta" : "Modificar Receta"} icon={esModoCrear ? FiBookOpen : FiEdit3} />
       <form onSubmit={onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label="Nombre de la receta"
             defaultValue={receta?.nombre_receta || ""}
@@ -196,13 +197,15 @@ export const RecetaForm = ({
             }}
             {...register("tiempo_estimado_total")}
           />
-          <TextField
-            label="Observaciones (Opcional)"
-            defaultValue={receta?.observaciones || ""}
-            placeholder="Indicaciones o notas generales de preparación"
-            error={errors.observaciones?.message}
-            {...register("observaciones")}
-          />
+          <FormGridFull>
+            <TextField
+              label="Observaciones (Opcional)"
+              defaultValue={receta?.observaciones || ""}
+              placeholder="Indicaciones o notas generales de preparación"
+              error={errors.observaciones?.message}
+              {...register("observaciones")}
+            />
+          </FormGridFull>
 
           <FormActions>
             <SubmitButton text={esModoCrear ? "Guardar Receta" : "Guardar"} icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
@@ -213,7 +216,7 @@ export const RecetaForm = ({
           {success && (
             <AlertMessage type="success" message={esModoCrear ? "Receta creada exitosamente." : "Receta modificada exitosamente."} />
           )}
-        </VStack>
+        </FormGrid>
       </form>
     </FormContainer>
   );
