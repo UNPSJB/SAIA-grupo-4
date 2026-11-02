@@ -13,6 +13,7 @@ import { IncidenteForm } from "../features/incidentes/IncidentesForm";
 import { useListadoData } from "../hooks/useListadoData";
 import { HistorialFiltros } from "../features/historial/components/HistorialFiltros";
 import { AlertMessage, FormModal, LoadingState } from "../components/ui";
+import { ListadoContainer } from "../components/layout";
 import type {
   EstadisticaTipoIncidente,
   Incidente,
@@ -101,37 +102,41 @@ export default function IncidentesPage() {
           />
         )}
         {!loading && !error && estadisticas.length > 0 && (
-          <GraficoIncidentesPorTipo
-            datos={estadisticas}
-            tipoSeleccionadoId={tipoSeleccionado?.tipo_id}
-            onSeleccionarTipo={(tipo) =>
-              setTipoSeleccionado((actual) =>
-                actual?.tipo_id === tipo.tipo_id ? null : tipo,
-              )
-            }
-          />
+          <ListadoContainer maxW="8xl">
+            <GraficoIncidentesPorTipo
+              datos={estadisticas}
+              tipoSeleccionadoId={tipoSeleccionado?.tipo_id}
+              onSeleccionarTipo={(tipo) =>
+                setTipoSeleccionado((actual) =>
+                  actual?.tipo_id === tipo.tipo_id ? null : tipo,
+                )
+              }
+            />
+          </ListadoContainer>
         )}
 
         {tipoSeleccionado && (
-          <HStack
-            justify="space-between"
-            bg="white"
-            p={3}
-            borderRadius="md"
-            mb={4}
-          >
-            <Text fontSize="sm">
-              Mostrando incidentes del tipo <b>{tipoSeleccionado.tipo}</b>{" "}
-              entre {periodo.desde} y {periodo.hasta}.
-            </Text>
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => setTipoSeleccionado(null)}
+          <ListadoContainer maxW="8xl">
+            <HStack
+              justify="space-between"
+              bg="white"
+              p={3}
+              borderRadius="md"
+              mb={4}
             >
-              Quitar filtro
-            </Button>
-          </HStack>
+              <Text fontSize="sm">
+                Mostrando incidentes del tipo <b>{tipoSeleccionado.tipo}</b>{" "}
+                entre {periodo.desde} y {periodo.hasta}.
+              </Text>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setTipoSeleccionado(null)}
+              >
+                Quitar filtro
+              </Button>
+            </HStack>
+          </ListadoContainer>
         )}
       </Box>
 

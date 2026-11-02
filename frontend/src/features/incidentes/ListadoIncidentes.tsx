@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, Button, Dialog, HStack, Image, Portal } from "@chakra-ui/react";
+import { Box, Button, Card, Dialog, HStack, Image, Portal, Text, VStack } from "@chakra-ui/react";
 import { 
     FiEye,
     FiImage,
@@ -9,7 +9,10 @@ import {
     FiX,
     FiCheckCircle,
     FiRotateCcw,
-} from "react-icons/fi"; // Importar otros íconos según sea necesario
+    FiCalendar,
+    FiUser,
+    FiTag,
+} from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -44,6 +47,8 @@ interface ListadoIncidentesProps {
   endpoint?: string;
   titulo?: string;
   refreshKey?: number;
+  /** Habilita vista responsiva: tabla en desktop, tarjetas en móvil. */
+  responsive?: boolean;
 }
 
 const ENDPOINT = `${BASE_URL}/incidentes/`;
@@ -71,7 +76,8 @@ export const ListadoIncidentes = ({
   tipoId,
   desde,
   hasta,
-  refreshKey
+  refreshKey,
+  responsive = false
 }: ListadoIncidentesProps) => {
   // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar" (filtrado local).
   const [busqueda, setBusqueda] = useState("");
@@ -289,11 +295,95 @@ export const ListadoIncidentes = ({
 
       {!primerCarga && !error && incidentesFiltrados.length > 0 && (
         <>
-          <DataTable
-            items={itemsFiltradosPaginados}
-            columns={columnas}
-            getRowKey={(incidente) => incidente.id}
-          />
+          {/* Tabla: tablet y escritorio */}
+          <Box display={{ base: responsive ? "none" : "block", md: "block" }}>
+            <DataTable
+              items={itemsFiltradosPaginados}
+              columns={columnas}
+              getRowKey={(incidente) => incidente.id}
+            />
+          </Box>
+
+          {/* Tarjetas: móvil (solo si responsive=true) */}
+          {responsive && (
+            <VStack
+              display={{ base: "flex", md: "none" }}
+              align="stretch"
+              gap={3}
+            >
+              {itemsFiltradosPaginados.map((incidente) => (
+                <Card.Root key={incidente.id} variant="outline">
+                  <Card.Body gap={2}>
+                    <HStack justify="space-between" align="flex-start" gap={2}>
+                      <Text fontWeight="bold" color="green.700" truncate>
+                        {incidente.titulo}
+                      </Text>
+                      <EstadoIncidenteBadge abierto={incidente.abierto} />
+                    </HStack>
+                    <HStack gap={4} flexWrap="wrap">
+                      <HStack gap={1} align="center">
+                        <FiCalendar size={14} color="gray.500" />
+                        <Text fontSize="sm" color="gray.600">
+                          {new Date(incidente.fecha_hora_reporte).toLocaleDateString("es-AR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </Text>
+                      </HStack>
+                      {incidente.tipo && (
+                        <HStack gap={1} align="center">
+                          <FiTag size={14} color="gray.500" />
+                          <Text fontSize="sm" color="gray.600">
+                            {incidente.tipo.nombre}
+                          </Text>
+                        </HStack>
+                      )}
+                      {incidente.reportante && (
+                        <HStack gap={1} align="center">
+                          <FiUser size={14} color="gray.500" />
+                          <Text fontSize="sm" color="gray.600">
+                            {incidente.reportante.nombre} {incidente.reportante.apellido}
+                          </Text>
+                        </HStack>
+                      )}
+                    </HStack>
+                    <HStack justify="flex-end" gap={2} mt={2}>
+                      {incidente.foto_url && (
+                        <RowActionButton
+                          icon={FiImage}
+                          label="Ver foto"
+                          colorPalette="blue"
+                          onClick={() => setIncidenteConFoto(incidente)}
+                        />
+                      )}
+                      <RowActionButton
+                        icon={FiEye}
+                        label="Ver"
+                        colorPalette="yellow"
+                        onClick={() => onVer?.(incidente)}
+                      />
+                      {incidente.abierto ? (
+                        <RowActionButton
+                          icon={FiCheckCircle}
+                          label="Cerrar"
+                          colorPalette="green"
+                          onClick={() => onCerrar?.(incidente)}
+                        />
+                      ) : (
+                        <RowActionButton
+                          icon={FiRotateCcw}
+                          label="Reabrir"
+                          colorPalette="orange"
+                          onClick={() => onReabrir?.(incidente)}
+                        />
+                      )}
+                    </HStack>
+                  </Card.Body>
+                </Card.Root>
+              ))}
+            </VStack>
+          )}
 
           <SemaforoLegend
             etiquetas={{

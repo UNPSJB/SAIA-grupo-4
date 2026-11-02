@@ -1,14 +1,12 @@
-import { useState } from "react";
-import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
+import { Box, ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare, FiClock, FiPlus } from "react-icons/fi";
 import {
-  SideBar,
-  TopNavBar,
   OperadorLayout,
+  AdminLayout,
   type NavItem,
 } from "./components/layout";
-import { AlertConfirm, LoadingState } from "./components/ui";
+import { LoadingState } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
 import { esAdministrador, esOperador } from "./features/auth/roles";
@@ -59,8 +57,7 @@ const LOTES_ITEMS: NavItem[] = [
 ];
 
 function AppContent() {
-  const { usuario, logout, loading } = useAuth();
-  const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
+  const { usuario, loading } = useAuth();
 
   // Mientras se rehidrata la sesión (refresh por cookie al recargar) todavía no
   // sabemos si hay sesión: mostramos un estado de carga. Evita el parpadeo del
@@ -173,21 +170,16 @@ function AppContent() {
   const checklistItems = esOp ? CHECKLIST_ITEMS : [CHECKLIST_ITEMS[1]];
   const loteItems = esOp ? LOTES_ITEMS : [LOTES_ITEMS[1]];
 
-  // RAMA ADMINISTRADOR: layout completo (SideBar + TopNavBar + rutas
+  // RAMA ADMINISTRADOR: layout completo (AdminLayout con SideBar responsive + TopNavBar + rutas
   // protegidas).
   return (
-    <>
-      <Flex minH='100vh' w='100%'>
-        <SideBar
-          username={`${usuario.nombre} ${usuario.apellido}`}
-          checklistItems={checklistItems}
-          checklistColapsable={esOp}
-          loteItems={loteItems}
-          loteColapsable={esOp}
-        />
-        <Box bg='gray.100' flex='1' minW='0'>
-          <TopNavBar onLogout={() => setCerrarSesionAbierto(true)} />
-          <Routes>
+    <AdminLayout
+      checklistItems={checklistItems}
+      checklistColapsable={esOp}
+      loteItems={loteItems}
+      loteColapsable={esOp}
+    >
+      <Routes>
             {/* La raíz, estando logueado, va a /dashboard */}
             <Route path='/' element={<Navigate to='/dashboard' replace />} />
 
@@ -473,20 +465,8 @@ function AppContent() {
               }
             />
           </Routes>
-        </Box>
-      </Flex>
-      <AlertConfirm
-        open={cerrarSesionAbierto}
-        title='Cerrar sesión'
-        message='¿Estás seguro de que querés cerrar tu sesión?'
-        onConfirm={() => {
-          setCerrarSesionAbierto(false);
-          logout();
-        }}
-        onCancel={() => setCerrarSesionAbierto(false)}
-      />
-    </>
-  );
+        </AdminLayout>
+      );
 }
 
 function AppInterno() {

@@ -60,6 +60,8 @@ interface SideBarProps {
   loteColapsable?: boolean;
   version?: string;
   username?: string;
+  /** Propiedad `display` de Chakra para responsive (ej. {{ base: "none", md: "flex" }}). */
+  display?: string | { base?: string; md?: string; lg?: string; xl?: string; "2xl"?: string };
 }
 
 const defaultItems: NavItem[] = [
@@ -349,6 +351,7 @@ export const SideBar = ({
   loteColapsable = true,
   version = "v0.1.0",
   username = "Usuario",
+  display,
 }: SideBarProps) => {
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -388,25 +391,26 @@ export const SideBar = ({
 
   return (
     <VStack
-      as='nav'
-      aria-label='Navegación principal'
-      align='stretch'
+      as="nav"
+      aria-label="Navegación principal"
+      align="stretch"
       gap={2}
       p={3}
-      bg='green.600'
-      h='100vh'
+      bg="green.600"
+      h="100vh"
       w={sidebarW}
-      position='sticky'
+      position="sticky"
       top={0}
       flexShrink={0}
-      overflowY='auto'
-      overflowX='hidden'
+      overflowY="auto"
+      overflowX="hidden"
       css={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
         "&::-webkit-scrollbar": { display: "none" },
       }}
-      transition='width 0.25s ease'
+      transition="width 0.25s ease"
+      display={display}
     >
       <Flex
         align='center'

@@ -6,6 +6,7 @@ export {
   OPERADOR_MOBILE_BAR_HEIGHT,
   type OperadorNavItem,
 } from "./OperadorLayout";
+export { AdminLayout, ADMIN_MOBILE_BAR_HEIGHT, type AdminNavItem } from "./AdminLayout";
 export { FormHeader } from "./FormHeader";
 export { FormContainer } from "./FormContainer";
 export { FormModal } from "./FormModal";

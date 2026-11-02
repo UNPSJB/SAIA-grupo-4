@@ -21,6 +21,7 @@ export default function IncidentesReportadosPage() {
                 titulo="Mis incidentes reportados"
                 onVer={setIncidenteSeleccionado}
                 onCrear={() => setCrearAbierto(true)}
+                responsive={true}
             />
             {incidenteSeleccionado && (
                 <IncidenteDetalle
