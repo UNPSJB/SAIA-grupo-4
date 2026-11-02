@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare, FiClock, FiPlus } from "react-icons/fi";
-import { SideBar, OperadorLayout, type NavItem } from "./components/layout";
+import {
+  SideBar,
+  TopNavBar,
+  OperadorLayout,
+  type NavItem,
+} from "./components/layout";
 import { AlertConfirm, LoadingState } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
@@ -65,7 +70,8 @@ function AppContent() {
   }
 
   // RAMA SIN SESIÓN: solo existe la vista de login. Cualquier otra URL
-  // redirige a "/". No se renderiza el SideBar ni contenido de gestión.
+  // redirige a "/". No se renderizan el SideBar, la TopNavBar ni contenido de
+  // gestión.
   if (!usuario) {
     return (
       <Routes>
@@ -151,7 +157,10 @@ function AppContent() {
             path='/lotes/registrar'
             element={<Navigate to='/lotes?crear=true' replace />}
           />
-          <Route path='/lotes/historial' element={<Navigate to='/lotes' replace />} />
+          <Route
+            path='/lotes/historial'
+            element={<Navigate to='/lotes' replace />}
+          />
           <Route path='*' element={<Navigate to='/checklist' replace />} />
         </Routes>
       </OperadorLayout>
@@ -164,7 +173,8 @@ function AppContent() {
   const checklistItems = esOp ? CHECKLIST_ITEMS : [CHECKLIST_ITEMS[1]];
   const loteItems = esOp ? LOTES_ITEMS : [LOTES_ITEMS[1]];
 
-  // RAMA ADMINISTRADOR: layout completo (SideBar + rutas protegidas).
+  // RAMA ADMINISTRADOR: layout completo (SideBar + TopNavBar + rutas
+  // protegidas).
   return (
     <>
       <Flex minH='100vh' w='100%'>
@@ -174,9 +184,9 @@ function AppContent() {
           checklistColapsable={esOp}
           loteItems={loteItems}
           loteColapsable={esOp}
-          onLogout={() => setCerrarSesionAbierto(true)}
         />
         <Box bg='gray.100' flex='1' minW='0'>
+          <TopNavBar onLogout={() => setCerrarSesionAbierto(true)} />
           <Routes>
             {/* La raíz, estando logueado, va a /dashboard */}
             <Route path='/' element={<Navigate to='/dashboard' replace />} />
@@ -430,8 +440,6 @@ function AppContent() {
                 </RequireAuth>
               }
             />
-
-            {/* Rutas Documentos */}
             <Route
               path='/documentos'
               element={
@@ -456,8 +464,6 @@ function AppContent() {
                 </RequireAuth>
               }
             />
-
-            {/* Ruta por si se escribe una URL que no existe */}
             <Route
               path='*'
               element={
@@ -505,9 +511,16 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/*
+<<<<<<< HEAD
             La vista pública se resuelve antes del árbol de autenticación: no
             debe intentar rehidratar sesión, redirigir al login ni enviar
             credenciales.
+=======
+            El modal de renovacion vive aca y no en la campana: la campana esta
+            dentro de un Popover que se cierra en el mismo tick que el modal se
+            abre, y los dos overlays se pisan. Fuera de la TopNavBar el Dialog
+            no comparte arbol con nadie.
+>>>>>>> feature-TopNavBar
           */}
           <Route path='/publico/:token' element={<VistaPublicaPublicaPage />} />
           <Route path='/publico/*' element={<VistaPublicaPublicaPage />} />
