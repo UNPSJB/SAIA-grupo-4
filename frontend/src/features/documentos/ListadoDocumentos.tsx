@@ -1,15 +1,19 @@
-import { Badge } from "@chakra-ui/react";
+import { useState } from "react";
+import { Badge, Box } from "@chakra-ui/react";
 import { FiFileText } from "react-icons/fi";
 
 import {
   AlertMessage,
   DataTable,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
   TablePagination,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import { BASE_URL } from "../../config";
 import type { Documento } from "./types";
 import { ProximaRevision } from "./ProximaRevision";
@@ -26,8 +30,16 @@ interface ListadoDocumentosProps {
   onVerHistorial?: (doc: Documento) => void;
 }
 
-const ENDPOINT = `${BASE_URL}/documentos/`;
 const ITEMS_POR_PAGINA = 5;
+
+// Arma el endpoint del listado: solo se manda la búsqueda si tiene valor.
+const construirEndpoint = (busqueda: string) => {
+  const params = new URLSearchParams();
+  if (busqueda) params.set("busqueda", busqueda);
+
+  const query = params.toString();
+  return `${BASE_URL}/documentos/${query ? `?${query}` : ""}`;
+};
 
 export const ListadoDocumentos = ({
   onCrear,
@@ -39,9 +51,14 @@ export const ListadoDocumentos = ({
   onRegistrarRevision,
   onVerHistorial,
 }: ListadoDocumentosProps) => {
+  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
+  // La página vuelve a 1 sola cuando cambia el endpoint (lo resuelve el hook)
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Documento>({
-      endpoint: ENDPOINT,
+      endpoint: construirEndpoint(busquedaAplicada),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de documentos.",
     });
@@ -137,12 +154,36 @@ export const ListadoDocumentos = ({
         onCrear={onCrear}
       />
 
+      <Box mb={4}>
+        <FiltrosBar
+          ocultarAplicar
+          onAplicar={() => {}} // la búsqueda se aplica sola mientras se escribe
+          onLimpiar={() => setBusqueda("")}
+          hayFiltrosActivos={busqueda !== ""}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel="Buscar documento"
+            placeholder="Código, título, tipo o versión"
+            value={busqueda}
+            onChange={setBusqueda}
+          />
+        </FiltrosBar>
+      </Box>
+
       {loading && <LoadingState message="Cargando documentos..." />}
 
       {!loading && error && <AlertMessage type="error" message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type="info" message="Todavía no hay documentos cargados." />
+        <AlertMessage
+          type="info"
+          message={
+            busquedaAplicada
+              ? "No hay documentos que coincidan con la búsqueda."
+              : "Todavía no hay documentos cargados."
+          }
+        />
       )}
 
       {!loading && !error && data.length > 0 && (
