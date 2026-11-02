@@ -16,6 +16,7 @@ import {
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   FILTROS_INICIALES,
   type FiltrosVencimientos,
@@ -46,6 +47,10 @@ export const ListadoVencimientos = ({
   const [aplicados, setAplicados] =
     useState<FiltrosVencimientos>(FILTROS_INICIALES);
 
+  // La búsqueda se aplica sola mientras se escribe (con debounce); el resto de
+  // los filtros siguen aplicándose con "Filtrar".
+  const busquedaAplicada = useDebounce(borrador.busqueda.trim(), 300);
+
   const { data, loading, error, page, setPage, pageSize, itemsPaginados } =
     useListadoData<Vencimiento>({
       // El endpoint se rearma con los filtros aplicados: useListadoData vuelve a
@@ -54,7 +59,7 @@ export const ListadoVencimientos = ({
         aplicados.estado,
         aplicados.categoria,
         aplicados.dias,
-        aplicados.busqueda,
+        busquedaAplicada,
       ),
       refreshKey,
       errorMessage: "No se pudo cargar la lista de vencimientos.",
@@ -182,7 +187,7 @@ export const ListadoVencimientos = ({
       {!loading && !error && data.length === 0 && (
         <AlertMessage
           type='info'
-          message='No hay vencimientos que coincidan con los filtros seleccionados.'
+          message='No hay vencimientos que coincidan con la búsqueda o los filtros seleccionados.'
         />
       )}
       {!loading && !error && data.length > 0 && (
