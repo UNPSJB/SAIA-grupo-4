@@ -25,7 +25,6 @@ import {
 import { usePlanData } from "../features/planes/hooks/usePlanData";
 import { usePlanCatalogs } from "../features/planes/hooks/usePlanCatalogs";
 import { planesApi } from "../features/planes/hooks/planApi";
-import { useDebounce } from "../hooks/useDebounce";
 import type {
   PlanCatalogs,
   PlanPOES,
@@ -203,7 +202,7 @@ export default function HistorialPlanesPage() {
 
   const [page, setPage] = useState(1);
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [borrador, setBorrador] =
     useState<FiltrosHistorial>(FILTROS_INICIALES);
   const [aplicados, setAplicados] =
@@ -279,19 +278,18 @@ export default function HistorialPlanesPage() {
 
   const hayFiltros =
     busqueda.trim() !== "" ||
-    busquedaAplicada !== "" ||
     borrador.elaboradoPorId !== "" ||
-    aplicados.elaboradoPorId !== "" ||
-    borrador.estado !== "" ||
-    aplicados.estado !== "";
+    borrador.estado !== "";
 
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setAplicados(borrador);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);

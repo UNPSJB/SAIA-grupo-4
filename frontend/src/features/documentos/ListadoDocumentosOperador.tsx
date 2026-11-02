@@ -14,6 +14,9 @@ import { FiFileText } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltroTexto,
+  FiltrosBar,
   LoadingState,
   RowActionButton,
   RowActions,
@@ -24,12 +27,17 @@ import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import { BASE_URL } from "../../config";
 import type { Documento } from "./types";
+import { TIPOS_DOCUMENTO, TIPOS_DOCUMENTO_LABELS } from "./types";
 
-// Endpoint que devuelve los documentos activos junto con su versión vigente.
 const ENDPOINT = `${BASE_URL}/documentos/activos`;
 const ITEMS_POR_PAGINA = 8;
 
 const formatearTipo = (tipo: string) => tipo.replace(/_/g, " ");
+
+const OPCIONES_TIPO = TIPOS_DOCUMENTO.map((value) => ({
+  label: TIPOS_DOCUMENTO_LABELS[value],
+  value,
+}));
 
 /**
  * Listado de documentos para el operador: sólo lectura.
@@ -47,21 +55,58 @@ export const ListadoDocumentosOperador = () => {
 
   const [page, setPage] = useState(1);
 
+  // Filtros: borrador (lo que escribe el usuario) y aplicados (lo que filtra la vista)
+  const [busqueda, setBusqueda] = useState("");
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
+  const [tipoBorrador, setTipoBorrador] = useState("");
+  const [tipoAplicado, setTipoAplicado] = useState("");
+
   // Sólo documentos con versión vigente (el backend ya devuelve sólo activos).
   const vigentes = useMemo(
     () => data.filter((doc) => !!doc.version_vigente),
     [data],
   );
 
+  // Filtrado local por texto y tipo
+  const filtrados = useMemo(() => {
+    const termino = busquedaAplicada.trim().toLowerCase();
+    return vigentes.filter((doc) => {
+      if (tipoAplicado && doc.tipo_documento !== tipoAplicado) return false;
+      if (termino) {
+        const codigo = (doc.codigo || "").toLowerCase();
+        const titulo = doc.titulo.toLowerCase();
+        if (!codigo.includes(termino) && !titulo.includes(termino)) return false;
+      }
+      return true;
+    });
+  }, [vigentes, busquedaAplicada, tipoAplicado]);
+
   const itemsPagina = useMemo(() => {
     const inicio = (page - 1) * ITEMS_POR_PAGINA;
-    return vigentes.slice(inicio, inicio + ITEMS_POR_PAGINA);
-  }, [vigentes, page]);
+    return filtrados.slice(inicio, inicio + ITEMS_POR_PAGINA);
+  }, [filtrados, page]);
 
   const verDocumento = (doc: Documento) => {
     const vigente = doc.version_vigente;
     if (!vigente) return;
     navigate(`/documentos/${doc.id}/versiones/${vigente.id}/pdf`);
+  };
+
+  const hayFiltros =
+    busqueda.trim() !== "" || tipoBorrador !== "";
+
+  const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
+    setTipoAplicado(tipoBorrador);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBusqueda("");
+    setBusquedaAplicada("");
+    setTipoBorrador("");
+    setTipoAplicado("");
+    setPage(1);
   };
 
   const columnas: ColumnDef<Documento>[] = [
@@ -110,6 +155,32 @@ export const ListadoDocumentosOperador = () => {
     <ListadoContainer mt={8}>
       <ListadoHeader title="Documentos" icon={FiFileText} />
 
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel="Buscar documento"
+            placeholder="Código o título"
+            value={busqueda}
+            onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel="Tipo de documento"
+            placeholder="Todos los tipos"
+            options={OPCIONES_TIPO}
+            value={tipoBorrador}
+            onChange={setTipoBorrador}
+          />
+        </FiltrosBar>
+      </Box>
+
       {loading && <LoadingState message="Cargando documentos..." />}
 
       {!loading && error && <AlertMessage type="error" message={error} />}
@@ -121,7 +192,14 @@ export const ListadoDocumentosOperador = () => {
         />
       )}
 
-      {!loading && !error && vigentes.length > 0 && (
+      {!loading && !error && vigentes.length > 0 && filtrados.length === 0 && (
+        <AlertMessage
+          type="info"
+          message="No hay documentos que coincidan con los filtros."
+        />
+      )}
+
+      {!loading && !error && filtrados.length > 0 && (
         <>
           {/* Tabla: tablet y escritorio */}
           <Box display={{ base: "none", md: "block" }}>
@@ -166,7 +244,7 @@ export const ListadoDocumentosOperador = () => {
 
           <Box mt={4}>
             <TablePagination
-              count={vigentes.length}
+              count={filtrados.length}
               page={page}
               pageSize={ITEMS_POR_PAGINA}
               onPageChange={setPage}

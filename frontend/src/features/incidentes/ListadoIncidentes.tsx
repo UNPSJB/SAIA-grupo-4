@@ -22,7 +22,6 @@ import {
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import type { Incidente } from "./types";
 import type { ColumnDef } from "../../components/ui";
 import {
@@ -74,8 +73,9 @@ export const ListadoIncidentes = ({
   hasta,
   refreshKey
 }: ListadoIncidentesProps) => {
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar" (filtrado local).
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   const [estadoSeleccionado, setEstadoSeleccionado] = useState("");
   const [estadoAplicado, setEstadoAplicado] = useState("");
@@ -133,16 +133,17 @@ export const ListadoIncidentes = ({
 
   const hayFiltros =
     busqueda.trim() !== "" ||
-    estadoSeleccionado !== "" ||
-    estadoAplicado !== "";
+    estadoSeleccionado !== "";
 
   const aplicarFiltros = () => {
+    setBusquedaAplicada(busqueda.trim());
     setEstadoAplicado(estadoSeleccionado);
     setPage(1);
   };
 
   const limpiarFiltros = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setEstadoSeleccionado("");
     setEstadoAplicado("");
     setPage(1);

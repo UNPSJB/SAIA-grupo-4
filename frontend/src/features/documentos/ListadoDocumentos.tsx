@@ -15,12 +15,11 @@ import {
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import { BASE_URL } from "../../config";
 import {
   TIPOS_DOCUMENTO,
+  TIPOS_DOCUMENTO_LABELS,
   type Documento,
-  type TipoDocumento,
 } from "./types";
 import { ProximaRevision } from "./ProximaRevision";
 import { AccionesDocumento } from "./AccionesDocumento";
@@ -37,14 +36,6 @@ interface ListadoDocumentosProps {
 }
 
 const ITEMS_POR_PAGINA = 5;
-
-const TIPOS_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
-  MANUAL_BPM: "Manual BPM",
-  PROCEDIMIENTO: "Procedimiento",
-  INSTRUCTIVO: "Instructivo",
-  PLANILLA: "Planilla",
-  OTRO: "Otro",
-};
 
 const OPCIONES_TIPO = TIPOS_DOCUMENTO.map((value) => ({
   label: TIPOS_DOCUMENTO_LABELS[value],
@@ -90,9 +81,9 @@ export const ListadoDocumentos = ({
   onRegistrarRevision,
   onVerHistorial,
 }: ListadoDocumentosProps) => {
-  // La búsqueda se aplica sola con debounce; los selects esperan a "Filtrar".
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   const [borrador, setBorrador] =
     useState<FiltrosDocumento>(FILTROS_INICIALES);
@@ -108,23 +99,22 @@ export const ListadoDocumentos = ({
 
   const hayFiltros =
     busqueda.trim() !== "" ||
-    busquedaAplicada !== "" ||
     borrador.tipoDocumento !== "" ||
-    aplicados.tipoDocumento !== "" ||
-    borrador.estado !== FILTROS_INICIALES.estado ||
-    aplicados.estado !== FILTROS_INICIALES.estado;
+    borrador.estado !== FILTROS_INICIALES.estado;
   const hayAplicados =
     busquedaAplicada !== "" ||
     aplicados.tipoDocumento !== "" ||
     aplicados.estado !== FILTROS_INICIALES.estado;
 
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setAplicados(borrador);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);

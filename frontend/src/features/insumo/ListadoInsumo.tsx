@@ -23,7 +23,6 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import type { Insumo } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
@@ -65,9 +64,9 @@ export const ListadoInsumos = ({
   onDarAlta,
   onVerUnidades,
 }: ListadoInsumosProps) => {
-  // La búsqueda se aplica sola con debounce; el select espera a "Filtrar".
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   const [estado, setEstado] = useState("");
   const [estadoAplicado, setEstadoAplicado] = useState("");
@@ -84,12 +83,14 @@ export const ListadoInsumos = ({
     });
 
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setEstadoAplicado(estado);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setEstado("");
     setEstadoAplicado("");
     setPage(1);

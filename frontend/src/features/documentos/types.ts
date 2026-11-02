@@ -8,6 +8,14 @@ export const TIPOS_DOCUMENTO = [
 
 export type TipoDocumento = typeof TIPOS_DOCUMENTO[number];
 
+export const TIPOS_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
+  MANUAL_BPM: "Manual BPM",
+  PROCEDIMIENTO: "Procedimiento",
+  INSTRUCTIVO: "Instructivo",
+  PLANILLA: "Planilla",
+  OTRO: "Otro",
+};
+
 export interface VersionDocumento {
   id: number;
   documento_id: number;

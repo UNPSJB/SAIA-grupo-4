@@ -35,7 +35,6 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import { calcularSemaforo } from "../../utils/semaforo";
 import type { Persona } from "./types";
 import type { ColumnDef } from "../../components/ui";
@@ -91,9 +90,9 @@ export const ListadoPersonal = ({
   const [aplicados, setAplicados] =
     useState<FiltrosPersonal>(FILTROS_INICIALES);
 
-  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Persona>({
@@ -109,19 +108,21 @@ export const ListadoPersonal = ({
   });
 
   const hayFiltros =
-    busqueda !== "" || borrador.documentoId !== "" || borrador.estado !== "";
+    busqueda.trim() !== "" || borrador.documentoId !== "" || borrador.estado !== "";
   const hayAplicados =
     busquedaAplicada !== "" ||
     aplicados.documentoId !== "" ||
     aplicados.estado !== "";
 
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setAplicados(borrador);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);

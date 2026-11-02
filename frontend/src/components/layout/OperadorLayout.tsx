@@ -22,8 +22,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiFileText,
-  FiLogOut,
-  FiMenu,
   FiShield,
   FiUser,
   FiX,
@@ -31,6 +29,7 @@ import {
 
 import { AlertConfirm } from "../ui";
 import { useAuth } from "../../features/auth/useAuth";
+import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
 
 // Un ítem de la navegación del operador. Se recibe como lista para poder sumar secciones nuevas en el futuro sin tocar este componente.
 export interface OperadorNavItem {
@@ -54,8 +53,9 @@ const isActiveRoute = (pathname: string, to: string) => {
   return pathname.startsWith(`${to}/`);
 };
 
-// Alto fijo de la barra superior móvil. El visor de PDF lo usa para calcular su alto útil y no desbordar la pantalla.
-export const OPERADOR_MOBILE_BAR_HEIGHT = "56px";
+// Alto fijo de la barra superior (compartido con TopNavBar).
+// Mantenido para compatibilidad con VisorPdfPage.
+export const OPERADOR_MOBILE_BAR_HEIGHT = TOP_NAV_BAR_HEIGHT;
 
 const NavTooltip = ({
   label,
@@ -79,7 +79,7 @@ interface OperadorLayoutProps {
   brandIcon?: ElementType;
 }
 
- // Layout del operador (usuario que opera pero no administra).
+// Layout del operador (usuario que opera pero no administra).
 export const OperadorLayout = ({
   children,
   items = defaultItems,
@@ -145,7 +145,7 @@ export const OperadorLayout = ({
     </VStack>
   );
 
-  const bloqueUsuario = (onCerrarSesion?: () => void) => (
+  const bloqueUsuario = () => (
     <VStack align="stretch" gap={2}>
       <Flex
         align="center"
@@ -166,39 +166,6 @@ export const OperadorLayout = ({
           </>
         )}
       </Flex>
-
-      {isCollapsed ? (
-        <NavTooltip label="Cerrar sesión">
-          <Button
-            variant="ghost"
-            color="white"
-            w="100%"
-            aria-label="Cerrar sesión"
-            onClick={() => {
-              onCerrarSesion?.();
-              setCerrarSesionAbierto(true);
-            }}
-            _hover={{ bg: "whiteAlpha.200" }}
-          >
-            <Icon as={FiLogOut} />
-          </Button>
-        </NavTooltip>
-      ) : (
-        <Button
-          variant="ghost"
-          color="white"
-          w="100%"
-          justifyContent="flex-start"
-          onClick={() => {
-            onCerrarSesion?.();
-            setCerrarSesionAbierto(true);
-          }}
-          _hover={{ bg: "whiteAlpha.200" }}
-        >
-          <Icon as={FiLogOut} />
-          Cerrar sesión
-        </Button>
-      )}
     </VStack>
   );
 
@@ -284,41 +251,12 @@ export const OperadorLayout = ({
 
       {/* Contenido */}
       <Flex direction="column" flex="1" minW="0">
-        {/* Barra superior móvil */}
-        <HStack
-          as="header"
-          display={{ base: "flex", md: "none" }}
-          align="center"
-          justify="space-between"
-          bg="green.600"
-          color="white"
-          px={4}
-          h={OPERADOR_MOBILE_BAR_HEIGHT}
-          flexShrink={0}
-          position="sticky"
-          top={0}
-          zIndex={10}
-          boxShadow="sm"
-        >
-          <IconButton
-            aria-label="Abrir menú"
-            variant="ghost"
-            color="white"
-            onClick={() => setMenuAbierto(true)}
-            _hover={{ bg: "whiteAlpha.200" }}
-          >
-            <FiMenu />
-          </IconButton>
-          <IconButton
-            aria-label="Cerrar sesión"
-            variant="ghost"
-            color="white"
-            onClick={() => setCerrarSesionAbierto(true)}
-            _hover={{ bg: "whiteAlpha.200" }}
-          >
-            <FiLogOut />
-          </IconButton>
-        </HStack>
+        {/* TopNavBar compartida: visible en escritorio y móvil */}
+        <TopNavBar
+          onLogout={() => setCerrarSesionAbierto(true)}
+          onMenuClick={() => setMenuAbierto(true)}
+          showMenuButton={true}
+        />
 
         <Box bg="gray.100" flex="1" minW="0">
           {children}
@@ -371,7 +309,7 @@ export const OperadorLayout = ({
               </Drawer.Body>
 
               <Drawer.Footer borderColor="whiteAlpha.300">
-                {bloqueUsuario(() => setMenuAbierto(false))}
+                {bloqueUsuario()}
               </Drawer.Footer>
             </Drawer.Content>
           </Drawer.Positioner>

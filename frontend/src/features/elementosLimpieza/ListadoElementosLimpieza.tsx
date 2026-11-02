@@ -25,7 +25,6 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import type { ElementoLimpieza } from "./types";
 import type { Sector } from "../sectores/types";
 import type { Equipo } from "../equipos/types";
@@ -100,9 +99,9 @@ export const ListadoElementosLimpieza = ({
   const [borrador, setBorrador] = useState<FiltrosElemento>(FILTROS_INICIALES);
   const [aplicados, setAplicados] = useState<FiltrosElemento>(FILTROS_INICIALES);
 
-  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   // La página vuelve a 1 sola cuando cambia el endpoint (estado o búsqueda)
   const { data, loading, error, page, setPage, itemsPaginados } =
@@ -146,13 +145,9 @@ export const ListadoElementosLimpieza = ({
 
   const hayFiltros =
     busqueda.trim() !== "" ||
-    busquedaAplicada !== "" ||
     borrador.estado !== FILTROS_INICIALES.estado ||
-    aplicados.estado !== FILTROS_INICIALES.estado ||
     borrador.sectorId !== "" ||
-    aplicados.sectorId !== "" ||
-    borrador.equipoId !== "" ||
-    aplicados.equipoId !== "";
+    borrador.equipoId !== "";
   const hayAplicados =
     busquedaAplicada !== "" ||
     aplicados.estado !== FILTROS_INICIALES.estado ||
@@ -160,12 +155,14 @@ export const ListadoElementosLimpieza = ({
     aplicados.equipoId !== "";
 
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setAplicados(borrador);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);

@@ -25,7 +25,6 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import { calcularSemaforo, sumarDias } from "../../utils/semaforo";
 import type { Equipo } from "./types";
 import type { Sector } from "../sectores/types";
@@ -103,9 +102,9 @@ export const ListadoEquipos = ({
   const [borrador, setBorrador] = useState<FiltrosEquipo>(FILTROS_INICIALES);
   const [aplicados, setAplicados] = useState<FiltrosEquipo>(FILTROS_INICIALES);
 
-  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Equipo>({
@@ -122,18 +121,20 @@ export const ListadoEquipos = ({
   });
 
   const hayFiltros =
-    busqueda !== "" || Object.values(borrador).some((valor) => valor !== "");
+    busqueda.trim() !== "" || Object.values(borrador).some((valor) => valor !== "");
   const hayAplicados =
     busquedaAplicada !== "" || Object.values(aplicados).some((valor) => valor !== "");
 
   // Cada aplicación vuelve a la primera página, para no caer en una página vacía.
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setAplicados(borrador);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);

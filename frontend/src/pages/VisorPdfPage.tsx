@@ -4,7 +4,7 @@ import { Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/rea
 import { FiArrowLeft, FiDownload, FiExternalLink, FiFileText } from "react-icons/fi";
 
 import { AlertMessage, LoadingState } from "../components/ui";
-import { OPERADOR_MOBILE_BAR_HEIGHT } from "../components/layout";
+import { TOP_NAV_BAR_HEIGHT } from "../components/layout";
 import { useDocumentoDetalle } from "../features/documentos/hooks/useDocumentoDetalle";
 import {
   descargarDocumento,
@@ -42,8 +42,8 @@ export default function VisorPdfPage() {
 
   return (
     <Box
-      // En móvil descuenta la barra superior del operador; en escritorio ocupa toda la altura disponible.
-      h={{ base: `calc(100dvh - ${OPERADOR_MOBILE_BAR_HEIGHT})`, md: "100vh" }}
+      // En móvil descuenta la barra superior (TopNavBar); en escritorio ocupa toda la altura disponible.
+      h={{ base: `calc(100dvh - ${TOP_NAV_BAR_HEIGHT})`, md: "100vh" }}
       bg="gray.100"
       p={6}
       display="flex"

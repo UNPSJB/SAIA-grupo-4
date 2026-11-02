@@ -510,18 +510,6 @@ export default function App() {
     <ChakraProvider value={defaultSystem}>
       <BrowserRouter>
         <Routes>
-          {/*
-<<<<<<< HEAD
-            La vista pública se resuelve antes del árbol de autenticación: no
-            debe intentar rehidratar sesión, redirigir al login ni enviar
-            credenciales.
-=======
-            El modal de renovacion vive aca y no en la campana: la campana esta
-            dentro de un Popover que se cierra en el mismo tick que el modal se
-            abre, y los dos overlays se pisan. Fuera de la TopNavBar el Dialog
-            no comparte arbol con nadie.
->>>>>>> feature-TopNavBar
-          */}
           <Route path='/publico/:token' element={<VistaPublicaPublicaPage />} />
           <Route path='/publico/*' element={<VistaPublicaPublicaPage />} />
           <Route path='*' element={<AppInterno />} />

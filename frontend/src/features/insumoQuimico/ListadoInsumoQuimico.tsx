@@ -23,7 +23,6 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
-import { useDebounce } from "../../hooks/useDebounce";
 import type { InsumoQuimico } from "./types";
 import type { Sector } from "../sectores/types";
 import type { Equipo } from "../equipos/types";
@@ -86,9 +85,9 @@ export const ListadoInsumosQuimicos = ({
   onDarAlta,
   onVerUnidades,
 }: ListadoInsumosQuimicosProps) => {
-  // La búsqueda se aplica sola con debounce; los selects esperan a "Filtrar".
+  // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
-  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
   const [borrador, setBorrador] =
     useState<FiltrosInsumoQuimico>(FILTROS_INICIALES);
@@ -140,12 +139,14 @@ export const ListadoInsumosQuimicos = ({
     });
 
   const aplicar = () => {
+    setBusquedaAplicada(busqueda.trim());
     setAplicados(borrador);
     setPage(1);
   };
 
   const limpiar = () => {
     setBusqueda("");
+    setBusquedaAplicada("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);
