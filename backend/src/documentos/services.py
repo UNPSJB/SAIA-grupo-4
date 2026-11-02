@@ -215,6 +215,19 @@ def eliminar_documento(db: Session, documento_id: int) -> Documento:
     return db_doc
 
 
+def _obtener_ultima_version(versiones: list[VersionDocumento]) -> tuple[tuple[int, int], str] | None:
+    """Devuelve ((mayor, menor), texto_version) de la versión más alta del documento."""
+    maxima: tuple[tuple[int, int], str] | None = None
+    for v in versiones:
+        try:
+            tupla = schemas.parsear_version(v.version)
+        except ValueError:
+            continue
+        if maxima is None or tupla > maxima[0]:
+            maxima = (tupla, f"v{tupla[0]}.{tupla[1]}")
+    return maxima
+
+
 def agregar_version(
     db: Session, 
     documento_id: int, 
@@ -227,10 +240,27 @@ def agregar_version(
         raise exceptions.DocumentoInactivo()
         
     _validar_autor(db, version_data.creado_por_id)
+
+    ultima = _obtener_ultima_version(db_doc.versiones)
+    if version_data.version is None:
+        if ultima is None:
+            version_final = "v1.0"
+        else:
+            mayor_ant, menor_ant = ultima[0]
+            version_final = f"v{mayor_ant}.{menor_ant + 1}"
+    else:
+        tupla_nueva = schemas.parsear_version(version_data.version)
+        version_final = f"v{tupla_nueva[0]}.{tupla_nueva[1]}"
+        if ultima is not None and tupla_nueva <= ultima[0]:
+            raise exceptions.VersionNoIncremental(ultima_version=ultima[1])
+
     ruta_archivo = _guardar_documento_local(archivo)
 
+    datos_version = version_data.model_dump()
+    datos_version["version"] = version_final
+
     nueva_version = VersionDocumento(
-        **version_data.model_dump(),
+        **datos_version,
         documento_id=documento_id,
         archivo_url=ruta_archivo,
         es_vigente=False,

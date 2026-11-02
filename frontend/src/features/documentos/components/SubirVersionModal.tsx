@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Field, HStack, Input, Separator, Text } from "@chakra-ui/react";
@@ -15,7 +16,13 @@ import {
   TextAreaField,
   TextField,
 } from "../../../components/ui";
-import { subirVersionSchema } from "../validationSchema";
+import {
+  crearSubirVersionSchema,
+  normalizarVersion,
+  obtenerUltimaVersionDocumento,
+  sugerirSiguienteVersion,
+  type subirVersionSchema,
+} from "../validationSchema";
 import { useDocumentoVersiones } from "../hooks/useDocumentoVersiones";
 import { useAuth } from "../../auth/useAuth";
 import { PdfArchivoField } from "./PdfArchivoField";
@@ -49,6 +56,19 @@ export const SubirVersionForm = ({
   const { usuario } = useAuth();
   const { subirNuevaVersion, isSubmitting } = useDocumentoVersiones();
 
+  const ultimaVersion = useMemo(
+    () => obtenerUltimaVersionDocumento(documento),
+    [documento],
+  );
+  const versionSugerida = useMemo(
+    () => sugerirSiguienteVersion(documento),
+    [documento],
+  );
+  const schema = useMemo(
+    () => crearSubirVersionSchema(ultimaVersion),
+    [ultimaVersion],
+  );
+
   const {
     register,
     handleSubmit,
@@ -57,9 +77,9 @@ export const SubirVersionForm = ({
     watch,
     formState: { errors, isValid },
   } = useForm<SubirVersionFormValues>({
-    resolver: zodResolver(subirVersionSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
-      version: "",
+      version: versionSugerida,
       fecha_proxima_revision: "",
       observaciones_cambio: "",
     },
@@ -76,7 +96,7 @@ export const SubirVersionForm = ({
 
     const datos: SubirVersionFormData = {
       archivo: values.archivo ?? null,
-      version: values.version.trim(),
+      version: normalizarVersion(values.version),
       fecha_proxima_revision: values.fecha_proxima_revision || undefined,
       observaciones_cambio: values.observaciones_cambio || undefined,
     };
