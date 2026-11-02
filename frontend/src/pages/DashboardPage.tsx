@@ -245,6 +245,14 @@ export default function DashboardPage() {
                       }}
                     />
                   )}
+                  {graficosAdicionales.map(([key, config]) => (
+                    <DashboardChart
+                      key={key}
+                      title={getChartTitle(key)}
+                      config={config}
+                      metricKey={key}
+                    />
+                  ))}
 
                   {tieneIncidentesAgrupados && (
                     <GroupedStackedBar
@@ -255,15 +263,6 @@ export default function DashboardPage() {
                       keyLabels={{ Abiertos: "Abiertos", Cerrados: "Cerrados" }}
                     />
                   )}
-
-                  {graficosAdicionales.map(([key, config]) => (
-                    <DashboardChart
-                      key={key}
-                      title={getChartTitle(key)}
-                      config={config}
-                      metricKey={key}
-                    />
-                  ))}
                 </Grid>
               </>
             )}

@@ -1,5 +1,16 @@
 import { Box, Card, Text, VStack } from "@chakra-ui/react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import type { GraficoConfig } from "./types";
 import { getChartColor } from "./utils/chartColors";
 import { SegmentedBar } from "./SegmentedBar";
@@ -19,31 +30,62 @@ const USE_SEGMENTED_BAR = new Set([
   "incidentes",
 ]);
 
+const USE_BAR_CHART = new Set(["lotes"]);
+
 const PieTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   const data = payload[0];
   return (
-    <Box bg="white" p={2} borderRadius="md" shadow="md" border="1px solid" borderColor="gray.200">
-      <Text fontSize="xs" fontWeight="medium">{data.name}</Text>
-      <Text fontSize="xs" color="gray.600">{data.value}</Text>
+    <Box
+      bg='white'
+      p={2}
+      borderRadius='md'
+      shadow='md'
+      border='1px solid'
+      borderColor='gray.200'
+    >
+      <Text fontSize='xs' fontWeight='medium'>
+        {data.name}
+      </Text>
+      <Text fontSize='xs' color='gray.600'>
+        {data.value}
+      </Text>
     </Box>
   );
 };
 
-const EmptyChart = ({ title, leyendas }: { title: string; leyendas?: Array<{ label: string }> }) => (
-  <Card.Root shadow="md" h="full">
+const EmptyChart = ({
+  title,
+  leyendas,
+}: {
+  title: string;
+  leyendas?: Array<{ label: string }>;
+}) => (
+  <Card.Root shadow='md' h='full'>
     <Card.Header>
-      <Text fontSize="md" fontWeight="semibold">{title}</Text>
+      <Text fontSize='md' fontWeight='semibold'>
+        {title}
+      </Text>
     </Card.Header>
     <Card.Body>
       <VStack py={8} gap={4}>
-        <Text color="gray.500" fontSize="sm">Sin datos para mostrar</Text>
+        <Text color='gray.500' fontSize='sm'>
+          Sin datos para mostrar
+        </Text>
         {leyendas && leyendas.length > 0 && (
-          <VStack align="stretch" gap={2} w="full">
+          <VStack align='stretch' gap={2} w='full'>
             {leyendas.map((leyenda, idx) => (
-              <Box key={idx} display="flex" alignItems="center" gap={2}>
-                <Box w={3} h={3} borderRadius="full" bg="#A0AEC0" flexShrink={0} />
-                <Text fontSize="xs" color="gray.600">{leyenda.label}</Text>
+              <Box key={idx} display='flex' alignItems='center' gap={2}>
+                <Box
+                  w={3}
+                  h={3}
+                  borderRadius='full'
+                  bg='#A0AEC0'
+                  flexShrink={0}
+                />
+                <Text fontSize='xs' color='gray.600'>
+                  {leyenda.label}
+                </Text>
               </Box>
             ))}
           </VStack>
@@ -53,7 +95,13 @@ const EmptyChart = ({ title, leyendas }: { title: string; leyendas?: Array<{ lab
   </Card.Root>
 );
 
-const PieChartView = ({ title, config }: { title: string; config: GraficoConfig }) => {
+const PieChartView = ({
+  title,
+  config,
+}: {
+  title: string;
+  config: GraficoConfig;
+}) => {
   const data = config.datos.map((item, index) => ({
     name: item.label,
     value: item.valor,
@@ -61,14 +109,23 @@ const PieChartView = ({ title, config }: { title: string; config: GraficoConfig 
   }));
 
   return (
-    <Card.Root shadow="md" h="full">
+    <Card.Root shadow='md' h='full'>
       <Card.Header>
-        <Text fontSize="md" fontWeight="semibold">{title}</Text>
+        <Text fontSize='md' fontWeight='semibold'>
+          {title}
+        </Text>
       </Card.Header>
       <Card.Body>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width='100%' height={300}>
           <PieChart>
-            <Pie data={data} cx="50%" cy="50%" outerRadius={110} dataKey="value" labelLine={false}>
+            <Pie
+              data={data}
+              cx='50%'
+              cy='50%'
+              outerRadius={110}
+              dataKey='value'
+              labelLine={false}
+            >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
@@ -76,14 +133,16 @@ const PieChartView = ({ title, config }: { title: string; config: GraficoConfig 
             <Tooltip content={<PieTooltip />} />
           </PieChart>
         </ResponsiveContainer>
-        <VStack align="start" gap={2} mt={2}>
+        <VStack align='start' gap={2} mt={2}>
           {config.leyendas.map((leyenda, idx) => {
             const dato = config.datos[idx];
             const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
             return (
-              <Box key={idx} display="flex" alignItems="center" gap={2}>
-                <Box w={3} h={3} borderRadius="full" bg={color} />
-                <Text fontSize="xs" color="gray.600">{leyenda.label}</Text>
+              <Box key={idx} display='flex' alignItems='center' gap={2}>
+                <Box w={3} h={3} borderRadius='full' bg={color} />
+                <Text fontSize='xs' color='gray.600'>
+                  {leyenda.label}
+                </Text>
               </Box>
             );
           })}
@@ -93,7 +152,13 @@ const PieChartView = ({ title, config }: { title: string; config: GraficoConfig 
   );
 };
 
-const SegmentedBarChart = ({ title, config }: { title: string; config: GraficoConfig }) => {
+const SegmentedBarChart = ({
+  title,
+  config,
+}: {
+  title: string;
+  config: GraficoConfig;
+}) => {
   const segmentos = config.datos.map((dato) => ({
     label: dato.label,
     valor: dato.valor,
@@ -101,13 +166,15 @@ const SegmentedBarChart = ({ title, config }: { title: string; config: GraficoCo
   const total = segmentos.reduce((sum, seg) => sum + seg.valor, 0);
 
   return (
-    <Card.Root shadow="md" h="full">
+    <Card.Root shadow='md' h='full'>
       <Card.Header>
-        <Text fontSize="md" fontWeight="semibold">{title}</Text>
+        <Text fontSize='md' fontWeight='semibold'>
+          {title}
+        </Text>
       </Card.Header>
       <Card.Body>
-        <VStack align="stretch" gap={4}>
-          <Text fontSize="xs" color="gray.500" fontWeight="medium">
+        <VStack align='stretch' gap={4}>
+          <Text fontSize='xs' color='gray.500' fontWeight='medium'>
             Total: {total}
           </Text>
           <SegmentedBar segmentos={segmentos} mostrarLeyenda={true} />
@@ -117,16 +184,24 @@ const SegmentedBarChart = ({ title, config }: { title: string; config: GraficoCo
   );
 };
 
-const FallbackBarChart = ({ title, config }: { title: string; config: GraficoConfig }) => {
+const FallbackBarChart = ({
+  title,
+  config,
+}: {
+  title: string;
+  config: GraficoConfig;
+}) => {
   const total = config.datos.reduce((sum, item) => sum + item.valor, 0);
   return (
-    <Card.Root shadow="md" h="full">
+    <Card.Root shadow='md' h='full'>
       <Card.Header>
-        <Text fontSize="md" fontWeight="semibold">{title}</Text>
+        <Text fontSize='md' fontWeight='semibold'>
+          {title}
+        </Text>
       </Card.Header>
       <Card.Body>
-        <VStack align="stretch" gap={4}>
-          <Text fontSize="xs" color="gray.500" fontWeight="medium">
+        <VStack align='stretch' gap={4}>
+          <Text fontSize='xs' color='gray.500' fontWeight='medium'>
             Total: {total}
           </Text>
           {config.datos.map((dato, idx) => {
@@ -134,14 +209,21 @@ const FallbackBarChart = ({ title, config }: { title: string; config: GraficoCon
             const color = getChartColor(dato.label, idx);
             return (
               <Box key={idx}>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Text fontSize="xs" color="gray.600">{dato.label}</Text>
-                  <Text fontSize="xs" fontWeight="medium">
+                <Box display='flex' justifyContent='space-between' mb={1}>
+                  <Text fontSize='xs' color='gray.600'>
+                    {dato.label}
+                  </Text>
+                  <Text fontSize='xs' fontWeight='medium'>
                     {dato.valor} ({porcentaje.toFixed(1)}%)
                   </Text>
                 </Box>
-                <Box h="8px" bg="gray.100" borderRadius="full" overflow="hidden">
-                  <Box h="full" bg={color} w={`${porcentaje}%`} />
+                <Box
+                  h='8px'
+                  bg='gray.100'
+                  borderRadius='full'
+                  overflow='hidden'
+                >
+                  <Box h='full' bg={color} w={`${porcentaje}%`} />
                 </Box>
               </Box>
             );
@@ -152,9 +234,121 @@ const FallbackBarChart = ({ title, config }: { title: string; config: GraficoCon
   );
 };
 
-export function DashboardChart({ title, config, metricKey }: DashboardChartProps) {
+const BarChartView = ({
+  title,
+  config,
+  metricKey,
+}: {
+  title: string;
+  config: GraficoConfig;
+  metricKey?: string;
+}) => {
+  const isLotes = metricKey === "lotes";
+  const data = config.datos.map((item, index) => {
+    const fullLabel = item.label;
+    const match = fullLabel.match(/^([^(]+)\s*\(/);
+    const productName = match ? match[1].trim() : fullLabel;
+    return {
+      name:
+        productName.length > 15
+          ? productName.substring(0, 12) + "..."
+          : productName,
+      fullName: fullLabel,
+      value: item.valor,
+      color: getChartColor(item.label, index),
+    };
+  });
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const item = payload[0].payload;
+      return (
+        <Box
+          bg='white'
+          p={2}
+          borderRadius='md'
+          shadow='md'
+          border='1px solid'
+          borderColor='gray.200'
+        >
+          <Text fontSize='xs' fontWeight='medium'>
+            {item.fullName}
+          </Text>
+        </Box>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <Card.Root shadow='md' h='full'>
+      <Card.Header>
+        <Text fontSize='md' fontWeight='semibold'>
+          {title}
+        </Text>
+      </Card.Header>
+      <Card.Body>
+        <ResponsiveContainer width='100%' height={280}>
+          <BarChart
+            data={data}
+            margin={{ top: 5, right: 10, left: -10, bottom: 40 }}
+          >
+            <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
+            <XAxis
+              dataKey='name'
+              tick={{ fontSize: 9 }}
+              angle={-25}
+              textAnchor='end'
+              interval={0}
+              height={60}
+            />
+            <YAxis tick={{ fontSize: 9 }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey='value' radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        {!isLotes && (
+          <VStack align='start' gap={2} mt={2}>
+            {config.leyendas.map((leyenda, idx) => {
+              const dato = config.datos[idx];
+              const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
+              return (
+                <Box key={idx} display='flex' alignItems='center' gap={2}>
+                  <Box
+                    w={3}
+                    h={3}
+                    borderRadius='full'
+                    bg={color}
+                    flexShrink={0}
+                  />
+                  <Text fontSize='xs' color='gray.600'>
+                    {leyenda.label}
+                  </Text>
+                </Box>
+              );
+            })}
+          </VStack>
+        )}
+      </Card.Body>
+    </Card.Root>
+  );
+};
+
+export function DashboardChart({
+  title,
+  config,
+  metricKey,
+}: DashboardChartProps) {
   if (!config.datos || config.datos.length === 0) {
     return <EmptyChart title={title} leyendas={config.leyendas} />;
+  }
+
+  if (USE_BAR_CHART.has(metricKey)) {
+    return <BarChartView title={title} config={config} metricKey={metricKey} />;
   }
 
   if (metricKey === "tareas") {

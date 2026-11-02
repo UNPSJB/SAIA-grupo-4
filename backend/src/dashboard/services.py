@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 # === REUTILIZACIÓN DE SERVICIOS EXISTENTES ===
@@ -223,20 +223,75 @@ def _calcular_metricas_tareas(db: Session, desde: date | None, hasta: date | Non
 
 
 # === LOTES PRODUCIDOS ===
-def _calcular_metricas_lotes() -> tuple[schemas.MetricaCard, schemas.GraficoConfig]:
-    """Lotes producidos - No implementado en el proyecto actual."""
+def _calcular_metricas_lotes(db: Session, desde: date | None, hasta: date | None) -> tuple[schemas.MetricaCard, schemas.GraficoConfig]:
+    """Lotes producidos agrupados por producto."""
+    from src.lotes.models import Lote
+    from src.productos.models import Producto
+    from src.unidad_medida.models import UnidadMedida
+    
+    query_base = select(Lote.id, Lote.cantidad_producida).join(Producto, Lote.producto_id == Producto.id)
+    if desde:
+        query_base = query_base.where(func.date(Lote.fecha_elaboracion) >= desde)
+    if hasta:
+        query_base = query_base.where(func.date(Lote.fecha_elaboracion) <= hasta)
+    lotes_rango = db.execute(query_base).all()
+    
+    total_lotes_rango = len(lotes_rango)
+    total_unidades_rango = sum(float(c) if c is not None else 0.0 for _, c in lotes_rango)
+    
+    query = select(
+        Producto.id,
+        Producto.nombre,
+        UnidadMedida.simbolo,
+        func.sum(Lote.cantidad_producida).label("total_producido"),
+        func.count(Lote.id).label("cantidad_lotes"),
+    ).join(Lote, Lote.producto_id == Producto.id).outerjoin(UnidadMedida, Producto.unidad_medida_id == UnidadMedida.id)
+    
+    if desde:
+        query = query.where(func.date(Lote.fecha_elaboracion) >= desde)
+    if hasta:
+        query = query.where(func.date(Lote.fecha_elaboracion) <= hasta)
+    
+    query = query.group_by(Producto.id, Producto.nombre, UnidadMedida.simbolo).order_by(Producto.nombre)
+    resultados = db.execute(query).all()
+    
+    if not resultados:
+        card = schemas.MetricaCard(
+            key="lotes",
+            titulo="Lotes producidos",
+            valor=0.0,
+            unidad="cantidad",
+            detalle="Sin lotes producidos en el rango seleccionado",
+            link="/historial-lotes",
+        )
+        grafico = schemas.GraficoConfig(
+            tipo="bar",
+            datos=[],
+            leyendas=[schemas.LeyendaItem(label="Sin datos para mostrar")],
+        )
+        return card, grafico
+    
+    datos_grafico = []
+    
+    for _, nombre_producto, simbolo_um, total_prod, cant_lotes in resultados:
+        total_float = float(total_prod) if total_prod is not None else 0.0
+        unidad = simbolo_um if simbolo_um else "unidades"
+        sufijo_lotes = "s" if cant_lotes != 1 else ""
+        datos_grafico.append(schemas.GraficoDato(label=f"{nombre_producto} ({total_float:.2f} {unidad} - {cant_lotes} lote{sufijo_lotes})", valor=total_float))
+    
+    sufijo_lotes_card = "s" if total_lotes_rango != 1 else ""
     card = schemas.MetricaCard(
         key="lotes",
         titulo="Lotes producidos",
-        valor=0.0,
+        valor=float(total_lotes_rango),
         unidad="cantidad",
-        detalle="Funcionalidad no implementada",
-        link=None,
+        detalle=f"{total_unidades_rango:.2f} unidades totales producidas en el rango ({total_lotes_rango} lote{sufijo_lotes_card})",
+        link="/historial-lotes",
     )
     grafico = schemas.GraficoConfig(
-        tipo="pie",
-        datos=[],
-        leyendas=[schemas.LeyendaItem(label="Sin datos disponibles (no implementado)")],
+        tipo="bar",
+        datos=datos_grafico,
+        leyendas=[schemas.LeyendaItem(label="Cantidad producida por producto")],
     )
     return card, grafico
 
@@ -262,7 +317,7 @@ def obtener_dashboard(db: Session, desde: date | None = None, hasta: date | None
     tarjetas.append(card_tar)
     graficos[card_tar.key] = graf_tar
     
-    card_lotes, graf_lotes = _calcular_metricas_lotes()
+    card_lotes, graf_lotes = _calcular_metricas_lotes(db, desde, hasta)
     tarjetas.append(card_lotes)
     graficos[card_lotes.key] = graf_lotes
 
