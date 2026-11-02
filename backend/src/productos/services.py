@@ -160,7 +160,6 @@ def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto = leer_producto(db, producto_id)
 
     # Validar que no tenga recetas activas asociada
-
     receta_activa = db.scalar(
         select(Receta).where(
             Receta.producto_id == producto_id,

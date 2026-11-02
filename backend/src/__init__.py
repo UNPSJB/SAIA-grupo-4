@@ -11,3 +11,5 @@ from src.vencimientos.schemas import Vencimiento, CategoriaDisponible
 from src.incidentes.schemas import Incidente
 from src.documentos.schemas import Documento, VersionDocumento
 from src.productos.schemas import Producto
+from src.recetas.schemas import Receta
+from src.lotes.schemas import Lote

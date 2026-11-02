@@ -1,6 +1,7 @@
-from sqlalchemy import Boolean, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+
 
 class Producto(ModeloBase):
     __tablename__ = "productos"
@@ -9,7 +10,7 @@ class Producto(ModeloBase):
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     descripcion: Mapped[str] = mapped_column(String(250), nullable=False)
     unidad_medida_id: Mapped[int] = mapped_column(ForeignKey("unidades_de_medidas.id"), nullable=False)
-    # Tal vez sean necesarios mas atributos
+    dias_vida_util: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Estado
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -17,7 +18,8 @@ class Producto(ModeloBase):
     # Relaciones
     unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="productos")
     recetas: Mapped[list["Receta"]] = relationship("Receta", back_populates="producto")
-    
+    lotes: Mapped[list["Lote"]] = relationship("Lote", back_populates="producto")
+
     # Checks
     __table_args__ = (
         UniqueConstraint(

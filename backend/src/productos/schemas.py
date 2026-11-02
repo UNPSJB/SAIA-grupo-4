@@ -6,14 +6,16 @@ class ProductoBase(BaseModel):
     nombre: Annotated[str, Field(min_length=1, max_length=100)]
     descripcion: Annotated[str, Field(min_length=1, max_length=250)]
     unidad_medida_id: Annotated[int, Field(gt=0)]
+    dias_vida_util: Annotated[Optional[int], Field(default=None, gt=0)] = None
 
 class ProductoCreate(ProductoBase):
     pass
 
-class ProductoUpdate(ProductoBase):
+class ProductoUpdate(BaseModel):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100)]
     descripcion: Annotated[Optional[str], Field(default=None, min_length=1, max_length=250)]
     unidad_medida_id: Annotated[Optional[int], Field(default=None, gt=0)]
+    dias_vida_util: Annotated[Optional[int], Field(default=None, gt=0)] = None
     activo: Annotated[Optional[bool], Field(default=None)]
 
     @field_validator("nombre", "descripcion", "unidad_medida_id", "activo", mode="before")

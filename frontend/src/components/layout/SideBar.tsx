@@ -32,6 +32,7 @@ import {
   FiAlertTriangle,
   FiFileText,
   FiBookOpen,
+  FiBox,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -55,6 +56,8 @@ interface NavBarProps {
   items?: NavItem[];
   checklistItems?: NavItem[];
   checklistColapsable?: boolean;
+  loteItems?: NavItem[];
+  loteColapsable?: boolean;
   version?: string;
   username?: string;
   onLogout?: () => void;
@@ -77,7 +80,7 @@ const defaultItems: NavItem[] = [
     label: "Elementos de limpieza",
     icon: MdOutlineCleaningServices,
   },
-  { to: "/productos", label: "Productos", icon: FiPackage}
+  { to: "/productos", label: "Productos", icon: FiPackage },
 ];
 
 const planItems: NavItem[] = [
@@ -112,8 +115,11 @@ const documentosItem: LinkNavItem = {
   icon: FiFileText,
 };
 
-const isActiveRoute = (pathname: string, to: string) =>
-  pathname === to || pathname.startsWith(`${to}/`);
+const isActiveRoute = (pathname: string, to: string) => {
+  if (pathname === to) return true;
+  if (to === "/lotes") return pathname === "/lotes";
+  return pathname.startsWith(`${to}/`);
+};
 
 const NavTooltip = ({
   label,
@@ -326,6 +332,8 @@ export const NavBar = ({
   items = defaultItems,
   checklistItems = [],
   checklistColapsable = true,
+  loteItems = [],
+  loteColapsable = true,
   version = "v0.1.0",
   username = "Usuario",
   onLogout,
@@ -335,11 +343,13 @@ export const NavBar = ({
   const [navigationOpen, setNavigationOpen] = useState(true);
   const [planOpen, setPlanOpen] = useState(true);
   const [recetasOpen, setRecetasOpen] = useState(true);
+  const [lotesOpen, setLotesOpen] = useState(true);
   const [checklistOpen, setChecklistOpen] = useState(true);
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const planAccordionOpen = isCollapsed ? true : planOpen;
   const recetasAccordionOpen = isCollapsed ? true : recetasOpen;
+  const lotesAccordionOpen = isCollapsed ? true : lotesOpen;
   const checklistAccordionOpen = isCollapsed ? true : checklistOpen;
 
   const sidebarW = isCollapsed ? "64px" : "260px";
@@ -354,6 +364,10 @@ export const NavBar = ({
 
   const handleRecetasOpenChange = (open: boolean) => {
     if (!isCollapsed) setRecetasOpen(open);
+  };
+
+  const handleLotesOpenChange = (open: boolean) => {
+    if (!isCollapsed) setLotesOpen(open);
   };
 
   const handleChecklistOpenChange = (open: boolean) => {
@@ -514,6 +528,48 @@ export const NavBar = ({
         onOpenChange={handleRecetasOpenChange}
         onCollapsedClick={() => setIsCollapsed(false)}
       />
+
+      {loteItems.length > 0 && (
+        <>
+          {!isCollapsed && (
+            <Text
+              fontSize='sm'
+              fontWeight='semibold'
+              color='white'
+              px={2}
+              mt={2}
+            >
+              Lotes
+            </Text>
+          )}
+
+          {loteColapsable ? (
+            <NavSection
+              label='Lotes'
+              icon={FiBox}
+              items={loteItems}
+              isCollapsed={isCollapsed}
+              open={lotesAccordionOpen}
+              onOpenChange={handleLotesOpenChange}
+              onCollapsedClick={() => setIsCollapsed(false)}
+            />
+          ) : (
+            <VStack align='stretch' gap={1}>
+              {loteItems.map((item) => {
+                if ("children" in item) return null;
+                return (
+                  <SingleNavLink
+                    key={item.to}
+                    item={item}
+                    isCollapsed={isCollapsed}
+                    pathname={pathname}
+                  />
+                );
+              })}
+            </VStack>
+          )}
+        </>
+      )}
 
       {!isCollapsed && (
         <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>

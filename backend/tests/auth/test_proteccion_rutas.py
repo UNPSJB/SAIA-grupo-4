@@ -121,3 +121,22 @@ def test_operador_acceso_recetas_activas(credenciales):
     assert client.get("/recetas/", headers=headers).status_code == 403
     assert client.get("/recetas/borrador", headers=headers).status_code == 403
     assert client.post("/recetas/", json={}, headers=headers).status_code == 403
+
+
+def test_proteccion_rutas_lotes(credenciales):
+    # Sin token es 401
+    assert client.get("/lotes/").status_code == 401
+    assert client.get("/lotes/mis-lotes").status_code == 401
+
+    token_op = _login(credenciales["operador_dni"], credenciales["operador_password"])
+    headers_op = _headers(token_op)
+    # Operador puede ver productos disponibles y mis lotes
+    assert client.get("/lotes/productos-disponibles", headers=headers_op).status_code == 200
+    assert client.get("/lotes/mis-lotes", headers=headers_op).status_code == 200
+    # Pero no puede ver el historial general de auditoría
+    assert client.get("/lotes/", headers=headers_op).status_code == 403
+
+    token_admin = _login(credenciales["admin_dni"], credenciales["admin_password"])
+    headers_admin = _headers(token_admin)
+    # Admin tiene acceso al historial general de auditoría
+    assert client.get("/lotes/", headers=headers_admin).status_code == 200

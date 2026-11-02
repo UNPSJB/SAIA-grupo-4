@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { FiArchive, FiCheckSquare } from "react-icons/fi";
+import { FiArchive, FiCheckSquare, FiClock, FiPlus } from "react-icons/fi";
 import { NavBar, OperadorLayout, type NavItem } from "./components/layout";
 import { AlertConfirm, LoadingState } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
@@ -37,10 +37,17 @@ import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import ProductosPage from "./pages/ProductosPage";
+import LotesOperadorPage from "./pages/LotesOperadorPage";
+import HistorialLotesPage from "./pages/HistorialLotesPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
   { to: "/historial", label: "Historial de Checklist", icon: FiArchive },
+];
+
+const LOTES_ITEMS: NavItem[] = [
+  { to: "/lotes", label: "Nuevo Lote", icon: FiPlus },
+  { to: "/historial-lotes", label: "Historial de Lotes", icon: FiClock },
 ];
 
 function AppContent() {
@@ -124,6 +131,24 @@ function AppContent() {
               </RequireAuth>
             }
           />
+          {/* Rutas Lotes Operador */}
+          <Route
+            path='/lotes'
+            element={
+              <RequireAuth>
+                <LotesOperadorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path='/lotes/mis-lotes'
+            element={<Navigate to='/lotes' replace />}
+          />
+          <Route
+            path='/lotes/registrar'
+            element={<Navigate to='/lotes?crear=true' replace />}
+          />
+          <Route path='/lotes/historial' element={<Navigate to='/lotes' replace />} />
           <Route path='*' element={<Navigate to='/checklist' replace />} />
         </Routes>
       </OperadorLayout>
@@ -131,9 +156,10 @@ function AppContent() {
   }
 
   // Accesos a checklists según las capacidades del usuario:
-  // - administra + opera: grupo colapsable con el checklist diario y el historial.
+  // - administra + opera: grupo colapsable con nuevo lote y el historial.
   // - solo administra: únicamente el historial, como botón directo.
   const checklistItems = esOp ? CHECKLIST_ITEMS : [CHECKLIST_ITEMS[1]];
+  const loteItems = esOp ? LOTES_ITEMS : [LOTES_ITEMS[1]];
 
   // RAMA ADMINISTRADOR: layout completo (NavBar + rutas protegidas).
   return (
@@ -143,6 +169,8 @@ function AppContent() {
           username={`${usuario.nombre} ${usuario.apellido}`}
           checklistItems={checklistItems}
           checklistColapsable={esOp}
+          loteItems={loteItems}
+          loteColapsable={esOp}
           onLogout={() => setCerrarSesionAbierto(true)}
         />
         <Box bg='gray.100' flex='1' minW='0'>
@@ -164,6 +192,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <InsumoPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/productos'
+              element={
+                <RequireAuth>
+                  <ProductosPage />
                 </RequireAuth>
               }
             />
@@ -220,15 +256,6 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <DocumentoPersonalPage />
-                </RequireAuth>
-              }
-            />
-
-            <Route 
-              path='/productos'
-              element={
-                <RequireAuth>
-                  <ProductosPage />
                 </RequireAuth>
               }
             />
@@ -291,6 +318,56 @@ function AppContent() {
               path='/receta-workspace'
               element={<Navigate to='/recetas' replace />}
             />
+
+            {/* Rutas Lotes */}
+            {esOp ? (
+              <>
+                <Route
+                  path='/lotes'
+                  element={
+                    <RequireAuth>
+                      <LotesOperadorPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path='/lotes/registrar'
+                  element={<Navigate to='/lotes?crear=true' replace />}
+                />
+                <Route
+                  path='/lotes/mis-lotes'
+                  element={<Navigate to='/lotes' replace />}
+                />
+              </>
+            ) : (
+              <>
+                <Route
+                  path='/lotes'
+                  element={<Navigate to='/historial-lotes' replace />}
+                />
+                <Route
+                  path='/lotes/registrar'
+                  element={<Navigate to='/historial-lotes' replace />}
+                />
+                <Route
+                  path='/lotes/mis-lotes'
+                  element={<Navigate to='/historial-lotes' replace />}
+                />
+              </>
+            )}
+            <Route
+              path='/historial-lotes'
+              element={
+                <RequireAuth>
+                  <HistorialLotesPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/lotes/historial'
+              element={<Navigate to='/historial-lotes' replace />}
+            />
+
             <Route
               path='/vencimientos'
               element={

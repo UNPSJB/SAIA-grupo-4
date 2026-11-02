@@ -17,6 +17,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   FiAlertTriangle,
   FiBookOpen,
+  FiBox,
   FiCheckSquare,
   FiChevronLeft,
   FiChevronRight,
@@ -40,14 +41,18 @@ export interface OperadorNavItem {
 
 const defaultItems: OperadorNavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
+  { to: "/lotes", label: "Lotes", icon: FiBox },
   { to: "/recetas", label: "Recetas", icon: FiBookOpen },
   { to: "/documentos", label: "Documentos", icon: FiFileText },
   { to: "/incidentes-reportados", label: "Incidentes Reportados", icon: FiAlertTriangle },
 ];
 
 // Igual criterio que el NavBar del admin: mantiene activo el ítem también en subrutas (p. ej. el visor de PDF depende de /documentos).
-const isActiveRoute = (pathname: string, to: string) =>
-  pathname === to || pathname.startsWith(`${to}/`);
+const isActiveRoute = (pathname: string, to: string) => {
+  if (pathname === to) return true;
+  if (to === "/lotes") return pathname === "/lotes";
+  return pathname.startsWith(`${to}/`);
+};
 
 // Alto fijo de la barra superior móvil. El visor de PDF lo usa para calcular su alto útil y no desbordar la pantalla.
 export const OPERADOR_MOBILE_BAR_HEIGHT = "56px";
