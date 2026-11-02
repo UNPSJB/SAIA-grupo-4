@@ -1,5 +1,5 @@
 export { SideBar } from "./SideBar";
-export type { NavItem } from "./SideBar";
+export { defaultItems, planItems, recetasItems, lotesItems, checklistItems, type NavItem, type LinkNavItem } from "./navItems";
 export { TopNavBar } from "./TopNavBar";
 export {
   OperadorLayout,

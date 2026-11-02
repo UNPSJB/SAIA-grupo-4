@@ -4,6 +4,7 @@ import { FiArchive, FiCheckSquare, FiClock, FiPlus } from "react-icons/fi";
 import {
   OperadorLayout,
   AdminLayout,
+  defaultItems,
   type NavItem,
 } from "./components/layout";
 import { LoadingState } from "./components/ui";
@@ -174,6 +175,7 @@ function AppContent() {
   // protegidas).
   return (
     <AdminLayout
+      sidebarItems={defaultItems}
       checklistItems={checklistItems}
       checklistColapsable={esOp}
       loteItems={loteItems}
