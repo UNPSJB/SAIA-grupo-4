@@ -19,6 +19,12 @@ export const InsumoDetalle = ({ insumo, onCerrar }: InsumoDetalleProps) => {
           label: "Unidad de medida",
           valor: `${insumo.unidad_medida.nombre} (${insumo.unidad_medida.simbolo})`,
         },
+        {
+          label: "Consumo acumulado",
+          valor: `${Number(insumo.consumo ?? 0).toLocaleString("es-AR", {
+            maximumFractionDigits: 3,
+          })} ${insumo.unidad_medida.simbolo}`,
+        },
         { label: "Categoría", valor: insumo.categoria },
         { label: "Descripción", valor: insumo.descripcion || "—" },
         {

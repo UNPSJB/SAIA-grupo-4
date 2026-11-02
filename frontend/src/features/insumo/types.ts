@@ -11,6 +11,7 @@ export interface Insumo {
   nombre: string;
   unidad_medida_id: number;
   unidad_medida: UnidadMedida;
+  consumo: number;
   categoria: string;
   descripcion: string;
   disponible: boolean;

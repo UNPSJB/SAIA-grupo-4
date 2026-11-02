@@ -1,3 +1,4 @@
+from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Annotated, Optional
 from enum import Enum
@@ -28,6 +29,7 @@ class InsumoBase(BaseModel):
     nombre: Annotated[str, Field(min_length=1, max_length=50, description="El nombre del insumo es obligatorio")]
     unidad_medida_id: Annotated[int, Field(description="Unidad de medida asociada al insumo")]
     categoria: Annotated[Categoria, Field(description="Categoria a la que pertenece el insumo")]
+    consumo: Annotated[Decimal, Field(default=Decimal("0"), max_digits=9, decimal_places=3, ge=0, description="Consumo acumulado del insumo")] = Decimal("0")
     descripcion: Annotated[Optional[str], Field(default=None, max_length=200, description="Descripcion de insumo")]
     disponible: Annotated[bool, Field(default=True, description="Campo para verificar la baja logica")]
 

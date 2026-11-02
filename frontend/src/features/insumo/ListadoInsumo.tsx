@@ -32,6 +32,12 @@ interface ListadoInsumosProps {
 }
 
 const ENDPOINT = `${BASE_URL}/insumos/`;
+
+const formatearConsumo = (consumo: number) =>
+  Number(consumo ?? 0).toLocaleString("es-AR", {
+    maximumFractionDigits: 3,
+  });
+
 export const ListadoInsumos = ({
   onCrear,
   onModificar,
@@ -58,6 +64,12 @@ export const ListadoInsumos = ({
       label: "Unidad de medida",
       render: (insumo) =>
         `${insumo.unidad_medida.nombre} (${insumo.unidad_medida.simbolo})`,
+    },
+    {
+      key: "consumo",
+      label: "Consumo",
+      render: (insumo) =>
+        `${formatearConsumo(insumo.consumo ?? 0)} ${insumo.unidad_medida.simbolo}`,
     },
     {
       key: "disponible",
