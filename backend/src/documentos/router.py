@@ -12,9 +12,9 @@ router = APIRouter(prefix="/documentos", tags=["documentos"], dependencies=[Depe
 # ENDPOINTS de Documentos
 
 @router.get("/activos", response_model=list[schemas.Documento])
-def listar_documentos_activos(db: Session = Depends(get_db)):
+def listar_documentos_activos(busqueda: str | None = None, db: Session = Depends(get_db)):
     """Devuelve solo los documentos activos y su versión vigente."""
-    return services.listar_documentos_activos(db)
+    return services.listar_documentos_activos(db, busqueda)
 
 
 @router.get("/alertas", response_model=list[schemas.AlertaDocumento])
@@ -24,9 +24,9 @@ def listar_alertas(db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[schemas.DocumentoDetalle])
-def listar_documentos(db: Session = Depends(get_db)):
+def listar_documentos(busqueda: str | None = None, db: Session = Depends(get_db)):
     """Devuelve todos los documentos con su historial completo."""
-    return services.listar_documentos(db)
+    return services.listar_documentos(db, busqueda)
 
 
 @router.get("/{documento_id}", response_model=schemas.DocumentoDetalle)

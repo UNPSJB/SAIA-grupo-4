@@ -10,6 +10,7 @@ from tests.database import session
 from src.personal.models import Persona
 from src.documentos.constants import Constantes, EstadoVencimiento
 from src.documentos.services import calcular_estado_vencimiento
+import json, uuid
 
 client = TestClient(app)
 
@@ -404,3 +405,96 @@ def test_listar_alertas_sin_documentos_devuelve_vacio():
     res = client.get("/documentos/alertas")
     assert res.status_code == 200
     assert res.json() == []
+
+# --- Búsqueda de texto libre ---
+
+def sufijo_unico():
+    return uuid.uuid4().hex[:8]
+
+
+def crear_documento_para_busqueda(autor_id, titulo, tipo="PROCEDIMIENTO", version=None, con_archivo=True):
+    payload = {"titulo": titulo, "tipo_documento": tipo, "creado_por_id": autor_id}
+    if version:
+        payload["version_inicial"] = version
+
+    kwargs = {"data": {"datos": json.dumps(payload)}}
+    if con_archivo:
+        kwargs["files"] = {"archivo": ("prueba.pdf", b"contenido_falso", "application/pdf")}
+
+    res = client.post("/documentos/", **kwargs)
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def ids_buscados(ruta="/documentos/", **params):
+    res = client.get(ruta, params=params)
+    assert res.status_code == 200, res.text
+    return {d["id"] for d in res.json()}
+
+
+def test_busqueda_parcial_sin_mayusculas_ni_acentos(autor_base):
+    sufijo = sufijo_unico()
+    doc = crear_documento_para_busqueda(autor_base, f"Limpieza Química {sufijo}")
+
+    for texto in [f"quimica {sufijo}", f"LIMPIEZA QUÍMICA {sufijo.upper()}", f"pieza quimica {sufijo}"]:
+        assert doc["id"] in ids_buscados(busqueda=texto)
+
+
+def test_busqueda_por_codigo(autor_base):
+    doc = crear_documento_para_busqueda(autor_base, f"Procedimiento {sufijo_unico()}")
+
+    assert doc["id"] in ids_buscados(busqueda=doc["codigo"])
+    assert doc["id"] in ids_buscados(busqueda=doc["codigo"].lower())
+
+
+def test_busqueda_por_tipo(autor_base):
+    doc = crear_documento_para_busqueda(autor_base, f"Manual {sufijo_unico()}", tipo="MANUAL_BPM")
+
+    assert doc["id"] in ids_buscados(busqueda="manual bpm")
+
+
+def test_busqueda_por_version_vigente(autor_base):
+    doc = crear_documento_para_busqueda(autor_base, f"Instructivo {sufijo_unico()}", version="v9.9")
+
+    assert doc["id"] in ids_buscados(busqueda="v9.9")
+
+
+def test_busqueda_incluye_documentos_sin_version(autor_base):
+    # Sin PDF el documento nace "pendiente de versión": es el caso que justifica el outer join
+    sufijo = sufijo_unico()
+    doc = crear_documento_para_busqueda(autor_base, f"Borrador {sufijo}", con_archivo=False)
+
+    assert doc["id"] in ids_buscados(busqueda=f"borrador {sufijo}")
+
+
+def test_busqueda_excluye_los_que_no_coinciden(autor_base):
+    sufijo = sufijo_unico()
+    coincide = crear_documento_para_busqueda(autor_base, f"Plan de Plagas {sufijo}")
+    no_coincide = crear_documento_para_busqueda(autor_base, f"Registro de Temperaturas {sufijo_unico()}")
+
+    resultado = ids_buscados(busqueda=f"plagas {sufijo}")
+    assert coincide["id"] in resultado
+    assert no_coincide["id"] not in resultado
+
+
+def test_busqueda_sin_resultados(autor_base):
+    crear_documento_para_busqueda(autor_base, f"Planilla {sufijo_unico()}")
+
+    assert ids_buscados(busqueda=f"zzz{sufijo_unico()}") == set()
+
+
+def test_busqueda_no_interpreta_comodines(autor_base):
+    doc = crear_documento_para_busqueda(autor_base, f"Higiene{sufijo_unico()}")
+
+    # Si "%" fuera comodín, devolvería todo el listado
+    assert doc["id"] not in ids_buscados(busqueda="%")
+
+
+def test_busqueda_en_activos_excluye_los_dados_de_baja(autor_base):
+    sufijo = sufijo_unico()
+    doc = crear_documento_para_busqueda(autor_base, f"Protocolo {sufijo}")
+    assert client.delete(f"/documentos/{doc['id']}").status_code == 204
+
+    texto = f"protocolo {sufijo}"
+    assert doc["id"] in ids_buscados("/documentos/", busqueda=texto)
+    assert doc["id"] not in ids_buscados("/documentos/activos", busqueda=texto)

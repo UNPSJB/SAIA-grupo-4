@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from fastapi import UploadFile
-from sqlalchemy import select, update, func
+from sqlalchemy import and_, cast, select, update, func, String
 from sqlalchemy.orm import Session, selectinload
 from src.documentos.constants import (
     Constantes,
@@ -17,6 +17,8 @@ from src.documentos.models import Documento, RevisionDocumento, VersionDocumento
 from src.documentos import schemas, exceptions
 from src.personal.models import Persona
 from src.personal import exceptions as personal_exceptions
+from src.utils.busqueda import condicion_busqueda
+
 
 # Carpeta local de evidencias
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -143,13 +145,6 @@ def crear_documento(
     
     return nuevo_doc
 
-def listar_documentos_activos(db: Session) -> List[Documento]:
-    """Devuelve los documentos activos."""
-    return db.scalars(select(Documento).where(Documento.activo == True)).all()
-
-def listar_documentos(db: Session) -> List[Documento]:
-    """Devuelve todos los documentos."""
-    return db.scalars(select(Documento)).all()
 
 def modificar_documento(db: Session, documento_id: int, documento: schemas.DocumentoUpdate) -> Documento:
     db_doc = leer_documento(db, documento_id)
@@ -380,3 +375,45 @@ def listar_alertas(db: Session) -> List[schemas.AlertaDocumento]:
     # Más urgente primero (dias_restantes ascendente)
     alertas.sort(key=lambda alerta: alerta.dias_restantes)
     return alertas
+
+def _aplicar_busqueda(query, busqueda: str | None):
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las
+    # columnas de texto visibles del listado (código, título, tipo y versión).
+    # La versión vigente es opcional (un documento puede estar "pendiente de
+    # versión"), por eso va con outer join: con un join normal esos documentos
+    # desaparecerían al buscar.
+    if busqueda and busqueda.strip():
+        query = (
+            query
+            .join(
+                VersionDocumento,
+                and_(
+                    VersionDocumento.documento_id == Documento.id,
+                    VersionDocumento.es_vigente.is_(True),
+                ),
+                isouter=True,
+            )
+            .where(condicion_busqueda(
+                [
+                    Documento.codigo,
+                    Documento.titulo,
+                    # El front muestra el tipo con espacios (MANUAL_BPM -> "MANUAL BPM")
+                    func.replace(cast(Documento.tipo_documento, String), "_", " "),
+                    VersionDocumento.version,
+                ],
+                busqueda,
+            ))
+        )
+    return query
+
+def listar_documentos_activos(db: Session, busqueda: str | None = None) -> List[Documento]:
+    """Devuelve los documentos activos."""
+    query = select(Documento).where(Documento.activo == True)
+    query = _aplicar_busqueda(query, busqueda)
+    return db.scalars(query).all()
+
+def listar_documentos(db: Session, busqueda: str | None = None) -> List[Documento]:
+    """Devuelve todos los documentos."""
+    query = select(Documento)
+    query = _aplicar_busqueda(query, busqueda)
+    return db.scalars(query).all()
