@@ -3,6 +3,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from src.vencimientos import providers, schemas, exceptions
+from src.utils.busqueda import normalizar
 from src.vencimientos.constants import (
     CategoriaVencimiento,
     Constantes,
@@ -78,14 +79,14 @@ def listar_vencimientos(
         vencimientos = [v for v in vencimientos if v.categoria == categoria]
 
     # Busqueda libre: coincide parcialmente con el concepto o con el detalle de
-    # la fila, sin distinguir mayusculas. El texto se normaliza aca para que un
-    # valor en blanco no filtre de mas.
-    texto = (busqueda or "").strip().lower()
+    # la fila, sin distinguir mayusculas ni acentos. El texto se normaliza aca
+    # para que un valor en blanco no filtre de mas.
+    texto = normalizar(busqueda)
     if texto:
         vencimientos = [
             v
             for v in vencimientos
-            if texto in v.concepto.lower() or texto in (v.detalle or "").lower()
+            if texto in normalizar(v.concepto) or texto in normalizar(v.detalle)
         ]
 
     if estado is not None:
