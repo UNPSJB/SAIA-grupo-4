@@ -94,19 +94,19 @@ export const RegistrarRecambioForm = ({
           onChange={(e) => setObservaciones(e.target.value)}
         />
         <FormActions>
-          <SubmitButton
-            text='Registrar'
-            icon={FiSave}
-            loading={isSubmitting}
-            onClick={handleGuardar}
-            colorPalette='green'
-          />
           <CancelButton
             text='Cancelar'
             icon={FiXCircle}
             onClick={onCancelar}
             colorPalette='red'
             variant='outline'
+          />
+          <SubmitButton
+            text='Registrar'
+            icon={FiSave}
+            loading={isSubmitting}
+            onClick={handleGuardar}
+            colorPalette='green'
           />
         </FormActions>
         {errorEnvio && <AlertMessage type='error' message={errorEnvio} />}

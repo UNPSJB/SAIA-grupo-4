@@ -107,19 +107,19 @@ export const TipoElementoLimpiezaForm = ({
           disabled={esModoModificar}
         />
         <FormActions>
-          <SubmitButton
-            text='Guardar'
-            icon={FiSave}
-            loading={isSubmitting}
-            onClick={handleGuardar}
-            colorPalette='green'
-          />
           <CancelButton
             text='Cancelar'
             icon={FiXCircle}
             onClick={onCancelar}
             colorPalette='red'
             variant='outline'
+          />
+          <SubmitButton
+            text='Guardar'
+            icon={FiSave}
+            loading={isSubmitting}
+            onClick={handleGuardar}
+            colorPalette='green'
           />
         </FormActions>
         {errorEnvio && <AlertMessage type='error' message={errorEnvio} />}

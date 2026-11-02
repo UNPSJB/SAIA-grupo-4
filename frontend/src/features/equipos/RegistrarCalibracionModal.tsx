@@ -122,19 +122,19 @@ export const RegistrarCalibracionForm = ({
         {error && <AlertMessage type='error' message={error} />}
 
         <FormActions>
-          <SubmitButton
-            text='Guardar Calibración'
-            icon={FiCheck}
-            loading={loading}
-            onClick={handleGuardar}
-            colorPalette='green'
-          />
           <CancelButton
             text='Cancelar'
             icon={FiXCircle}
             onClick={onCancelar}
             colorPalette='red'
             variant='outline'
+          />
+          <SubmitButton
+            text='Guardar Calibración'
+            icon={FiCheck}
+            loading={loading}
+            onClick={handleGuardar}
+            colorPalette='green'
           />
         </FormActions>
       </VStack>

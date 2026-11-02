@@ -92,8 +92,8 @@ export const DocumentoPersonalForm = ({ modo, documento, onCancelar, onGuardado,
                     <TextField label="Vigencia (días)" placeholder="Ej: 365" error={errors.vigencia_dias?.message} {...register("vigencia_dias")} />
 
                     <FormActions>
-                        <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
                         <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
+                        <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
                     </FormActions>
 
                     {errors.root?.message && <AlertMessage type="error" message={errors.root.message} />}

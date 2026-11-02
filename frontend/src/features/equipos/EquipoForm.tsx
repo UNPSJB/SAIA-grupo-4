@@ -340,6 +340,13 @@ export const EquipoForm = ({
               />
             ) : (
               <>
+                <CancelButton
+                  text='Cancelar'
+                  icon={FiXCircle}
+                  onClick={onCancelar}
+                  colorPalette='red'
+                  variant='outline'
+                />
                 <SubmitButton
                   text='Guardar'
                   icon={FiSave}
@@ -347,13 +354,6 @@ export const EquipoForm = ({
                   disabled={!isValid}
                   type='submit'
                   colorPalette='green'
-                />
-                <CancelButton
-                  text='Cancelar'
-                  icon={FiXCircle}
-                  onClick={onCancelar}
-                  colorPalette='red'
-                  variant='outline'
                 />
               </>
             )}

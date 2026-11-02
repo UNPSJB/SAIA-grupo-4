@@ -129,19 +129,19 @@ export const PlanForm = ({
           )}
 
           <FormActions>
-            <SubmitButton
-              text={esModoCrear ? "Guardar Plan" : "Guardar"}
-              icon={FiSave}
-              loading={isSubmitting}
-              type='submit'
-              colorPalette='green'
-            />
             <CancelButton
               text='Cancelar'
               icon={FiXCircle}
               onClick={onCancelar}
               colorPalette='red'
               variant='outline'
+            />
+            <SubmitButton
+              text={esModoCrear ? "Guardar Plan" : "Guardar"}
+              icon={FiSave}
+              loading={isSubmitting}
+              type='submit'
+              colorPalette='green'
             />
           </FormActions>
 

@@ -386,19 +386,19 @@ export const TareaForm = ({
               />
             ) : (
               <>
-                <SubmitButton
-                  text='Guardar Tarea'
-                  icon={FiSave}
-                  loading={isSubmitting}
-                  type='submit'
-                  colorPalette='green'
-                />
                 <CancelButton
                   text='Cancelar'
                   icon={FiXCircle}
                   onClick={onCancelar}
                   colorPalette='red'
                   variant='outline'
+                />
+                <SubmitButton
+                  text='Guardar Tarea'
+                  icon={FiSave}
+                  loading={isSubmitting}
+                  type='submit'
+                  colorPalette='green'
                 />
               </>
             )}

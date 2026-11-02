@@ -104,8 +104,8 @@ export const CapacidadForm = ({ modo, capacidad, onCancelar, onGuardado, enModal
                             <CancelButton text="Cerrar" icon={FiXCircle} onClick={onCancelar} colorPalette="gray" />
                         ) : (
                             <>
-                                <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
                                 <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
+                                <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
                             </>
                         )}
                     </FormActions>
