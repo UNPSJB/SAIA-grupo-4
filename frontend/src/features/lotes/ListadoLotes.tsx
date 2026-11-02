@@ -20,14 +20,18 @@ import { LoteDetalle } from "./LoteDetalle";
 
 interface ListadoLotesProps {
   refreshKey?: number;
+  ocultarFiltros?: boolean;
+  defaultProductoId?: string;
+  defaultDesde?: string;
+  defaultHasta?: string;
 }
 
-export const ListadoLotes = ({ refreshKey = 0 }: ListadoLotesProps) => {
+export const ListadoLotes = ({ refreshKey = 0, ocultarFiltros = false, defaultProductoId, defaultDesde, defaultHasta }: ListadoLotesProps) => {
   const [loteSeleccionado, setLoteSeleccionado] = useState<Lote | null>(null);
 
-  const [productoInput, setProductoInput] = useState<string>("");
-  const [desdeInput, setDesdeInput] = useState<string>("");
-  const [hastaInput, setHastaInput] = useState<string>("");
+  const [productoInput, setProductoInput] = useState<string>(defaultProductoId || "");
+  const [desdeInput, setDesdeInput] = useState<string>(defaultDesde || "");
+  const [hastaInput, setHastaInput] = useState<string>(defaultHasta || "");
 
   const [filtrosAplicados, setFiltrosAplicados] = useState({
     producto_id: "",
@@ -94,8 +98,9 @@ export const ListadoLotes = ({ refreshKey = 0 }: ListadoLotesProps) => {
       <Heading size="lg" mb={4} color="gray.700" display="flex" alignItems="center" gap={2}>
         <FiList /> Historial de Lotes Producidos
       </Heading>
-
+    
       {/* Barra de Filtros */}
+      {!ocultarFiltros && (
       <Box mb={6} p={4} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
         <HStack gap={4} flexWrap="wrap" align="flex-end">
           <Box minW="220px" flex="1">
@@ -139,6 +144,7 @@ export const ListadoLotes = ({ refreshKey = 0 }: ListadoLotesProps) => {
           </HStack>
         </HStack>
       </Box>
+      )}
 
       {/* Contenido */}
       {loading ? (

@@ -32,6 +32,7 @@ import {
   FiAlertTriangle,
   FiFileText,
   FiBox,
+  FiBarChart2,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -61,6 +62,7 @@ interface NavBarProps {
 }
 
 const defaultItems: NavItem[] = [
+  { to: "/tablero", label: "Tablero", icon: FiBarChart2 },
   { to: "/equipos", label: "Equipos", icon: FiThermometer },
   { to: "/personal", label: "Personal", icon: FiUser },
   { to: "/sectores", label: "Sectores", icon: FiMap },

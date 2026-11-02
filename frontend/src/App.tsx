@@ -34,6 +34,7 @@ import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import { LotesPage } from './pages/LotesPage';
 import { ProductosPage } from './pages/ProductosPage';
 import { ListadoLotes } from './features/lotes/ListadoLotes';
+import { TableroPage } from './pages/TableroPage';
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -153,6 +154,16 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <LotesPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/tablero'
+              element={
+                <RequireAuth>
+                  <Container maxW="5xl" py={8}>
+                    <TableroPage />
+                  </Container>
                 </RequireAuth>
               }
             />
