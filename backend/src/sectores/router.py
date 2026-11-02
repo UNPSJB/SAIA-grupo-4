@@ -16,8 +16,12 @@ def create_sector(sector: schemas.SectorCreate, db: Session = Depends(get_db)):
     return services.crear_sector(db, sector)
 
 @router.get("/", response_model=List[schemas.Sector])
-def read_sectores(db: Session = Depends(get_db)):
-    return services.listar_sectores(db)
+def read_sectores(
+    busqueda: str | None = None,
+    activo: bool | None = None,
+    db: Session = Depends(get_db),
+):
+    return services.listar_sectores(db, busqueda, activo)
 
 @router.get("/{sector_id}", response_model=schemas.Sector)
 def read_sector(sector_id: int, db: Session = Depends(get_db)):

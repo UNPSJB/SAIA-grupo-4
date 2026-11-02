@@ -155,7 +155,6 @@ export default function EquiposPage() {
       {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
-          maxW='3xl'
           onClose={() => {
             setError("");
             setVista("listado");

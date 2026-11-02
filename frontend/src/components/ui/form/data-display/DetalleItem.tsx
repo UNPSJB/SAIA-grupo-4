@@ -4,10 +4,22 @@ import type { ReactNode } from "react";
 interface DetalleItemProps {
   label: string;
   children: ReactNode;
+  /** Ocupa todas las columnas de la sección (textos largos o contenido complejo). */
+  fullWidth?: boolean;
 }
 
-export const DetalleItem = ({ label, children }: DetalleItemProps) => (
-  <HStack align='baseline' gap={2} w="full" minW="0">
+export const DetalleItem = ({
+  label,
+  children,
+  fullWidth = false,
+}: DetalleItemProps) => (
+  <HStack
+    align='baseline'
+    gap={2}
+    w="full"
+    minW="0"
+    gridColumn={fullWidth ? "1 / -1" : undefined}
+  >
     {/* Solo renderiza la viñeta y los dos puntos si el label tiene texto */}
     {label && (
       <>

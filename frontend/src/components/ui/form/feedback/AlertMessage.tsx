@@ -13,7 +13,7 @@ export const AlertMessage = ({
 }: AlertMessageProps) => {
   if (!visible) return null;
   return (
-    <Alert.Root status={type}>
+    <Alert.Root status={type} gridColumn='1 / -1'>
       <Alert.Indicator />
       <Alert.Title>{message}</Alert.Title>
     </Alert.Root>

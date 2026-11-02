@@ -1,10 +1,10 @@
 import { BASE_URL } from "../../config";
-import { useState } from "react";
-import { Field, Input, Text, VStack } from "@chakra-ui/react";
+import { useState, useMemo } from "react";
+import { Field, Input, Text } from "@chakra-ui/react";
 import { FiCalendar, FiSave, FiXCircle } from "react-icons/fi";
 import { useVencimientoSubmit } from "./hooks/useVencimientoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
-import { FormContainer, FormHeader, TextField, SelectField, FormActions, SubmitButton, CancelButton, AlertMessage, LoadingState } from "../../components/ui";
+import { FormContainer, FormHeader, FormGrid, TextField, SelectField, FormActions, SubmitButton, CancelButton, AlertMessage, LoadingState, FileUploadField } from "../../components/ui";
 import type { Persona } from "./types";
 import type { DocumentoPersonal } from "../documentosPersonal/types";
 
@@ -44,6 +44,12 @@ export const RegistrarVencimientoForm = ({ persona, documentoFijo, onCancelar, o
     const [errorFecha, setErrorFecha] = useState("");
     const [errorEnvio, setErrorEnvio] = useState("");
 
+    // Validación para habilitar/deshabilitar el botón Guardar
+    const esValido = useMemo(
+        () => documentoId !== "" && fecha !== "",
+        [documentoId, fecha]
+    );
+
     const { submit, isSubmitting } = useVencimientoSubmit({ onSuccess: onGuardado });
 
     // Si la persona ya tiene cargado ese documento, guardar lo renueva en lugar de crear otro
@@ -81,7 +87,7 @@ export const RegistrarVencimientoForm = ({ persona, documentoFijo, onCancelar, o
             {!loading && !error && documentos.length === 0 && (
                 <AlertMessage type="info" message="Todavía no hay documentos activos. Cargalos desde el botón Documentos del listado de personal." />
             )}
-            <VStack gap={4}>
+            <FormGrid>
                 <TextField label="Persona" value={`${persona.nombre} ${persona.apellido}`} disabled />
                 <SelectField
                     label="Tipo de documento"
@@ -97,7 +103,7 @@ export const RegistrarVencimientoForm = ({ persona, documentoFijo, onCancelar, o
                     readOnly={!!documentoFijo}
                 />
                 {vencimientoActual && (
-                    <Text fontSize="sm" color="gray.600" alignSelf="flex-start">
+                    <Text fontSize="sm" color="gray.600" alignSelf="flex-start" gridColumn="1 / -1">
                         Vencimiento actual: {formatearFecha(vencimientoActual.fecha_vencimiento)}. Al guardar se renueva.
                     </Text>
                 )}
@@ -106,22 +112,20 @@ export const RegistrarVencimientoForm = ({ persona, documentoFijo, onCancelar, o
                     <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
                     {errorFecha && <Text color="red.500" fontSize="sm">{errorFecha}</Text>}
                 </Field.Root>
-                <Field.Root>
-                    <Field.Label fontSize="md" fontFamily="sans-serif">Comprobante (Opcional)</Field.Label>
-                    <Input
-                        type="file"
-                        accept="image/jpeg,image/png,application/pdf"
-                        p={1}
-                        onChange={(e) => setComprobante(e.target.files?.[0] ?? null)}
-                    />
-                    <Text fontSize="sm" color="gray.600">Foto (JPG o PNG) o PDF.</Text>
-                </Field.Root>
+                <FileUploadField
+                    label="Comprobante (Opcional)"
+                    value={comprobante}
+                    onChange={setComprobante}
+                    accept="image/jpeg,image/png,application/pdf"
+                    placeholder="Haz clic para adjuntar comprobante (JPG, PNG o PDF)"
+                    selectedText="Cambiar"
+                  />
                 <FormActions>
-                    <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} onClick={handleGuardar} colorPalette="green" />
+                    <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} onClick={handleGuardar} colorPalette="green" disabled={!esValido} />
                     <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
                 </FormActions>
                 {errorEnvio && <AlertMessage type="error" message={errorEnvio} />}
-            </VStack>
+            </FormGrid>
         </FormContainer>
     );
 };

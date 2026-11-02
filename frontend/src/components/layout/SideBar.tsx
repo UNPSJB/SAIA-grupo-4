@@ -33,6 +33,8 @@ import {
   FiFileText,
   FiBookOpen,
   FiBox,
+  FiBarChart2,
+  FiGlobe,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -50,7 +52,7 @@ interface ParentNavItem {
 
 type NavItem = LinkNavItem | ParentNavItem;
 
-interface NavBarProps {
+interface SideBarProps {
   title?: string;
   brandIcon?: ElementType;
   items?: NavItem[];
@@ -106,6 +108,20 @@ const incidenteItem: LinkNavItem = {
   label: "Incidentes",
   icon: FiAlertTriangle,
 };
+// Acceso directo al Dashboard
+const dashboardItem: LinkNavItem = {
+  to: "/dashboard",
+  label: "Dashboard",
+  icon: FiBarChart2,
+};
+
+// Configuración del enlace público de indicadores agregados.
+const vistaPublicaItem: LinkNavItem = {
+  to: "/vista-publica",
+  label: "Vista pública",
+  icon: FiGlobe,
+};
+
 // Acceso directo a Gestión Documental: se muestra como link simple bajo el
 // encabezado "Gestión", sin ser un desplegable (como Plan POE) ni parte de
 // la sección "Navegación".
@@ -326,7 +342,7 @@ const NavSection = ({
   );
 };
 
-export const NavBar = ({
+export const SideBar = ({
   title = "SAIA-4",
   brandIcon = FiShield,
   items = defaultItems,
@@ -337,14 +353,14 @@ export const NavBar = ({
   version = "v0.1.0",
   username = "Usuario",
   onLogout,
-}: NavBarProps) => {
+}: SideBarProps) => {
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [navigationOpen, setNavigationOpen] = useState(true);
-  const [planOpen, setPlanOpen] = useState(true);
-  const [recetasOpen, setRecetasOpen] = useState(true);
-  const [lotesOpen, setLotesOpen] = useState(true);
-  const [checklistOpen, setChecklistOpen] = useState(true);
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [recetasOpen, setRecetasOpen] = useState(false);
+  const [lotesOpen, setLotesOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
 
   const accordionOpen = isCollapsed ? true : navigationOpen;
   const planAccordionOpen = isCollapsed ? true : planOpen;
@@ -481,6 +497,18 @@ export const NavBar = ({
           Gestión
         </Text>
       )}
+
+      <SingleNavLink
+        item={dashboardItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
+
+      <SingleNavLink
+        item={vistaPublicaItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
 
       <NavSection
         label='Datos Maestros'

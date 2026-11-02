@@ -10,7 +10,7 @@ import type { Vencimiento } from "./types";
 /**
   Dueño del modal de renovación.
  
-  Vive fuera del árbol del NavBar a propósito: se abre desde la campana, que
+  Vive fuera del árbol del SideBar a propósito: se abre desde la campana, que
   está adentro de un Popover que se cierra en el mismo tick.
  */
 const SALIDA_POPOVER_MS = 250;

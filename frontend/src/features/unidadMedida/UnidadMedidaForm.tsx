@@ -2,7 +2,7 @@ import { BASE_URL } from "../../config";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+
 import { useUnidadMedidaSubmit } from "./hooks/useUnidadMedidaSubmit";
 import {
   unidadMedidaSchema,
@@ -12,6 +12,8 @@ import type { UnidadMedida } from "./types";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
+  FormGridFull,
   TextField,
   SelectField,
   FormActions,
@@ -64,13 +66,14 @@ export const UnidadMedidaForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
     reset,
   } = useForm<UnidadMedidaFormValues>({
     resolver: zodResolver(unidadMedidaSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const [success, setSuccess] = useState(false);
@@ -141,7 +144,7 @@ export const UnidadMedidaForm = ({
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FaRuler}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label='Nombre'
             disabled={esModoVer}
@@ -158,17 +161,19 @@ export const UnidadMedidaForm = ({
             error={errors.simbolo?.message}
             {...register("simbolo")}
           />
-          <SelectField
-            label='Tipo de magnitud'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.tipo_magnitud}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={TIPOS_MAGNITUD}
-            error={errors.tipo_magnitud?.message}
-            {...register("tipo_magnitud")}
-          />
+          <FormGridFull>
+            <SelectField
+              label='Tipo de magnitud'
+              placeholder='Selecciona una opcion'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.tipo_magnitud}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={TIPOS_MAGNITUD}
+              error={errors.tipo_magnitud?.message}
+              {...register("tipo_magnitud")}
+            />
+          </FormGridFull>
 
           <FormActions>
             {esModoVer ? (
@@ -187,6 +192,7 @@ export const UnidadMedidaForm = ({
                   loading={isSubmitting}
                   type='submit'
                   colorPalette='green'
+                  disabled={!isValid}
                 />
                 <CancelButton
                   text='Cancelar'
@@ -212,7 +218,7 @@ export const UnidadMedidaForm = ({
               }
             />
           )}
-        </VStack>
+        </FormGrid>
       </form>
 
       {esModoCrear && (

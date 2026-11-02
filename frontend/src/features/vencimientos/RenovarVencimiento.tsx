@@ -114,7 +114,7 @@ const RenovarDocumento: FC<PropsFormulario> = ({
   }
 
   return (
-    <FormContainer modal>
+    <FormContainer modal maxW='2xl'>
       <FormHeader title={titulo} icon={FiFileText} />
       <VStack gap={4} align='stretch'>
         <Text fontSize='sm' color='gray.600'>

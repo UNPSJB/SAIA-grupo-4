@@ -11,6 +11,7 @@ import {
   RowActionButton,
   RowActions,
   SemaforoFecha,
+  SemaforoLegend,
   TablePagination,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
@@ -163,7 +164,7 @@ export const ListadoVencimientos = ({
   ];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <ListadoHeader title='Vencimientos' icon={FiAlertCircle} />
 
       <Box mb={4}>
@@ -193,6 +194,9 @@ export const ListadoVencimientos = ({
             getRowKey={(v) => v.id}
             minW='900px'
           />
+
+          <SemaforoLegend />
+
           <TablePagination
             count={data.length}
             page={page}

@@ -1,13 +1,20 @@
-import { Box, Heading, Icon, VStack } from "@chakra-ui/react";
+import { Box, Heading, Icon, SimpleGrid } from "@chakra-ui/react";
 import type { ElementType, ReactNode } from "react";
 
 interface DetalleSectionProps {
   title: string;
   icon?: ElementType;
   children: ReactNode;
+  /** En escritorio los ítems se distribuyen en una o dos columnas. */
+  columns?: 1 | 2;
 }
 
-export const DetalleSection = ({ title, icon, children }: DetalleSectionProps) => (
+export const DetalleSection = ({
+  title,
+  icon,
+  children,
+  columns = 2,
+}: DetalleSectionProps) => (
   <Box
     width='100%'
     borderWidth='1px'
@@ -29,8 +36,12 @@ export const DetalleSection = ({ title, icon, children }: DetalleSectionProps) =
       {icon && <Icon as={icon} />}
       {title}
     </Heading>
-    <VStack align='stretch' w="full" gap={1.5} minW="0">
+    <SimpleGrid
+      columns={{ base: 1, md: columns }}
+      gap={3}
+      alignItems='start'
+    >
       {children}
-    </VStack>
+    </SimpleGrid>
   </Box>
 );

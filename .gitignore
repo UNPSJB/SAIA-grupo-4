@@ -330,3 +330,5 @@ backend/database.db
 levantar-proyecto.bat
 
 uploads/
+.agents
+skills-lock.json

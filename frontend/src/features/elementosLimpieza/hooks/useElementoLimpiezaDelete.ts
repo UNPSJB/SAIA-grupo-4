@@ -15,7 +15,7 @@ export const handleDelete = async ({ elemento, setLoading, setError, onSuccess }
   setError("");
 
   try {
-    const res = await apiFetch(`${BASE_URL}/elementos-limpieza/${elemento.id}/`, {
+    const res = await apiFetch(`${BASE_URL}/elementos-limpieza/${elemento.id}`, {
       method: "DELETE",
     });
 

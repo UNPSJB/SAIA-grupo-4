@@ -23,6 +23,8 @@ interface UseTareaSubmitArgs {
     | "setErroresCantidad"
   >;
   setSuccess: Dispatch<SetStateAction<boolean>>;
+  /** Avisa qué campos fallaron para que el formulario pueda saltar al paso correcto. */
+  onValidationError?: (campos: string[]) => void;
 }
 
 /**
@@ -40,6 +42,7 @@ export const useTareaSubmit = ({
   formMethods,
   estadoRecursos,
   setSuccess,
+  onValidationError,
 }: UseTareaSubmitArgs) => {
   const { handleSubmit, clearErrors, setError } = formMethods;
 
@@ -111,12 +114,14 @@ export const useTareaSubmit = ({
       const errorConsumos = validarConsumos(values.insumos_quimicos ?? []);
       if (errorConsumos) {
         setError("root", { type: "manual", message: errorConsumos });
+        onValidationError?.(["insumos_quimicos"]);
         return;
       }
 
       const errorCantidades = validarCantidades(values.elementos_limpieza ?? []);
       if (errorCantidades) {
         setError("root", { type: "manual", message: errorCantidades });
+        onValidationError?.(["elementos_limpieza"]);
         return;
       }
 
@@ -152,11 +157,12 @@ export const useTareaSubmit = ({
       }
     },
     // Callback de error: el esquema de Zod rechazó el formulario.
-    () => {
+    (formErrors) => {
+      onValidationError?.(Object.keys(formErrors));
       setError("root", {
         type: "manual",
         message:
-          "Hay campos incompletos o incorrectos. Por favor, revisá las secciones marcadas en rojo más arriba.",
+          "Hay campos incompletos o incorrectos. Por favor, revisá los campos marcados en rojo.",
       });
     },
   );

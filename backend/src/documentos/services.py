@@ -17,6 +17,7 @@ from src.documentos.models import Documento, RevisionDocumento, VersionDocumento
 from src.documentos import schemas, exceptions
 from src.personal.models import Persona
 from src.personal import exceptions as personal_exceptions
+from src.utils.busqueda import condicion_busqueda
 
 # Carpeta local de evidencias
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -147,9 +148,30 @@ def listar_documentos_activos(db: Session) -> List[Documento]:
     """Devuelve los documentos activos."""
     return db.scalars(select(Documento).where(Documento.activo == True)).all()
 
-def listar_documentos(db: Session) -> List[Documento]:
-    """Devuelve todos los documentos."""
-    return db.scalars(select(Documento)).all()
+def listar_documentos(
+    db: Session,
+    busqueda: str | None = None,
+    tipo_documento: TipoDocumentoEnum | None = None,
+    activo: bool | None = None,
+) -> List[Documento]:
+    """Devuelve documentos, opcionalmente filtrados por texto, tipo y estado."""
+    query = select(Documento)
+
+    if busqueda and busqueda.strip():
+        query = query.where(
+            condicion_busqueda(
+                [Documento.codigo, Documento.titulo, Documento.descripcion],
+                busqueda,
+            )
+        )
+
+    if tipo_documento is not None:
+        query = query.where(Documento.tipo_documento == tipo_documento)
+
+    if activo is not None:
+        query = query.where(Documento.activo.is_(activo))
+
+    return db.scalars(query).all()
 
 def modificar_documento(db: Session, documento_id: int, documento: schemas.DocumentoUpdate) -> Documento:
     db_doc = leer_documento(db, documento_id)

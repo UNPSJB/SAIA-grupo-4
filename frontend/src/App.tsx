@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare, FiClock, FiPlus } from "react-icons/fi";
-import { NavBar, OperadorLayout, type NavItem } from "./components/layout";
+import { SideBar, OperadorLayout, type NavItem } from "./components/layout";
 import { AlertConfirm, LoadingState } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
@@ -39,6 +39,9 @@ import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import ProductosPage from "./pages/ProductosPage";
 import LotesOperadorPage from "./pages/LotesOperadorPage";
 import HistorialLotesPage from "./pages/HistorialLotesPage";
+import DashboardPage from "./pages/DashboardPage";
+import VistaPublicaPage from "./pages/VistaPublicaPage";
+import VistaPublicaPublicaPage from "./pages/VistaPublicaVisitantePage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -58,11 +61,11 @@ function AppContent() {
   // sabemos si hay sesión: mostramos un estado de carga. Evita el parpadeo del
   // login y que la rama sin sesión redirija y pierda la URL solicitada.
   if (loading) {
-    return <LoadingState message="Cargando sesión..." />;
+    return <LoadingState message='Cargando sesión...' />;
   }
 
   // RAMA SIN SESIÓN: solo existe la vista de login. Cualquier otra URL
-  // redirige a "/". No se renderiza el NavBar ni contenido de gestión.
+  // redirige a "/". No se renderiza el SideBar ni contenido de gestión.
   if (!usuario) {
     return (
       <Routes>
@@ -76,7 +79,7 @@ function AppContent() {
   const esOp = esOperador(usuario);
 
   // RAMA OPERADOR: quien no tiene "administrar". Ahora usa un layout propio
-  // (OperadorLayout) con navbar responsiva: Checklist Diario + Documentos.
+  // (OperadorLayout) con barra lateral responsiva: Checklist Diario + Documentos.
   // El logout vive en el layout. Entra directo al checklist diario.
   if (!esAdmin) {
     return (
@@ -161,11 +164,11 @@ function AppContent() {
   const checklistItems = esOp ? CHECKLIST_ITEMS : [CHECKLIST_ITEMS[1]];
   const loteItems = esOp ? LOTES_ITEMS : [LOTES_ITEMS[1]];
 
-  // RAMA ADMINISTRADOR: layout completo (NavBar + rutas protegidas).
+  // RAMA ADMINISTRADOR: layout completo (SideBar + rutas protegidas).
   return (
     <>
       <Flex minH='100vh' w='100%'>
-        <NavBar
+        <SideBar
           username={`${usuario.nombre} ${usuario.apellido}`}
           checklistItems={checklistItems}
           checklistColapsable={esOp}
@@ -175,10 +178,26 @@ function AppContent() {
         />
         <Box bg='gray.100' flex='1' minW='0'>
           <Routes>
-            {/* La raíz, estando logueado, va a /checklist/historial */}
-            <Route path='/' element={<Navigate to='/historial' replace />} />
+            {/* La raíz, estando logueado, va a /dashboard */}
+            <Route path='/' element={<Navigate to='/dashboard' replace />} />
 
             {/* Rutas activas (con guardia de autenticación) */}
+            <Route
+              path='/dashboard'
+              element={
+                <RequireAuth>
+                  <DashboardPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/vista-publica'
+              element={
+                <RequireAuth>
+                  <VistaPublicaPage />
+                </RequireAuth>
+              }
+            />
             <Route
               path='/equipos'
               element={
@@ -378,7 +397,7 @@ function AppContent() {
             />
 
             {/* Checklists. El diario requiere "administrar" + "operar": quien solo
-                administra no lo ve en el NavBar y, si escribe la URL a mano, cae
+                administra no lo ve en el SideBar y, si escribe la URL a mano, cae
                 en su vista habilitada (/historial). */}
             {esOp ? (
               <Route
@@ -464,23 +483,37 @@ function AppContent() {
   );
 }
 
+function AppInterno() {
+  return (
+    <AuthProvider>
+      {/*
+        El modal de renovacion vive aca y no en la campana: la campana esta
+        dentro de un Popover que se cierra en el mismo tick que el modal se
+        abre, y los dos overlays se pisan. Fuera del SideBar el Dialog no
+        comparte arbol con nadie.
+      */}
+      <RenovacionProvider>
+        <AppContent />
+      </RenovacionProvider>
+    </AuthProvider>
+  );
+}
+
 export default function App() {
   return (
     <ChakraProvider value={defaultSystem}>
-      {/* AuthProvider para que cualquier componente use useAuth() */}
-      <AuthProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <Routes>
           {/*
-            El modal de renovacion vive aca y no en la campana: la campana esta
-            dentro de un Popover que se cierra en el mismo tick que el modal se
-            abre, y los dos overlays se pisan. Fuera del NavBar el Dialog no
-            comparte arbol con nadie.
+            La vista pública se resuelve antes del árbol de autenticación: no
+            debe intentar rehidratar sesión, redirigir al login ni enviar
+            credenciales.
           */}
-          <RenovacionProvider>
-            <AppContent />
-          </RenovacionProvider>
-        </BrowserRouter>
-      </AuthProvider>
+          <Route path='/publico/:token' element={<VistaPublicaPublicaPage />} />
+          <Route path='/publico/*' element={<VistaPublicaPublicaPage />} />
+          <Route path='*' element={<AppInterno />} />
+        </Routes>
+      </BrowserRouter>
     </ChakraProvider>
   );
 }

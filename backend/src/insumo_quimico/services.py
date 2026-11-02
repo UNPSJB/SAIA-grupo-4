@@ -17,6 +17,7 @@ from src.equipos.exceptions import EquipoNoEncontrado, EquipoInactivo
 
 from src.sectores.models import Sector
 from src.sectores.exceptions import SectorNoEncontrado, SectorInactivo
+from src.utils.busqueda import condicion_busqueda
 
 def validar_asociacion(
     db: Session,
@@ -101,6 +102,8 @@ def listar_insumos_quimicos(
     db: Session,
     sector_id: int | None = None,
     equipo_id: int | None = None,
+    busqueda: str | None = None,
+    activo: bool | None = None,
 ) -> List[InsumoQuimico]:
     if sector_id is not None and equipo_id is not None:
         raise BadRequest(
@@ -109,12 +112,41 @@ def listar_insumos_quimicos(
 
     query = select(InsumoQuimico)
 
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las
+    # columnas de texto visibles (nombre, tipo, unidad de medida, sector y
+    # equipo). Sector y equipo son opcionales (los insumos generales no tienen
+    # ninguno), por eso van con outer join.
+    if busqueda and busqueda.strip():
+        query = (
+            query
+            .join(UnidadMedida, InsumoQuimico.unidad_medida_id == UnidadMedida.id)
+            .join(Sector, InsumoQuimico.sector_id == Sector.id, isouter=True)
+            .join(Equipo, InsumoQuimico.equipo_id == Equipo.id, isouter=True)
+            .where(condicion_busqueda(
+                [
+                    InsumoQuimico.nombre,
+                    InsumoQuimico.tipo,
+                    UnidadMedida.nombre,
+                    UnidadMedida.simbolo,
+                    Sector.nombre,
+                    Equipo.nombre,
+                    Equipo.numero_serie,
+                ],
+                busqueda,
+            ))
+        )
+
     # Sin filtros se listan también los inactivos, para que las vistas
-    # histories puedan resolver el nombre de recursos dados de baja.
+    # históricas puedan resolver el nombre de recursos dados de baja. Si se
+    # filtra por asociación y no se pidió un estado explícito, se mantiene el
+    # comportamiento original: solo activos.
+    if activo is None and (sector_id is not None or equipo_id is not None):
+        activo = True
+    if activo is not None:
+        query = query.where(InsumoQuimico.activo.is_(activo))
+
     if sector_id is None and equipo_id is None:
         return db.scalars(query).all()
-
-    query = query.where(InsumoQuimico.activo.is_(True))
 
     # Condición base: Insumos generales de toda la planta
     filtro_general = and_(

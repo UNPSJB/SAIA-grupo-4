@@ -22,6 +22,13 @@ export const ETIQUETA_ESTADO: Record<EstadoSemaforo, string> = {
   vigente: "Vigente",
 };
 
+/** Textos de la leyenda, un poco más descriptivos que las etiquetas de estado. */
+export const LEYENDA_ESTADO: Record<EstadoSemaforo, string> = {
+  vencido: "Vencido",
+  proximo: "Próximo a vencer",
+  vigente: "Vigente",
+};
+
 /**
  * Leyenda secundaria del semáforo. Sin leyenda para "vigente" porque ahí no
  * aporta nada: la ausencia de cuenta regresiva ya es la señal de que no urge.

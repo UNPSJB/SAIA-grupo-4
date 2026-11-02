@@ -127,11 +127,20 @@ export function HistorialFiltros({
         gap={4}
       >
         <Flex
-          direction={{ base: "column", sm: "row" }}
-          align={{ sm: "center" }}
+          direction={{ base: "column", md: "row" }}
+          align={{ base: "stretch", md: "center" }}
           gap={3}
-          wrap="wrap"
+          flex="1"
+          minW={0}
         >
+          <Flex
+            direction={{ base: "column", sm: "row" }}
+            align={{ sm: "center" }}
+            gap={3}
+            wrap="wrap"
+            flex="1"
+            minW={0}
+          >
           {/* Grupo Desde */}
           <HStack gap={1.5} align="center">
             <Text fontSize="xs" fontWeight="bold" color="gray.600" mr={0.5}>
@@ -387,8 +396,14 @@ export function HistorialFiltros({
             </HStack>
           </HStack>
 
+          </Flex>
+
           {/* Botones de acción */}
-          <HStack gap={2}>
+          <HStack
+            gap={2}
+            flexShrink={0}
+            justify={{ base: "flex-end", md: "flex-start" }}
+          >
             <Button
               ref={refBotonFiltrar}
               size="sm"

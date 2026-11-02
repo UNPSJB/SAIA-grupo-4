@@ -46,6 +46,7 @@ export const ProcedimientoField = ({
       {pasosVista.length > 0 && (
         <Box
           w="100%"
+          gridColumn="1 / -1"
           bg="gray.50"
           borderWidth="1px"
           borderRadius="md"

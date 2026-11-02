@@ -33,14 +33,12 @@ export const RowActionButton = ({
     </Button>
   );
 
-  // Sin title se devuelve el botón tal cual: los módulos que no pasan título no ganan ningún tooltip.
-  if (!title) return boton;
-
+  // Si el módulo no define un texto más descriptivo, el tooltip usa la acción.
   return (
     <Tooltip.Root openDelay={200}>
       <Tooltip.Trigger asChild>{boton}</Tooltip.Trigger>
       <Tooltip.Positioner>
-        <Tooltip.Content>{title}</Tooltip.Content>
+        <Tooltip.Content>{title ?? label}</Tooltip.Content>
       </Tooltip.Positioner>
     </Tooltip.Root>
   );

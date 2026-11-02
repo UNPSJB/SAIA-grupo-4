@@ -53,7 +53,7 @@ export const useInsumoSubmit = ({
           descripcion: values?.descripcion ?? "",
         };
 
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         const res = await apiFetch(url, {
           method,
           headers: JSON_HEADERS,

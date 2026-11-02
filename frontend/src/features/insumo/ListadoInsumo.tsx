@@ -1,5 +1,6 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge, HStack, Button } from "@chakra-ui/react";
+import { useState } from "react";
+import { Badge, Box, HStack, Button } from "@chakra-ui/react";
 import {
   FiBox,
   FiEdit2,
@@ -12,6 +13,9 @@ import { FaRuler } from "react-icons/fa";
 import {
   AlertMessage,
   DataTable,
+  FiltrosBar,
+  FiltroSelect,
+  FiltroTexto,
   LoadingState,
   RowActionButton,
   RowActions,
@@ -19,6 +23,7 @@ import {
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { Insumo } from "./types";
 import type { ColumnDef } from "../../components/ui";
 
@@ -31,12 +36,26 @@ interface ListadoInsumosProps {
   onVerUnidades?: () => void;
 }
 
-const ENDPOINT = `${BASE_URL}/insumos/`;
-
 const formatearConsumo = (consumo: number) =>
   Number(consumo ?? 0).toLocaleString("es-AR", {
     maximumFractionDigits: 3,
   });
+
+// Arma el endpoint del listado: solo se manda la búsqueda si tiene valor.
+const construirEndpoint = (busqueda: string, estado: string) => {
+  const params = new URLSearchParams();
+  if (busqueda) params.set("busqueda", busqueda);
+  if (estado === "disponible") params.set("disponible", "true");
+  if (estado === "no_disponible") params.set("disponible", "false");
+
+  const query = params.toString();
+  return `${BASE_URL}/insumos/${query ? `?${query}` : ""}`;
+};
+
+const OPCIONES_ESTADO = [
+  { label: "Activos", value: "disponible" },
+  { label: "Inactivos", value: "no_disponible" },
+];
 
 export const ListadoInsumos = ({
   onCrear,
@@ -46,12 +65,35 @@ export const ListadoInsumos = ({
   onDarAlta,
   onVerUnidades,
 }: ListadoInsumosProps) => {
+  // La búsqueda se aplica sola con debounce; el select espera a "Filtrar".
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
+  const [estado, setEstado] = useState("");
+  const [estadoAplicado, setEstadoAplicado] = useState("");
+
+  const hayFiltros = busqueda.trim() !== "" || estado !== "";
+  const hayAplicados = busquedaAplicada !== "" || estadoAplicado !== "";
+
+  // La página vuelve a 1 sola cuando cambia el endpoint (lo resuelve el hook)
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Insumo>({
-      endpoint: ENDPOINT,
+      endpoint: construirEndpoint(busquedaAplicada, estadoAplicado),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de insumos.",
     });
+
+  const aplicar = () => {
+    setEstadoAplicado(estado);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBusqueda("");
+    setEstado("");
+    setEstadoAplicado("");
+    setPage(1);
+  };
 
   const columnas: ColumnDef<Insumo>[] = [
     {
@@ -119,7 +161,7 @@ export const ListadoInsumos = ({
   ];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
         <ListadoHeader title="Insumos" icon={FiBox} />
         <HStack gap={2}>
@@ -136,12 +178,45 @@ export const ListadoInsumos = ({
         </HStack>
       </HStack>
 
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel='Buscar insumo'
+            placeholder='Nombre o unidad de medida'
+            value={busqueda}
+            onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel='Estado del insumo'
+            placeholder='Todos los estados'
+            options={OPCIONES_ESTADO}
+            value={estado}
+            onChange={setEstado}
+          />
+        </FiltrosBar>
+      </Box>
+
       {loading && <LoadingState message='Cargando insumos...' />}
 
       {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type='info' message='Todavía no hay insumos cargados.' />
+        <AlertMessage
+          type='info'
+          message={
+            hayAplicados
+              ? "No hay insumos que coincidan con los filtros."
+              : "Todavía no hay insumos cargados."
+          }
+        />
       )}
 
       {!loading && !error && data.length > 0 && (

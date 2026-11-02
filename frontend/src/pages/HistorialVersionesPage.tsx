@@ -202,7 +202,11 @@ export default function HistorialVersionesPage() {
                     ? formatearFecha(r.nueva_fecha_proxima_revision)
                     : "Sin cambios",
                 },
-                { label: "Observaciones", valor: r.observaciones || "—" },
+                {
+                  label: "Observaciones",
+                  valor: r.observaciones || "—",
+                  fullWidth: true,
+                },
                 { label: "Registrado por", valor: r.registrado_por_nombre || "—" },
               ],
             }))
@@ -220,7 +224,7 @@ export default function HistorialVersionesPage() {
             ];
 
   return (
-    <ListadoContainer maxW="6xl">
+    <ListadoContainer>
       {/* Título + volver al listado */}
       <HStack justify="space-between" align="center" flexWrap="wrap" gap={2} mb={6}>
         <Heading size="xl" color="green" display="flex" alignItems="center" gap={2}>

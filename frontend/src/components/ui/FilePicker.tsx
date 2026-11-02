@@ -45,7 +45,7 @@ export const FilePicker = ({
   };
 
   return (
-    <Box w="100%">
+    <Box w="100%" gridColumn="1 / -1">
       <Text fontSize="sm" fontWeight="medium" mb={2} color="gray.700">
         {label}
       </Text>

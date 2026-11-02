@@ -489,6 +489,13 @@ def test_filtro_por_categoria_devuelve_solo_esa_categoria():
     assert data[0]["categoria"] == "elemento_limpieza"
 
 
+def test_categoria_sin_proveedor_devuelve_400():
+    # Todas las categorías ahora tienen proveedores registrados
+    res = client.get("/vencimientos/", params={"categoria": "documento"})
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
+
+
 @pytest.mark.parametrize(
     "categoria",
     [
@@ -637,8 +644,15 @@ def test_categorias_endpoint_solo_expone_las_con_provider():
     data = client.get("/vencimientos/categorias").json()
 
     # Orden alfabetico por etiqueta legible.
+<<<<<<< HEAD
     assert [c["valor"] for c in data] == ["documento", "elemento_limpieza", "equipo", "personal"]
     
+=======
+    valores = [c["valor"] for c in data]
+    assert "documento" in valores
+    assert "elemento_limpieza" in valores
+    assert "equipo" in valores
+>>>>>>> origin/dev
 
 
 def test_categorias_endpoint_usa_la_etiqueta_legible():

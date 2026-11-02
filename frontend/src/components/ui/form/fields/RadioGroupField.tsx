@@ -21,7 +21,7 @@ export const RadioGroupField = ({
   error,
   disabled = false,
 }: RadioGroupFieldProps) => (
-  <Field.Root>
+  <Field.Root gridColumn='1 / -1'>
     <Field.Label fontSize='md' fontFamily='sans-serif'>
       {label}
     </Field.Label>

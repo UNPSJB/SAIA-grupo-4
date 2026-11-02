@@ -31,7 +31,7 @@ export const CheckboxGroupField = ({
   error,
   disabled = false,
 }: CheckboxGroupFieldProps) => (
-  <Fieldset.Root disabled={disabled}>
+  <Fieldset.Root disabled={disabled} gridColumn='1 / -1'>
     <Fieldset.Legend fontSize='md' fontFamily='sans-serif'>
       {label}
     </Fieldset.Legend>

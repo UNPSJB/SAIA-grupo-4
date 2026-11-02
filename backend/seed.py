@@ -143,6 +143,8 @@ from src.vencimientos.constants import CategoriaVencimiento, EstadoVencimiento
 from src.vencimientos.services import listar_vencimientos
 from src.auth.utils import get_password_hash
 from src.capacidades.constants import RolesSistema
+from src.vista_publica.models import VistaPublica
+from src.vista_publica.services import inicializar_vista_publica
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -2684,6 +2686,7 @@ def main():
 
         try:
             catalogo = _crear_prerrequisitos(db, args.cantidad, hoy)
+            inicializar_vista_publica(db)
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)

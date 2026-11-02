@@ -48,7 +48,7 @@ export const ListadoDocumentosPersonal = ({ onCrear, onModificar, onEliminar, on
     ];
 
     return (
-        <ListadoContainer maxW='6xl'>
+        <ListadoContainer>
             <ListadoHeader title="Documentos de personal" icon={FiFileText} buttonLabel="Nuevo documento" onCrear={onCrear} />
             {loading && <LoadingState message="Cargando documentos..." />}
             {!loading && error && <AlertMessage type="error" message={error} />}

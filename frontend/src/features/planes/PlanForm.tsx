@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+
 import { FiEdit3, FiSave, FiTool, FiXCircle } from "react-icons/fi";
 import {
   AlertMessage,
   CancelButton,
   FormActions,
   FormContainer,
+  FormGrid,
+  FormGridFull,
   FormHeader,
   SubmitButton,
   TextField,
@@ -52,10 +54,11 @@ export const PlanForm = ({
     handleSubmit,
     setError,
     clearErrors,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<PlanFormInput, unknown, PlanFormValues>({
     resolver: zodResolver(planSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const [success, setSuccess] = useState(false);
@@ -101,20 +104,13 @@ export const PlanForm = ({
         icon={esModoCrear ? FiTool : FiEdit3}
       />
       <form onSubmit={onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label='Nombre del Plan'
             defaultValue={defaultValues.nombre}
             placeholder='Ej. Plan de Limpieza y Sanitización'
             error={errors.nombre?.message}
             {...register("nombre")}
-          />
-          <TextField
-            label='Objetivo (Opcional)'
-            defaultValue={defaultValues.objetivo}
-            placeholder='Objetivo del plan de limpieza'
-            error={errors.objetivo?.message}
-            {...register("objetivo")}
           />
           {esModoCrear && (
             <TextField
@@ -127,6 +123,15 @@ export const PlanForm = ({
               disabled
             />
           )}
+          <FormGridFull>
+            <TextField
+              label='Objetivo (Opcional)'
+              defaultValue={defaultValues.objetivo}
+              placeholder='Objetivo del plan de limpieza'
+              error={errors.objetivo?.message}
+              {...register("objetivo")}
+            />
+          </FormGridFull>
 
           <FormActions>
             <SubmitButton
@@ -135,6 +140,7 @@ export const PlanForm = ({
               loading={isSubmitting}
               type='submit'
               colorPalette='green'
+              disabled={!isValid}
             />
             <CancelButton
               text='Cancelar'
@@ -158,7 +164,7 @@ export const PlanForm = ({
               }
             />
           )}
-        </VStack>
+        </FormGrid>
       </form>
     </FormContainer>
   );

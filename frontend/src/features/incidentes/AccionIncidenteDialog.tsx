@@ -64,6 +64,7 @@ export const AccionIncidenteDialog = ({
       open
       title={esCierre ? "Cerrar incidente" : "Reabrir incidente"}
       titleIcon={esCierre ? FiCheckCircle : FiRotateCcw}
+      maxW='lg'
       onClose={onClose}
     >
       <Field.Root mb={4}>
@@ -74,6 +75,7 @@ export const AccionIncidenteDialog = ({
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           maxLength={1000}
+          placeholder={esCierre ? "Describí la acción correctiva tomada..." : "Describí el motivo de la reapertura..."}
         />
       </Field.Root>
 

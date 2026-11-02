@@ -1,15 +1,15 @@
-import { Button, HStack } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack } from "@chakra-ui/react";
 import { FiFilter, FiRefreshCw } from "react-icons/fi";
 import type { ReactNode } from "react";
 
 interface FiltrosBarProps {
   /** Controles de filtro. Cada uno se hace cargo de su propio estado. */
   children: ReactNode;
-  /** Aplica el filtro. El listado solo consulta cuando se llama, no al cambiar un control. */
+  /** Aplica los filtros que no se ejecutan en vivo. */
   onAplicar: () => void;
-  /** Vuelve todos los controles a su valor por defecto. */
+  /** Vuelve todos los controles a su valor por defecto y limpia la consulta. */
   onLimpiar: () => void;
-  /** Muestra el botón "Limpiar" solo cuando hay algo aplicado. */
+  /** Habilita el botón "Limpiar" cuando hay filtros cargados. */
   hayFiltrosActivos: boolean;
   /** Deshabilita "Filtrar" mientras corre la consulta. */
   loading?: boolean;
@@ -19,15 +19,7 @@ interface FiltrosBarProps {
 
 /**
  * Barra de filtros compacta para los listados.
- *
- * A diferencia de un formulario con labels visibles, los controles van sueltos
- * en una fila y el botón "Filtrar" es el que dispara la consulta. Así el
- * listado no pide datos en cada tecla ni en cada cambio de un desplegable, que
- * es el mismo criterio que usa el historial de checklists.
- *
- * Los controles van como `children` y no se conocen acá: cada listado compone
- * los que necesita (`FiltroSelect`, `FiltroTexto`, ...), así que el mismo
- * componente sirve para vencimientos, personal, equipos o documentación.
+ * Los controles pueden aplicar su cambio en vivo (búsqueda) o esperar a "Filtrar" (selects).
  */
 export const FiltrosBar = ({
   children,
@@ -37,37 +29,51 @@ export const FiltrosBar = ({
   loading = false,
   textoAplicar = "Filtrar",
 }: FiltrosBarProps) => (
-  <HStack
-    w='fit-content'
-    ml='auto'
-    gap={5}
-    align='center'
-    justify='flex-end'
-    p={2}
-    borderWidth='1px'
-    borderRadius='md'
-    bg='white'
-  >
-    {children}
-
-    <Button
-      size='sm'
-      variant='ghost'
-      colorPalette='gray'
-      onClick={onLimpiar}
-      borderColor='gray'
-      disabled={!hayFiltrosActivos ? true : false}
+  <Box w='100%'>
+    <Flex
+      direction={{ base: "column", md: "row" }}
+      align={{ base: "stretch", md: "center" }}
+      gap={3}
+      p={{ base: 3, md: 4 }}
+      borderWidth='1px'
+      borderColor='gray.200'
+      borderRadius='xl'
+      boxShadow='sm'
+      bg='white'
+      role='search'
+      aria-label='Filtros del listado'
     >
-      <FiRefreshCw /> Limpiar
-    </Button>
+      {/* Los controles pueden ocupar varias filas sin arrastrar a los botones. */}
+      <Flex flex='1' minW={0} wrap='wrap' columnGap={5} rowGap={3} align='center'>
+        {children}
+      </Flex>
 
-    <Button
-      size='sm'
-      colorPalette='green'
-      onClick={onAplicar}
-      loading={loading}
-    >
-      {!loading && <FiFilter />} {textoAplicar}
-    </Button>
-  </HStack>
+      {/* Acciones en una columna propia: en desktop nunca bajan debajo de los campos. */}
+      <HStack
+        gap={2}
+        flexShrink={0}
+        justify={{ base: "flex-end", md: "flex-start" }}
+      >
+        <Button
+          size='sm'
+          variant='ghost'
+          colorPalette='green'
+          onClick={onLimpiar}
+          disabled={!hayFiltrosActivos}
+          title='Limpiar filtros'
+        >
+          <FiRefreshCw /> Limpiar
+        </Button>
+
+        <Button
+          size='sm'
+          colorPalette='green'
+          onClick={onAplicar}
+          loading={loading}
+        >
+          {!loading && <FiFilter />} {textoAplicar}
+        </Button>
+      </HStack>
+    </Flex>
+  </Box>
 );

@@ -25,7 +25,7 @@ export const useNotificaciones = () => {
 
   const { pathname } = useLocation();
 
-  // El NavBar vive toda la sesion, asi que este hook no vuelve a montarse al
+  // El SideBar vive toda la sesion, asi que este hook no vuelve a montarse al
   // navegar. Refrescar cuando cambia la ruta es lo que hace que un recambio
   // hecho desde otra vista se refleje en el badge.
   //

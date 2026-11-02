@@ -2,7 +2,7 @@ import { BASE_URL } from "../../config";
 import { useState, useMemo } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack, Text, Box, Button } from "@chakra-ui/react";
+import { Text, Box, Button } from "@chakra-ui/react";
 import {
   usePersonalSubmit,
   type PersonalPayload,
@@ -17,6 +17,7 @@ import type { Persona } from "./types";
 import type { Capacidad } from "../capacidades/types";
 import {
   FormContainer,
+  FormGrid,
   FormHeader,
   TextField,
   FormActions,
@@ -81,13 +82,14 @@ export const PersonalForm = ({
     register,
     handleSubmit,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
     reset,
   } = useForm<PersonalFormInput, unknown, PersonalFormValues>({
     resolver: zodResolver(personalSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const { data: capacidades } = useListadoData<Capacidad>({
@@ -221,40 +223,46 @@ export const PersonalForm = ({
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiUser}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label='Nombre'
             disabled={esModoVer}
+            placeholder='Ej. Juan'
             error={errors.nombre?.message}
             {...register("nombre")}
           />
           <TextField
             label='Apellido'
             disabled={esModoVer}
+            placeholder='Ej. Pérez'
             error={errors.apellido?.message}
             {...register("apellido")}
           />
           <TextField
             label='DNI'
             disabled={esModoVer}
+            placeholder='Ej. 12345678'
             error={errors.dni?.message}
             {...register("dni")}
           />
           <TextField
             label='Legajo'
             disabled={esModoVer}
+            placeholder='Ej. 001'
             error={errors.legajo?.message}
             {...register("legajo")}
           />
           <TextField
             label='Email (Opcional)'
             disabled={esModoVer}
+            placeholder='Ej. juan.perez@email.com'
             error={errors.email?.message}
             {...register("email")}
           />
           <TextField
             label='Teléfono (Opcional)'
             disabled={esModoVer}
+            placeholder='Ej. 11 1234-5678'
             error={errors.telefono?.message}
             {...register("telefono")}
           />
@@ -278,7 +286,7 @@ export const PersonalForm = ({
                         habilitantes (administrar u operar), único caso en que
                         el backend la acepta. */}
           {requierePassword && !esModoVer && (
-            <Box width='100%' textAlign='left'>
+            <Box width='100%' textAlign='left' gridColumn='1 / -1'>
               <Text
                 fontSize='md'
                 fontFamily='sans-serif'
@@ -349,6 +357,7 @@ export const PersonalForm = ({
                   loading={isSubmitting}
                   type='submit'
                   colorPalette='green'
+                  disabled={!isValid}
                 />
                 <CancelButton
                   text='Cancelar'
@@ -374,7 +383,7 @@ export const PersonalForm = ({
               }
             />
           )}
-        </VStack>
+        </FormGrid>
       </form>
 
       {esModoCrear && (

@@ -29,8 +29,8 @@ import { TareaCardCompletada } from "../features/checklists/components/TareaCard
 import { EvidenciaModal } from "../features/checklists/EvidenciaModal";
 
 interface ChecklistPageProps {
-  // El operador entra sin NavBar, así que esta vista imprime su propia barra
-  // institucional. El admin ya tiene el NavBar y la barra sería un duplicado.
+  // El operador entra sin SideBar, así que esta vista imprime su propia barra
+  // institucional. El admin ya tiene el SideBar y la barra sería un duplicado.
   mostrarBarraInstitucional?: boolean;
 }
 
@@ -156,7 +156,7 @@ export default function ChecklistPage({
   return (
     <Box bg='gray.50' minH={mostrarBarraInstitucional ? "100vh" : "auto"}>
       {/* Barra superior institucional SAIA-4.
-          El operador ahora entra por OperadorLayout, que ya trae la navbar y el
+          El operador ahora entra por OperadorLayout, que ya trae la barra lateral y el
           logout, así que esta barra sólo se muestra si la pantalla se está ejecutando de manera externa y solitaria */}
       {mostrarBarraInstitucional && (
         <Box

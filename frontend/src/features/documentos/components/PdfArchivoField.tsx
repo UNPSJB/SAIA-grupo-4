@@ -11,7 +11,7 @@ interface PdfArchivoFieldProps {
 // Dropzone para adjuntar el PDF oficial.
 
 export const PdfArchivoField = ({ value, onChange, error, label }: PdfArchivoFieldProps) => (
-  <Field.Root invalid={!!error} mb={4}>
+  <Field.Root invalid={!!error} mb={4} gridColumn='1 / -1'>
     {label && (
       <Field.Label fontSize="md" fontFamily="sans-serif">
         {label}

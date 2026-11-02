@@ -2,7 +2,7 @@ import { BASE_URL, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+
 import { useInsumoQuimicoSubmit } from "./hooks/useInsumoQuimicoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoQuimicoSchema, type InsumoQuimicoFormValues } from "./validationSchema";
@@ -13,6 +13,7 @@ import type { Equipo } from "../equipos/types";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
   TextField,
   SelectField,
   FormActions,
@@ -146,7 +147,7 @@ export const InsumoQuimicoForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
     reset,
@@ -154,6 +155,7 @@ export const InsumoQuimicoForm = ({
   } = useForm<InsumoQuimicoFormValues>({
     resolver: zodResolver(insumoQuimicoSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const [success, setSuccess] = useState(false);
@@ -226,7 +228,7 @@ export const InsumoQuimicoForm = ({
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiDroplet}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label='Nombre'
             disabled={esModoVer}
@@ -314,6 +316,7 @@ export const InsumoQuimicoForm = ({
                   loading={isSubmitting}
                   type='submit'
                   colorPalette='green'
+                  disabled={!isValid}
                 />
                 <CancelButton
                   text='Cancelar'
@@ -339,7 +342,7 @@ export const InsumoQuimicoForm = ({
               }
             />
           )}
-        </VStack>
+        </FormGrid>
       </form>
 
       {esModoCrear && (

@@ -16,10 +16,9 @@ interface SemaforoFechaProps {
 /**
  * Punto de color + fecha + leyenda de un vencimiento.
  *
- * Lo usan la vista consolidada de vencimientos y la columna "Próximo Recambio"
- * del listado de elementos de limpieza. El umbral de días que decide a qué
- * estado corresponde es del backend en ambos casos; acá solo se traduce a
- * color y texto.
+ * Lo usan la vista consolidada de vencimientos, equipos, personal, documentos
+ * y elementos de limpieza. El umbral de días que decide a qué estado
+ * corresponde lo calcula cada módulo; acá solo se traduce a color y texto.
  */
 export const SemaforoFecha = ({
   estado,

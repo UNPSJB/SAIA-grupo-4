@@ -107,7 +107,7 @@ export const ListadoDocumentosOperador = () => {
   ];
 
   return (
-    <ListadoContainer maxW="6xl" mt={8}>
+    <ListadoContainer mt={8}>
       <ListadoHeader title="Documentos" icon={FiFileText} />
 
       {loading && <LoadingState message="Cargando documentos..." />}

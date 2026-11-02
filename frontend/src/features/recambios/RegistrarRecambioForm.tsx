@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Field, Input, Text, VStack } from "@chakra-ui/react";
+import { useState, useMemo } from "react";
+import { Field, Input, Text } from "@chakra-ui/react";
 import { FiRefreshCw, FiSave, FiXCircle } from "react-icons/fi";
 import { useRecambioSubmit } from "./hooks/useRecambioSubmit";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
+  FormGridFull,
   TextField,
   FormActions,
   SubmitButton,
@@ -42,6 +44,9 @@ export const RegistrarRecambioForm = ({
 
   const { submit, isSubmitting } = useRecambioSubmit({ onSuccess: onGuardado });
 
+  // Validación para habilitar/deshabilitar el botón Guardar
+  const esValido = useMemo(() => fecha !== "", [fecha]);
+
   const handleGuardar = async () => {
     setErrorEnvio("");
 
@@ -66,7 +71,7 @@ export const RegistrarRecambioForm = ({
   return (
     <FormContainer modal={enModal}>
       <FormHeader title={titulo} icon={FiRefreshCw} />
-      <VStack gap={4}>
+      <FormGrid>
         <TextField
           label='Elemento'
           value={`${elemento.codigo} — ${elemento.nombre}`}
@@ -88,11 +93,13 @@ export const RegistrarRecambioForm = ({
             </Text>
           )}
         </Field.Root>
-        <TextField
-          label='Observaciones (Opcional)'
-          value={observaciones}
-          onChange={(e) => setObservaciones(e.target.value)}
-        />
+        <FormGridFull>
+          <TextField
+            label='Observaciones (Opcional)'
+            value={observaciones}
+            onChange={(e) => setObservaciones(e.target.value)}
+          />
+        </FormGridFull>
         <FormActions>
           <SubmitButton
             text='Registrar'
@@ -100,6 +107,7 @@ export const RegistrarRecambioForm = ({
             loading={isSubmitting}
             onClick={handleGuardar}
             colorPalette='green'
+            disabled={!esValido}
           />
           <CancelButton
             text='Cancelar'
@@ -110,7 +118,7 @@ export const RegistrarRecambioForm = ({
           />
         </FormActions>
         {errorEnvio && <AlertMessage type='error' message={errorEnvio} />}
-      </VStack>
+      </FormGrid>
     </FormContainer>
   );
 };

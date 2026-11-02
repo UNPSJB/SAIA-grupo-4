@@ -41,7 +41,7 @@ export const useIncidentesSubmit = ({
     async (values?: IncidentePayload, foto?: File | null): Promise<SubmitResult> => {
       setIsSubmitting(true);
       try {
-        const url = id ? `${endpoint}${id}/` : endpoint;
+        const url = id ? `${endpoint}${id}` : endpoint;
         let res: Response;
         
         if (values !== undefined) {

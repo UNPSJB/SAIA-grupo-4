@@ -3,13 +3,15 @@ import { useAuth } from "../auth/useAuth";
 import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack, Input, Image, Field } from "@chakra-ui/react";
+import { Image } from "@chakra-ui/react";
 import { useIncidentesSubmit } from "./hooks/useIncidentesSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { incidenteSchema, type IncidenteFormValues, type IncidenteFormInput } from "./validationSchema";
 import type { Incidente, TipoIncidente } from "./types";
 import {
     FormContainer,
+    FormGrid,
+    FormGridFull,
     FormHeader,
     TextField,
     SelectField,
@@ -18,6 +20,7 @@ import {
     CancelButton,
     AlertMessage,
     AlertConfirm,
+    FileUploadField,
 } from "../../components/ui";
 import { FiSave, FiEye, FiEdit2, FiAlertTriangle, FiXCircle } from "react-icons/fi";
 
@@ -64,13 +67,14 @@ export const IncidenteForm = ({
     const {
         register,
         handleSubmit,
-        formState: { errors, isSubmitting },
+        formState: { errors, isSubmitting, isValid },
         setError,
         clearErrors,
         reset,
     } = useForm<IncidenteFormInput, unknown, IncidenteFormValues>({
         resolver: zodResolver(incidenteSchema),
         defaultValues,
+        mode: "onChange",
     });
 
     const {
@@ -106,9 +110,7 @@ export const IncidenteForm = ({
         };
     }, [fotoPreview]);
 
-    const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const archivo = e.target.files?.[0] ?? null;
-
+    const handleFotoChange = (archivo: File | null) => {
         setErrorFoto("");
         setFotoArchivo(null);
         setFotoPreview(null);
@@ -117,7 +119,6 @@ export const IncidenteForm = ({
 
         if (!archivo.type.startsWith("image/")) {
             setErrorFoto("El archivo debe ser una imagen.");
-            e.target.value = "";
             return;
         }
 
@@ -194,7 +195,7 @@ export const IncidenteForm = ({
                 icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiAlertTriangle}
             />
             <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-                <VStack gap={4}>
+                <FormGrid>
                     <SelectField
                         label="Tipo"
                         placeholder={loadingTipos ? "Cargando tipos..." : "Selecciona una opción"}
@@ -217,26 +218,27 @@ export const IncidenteForm = ({
                         {...register("titulo")}
                     />
                     
-                    <TextField
-                        label="Descripcion"
-                        disabled={esModoVer}
-                        defaultValue={defaultValues.descripcion}
-                        error={errors.descripcion?.message}
-                        {...register("descripcion")}
-                    />
-                    <Field.Root>
-                        <Field.Label fontSize="md" fontFamily="sans-serif">
-                            Foto del incidente (opcional)
-                        </Field.Label>
-                        <Input 
-                            type="file"
-                            accept="image/*"
+                    <FormGridFull>
+                        <TextField
+                            label="Descripcion"
                             disabled={esModoVer}
-                            onChange={handleFotoChange}
+                            defaultValue={defaultValues.descripcion}
+                            placeholder="Ej. Descripción del incidente..."
+                            error={errors.descripcion?.message}
+                            {...register("descripcion")}
                         />
-
-                        {errorFoto && <AlertMessage type="error" message={errorFoto} />}
-                    </Field.Root>
+                    </FormGridFull>
+                    <FileUploadField
+                        label="Foto del incidente (opcional)"
+                        value={fotoArchivo}
+                        onChange={handleFotoChange}
+                        accept="image/*"
+                        disabled={esModoVer}
+                        placeholder="Haz clic para adjuntar foto del incidente"
+                        selectedText="Cambiar"
+                        error={errorFoto}
+                        showRemoveButton
+                      />
 
                     {fotoPreview && (
                         <Image
@@ -244,6 +246,8 @@ export const IncidenteForm = ({
                             alt="Vista previa de la foto del incidente"
                             maxH="200px"
                             objectFit="contain"
+                            gridColumn="1 / -1"
+                            justifySelf="start"
                         />
                     )}
 
@@ -264,6 +268,7 @@ export const IncidenteForm = ({
                                     loading={isSubmitting}
                                     type="submit"
                                     colorPalette="green"
+                                    disabled={!isValid}
                                 />
                                 <CancelButton
                                     text="Cancelar"
@@ -289,7 +294,7 @@ export const IncidenteForm = ({
                             }
                         />
                     )}
-                </VStack>
+                </FormGrid>
             </form>
 
             {esModoCrear && (

@@ -1,14 +1,11 @@
 import os
 import uuid
 from pathlib import Path
-
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional   
-
 from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
-
 from src.equipos.models import Equipo
 from src.sectores.models import Sector
 from src.equipos import schemas, exceptions
@@ -21,6 +18,7 @@ from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.orm import Session
 from src.equipos.models import Equipo, CalibracionEquipo
 from src.equipos.schemas import CalibracionEquipoCreate, AlertaCalibracion
+from src.utils.busqueda import condicion_busqueda
 
 UMBRAL_DIAS_PROXIMO = 15
 EXTENSIONES_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
@@ -69,7 +67,6 @@ def crear_equipo(db: Session, equipo: schemas.EquipoCreate) -> Equipo:
 
     return _equipo
 
-
 def listar_equipos(
     db: Session,
     busqueda: str | None = None,
@@ -79,21 +76,20 @@ def listar_equipos(
 ) -> List[Equipo]:
     consulta = select(Equipo)
 
-    # Filtro por texto: coincidencia parcial en nombre, marca o número de serie.
-    if busqueda:
-        patron = f"%{busqueda}%"
-        consulta = consulta.where(
-            or_(
-                Equipo.nombre.ilike(patron),
-                Equipo.marca.ilike(patron),
-                Equipo.numero_serie.ilike(patron),
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las
+    # columnas de texto visibles (código, nombre, marca y sector).
+    if busqueda and busqueda.strip():
+        consulta = consulta.join(Sector, Equipo.sector_id == Sector.id).where(
+            condicion_busqueda(
+                [Equipo.numero_serie, Equipo.nombre, Equipo.marca, Sector.nombre],
+                busqueda,
             )
         )
 
     # Filtro por estado: activos (True), inactivos (False) o todos (None).
     if activo is not None:
         consulta = consulta.where(Equipo.activo.is_(activo))
-
+        
     # Filtro por sector.
     if sector_id is not None:
         consulta = consulta.where(Equipo.sector_id == sector_id)

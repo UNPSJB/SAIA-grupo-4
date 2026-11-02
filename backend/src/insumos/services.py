@@ -8,6 +8,7 @@ from src.unidad_medida.models import UnidadMedida
 from src.unidad_medida.exceptions import UnidadMedidaReactivar
 from src.recetas.models import Receta, PasoReceta, PasoInsumo
 from src.recetas.constants import EstadoReceta
+from src.utils.busqueda import condicion_busqueda
 
 
 # operaciones CRUD para Insumo
@@ -45,10 +46,6 @@ def leer_insumo(db: Session, insumo_id: int) -> schemas.Insumo:
 
     # Si existe el insumo lo retorna
     return db_insumo
-
-
-def listar_insumos(db: Session):
-    return db.scalars(select(Insumo)).all()
 
 
 def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) -> schemas.InsumoUpdate:
@@ -111,3 +108,26 @@ def eliminar_insumo(db: Session, insumo_id: int, ) -> schemas.InsumoDelete:
     db_insumo = modificar_insumo(db, insumo_id, insumo)
 
     return db_insumo
+
+
+def listar_insumos(
+    db: Session,
+    busqueda: str | None = None,
+    disponible: bool | None = None,
+):
+    consulta = select(Insumo)
+
+    # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las
+    # columnas de texto visibles (nombre del insumo y unidad de medida).
+    if busqueda and busqueda.strip():
+        consulta = consulta.join(
+            UnidadMedida, Insumo.unidad_medida_id == UnidadMedida.id
+        ).where(condicion_busqueda(
+            [Insumo.nombre, Insumo.categoria, UnidadMedida.nombre, UnidadMedida.simbolo],
+            busqueda,
+        ))
+
+    if disponible is not None:
+        consulta = consulta.where(Insumo.disponible.is_(disponible))
+
+    return db.scalars(consulta).all()

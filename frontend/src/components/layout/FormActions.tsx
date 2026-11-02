@@ -13,7 +13,12 @@ export const FormActions = ({
   width = '100%',
   spacing = 4,
 }: FormActionsProps) => (
-  <HStack justify={justify} width={width} gap={spacing}>
+  <HStack
+    justify={justify}
+    width={width}
+    gap={spacing}
+    gridColumn='1 / -1'
+  >
     {children}
   </HStack>
 );

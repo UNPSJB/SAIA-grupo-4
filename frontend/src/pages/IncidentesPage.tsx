@@ -177,7 +177,7 @@ export default function IncidentesPage() {
       )}
 
       {tipoModalAbierto && (
-        <FormModal open maxW='3xl' onClose={() => setTipoModalAbierto(false)}>
+        <FormModal open onClose={() => setTipoModalAbierto(false)}>
           <GestionTiposIncidente />
         </FormModal>
       )}

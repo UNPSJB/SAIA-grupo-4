@@ -8,6 +8,9 @@ import {
   AlertConfirm,
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
   RowActionButton,
   RowActions,
@@ -22,7 +25,12 @@ import {
 import { usePlanData } from "../features/planes/hooks/usePlanData";
 import { usePlanCatalogs } from "../features/planes/hooks/usePlanCatalogs";
 import { planesApi } from "../features/planes/hooks/planApi";
-import type { PlanPOES, TareaPOES } from "../features/planes/types";
+import { useDebounce } from "../hooks/useDebounce";
+import type {
+  PlanCatalogs,
+  PlanPOES,
+  TareaPOES,
+} from "../features/planes/types";
 import {
   colorFrecuencia,
   derivarEstado,
@@ -42,7 +50,34 @@ const labelsEstado = {
   archivado: { texto: "Archivado", color: "red" },
 } as const;
 
-const TareaDesplegable = ({ tarea, catalogs }: { tarea: TareaPOES; catalogs: any }) => {
+const OPCIONES_ESTADO = Object.entries(labelsEstado).map(([value, { texto }]) => ({
+  label: texto,
+  value,
+}));
+
+type FiltrosHistorial = {
+  elaboradoPorId: string;
+  estado: string;
+};
+
+const FILTROS_INICIALES: FiltrosHistorial = {
+  elaboradoPorId: "",
+  estado: "",
+};
+
+const normalizarTexto = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const TareaDesplegable = ({
+  tarea,
+  catalogs,
+}: {
+  tarea: TareaPOES;
+  catalogs: PlanCatalogs;
+}) => {
   const [abierto, setAbierto] = useState(false);
   const detalle = parsearDetalleFrecuencia(tarea.frecuencia, tarea.detalle_frecuencia);
 
@@ -167,6 +202,12 @@ export default function HistorialPlanesPage() {
   const { catalogs, error: errorCatalogos } = usePlanCatalogs();
 
   const [page, setPage] = useState(1);
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+  const [borrador, setBorrador] =
+    useState<FiltrosHistorial>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] =
+    useState<FiltrosHistorial>(FILTROS_INICIALES);
   const [planVer, setPlanVer] = useState<PlanPOES | null>(null);
   const [tareasPlanVer, setTareasPlanVer] = useState<TareaPOES[]>([]);
   const [cargandoTareasModal, setCargandoTareasModal] = useState(false);
@@ -202,10 +243,70 @@ export default function HistorialPlanesPage() {
     };
   }, [planes]);
 
+  const opcionesElaboradoPor = useMemo(() => {
+    const idsAutores = new Set(planes.map((plan) => plan.elaborado_por_id));
+    return catalogs.personas
+      .filter((persona) => idsAutores.has(persona.id))
+      .map((persona) => ({
+        label: `${persona.nombre} ${persona.apellido}`,
+        value: String(persona.id),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }, [planes, catalogs.personas]);
+
+  const planesFiltrados = useMemo(() => {
+    const texto = normalizarTexto(busquedaAplicada);
+
+    return planes.filter((plan) => {
+      if (
+        aplicados.elaboradoPorId &&
+        String(plan.elaborado_por_id) !== aplicados.elaboradoPorId
+      ) {
+        return false;
+      }
+
+      if (aplicados.estado && derivarEstado(plan) !== aplicados.estado) {
+        return false;
+      }
+
+      if (!texto) return true;
+
+      return normalizarTexto(`${plan.nombre} ${plan.objetivo ?? ""}`).includes(
+        texto,
+      );
+    });
+  }, [planes, aplicados, busquedaAplicada]);
+
+  const hayFiltros =
+    busqueda.trim() !== "" ||
+    busquedaAplicada !== "" ||
+    borrador.elaboradoPorId !== "" ||
+    aplicados.elaboradoPorId !== "" ||
+    borrador.estado !== "" ||
+    aplicados.estado !== "";
+
+  const aplicar = () => {
+    setAplicados(borrador);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBusqueda("");
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
+    setPage(1);
+  };
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(planesFiltrados.length / ITEMS_POR_PAGINA),
+  );
+  const paginaActual = Math.min(page, totalPaginas);
+
   const itemsPaginados = useMemo(() => {
-    const inicio = (page - 1) * ITEMS_POR_PAGINA;
-    return planes.slice(inicio, inicio + ITEMS_POR_PAGINA);
-  }, [planes, page]);
+    const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
+    return planesFiltrados.slice(inicio, inicio + ITEMS_POR_PAGINA);
+  }, [planesFiltrados, paginaActual]);
 
   const verPlan = async (plan: PlanPOES) => {
     setPlanVer(plan);
@@ -370,6 +471,7 @@ export default function HistorialPlanesPage() {
         {
           titulo: "Tareas del Plan",
           icono: FiUser,
+          columnas: 1,
           items:
             cargandoTareasModal || tareasPlanVer.length > 0
               ? tareasPlanVer.map((t) => ({
@@ -382,7 +484,7 @@ export default function HistorialPlanesPage() {
     : [];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <HStack
         justify='space-between'
         align='center'
@@ -412,20 +514,70 @@ export default function HistorialPlanesPage() {
         </Button>
       </HStack>
 
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel='Buscar plan POES'
+            placeholder='Nombre u objetivo del plan'
+            value={busqueda}
+            onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel='Elaborado por'
+            placeholder='Todos los autores'
+            options={opcionesElaboradoPor}
+            value={borrador.elaboradoPorId}
+            onChange={(valor) =>
+              setBorrador((actual) => ({
+                ...actual,
+                elaboradoPorId: valor,
+              }))
+            }
+          />
+          <FiltroSelect
+            ariaLabel='Estado del plan'
+            placeholder='Todos los estados'
+            options={OPCIONES_ESTADO}
+            value={borrador.estado}
+            onChange={(valor) =>
+              setBorrador((actual) => ({ ...actual, estado: valor }))
+            }
+          />
+        </FiltrosBar>
+      </Box>
+
       {(errorPlanes || errorCatalogos) && (
         <AlertMessage type='error' message={errorPlanes || errorCatalogos} />
       )}
 
       {loading && <LoadingState message='Cargando historial...' />}
 
-      {!loading && planes.length === 0 && (
+      {!loading && !errorPlanes && planes.length === 0 && (
         <AlertMessage
           type='info'
           message='Todavía no hay planes en el historial.'
         />
       )}
 
-      {!loading && planes.length > 0 && (
+      {!loading &&
+        !errorPlanes &&
+        planes.length > 0 &&
+        planesFiltrados.length === 0 && (
+          <AlertMessage
+            type='info'
+            message='No hay planes que coincidan con los filtros seleccionados.'
+          />
+        )}
+
+      {!loading && !errorPlanes && planesFiltrados.length > 0 && (
         <>
           <DataTable
             items={itemsPaginados}
@@ -433,8 +585,8 @@ export default function HistorialPlanesPage() {
             getRowKey={(plan) => plan.id}
           />
           <TablePagination
-            count={planes.length}
-            page={page}
+            count={planesFiltrados.length}
+            page={paginaActual}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
             labelSingular='plan'
