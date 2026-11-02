@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
-import { FiEdit2, FiEye, FiSave, FiTool, FiXCircle } from "react-icons/fi";
+import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
+import {
+  FiArrowLeft,
+  FiArrowRight,
+  FiEdit2,
+  FiEye,
+  FiSave,
+  FiTool,
+  FiXCircle,
+} from "react-icons/fi";
 import {
   AlertMessage,
   CancelButton,
@@ -49,6 +57,28 @@ const TITULOS: Record<ModoForm, string> = {
   crear: "Agregar Tarea",
   modificar: "Editar Tarea",
 };
+
+const PASOS = [
+  {
+    titulo: "Datos generales",
+    descripcion: "Nombre y destino de la tarea",
+    campos: ["nombre", "destino_tipo", "equipo_id", "sector_id"],
+  },
+  {
+    titulo: "Programación y procedimiento",
+    descripcion: "Momento, frecuencia y pasos",
+    campos: ["momento", "periodicidad", "dias", "dia_mes", "pasos"],
+  },
+  {
+    titulo: "Recursos",
+    descripcion: "Insumos y elementos requeridos",
+    campos: ["insumos_quimicos", "elementos_limpieza"],
+  },
+] satisfies Array<{
+  titulo: string;
+  descripcion: string;
+  campos: Array<keyof TareaFormInput>;
+}>;
 
 const VALORES_INICIALES_NUEVA_TAREA: TareaFormInput = {
   nombre: "",
@@ -111,10 +141,16 @@ export const TareaForm = ({
     control,
     setValue,
     clearErrors,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = formMethods;
 
   const [success, setSuccess] = useState(false);
+  const [paso, setPaso] = useState(0);
+  const inicioRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [paso]);
 
   // 3. Valores observados (re-renderizan solo lo que depende de ellos)
   const destinoTipo = useWatch({ control, name: "destino_tipo" }) as
@@ -246,7 +282,30 @@ export const TareaForm = ({
       setErroresCantidad,
     },
     setSuccess,
+    onValidationError: (campos) => {
+      const indice = PASOS.findIndex((pasoActual) =>
+        pasoActual.campos.some((campo) => campos.includes(campo)),
+      );
+      if (indice >= 0) setPaso(indice);
+    },
   });
+
+  /**
+   * Antes de avanzar valida solo los campos del paso actual. Si el resolver
+   * también marca campos de otros pasos, no bloquea la navegación: cada paso se
+   * vuelve a validar cuando le toca.
+   */
+  const avanzar = async () => {
+    const camposPaso = PASOS[paso].campos;
+    await formMethods.trigger(camposPaso);
+    const hayErrores = camposPaso.some(
+      (campo) => formMethods.getFieldState(campo).invalid,
+    );
+    if (!hayErrores) {
+      formMethods.clearErrors("root");
+      setPaso((actual) => Math.min(actual + 1, PASOS.length - 1));
+    }
+  };
 
   // 9. Render
   return (
@@ -258,8 +317,69 @@ export const TareaForm = ({
 
       {/* En modo ver no hay submit: el form sirve solo para mostrar los datos. */}
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4} align='stretch'>
-          <Seccion numero={1} titulo='Identificación y Destino'>
+        <VStack gap={4} align='stretch' ref={inicioRef}>
+          {!esModoVer && (
+            <HStack
+              gap={2}
+              align='stretch'
+              w='100%'
+              flexWrap='wrap'
+              aria-label='Pasos del formulario'
+            >
+              {PASOS.map((pasoActual, index) => {
+                const activo = index === paso;
+                const completado = index < paso;
+
+                return (
+                  <Box
+                    key={pasoActual.titulo}
+                    flex='1'
+                    minW='180px'
+                    p={3}
+                    borderWidth='1px'
+                    borderRadius='md'
+                    borderColor={activo ? "green.400" : "border.subtle"}
+                    bg={activo || completado ? "green.50" : undefined}
+                    opacity={activo || completado ? 1 : 0.72}
+                  >
+                    <HStack gap={2} align='start'>
+                      <Box
+                        boxSize='6'
+                        borderRadius='full'
+                        bg={activo || completado ? "green.500" : "gray.200"}
+                        color={activo || completado ? "white" : "gray.600"}
+                        display='flex'
+                        alignItems='center'
+                        justifyContent='center'
+                        fontSize='sm'
+                        fontWeight='bold'
+                        flexShrink={0}
+                      >
+                        {index + 1}
+                      </Box>
+                      <Box minW='0'>
+                        <Text
+                          fontSize='sm'
+                          fontWeight={activo ? "bold" : "semibold"}
+                        >
+                          {pasoActual.titulo}
+                        </Text>
+                        <Text fontSize='xs' color='fg.muted'>
+                          {pasoActual.descripcion}
+                        </Text>
+                      </Box>
+                    </HStack>
+                  </Box>
+                );
+              })}
+            </HStack>
+          )}
+
+          <Seccion
+            numero={1}
+            titulo='Identificación y Destino'
+            visible={esModoVer || paso === 0}
+          >
             <TextField
               label='Nombre de la Tarea'
               disabled={esModoVer}
@@ -293,7 +413,11 @@ export const TareaForm = ({
             />
           </Seccion>
 
-          <Seccion numero={2} titulo='Momento Operativo y Frecuencia'>
+          <Seccion
+            numero={2}
+            titulo='Momento Operativo y Frecuencia'
+            visible={esModoVer || paso === 1}
+          >
             <Controller
               control={control}
               name='momento'
@@ -341,7 +465,11 @@ export const TareaForm = ({
             />
           </Seccion>
 
-          <Seccion numero={3} titulo='Guía y Procedimiento (Paso a Paso)'>
+          <Seccion
+            numero={3}
+            titulo='Guía y Procedimiento (Paso a Paso)'
+            visible={esModoVer || paso === 1}
+          >
             <ProcedimientoField
               value={pasos}
               onChange={(value) =>
@@ -352,7 +480,11 @@ export const TareaForm = ({
             />
           </Seccion>
 
-          <Seccion numero={4} titulo='Recursos Requeridos'>
+          <Seccion
+            numero={4}
+            titulo='Recursos Requeridos'
+            visible={esModoVer || paso === 2}
+          >
             <RecursosSection
               recursosCargando={recursosCargando}
               errorRecursos={errorRecursos}
@@ -386,13 +518,36 @@ export const TareaForm = ({
               />
             ) : (
               <>
-                <SubmitButton
-                  text='Guardar Tarea'
-                  icon={FiSave}
-                  loading={isSubmitting}
-                  type='submit'
-                  colorPalette='green'
-                />
+                {paso > 0 && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => {
+                      formMethods.clearErrors("root");
+                      setPaso((actual) => Math.max(actual - 1, 0));
+                    }}
+                  >
+                    <FiArrowLeft /> Atrás
+                  </Button>
+                )}
+                {paso < PASOS.length - 1 ? (
+                  <Button
+                    type='button'
+                    colorPalette='green'
+                    onClick={avanzar}
+                  >
+                    Siguiente <FiArrowRight />
+                  </Button>
+                ) : (
+                  <SubmitButton
+                    text='Guardar Tarea'
+                    icon={FiSave}
+                    loading={isSubmitting}
+                    type='submit'
+                    colorPalette='green'
+                    disabled={!isValid}
+                  />
+                )}
                 <CancelButton
                   text='Cancelar'
                   icon={FiXCircle}

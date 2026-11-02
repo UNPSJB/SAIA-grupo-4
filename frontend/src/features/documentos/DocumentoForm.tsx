@@ -2,7 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VStack, Field, Input, Text, Box } from "@chakra-ui/react";
-import { FiFileText, FiEdit2, FiEye, FiSave, FiXCircle, FiCheckCircle } from "react-icons/fi";
+import {
+  FiFileText,
+  FiEdit2,
+  FiEye,
+  FiSave,
+  FiXCircle,
+  FiCheckCircle,
+} from "react-icons/fi";
 
 import { BASE_URL } from "../../config";
 import { useDocumentoSubmit } from "./hooks/useDocumentoSubmit";
@@ -16,6 +23,7 @@ import { formatearFecha } from "./utils";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
   FormActions,
   TextField,
   SelectField,
@@ -60,14 +68,15 @@ export const DocumentoForm = ({
           tipo_documento: documento!.tipo_documento,
           descripcion: documento?.descripcion || "",
         }
-      : { 
-          codigo: "", 
-          titulo: "", 
+      : {
+          codigo: "",
+          titulo: "",
           // Fuerza a que quede seleccionado el placeholder vacío (se valida en zod)
-          tipo_documento: "" as unknown as DocumentoFormValues["tipo_documento"],
+          tipo_documento:
+            "" as unknown as DocumentoFormValues["tipo_documento"],
           descripcion: "",
           version_inicial: "v1.0",
-          fecha_proxima_revision: ""
+          fecha_proxima_revision: "",
         };
 
   const {
@@ -76,10 +85,11 @@ export const DocumentoForm = ({
     setValue,
     setError,
     watch,
-    formState: { errors }
+    formState: { errors, isValid },
   } = useForm<DocumentoFormValues>({
     resolver: zodResolver(documentoSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const archivoSeleccionado = watch("archivo");
@@ -89,12 +99,14 @@ export const DocumentoForm = ({
   // Alta con un código que ya pertenece a un documento dado de baja:
   // el backend responde 409 con `documento_id` y aquí se ofrece reactivarlo.
   const [confirmarAltaAbierto, setConfirmarAltaAbierto] = useState(false);
-  const [documentoInactivoId, setDocumentoInactivoId] = useState<number | null>(null);
+  const [documentoInactivoId, setDocumentoInactivoId] = useState<number | null>(
+    null,
+  );
   const [codigoEnviado, setCodigoEnviado] = useState("");
   const [errorConfirmar, setErrorConfirmar] = useState("");
 
   const { submit, isSubmitting } = useDocumentoSubmit({
-    endpoint: `${BASE_URL}/documentos/`, 
+    endpoint: `${BASE_URL}/documentos/`,
     method: esModoCrear ? "POST" : "PATCH",
     id: esModoModificar ? documento!.id : undefined,
     onInactivo: (documento_id) => {
@@ -130,7 +142,9 @@ export const DocumentoForm = ({
     // (JSON con los metadatos + el autor obligatorio) y, si hay PDF, el `archivo`.
     if (esModoCrear) {
       if (!usuario) {
-        setError("root", { message: "No se identificó al usuario autenticado." });
+        setError("root", {
+          message: "No se identificó al usuario autenticado.",
+        });
         return;
       }
 
@@ -139,13 +153,17 @@ export const DocumentoForm = ({
         tipo_documento: values.tipo_documento,
         creado_por_id: usuario.id,
       };
-      if (values.codigo && values.codigo.trim() !== "") datos.codigo = values.codigo.trim();
-      if (values.descripcion && values.descripcion.trim() !== "") datos.descripcion = values.descripcion.trim();
+      if (values.codigo && values.codigo.trim() !== "")
+        datos.codigo = values.codigo.trim();
+      if (values.descripcion && values.descripcion.trim() !== "")
+        datos.descripcion = values.descripcion.trim();
 
       // La versión inicial y su fecha de revisión solo aplican si se adjunta el PDF
       if (values.archivo) {
-        if (values.version_inicial) datos.version_inicial = values.version_inicial;
-        if (values.fecha_proxima_revision) datos.fecha_proxima_revision = values.fecha_proxima_revision;
+        if (values.version_inicial)
+          datos.version_inicial = values.version_inicial;
+        if (values.fecha_proxima_revision)
+          datos.fecha_proxima_revision = values.fecha_proxima_revision;
       }
 
       const formData = new FormData();
@@ -162,7 +180,7 @@ export const DocumentoForm = ({
         onGuardado?.();
       }
 
-    // CASO de MODIFICACIÓN — JSON puro a través del Hook (PATCH)
+      // CASO de MODIFICACIÓN — JSON puro a través del Hook (PATCH)
     } else {
       const payload: DocumentoFormData = {
         titulo: values.titulo,
@@ -186,49 +204,61 @@ export const DocumentoForm = ({
     }
   };
 
-  const opcionesTipo = TIPOS_DOCUMENTO.map(t => ({ label: t.replace('_', ' '), value: t }));
-
+  const opcionesTipo = TIPOS_DOCUMENTO.map((t) => ({
+    label: t.replace("_", " "),
+    value: t,
+  }));
 
   // MODO LECTURA ("VER")
 
   if (esModoVer && documento) {
     return (
       <FormContainer modal={enModal}>
-        <FormHeader title="Ver Documento" icon={FiEye} />
-        
-        <VStack gap={6} align="stretch" w="100%" mt={4}>
-          <DetalleSection title="Información General" icon={FiFileText}>
-            <DetalleItem label="Código">{documento.codigo || "S/C"}</DetalleItem>
-            <DetalleItem label="Título">{documento.titulo}</DetalleItem>
-            <DetalleItem label="Tipo de Documento">{documento.tipo_documento.replace('_', ' ')}</DetalleItem>
-            <DetalleItem label="Descripción">{documento.descripcion || "Sin descripción"}</DetalleItem>
+        <FormHeader title='Ver Documento' icon={FiEye} />
+
+        <VStack gap={6} align='stretch' w='100%' mt={4}>
+          <DetalleSection title='Información General' icon={FiFileText}>
+            <DetalleItem label='Código'>
+              {documento.codigo || "S/C"}
+            </DetalleItem>
+            <DetalleItem label='Título'>{documento.titulo}</DetalleItem>
+            <DetalleItem label='Tipo de Documento'>
+              {documento.tipo_documento.replace("_", " ")}
+            </DetalleItem>
+            <DetalleItem label='Descripción' fullWidth>
+              {documento.descripcion || "Sin descripción"}
+            </DetalleItem>
           </DetalleSection>
 
           {documento.version_vigente && (
-            <DetalleSection title="Versión Vigente" icon={FiCheckCircle}>
-              <DetalleItem label="Número de Versión">{documento.version_vigente.version}</DetalleItem>
-              <DetalleItem label="Próxima Revisión">
+            <DetalleSection title='Versión Vigente' icon={FiCheckCircle}>
+              <DetalleItem label='Número de Versión'>
+                {documento.version_vigente.version}
+              </DetalleItem>
+              <DetalleItem label='Próxima Revisión'>
                 {documento.version_vigente.fecha_proxima_revision
-                  ? formatearFecha(documento.version_vigente.fecha_proxima_revision)
+                  ? formatearFecha(
+                      documento.version_vigente.fecha_proxima_revision,
+                    )
                   : "No definida"}
               </DetalleItem>
-              <DetalleItem label="Fecha de Subida">
+              <DetalleItem label='Fecha de Subida'>
                 {formatearFecha(documento.version_vigente.fecha_subida)}
               </DetalleItem>
-              <DetalleItem label="Subido por">
-                {documento.version_vigente.subido_por_nombre || "Usuario desconocido"}
+              <DetalleItem label='Subido por'>
+                {documento.version_vigente.subido_por_nombre ||
+                  "Usuario desconocido"}
               </DetalleItem>
             </DetalleSection>
           )}
         </VStack>
 
         <FormActions>
-          <CancelButton text="Cerrar" onClick={onCancelar} icon={FiXCircle} />
+          <CancelButton text='Cerrar' onClick={onCancelar} icon={FiXCircle} />
         </FormActions>
       </FormContainer>
     );
   }
-
 
   // MODO FORMULARIO (CREAR O MODIFICAR)
 
@@ -238,30 +268,32 @@ export const DocumentoForm = ({
         title={esModoCrear ? "Nuevo Documento" : "Modificar Documento"}
         icon={esModoModificar ? FiEdit2 : FiFileText}
       />
-      
+
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <VStack gap={4}>
-          {errors.root?.message && <AlertMessage type="error" message={errors.root.message} />}
+        <FormGrid>
+          {errors.root?.message && (
+            <AlertMessage type='error' message={errors.root.message} />
+          )}
 
           <TextField
-            label="Código (Opcional)"
+            label='Código (Opcional)'
             defaultValue={defaultValues.codigo}
-            placeholder="Ej. POES-001 (Se autogenera)"
+            placeholder='Ej. POES-001 (Se autogenera)'
             error={errors.codigo?.message}
             {...register("codigo")}
           />
 
           <TextField
-            label="Título"
+            label='Título'
             defaultValue={defaultValues.titulo}
-            placeholder="Ej. Sanitización de Equipos"
+            placeholder='Ej. Sanitización de Equipos'
             error={errors.titulo?.message}
             {...register("titulo")}
           />
 
           <SelectField
-            label="Tipo de Documento"
-            placeholder="Seleccioná un tipo"
+            label='Tipo de Documento'
+            placeholder='Seleccioná un tipo'
             defaultValue={defaultValues.tipo_documento}
             options={opcionesTipo}
             error={errors.tipo_documento?.message}
@@ -269,23 +301,32 @@ export const DocumentoForm = ({
           />
 
           <TextAreaField
-            label="Descripción"
+            label='Descripción'
             defaultValue={defaultValues.descripcion}
-            placeholder="Breve descripción..."
+            placeholder='Breve descripción...'
             error={errors.descripcion?.message}
             {...register("descripcion")}
           />
 
           {esModoCrear && (
-            <Box w="100%" mt={4} pt={4} borderTop="1px solid" borderColor="gray.200">
-              <Text fontSize="md" fontWeight="bold" mb={4} color="gray.600">
+            <Box
+              w='100%'
+              mt={4}
+              pt={4}
+              borderTop='1px solid'
+              borderColor='gray.200'
+              gridColumn='1 / -1'
+            >
+              <Text fontSize='md' fontWeight='bold' mb={4} color='gray.600'>
                 Subir PDF (Opcional)
               </Text>
 
               {/* Dropzone compartido con el modal de Subir Nueva Versión */}
               <PdfArchivoField
                 value={archivoSeleccionado ?? null}
-                onChange={(file) => setValue("archivo", file, { shouldValidate: true })}
+                onChange={(file) =>
+                  setValue("archivo", file, { shouldValidate: true })
+                }
                 error={errors.archivo?.message as string | undefined}
               />
 
@@ -293,26 +334,28 @@ export const DocumentoForm = ({
                 <>
                   <Box mb={4}>
                     <TextField
-                      label="Número de Versión"
+                      label='Número de Versión'
                       defaultValue={defaultValues.version_inicial}
-                      placeholder="ej. v1.0"
+                      placeholder='ej. v1.0'
                       error={errors.version_inicial?.message}
                       {...register("version_inicial")}
                     />
                   </Box>
 
                   <Field.Root invalid={!!errors.fecha_proxima_revision} mb={6}>
-                    <Field.Label fontSize="md" fontFamily="sans-serif">
+                    <Field.Label fontSize='md' fontFamily='sans-serif'>
                       Fecha Próxima Revisión
                     </Field.Label>
                     <Input
-                      type="date"
+                      type='date'
                       min={hoyLocal}
                       defaultValue={defaultValues.fecha_proxima_revision}
                       {...register("fecha_proxima_revision")}
                     />
                     {errors.fecha_proxima_revision && (
-                      <Text color="red.500" fontSize="sm">{errors.fecha_proxima_revision.message as string}</Text>
+                      <Text color='red.500' fontSize='sm'>
+                        {errors.fecha_proxima_revision.message as string}
+                      </Text>
                     )}
                   </Field.Root>
                 </>
@@ -321,22 +364,27 @@ export const DocumentoForm = ({
           )}
 
           <FormActions>
-            <CancelButton text="Cancelar" onClick={onCancelar} icon={FiXCircle} />
             <SubmitButton
               text={esModoModificar ? "Guardar Cambios" : "Guardar"}
               loading={isSubmitting}
-              type="submit"
+              type='submit'
               icon={FiSave}
+              disabled={!isValid}
+            />
+            <CancelButton
+              text='Cancelar'
+              onClick={onCancelar}
+              icon={FiXCircle}
             />
           </FormActions>
-        </VStack>
+        </FormGrid>
       </form>
 
       {/* El código del alta pertenece a un documento dado de baja: se ofrece reactivarlo */}
       {esModoCrear && (
         <AlertConfirm
           open={confirmarAltaAbierto}
-          title="Reactivar Documento"
+          title='Reactivar Documento'
           message={`Ya existe un documento inactivo con el código "${codigoEnviado}". ¿Querés reactivarlo?`}
           loading={reactivar.isSubmitting}
           error={errorConfirmar}

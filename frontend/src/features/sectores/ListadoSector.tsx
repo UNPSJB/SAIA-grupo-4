@@ -12,6 +12,7 @@ import {
     AlertMessage,
     DataTable,
     FiltrosBar,
+    FiltroSelect,
     FiltroTexto,
     LoadingState,
     RowActionButton,
@@ -33,13 +34,20 @@ interface ListadoSectoresProps {
 }
 
 
-const construirEndpoint = (busqueda: string) => {
+const construirEndpoint = (busqueda: string, estado: string) => {
     const params = new URLSearchParams();
     if (busqueda) params.set("busqueda", busqueda);
+    if (estado === "activo") params.set("activo", "true");
+    if (estado === "inactivo") params.set("activo", "false");
 
     const query = params.toString();
     return `${BASE_URL}/sectores/${query ? `?${query}` : ""}`;
 };
+
+const OPCIONES_ESTADO = [
+    { label: "Activos", value: "activo" },
+    { label: "Inactivos", value: "inactivo" },
+];
 
 export const ListadoSectores = ({
     onCrear,
@@ -48,16 +56,34 @@ export const ListadoSectores = ({
     onVer,
     onDarAlta,
 }: ListadoSectoresProps) => {
-    // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+    // La búsqueda se aplica sola con debounce; el select espera a "Filtrar".
     const [busqueda, setBusqueda] = useState("");
     const busquedaAplicada = useDebounce(busqueda.trim(), 300);
 
+    const [estado, setEstado] = useState("");
+    const [estadoAplicado, setEstadoAplicado] = useState("");
+
+    const hayFiltros = busqueda.trim() !== "" || estado !== "";
+    const hayAplicados = busquedaAplicada !== "" || estadoAplicado !== "";
+
     const { data, loading, error, page, setPage, itemsPaginados } =
         useListadoData<Sector>({
-            endpoint: construirEndpoint(busquedaAplicada),
+            endpoint: construirEndpoint(busquedaAplicada, estadoAplicado),
             pageSize: ITEMS_POR_PAGINA,
             errorMessage: "No se pudo cargar la lista de sectores.",
         });
+
+    const aplicar = () => {
+        setEstadoAplicado(estado);
+        setPage(1);
+    };
+
+    const limpiar = () => {
+        setBusqueda("");
+        setEstado("");
+        setEstadoAplicado("");
+        setPage(1);
+    };
 
     const columnas: ColumnDef<Sector>[] = [
         {
@@ -113,7 +139,7 @@ export const ListadoSectores = ({
     ];
 
     return (
-        <ListadoContainer maxW='6xl'>
+        <ListadoContainer>
             <ListadoHeader
                 title="Sectores"
                 icon={FiMap}
@@ -122,10 +148,9 @@ export const ListadoSectores = ({
             />
             <Box mb={4}>
                <FiltrosBar
-                    ocultarAplicar
-                    onAplicar={() => {}}
-                    onLimpiar={() => setBusqueda("")}
-                    hayFiltrosActivos={busqueda !== ""}
+                    onAplicar={aplicar}
+                    onLimpiar={limpiar}
+                    hayFiltrosActivos={hayFiltros}
                     loading={loading}
                 >
                 <FiltroTexto
@@ -133,6 +158,16 @@ export const ListadoSectores = ({
                     placeholder="Nombre del sector"
                     value={busqueda}
                     onChange={setBusqueda}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") aplicar();
+                    }}
+                />
+                <FiltroSelect
+                    ariaLabel="Estado del sector"
+                    placeholder="Todos los estados"
+                    options={OPCIONES_ESTADO}
+                    value={estado}
+                    onChange={setEstado}
                 />
                 </FiltrosBar>
             </Box>
@@ -145,8 +180,8 @@ export const ListadoSectores = ({
                 <AlertMessage
                     type="info"
                     message={
-                        busquedaAplicada
-                            ? "No hay sectores que coincidan con la búsqueda."
+                        hayAplicados
+                            ? "No hay sectores que coincidan con los filtros."
                             : "Todavía no hay sectores cargados."
                     }
                 />

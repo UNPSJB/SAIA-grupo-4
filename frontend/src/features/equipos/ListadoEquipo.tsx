@@ -1,6 +1,6 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { useState } from "react";
-import { Badge, Button, Box, HStack, Text, VStack } from "@chakra-ui/react";
+import { Badge, Button, Box, Text, VStack } from "@chakra-ui/react";
 import {
   FiThermometer,
   FiEdit2,
@@ -19,11 +19,14 @@ import {
   LoadingState,
   RowActionButton,
   RowActions,
+  SemaforoFecha,
+  SemaforoLegend,
   TablePagination,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import { useDebounce } from "../../hooks/useDebounce";
+import { calcularSemaforo, sumarDias } from "../../utils/semaforo";
 import type { Equipo } from "./types";
 import type { Sector } from "../sectores/types";
 import type { ColumnDef } from "../../components/ui";
@@ -39,53 +42,18 @@ const renderProximaCalibracion = (equipo: Equipo) => {
     return <Text>—</Text>;
   }
 
-  const [anio, mes, dia] = equipo.fecha_ultima_calibracion
-    .split("-")
-    .map(Number);
-  const ultima = new Date(anio, mes - 1, dia);
-  const proxima = new Date(ultima);
-  proxima.setDate(proxima.getDate() + equipo.frecuencia_calibracion_dias);
-
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const diffTiempo = proxima.getTime() - hoy.getTime();
-  const diasRestantes = Math.round(diffTiempo / (1000 * 60 * 60 * 24));
-
-  let color: string;
-  let leyenda = "";
-
-  if (diasRestantes < 0) {
-    color = "red";
-    leyenda = "(Vencido)";
-  } else if (diasRestantes <= 15) {
-    color = "yellow";
-    leyenda = diasRestantes === 0 ? "(Hoy)" : `(En ${diasRestantes} días)`;
-  } else {
-    color = "green";
-  }
-
-  const proximaStr = `${String(proxima.getDate()).padStart(2, "0")}/${String(
-    proxima.getMonth() + 1,
-  ).padStart(2, "0")}/${proxima.getFullYear()}`;
+  const proxima = sumarDias(
+    equipo.fecha_ultima_calibracion,
+    equipo.frecuencia_calibracion_dias,
+  );
+  const { estado, diasRestantes } = calcularSemaforo(proxima);
 
   return (
-    <VStack gap={0} align='start'>
-      <HStack gap={2}>
-        <Box
-          w={3}
-          h={3}
-          borderRadius='full'
-          bg={`${color}.500`}
-          flexShrink={0}
-        />
-        <Text>{proximaStr}</Text>
-      </HStack>
-      {leyenda && (
-        <Text fontSize='sm' fontStyle='italic' color='gray.500'>
-          {leyenda}
-        </Text>
-      )}
-    </VStack>
+    <SemaforoFecha
+      estado={estado}
+      fecha={proxima}
+      diasRestantes={diasRestantes}
+    />
   );
 };
 
@@ -274,7 +242,7 @@ export const ListadoEquipos = ({
   ];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <ListadoHeader title='Equipos' icon={FiThermometer}>
         {onCrear && (
           <Button colorPalette='green' onClick={onCrear}>
@@ -357,6 +325,8 @@ export const ListadoEquipos = ({
             columns={columnas}
             getRowKey={(equipo) => equipo.id}
           />
+
+          <SemaforoLegend />
 
           <TablePagination
             count={data.length}

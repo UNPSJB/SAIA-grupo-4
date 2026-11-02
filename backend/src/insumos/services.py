@@ -92,7 +92,11 @@ def eliminar_insumo(db: Session, insumo_id: int, ) -> schemas.InsumoDelete:
     return db_insumo
 
 
-def listar_insumos(db: Session, busqueda: str | None = None):
+def listar_insumos(
+    db: Session,
+    busqueda: str | None = None,
+    disponible: bool | None = None,
+):
     consulta = select(Insumo)
 
     # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las
@@ -104,5 +108,8 @@ def listar_insumos(db: Session, busqueda: str | None = None):
             [Insumo.nombre, Insumo.categoria, UnidadMedida.nombre, UnidadMedida.simbolo],
             busqueda,
         ))
+
+    if disponible is not None:
+        consulta = consulta.where(Insumo.disponible.is_(disponible))
 
     return db.scalars(consulta).all()

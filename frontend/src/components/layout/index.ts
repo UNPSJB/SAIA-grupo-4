@@ -1,4 +1,4 @@
-export { NavBar, type NavItem } from "./SideBar";
+export { SideBar, type NavItem } from "./SideBar";
 export {
   OperadorLayout,
   OPERADOR_MOBILE_BAR_HEIGHT,
@@ -8,6 +8,7 @@ export { FormHeader } from "./FormHeader";
 export { FormContainer } from "./FormContainer";
 export { FormModal } from "./FormModal";
 export { FormActions } from "./FormActions";
+export { FormGrid, FormGridFull } from "./FormGrid";
 export { ListadoContainer } from "./ListadoContainer";
 export { ListadoHeader } from "./ListadoHeader";
 export { DetalleModal, type SeccionDetalle } from "./DetalleModal";

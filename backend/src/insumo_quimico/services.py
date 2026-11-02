@@ -103,6 +103,7 @@ def listar_insumos_quimicos(
     sector_id: int | None = None,
     equipo_id: int | None = None,
     busqueda: str | None = None,
+    activo: bool | None = None,
 ) -> List[InsumoQuimico]:
     if sector_id is not None and equipo_id is not None:
         raise BadRequest(
@@ -136,11 +137,16 @@ def listar_insumos_quimicos(
         )
 
     # Sin filtros se listan también los inactivos, para que las vistas
-    # históricas puedan resolver el nombre de recursos dados de baja.
+    # históricas puedan resolver el nombre de recursos dados de baja. Si se
+    # filtra por asociación y no se pidió un estado explícito, se mantiene el
+    # comportamiento original: solo activos.
+    if activo is None and (sector_id is not None or equipo_id is not None):
+        activo = True
+    if activo is not None:
+        query = query.where(InsumoQuimico.activo.is_(activo))
+
     if sector_id is None and equipo_id is None:
         return db.scalars(query).all()
-
-    query = query.where(InsumoQuimico.activo.is_(True))
 
     # Condición base: Insumos generales de toda la planta
     filtro_general = and_(

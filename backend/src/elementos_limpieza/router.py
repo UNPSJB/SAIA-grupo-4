@@ -43,6 +43,14 @@ def listar_elementos_por_equipo(equipo_id: int, db: Session = Depends(get_db)):
 def listar_elementos_limpieza(
     busqueda: str | None = None,
     activo: bool | None = None,
+    sector_id: int | None = None,
+    equipo_id: int | None = None,
     db: Session = Depends(get_db)
 ):
-    return services.listar_elementos_limpieza(db, activo=activo, busqueda=busqueda)
+    return services.listar_elementos_limpieza(
+        db,
+        activo=activo,
+        busqueda=busqueda,
+        sector_id=sector_id,
+        equipo_id=equipo_id,
+    )

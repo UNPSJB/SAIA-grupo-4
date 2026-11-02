@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Badge, Box, Button } from "@chakra-ui/react";
+import { Box, Button } from "@chakra-ui/react";
 import { FiEye, FiClock } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
+import { EstadoIncidenteBadge } from "./EstadoIncidenteBadge";
 import type { Incidente } from "./types";
 import { HistorialIncidente } from "./HistorialIncidente";
 
@@ -33,20 +34,20 @@ export const IncidenteDetalle = ({
       icono: FiEye,
       items: [
         { label: "Título", valor: incidente.titulo },
-        { label: "Descripción", valor: incidente.descripcion },
+        { label: "Descripción", valor: incidente.descripcion, fullWidth: true },
         { label: "Fecha y Hora de Reporte", valor: formatearFecha(incidente.fecha_hora_reporte) },
         { label: "Reportante", valor: `${incidente.reportante.nombre} ${incidente.reportante.apellido}` },
         {
           label: "Estado",
-          valor: (
-            <Badge colorPalette={incidente.abierto ? "green" : "red"}>
-              {incidente.abierto ? "Abierto" : "Cerrado"}
-            </Badge>
-          ),
+          valor: <EstadoIncidenteBadge abierto={incidente.abierto} />,
         },
         ...(!incidente.abierto
           ? [
-              { label: "Acción correctiva", valor: incidente.accion_correctiva ?? "-" },
+              {
+                label: "Acción correctiva",
+                valor: incidente.accion_correctiva ?? "-",
+                fullWidth: true,
+              },
               {
                 label: "Fecha de cierre",
                 valor: incidente.fecha_cierre ? formatearFecha(incidente.fecha_cierre) : "-",

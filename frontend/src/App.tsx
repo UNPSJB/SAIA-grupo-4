@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, ChakraProvider, Flex, defaultSystem } from "@chakra-ui/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FiArchive, FiCheckSquare } from "react-icons/fi";
-import { NavBar, OperadorLayout, type NavItem } from "./components/layout";
+import { SideBar, OperadorLayout, type NavItem } from "./components/layout";
 import { AlertConfirm, LoadingState } from "./components/ui";
 import { AuthProvider } from "./features/auth/AuthProvider";
 import { useAuth } from "./features/auth/useAuth";
@@ -52,7 +52,7 @@ function AppContent() {
   }
 
   // RAMA SIN SESIÓN: solo existe la vista de login. Cualquier otra URL
-  // redirige a "/". No se renderiza el NavBar ni contenido de gestión.
+  // redirige a "/". No se renderiza el SideBar ni contenido de gestión.
   if (!usuario) {
     return (
       <Routes>
@@ -66,7 +66,7 @@ function AppContent() {
   const esOp = esOperador(usuario);
 
   // RAMA OPERADOR: quien no tiene "administrar". Ahora usa un layout propio
-  // (OperadorLayout) con navbar responsiva: Checklist Diario + Documentos.
+  // (OperadorLayout) con barra lateral responsiva: Checklist Diario + Documentos.
   // El logout vive en el layout. Entra directo al checklist diario.
   if (!esAdmin) {
     return (
@@ -116,11 +116,11 @@ function AppContent() {
   // - solo administra: únicamente el historial, como botón directo.
   const checklistItems = esOp ? CHECKLIST_ITEMS : [CHECKLIST_ITEMS[1]];
 
-  // RAMA ADMINISTRADOR: layout completo (NavBar + rutas protegidas).
+  // RAMA ADMINISTRADOR: layout completo (SideBar + rutas protegidas).
   return (
     <>
       <Flex minH='100vh' w='100%'>
-        <NavBar
+        <SideBar
           username={`${usuario.nombre} ${usuario.apellido}`}
           checklistItems={checklistItems}
           checklistColapsable={esOp}
@@ -256,7 +256,7 @@ function AppContent() {
             />
 
             {/* Checklists. El diario requiere "administrar" + "operar": quien solo
-                administra no lo ve en el NavBar y, si escribe la URL a mano, cae
+                administra no lo ve en el SideBar y, si escribe la URL a mano, cae
                 en su vista habilitada (/historial). */}
             {esOp ? (
               <Route
@@ -348,7 +348,7 @@ function AppInterno() {
       {/*
         El modal de renovacion vive aca y no en la campana: la campana esta
         dentro de un Popover que se cierra en el mismo tick que el modal se
-        abre, y los dos overlays se pisan. Fuera del NavBar el Dialog no
+        abre, y los dos overlays se pisan. Fuera del SideBar el Dialog no
         comparte arbol con nadie.
       */}
       <RenovacionProvider>

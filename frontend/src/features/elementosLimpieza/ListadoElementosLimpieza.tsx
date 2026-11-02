@@ -1,4 +1,4 @@
-import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
+import { BASE_URL, ITEMS_POR_PAGINA, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { Badge, Box, HStack, Button } from "@chakra-ui/react";
 import {
@@ -20,12 +20,15 @@ import {
   LoadingState,
   RowActionButton,
   RowActions,
+  SemaforoLegend,
   TablePagination,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import { useDebounce } from "../../hooks/useDebounce";
 import type { ElementoLimpieza } from "./types";
+import type { Sector } from "../sectores/types";
+import type { Equipo } from "../equipos/types";
 import { ProximoRecambio } from "../recambios/ProximoRecambio";
 import type { AlertaRecambio } from "../recambios/types";
 import type { ColumnDef } from "../../components/ui";
@@ -40,9 +43,17 @@ interface ListadoElementosLimpiezaProps {
   onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
-type FiltrosElemento = { estado: string };
+type FiltrosElemento = {
+  estado: string;
+  sectorId: string;
+  equipoId: string;
+};
 
-const FILTROS_INICIALES: FiltrosElemento = { estado: "activos" };
+const FILTROS_INICIALES: FiltrosElemento = {
+  estado: "activos",
+  sectorId: "",
+  equipoId: "",
+};
 
 const OPCIONES_ESTADO = [
   { label: "Activos", value: "activos" },
@@ -68,6 +79,8 @@ const construirEndpoint = (filtros: FiltrosElemento, busqueda: string) => {
   const params = new URLSearchParams();
   if (filtros.estado === "activos") params.set("activo", "true");
   if (filtros.estado === "inactivos") params.set("activo", "false");
+  if (filtros.sectorId) params.set("sector_id", filtros.sectorId);
+  if (filtros.equipoId) params.set("equipo_id", filtros.equipoId);
   if (busqueda) params.set("busqueda", busqueda);
 
   const query = params.toString();
@@ -109,17 +122,53 @@ export const ListadoElementosLimpieza = ({
     [alertas],
   );
 
-  const hayFiltros =
-    busqueda !== "" || borrador.estado !== FILTROS_INICIALES.estado;
-  const hayAplicados =
-    busquedaAplicada !== "" || aplicados.estado !== FILTROS_INICIALES.estado;
+  // Catálogos para los filtros. Se traen todos, incluso los inactivos, para
+  // poder filtrar elementos que hayan quedado en un sector o equipo dado de baja.
+  const { data: sectores } = useListadoData<Sector>({
+    endpoint: `${BASE_URL}/sectores/`,
+    pageSize: ITEMS_SELECT,
+    errorMessage: "No se pudieron cargar los sectores.",
+  });
+  const { data: equipos } = useListadoData<Equipo>({
+    endpoint: `${BASE_URL}/equipos/`,
+    pageSize: ITEMS_SELECT,
+    errorMessage: "No se pudieron cargar los equipos.",
+  });
 
-  const aplicar = () => setAplicados(borrador);
+  const opcionesSectores = sectores.map((sector) => ({
+    label: sector.nombre,
+    value: String(sector.id),
+  }));
+  const opcionesEquipos = equipos.map((equipo) => ({
+    label: equipo.nombre,
+    value: String(equipo.id),
+  }));
+
+  const hayFiltros =
+    busqueda.trim() !== "" ||
+    busquedaAplicada !== "" ||
+    borrador.estado !== FILTROS_INICIALES.estado ||
+    aplicados.estado !== FILTROS_INICIALES.estado ||
+    borrador.sectorId !== "" ||
+    aplicados.sectorId !== "" ||
+    borrador.equipoId !== "" ||
+    aplicados.equipoId !== "";
+  const hayAplicados =
+    busquedaAplicada !== "" ||
+    aplicados.estado !== FILTROS_INICIALES.estado ||
+    aplicados.sectorId !== "" ||
+    aplicados.equipoId !== "";
+
+  const aplicar = () => {
+    setAplicados(borrador);
+    setPage(1);
+  };
 
   const limpiar = () => {
     setBusqueda("");
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
+    setPage(1);
   };
 
   const columnas: ColumnDef<ElementoLimpieza>[] = [
@@ -237,7 +286,7 @@ export const ListadoElementosLimpieza = ({
   ];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader
           title='Elementos de Limpieza'
@@ -265,13 +314,44 @@ export const ListadoElementosLimpieza = ({
             placeholder='Nombre, código o ubicación'
             value={busqueda}
             onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
           />
           <FiltroSelect
             ariaLabel='Estado del elemento'
             placeholder='Estado'
             options={OPCIONES_ESTADO}
             value={borrador.estado}
-            onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
+            onChange={(valor) =>
+              setBorrador((actual) => ({ ...actual, estado: valor }))
+            }
+          />
+          <FiltroSelect
+            ariaLabel='Sector del elemento'
+            placeholder='Todos los sectores'
+            options={opcionesSectores}
+            value={borrador.sectorId}
+            onChange={(valor) =>
+              setBorrador((actual) => ({
+                ...actual,
+                sectorId: valor,
+                equipoId: valor ? "" : actual.equipoId,
+              }))
+            }
+          />
+          <FiltroSelect
+            ariaLabel='Equipo del elemento'
+            placeholder='Todos los equipos'
+            options={opcionesEquipos}
+            value={borrador.equipoId}
+            onChange={(valor) =>
+              setBorrador((actual) => ({
+                ...actual,
+                equipoId: valor,
+                sectorId: valor ? "" : actual.sectorId,
+              }))
+            }
           />
         </FiltrosBar>
       </Box>
@@ -296,6 +376,9 @@ export const ListadoElementosLimpieza = ({
             getRowKey={(e) => e.id}
             minW='1210px'
           />
+
+          <SemaforoLegend />
+
           <TablePagination
             count={data.length}
             page={page}

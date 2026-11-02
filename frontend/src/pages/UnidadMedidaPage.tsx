@@ -72,7 +72,7 @@ export default function UnidadMedidaPage() {
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       {volverA && (
-        <Box maxW='6xl' mx='auto' mb={-4} textAlign='left'>
+        <Box maxW='8xl' mx='auto' mb={-4} textAlign='left'>
           <Button
             variant='ghost'
             colorPalette='green'

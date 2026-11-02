@@ -49,7 +49,11 @@ export const VencimientoDetalle = ({ vencimiento, onCerrar }: Props) => {
           ),
         },
         { label: "Concepto", valor: vencimiento.concepto },
-        { label: "Detalle", valor: vencimiento.detalle ?? "—" },
+        {
+          label: "Detalle",
+          valor: vencimiento.detalle ?? "—",
+          fullWidth: true,
+        },
         {
           label: "Fecha",
           valor: (

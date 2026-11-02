@@ -8,7 +8,7 @@ interface ListadoContainerProps {
 
 export const ListadoContainer = ({
   children,
-  maxW = "4xl",
+  maxW = "8xl",
   mt = 20,
   ...rest
 }: ListadoContainerProps) => (

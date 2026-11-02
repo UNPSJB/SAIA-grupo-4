@@ -17,9 +17,12 @@ def read_insumos_quimicos(
     busqueda: str | None = None,
     sector_id: int | None = None,
     equipo_id: int | None = None,
+    activo: bool | None = None,
     db: Session = Depends(get_db),
 ):
-    return services.listar_insumos_quimicos(db, sector_id, equipo_id, busqueda)
+    return services.listar_insumos_quimicos(
+        db, sector_id, equipo_id, busqueda, activo
+    )
 
 @router.get("/{insumo_quimico_id}", response_model=schemas.InsumoQuimico)
 def read_insumo_quimico(insumo_quimico_id: int, db: Session = Depends(get_db)):

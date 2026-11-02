@@ -6,7 +6,7 @@ interface FormModalProps {
   open: boolean;
   title?: string;
   titleIcon?: ElementType;
-  /** Ancho máximo del contenido. Por defecto deja el que trae el Dialog. */
+  /** Ancho máximo del contenido. Por defecto usa el ancho amplio de formularios. */
   maxW?: string;
   showClose?: boolean;
   /**
@@ -24,7 +24,7 @@ export const FormModal = ({
   open,
   title,
   titleIcon,
-  maxW,
+  maxW = "5xl",
   showClose = false,
   closeOnInteractOutside = true,
   onClose,
@@ -38,8 +38,14 @@ export const FormModal = ({
     <Portal>
       <Dialog.Backdrop />
       <Dialog.Positioner>
-        <Dialog.Content maxW={maxW}>
-          <Dialog.Header>
+        <Dialog.Content
+          maxW={maxW}
+          w='calc(100vw - 2rem)'
+          maxH='calc(100vh - 2rem)'
+          display='flex'
+          flexDirection='column'
+        >
+          <Dialog.Header flexShrink={0}>
             {title && (
               <Dialog.Title
                 color='green'
@@ -62,7 +68,9 @@ export const FormModal = ({
               </Dialog.CloseTrigger>
             )}
           </Dialog.Header>
-          <Dialog.Body>{children}</Dialog.Body>
+          <Dialog.Body flex='1' minH={0} overflowY='auto'>
+            {children}
+          </Dialog.Body>
         </Dialog.Content>
       </Dialog.Positioner>
     </Portal>

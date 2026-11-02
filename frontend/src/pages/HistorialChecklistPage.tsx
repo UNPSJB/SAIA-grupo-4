@@ -91,7 +91,7 @@ export default function HistorialChecklistPage() {
 
   return (
     <Box bg="gray.50" minH="100vh">
-      {/* Contenido principal. Esta vista solo se alcanza desde el NavBar, que ya
+      {/* Contenido principal. Esta vista solo se alcanza desde el SideBar, que ya
           aporta la marca institucional, por eso no lleva barra propia. */}
       <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
         <Container maxW="container.lg" px={0}>

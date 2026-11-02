@@ -7,7 +7,14 @@ import { DetalleSection } from "../ui/form/data-display/DetalleSection";
 export type SeccionDetalle = {
   titulo: string;
   icono?: ElementType;
-  items: Array<{ label: string; valor: ReactNode }>;
+  /** Fuerza la cantidad de columnas de la sección en escritorio. */
+  columnas?: 1 | 2;
+  items: Array<{
+    label: string;
+    valor: ReactNode;
+    /** El ítem ocupa todo el ancho de la sección. */
+    fullWidth?: boolean;
+  }>;
 };
 
 interface DetalleModalProps {
@@ -31,6 +38,7 @@ export const DetalleModal = ({
     titleIcon={icon}
     showClose
     onClose={onClose}
+    maxW='4xl'
   >
     <VStack gap={4} align='stretch'>
       {secciones.map((seccion) => (
@@ -38,9 +46,14 @@ export const DetalleModal = ({
           key={seccion.titulo}
           title={seccion.titulo}
           icon={seccion.icono}
+          columns={seccion.columnas ?? (seccion.items.length > 1 ? 2 : 1)}
         >
-          {seccion.items.map((item) => (
-            <DetalleItem key={item.label} label={item.label}>
+          {seccion.items.map((item, index) => (
+            <DetalleItem
+              key={`${item.label}-${index}`}
+              label={item.label}
+              fullWidth={item.fullWidth}
+            >
               {item.valor}
             </DetalleItem>
           ))}

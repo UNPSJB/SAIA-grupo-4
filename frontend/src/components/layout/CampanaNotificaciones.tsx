@@ -112,7 +112,7 @@ const FilaNotificacion = ({
 };
 
 /**
- * Campana de notificaciones y alertas, en el encabezado del NavBar.
+ * Campana de notificaciones y alertas, en el encabezado del SideBar.
  *
  * El badge cuenta vencidos + proximos y no tiene estado de "leido": baja solo
  * cuando la fila sale de la ventana, que es cuando dejo de estar pendiente.

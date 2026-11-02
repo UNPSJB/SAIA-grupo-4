@@ -157,3 +157,15 @@ def test_busqueda_incluye_sectores_inactivos():
     client.delete(f"/sectores/{sector['id']}")
 
     assert sector["id"] in ids_buscados(busqueda=f"archivo{sufijo}")
+
+
+# --- Filtro por estado ---
+
+def test_filtrar_sectores_por_estado():
+    sufijo = sufijo_unico()
+    activo = crear_sector_con_nombre(f"Activo {sufijo}")
+    inactivo = crear_sector_con_nombre(f"Inactivo {sufijo}")
+    assert client.delete(f"/sectores/{inactivo['id']}").status_code == 200
+
+    assert ids_buscados(busqueda=sufijo, activo="true") == {activo["id"]}
+    assert ids_buscados(busqueda=sufijo, activo="false") == {inactivo["id"]}

@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Box, Field, HStack, Input, Separator, Text, VStack } from "@chakra-ui/react";
+import { Box, Field, HStack, Input, Separator, Text } from "@chakra-ui/react";
 import { FiUpload, FiXCircle } from "react-icons/fi";
 
 import {
@@ -8,6 +8,7 @@ import {
   CancelButton,
   FormActions,
   FormContainer,
+  FormGrid,
   FormHeader,
   FormModal,
   SubmitButton,
@@ -54,7 +55,7 @@ export const SubirVersionForm = ({
     setValue,
     setError,
     watch,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<SubirVersionFormValues>({
     resolver: zodResolver(subirVersionSchema),
     defaultValues: {
@@ -62,6 +63,7 @@ export const SubirVersionForm = ({
       fecha_proxima_revision: "",
       observaciones_cambio: "",
     },
+    mode: "onChange",
   });
 
   const archivo = watch("archivo") ?? null;
@@ -89,43 +91,60 @@ export const SubirVersionForm = ({
 
   return (
     <FormContainer modal={enModal}>
-      <FormHeader title="Subir Nueva Versión de Documento" icon={FiUpload} />
+      <FormHeader title='Subir Nueva Versión de Documento' icon={FiUpload} />
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <VStack gap={4} align="stretch">
+        <FormGrid>
           {/* Cabecera de solo lectura */}
-          <Box bg="gray.50" borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4}>
-            <Text fontSize="sm" color="gray.700">
-              <Text as="span" fontWeight="bold">Documento:</Text>{" "}
+          <Box
+            bg='gray.50'
+            borderWidth='1px'
+            borderColor='gray.200'
+            borderRadius='md'
+            p={4}
+            gridColumn='1 / -1'
+          >
+            <Text fontSize='sm' color='gray.700'>
+              <Text as='span' fontWeight='bold'>
+                Documento:
+              </Text>{" "}
               {documento.codigo ? `${documento.codigo} - ` : ""}
               {documento.titulo}
             </Text>
-            <Text fontSize="sm" color="gray.700" mt={1}>
-              <Text as="span" fontWeight="bold">Versión Vigente Actual:</Text>{" "}
+            <Text fontSize='sm' color='gray.700' mt={1}>
+              <Text as='span' fontWeight='bold'>
+                Versión Vigente Actual:
+              </Text>{" "}
               {documento.version_vigente?.version ?? "—"}
             </Text>
           </Box>
 
-          <Separator />
+          <Separator gridColumn='1 / -1' />
 
-          {errors.root?.message && <AlertMessage type="error" message={errors.root.message} />}
+          {errors.root?.message && (
+            <AlertMessage type='error' message={errors.root.message} />
+          )}
 
           {/* Versión (obligatoria) + fecha de próxima revisión (opcional) */}
-          <HStack gap={4} align="start" flexWrap="wrap">
-            <Box flex="1" minW="150px">
+          <HStack gap={4} align='start' flexWrap='wrap' gridColumn='1 / -1'>
+            <Box flex='1' minW='150px'>
               <TextField
-                label="Número de Nueva Versión (*)"
-                placeholder="ej. v1.3"
+                label='Número de Nueva Versión (*)'
+                placeholder='ej. v1.3'
                 error={errors.version?.message}
                 {...register("version")}
               />
             </Box>
-            <Box flex="1" minW="170px">
+            <Box flex='1' minW='170px'>
               <Field.Root invalid={!!errors.fecha_proxima_revision}>
-                <Field.Label fontSize="md" fontFamily="sans-serif">
+                <Field.Label fontSize='md' fontFamily='sans-serif'>
                   Fecha de Próxima Revisión
                 </Field.Label>
-                <Input type="date" min={hoyLocalISO} {...register("fecha_proxima_revision")} />
+                <Input
+                  type='date'
+                  min={hoyLocalISO}
+                  {...register("fecha_proxima_revision")}
+                />
                 {errors.fecha_proxima_revision && (
                   <Field.ErrorText>
                     {errors.fecha_proxima_revision.message as string}
@@ -137,7 +156,7 @@ export const SubirVersionForm = ({
 
           {/* Mismo dropzone que en el alta de documentos (obligatorio acá) */}
           <PdfArchivoField
-            label="Nuevo Archivo PDF Oficial (*)"
+            label='Nuevo Archivo PDF Oficial (*)'
             value={archivo}
             onChange={(file) => {
               if (file) setValue("archivo", file, { shouldValidate: true });
@@ -146,22 +165,27 @@ export const SubirVersionForm = ({
           />
 
           <TextAreaField
-            label="Observaciones del Cambio / Motivo"
-            placeholder="ej. Se actualizó el producto sanitante y se modificó la dosis del paso 2 de desinfección."
+            label='Observaciones del Cambio / Motivo'
+            placeholder='ej. Se actualizó el producto sanitante y se modificó la dosis del paso 2 de desinfección.'
             error={errors.observaciones_cambio?.message}
             {...register("observaciones_cambio")}
           />
 
           <FormActions>
-            <CancelButton text="Cancelar" onClick={onCancelar} icon={FiXCircle} />
             <SubmitButton
-              text="Subir y Activar"
+              text='Subir y Activar'
               loading={isSubmitting}
-              type="submit"
+              type='submit'
               icon={FiUpload}
+              disabled={!isValid}
+            />
+            <CancelButton
+              text='Cancelar'
+              onClick={onCancelar}
+              icon={FiXCircle}
             />
           </FormActions>
-        </VStack>
+        </FormGrid>
       </form>
     </FormContainer>
   );

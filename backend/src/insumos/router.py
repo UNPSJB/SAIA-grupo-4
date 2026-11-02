@@ -32,5 +32,9 @@ def modificar_insumo(insumo_id: int, persona: schemas.InsumoUpdate, db: Session 
     return services.modificar_insumo(db, insumo_id, persona)
 
 @router.get("/", response_model=list[schemas.Insumo])
-def listar_insumos(busqueda: str | None = None, db: Session = Depends(get_db)):
-    return services.listar_insumos(db, busqueda)
+def listar_insumos(
+    busqueda: str | None = None,
+    disponible: bool | None = None,
+    db: Session = Depends(get_db),
+):
+    return services.listar_insumos(db, busqueda, disponible)

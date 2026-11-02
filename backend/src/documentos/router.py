@@ -6,6 +6,7 @@ from src.auth.dependencies import requiere_operacion
 
 from src.database import get_db
 from src.documentos import schemas, services, exceptions
+from src.documentos.constants import TipoDocumentoEnum
 
 router = APIRouter(prefix="/documentos", tags=["documentos"], dependencies=[Depends(requiere_operacion)])
 
@@ -24,9 +25,19 @@ def listar_alertas(db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[schemas.DocumentoDetalle])
-def listar_documentos(db: Session = Depends(get_db)):
-    """Devuelve todos los documentos con su historial completo."""
-    return services.listar_documentos(db)
+def listar_documentos(
+    busqueda: str | None = None,
+    tipo_documento: TipoDocumentoEnum | None = None,
+    activo: bool | None = None,
+    db: Session = Depends(get_db),
+):
+    """Devuelve los documentos con su historial completo, con filtros opcionales."""
+    return services.listar_documentos(
+        db,
+        busqueda=busqueda,
+        tipo_documento=tipo_documento,
+        activo=activo,
+    )
 
 
 @router.get("/{documento_id}", response_model=schemas.DocumentoDetalle)

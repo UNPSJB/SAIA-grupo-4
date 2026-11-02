@@ -1,11 +1,12 @@
 import { BASE_URL } from "../../config";
-import { useState } from "react";
-import { VStack } from "@chakra-ui/react";
+import { useState, useMemo } from "react";
+
 import { FiTag, FiSave, FiXCircle, FiEdit2 } from "react-icons/fi";
 import { useTipoElementoLimpiezaSubmit } from "./hooks/useTipoElementoLimpiezaSubmit";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
   TextField,
   FormActions,
   SubmitButton,
@@ -37,6 +38,16 @@ export const TipoElementoLimpiezaForm = ({
   const [errorPrefijo, setErrorPrefijo] = useState("");
   const [errorEnvio, setErrorEnvio] = useState("");
   const [success, setSuccess] = useState(false);
+
+  // Validación para habilitar/deshabilitar el botón Guardar
+  const esValido = useMemo(() => {
+    if (!nombre.trim()) return false;
+    if (!esModoModificar) {
+      const prefijoNormalizado = prefijo.trim().toUpperCase();
+      if (!/^[A-Z]{2,5}$/.test(prefijoNormalizado)) return false;
+    }
+    return true;
+  }, [nombre, prefijo, esModoModificar]);
 
   const { submit, isSubmitting } = useTipoElementoLimpiezaSubmit({
     endpoint: `${BASE_URL}/tipos-elemento-limpieza/`,
@@ -83,7 +94,7 @@ export const TipoElementoLimpiezaForm = ({
   };
 
   return (
-    <FormContainer modal={enModal}>
+    <FormContainer modal={enModal} maxW='4xl'>
       <FormHeader
         title={
           esModoModificar
@@ -92,12 +103,13 @@ export const TipoElementoLimpiezaForm = ({
         }
         icon={esModoModificar ? FiEdit2 : FiTag}
       />
-      <VStack gap={4}>
+      <FormGrid columns={1}>
         <TextField
           label='Nombre del tipo'
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           error={errorNombre}
+          placeholder='Ej. Esponjas'
         />
         <TextField
           label='Prefijo (2 a 5 letras, ej. ESC)'
@@ -105,6 +117,7 @@ export const TipoElementoLimpiezaForm = ({
           onChange={(e) => setPrefijo(e.target.value.toUpperCase())}
           error={errorPrefijo}
           disabled={esModoModificar}
+          placeholder='Ej. ESP'
         />
         <FormActions>
           <SubmitButton
@@ -113,6 +126,7 @@ export const TipoElementoLimpiezaForm = ({
             loading={isSubmitting}
             onClick={handleGuardar}
             colorPalette='green'
+            disabled={!esValido}
           />
           <CancelButton
             text='Cancelar'
@@ -133,7 +147,7 @@ export const TipoElementoLimpiezaForm = ({
             }
           />
         )}
-      </VStack>
+      </FormGrid>
     </FormContainer>
   );
 };

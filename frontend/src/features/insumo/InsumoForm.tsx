@@ -2,7 +2,7 @@ import { BASE_URL, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+
 import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoSchema, type InsumoFormValues } from "./validationSchema";
@@ -10,6 +10,7 @@ import type { Insumo, UnidadMedida } from "./types";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
   TextField,
   SelectField,
   FormActions,
@@ -76,13 +77,14 @@ export const InsumoForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
     reset,
   } = useForm<InsumoFormValues>({
     resolver: zodResolver(insumoSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const [success, setSuccess] = useState(false);
@@ -153,7 +155,7 @@ export const InsumoForm = ({
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label='Nombre'
             disabled={esModoVer}
@@ -176,7 +178,7 @@ export const InsumoForm = ({
 
           <SelectField
             label='Categoria'
-            placeholder='Selecciona una opcion'
+            placeholder='Selecciona una opción'
             readOnly={esModoVer}
             defaultValue={defaultValues.categoria}
             onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
@@ -217,6 +219,7 @@ export const InsumoForm = ({
                   loading={isSubmitting}
                   type='submit'
                   colorPalette='green'
+                  disabled={!isValid}
                 />
                 <CancelButton
                   text='Cancelar'
@@ -242,7 +245,7 @@ export const InsumoForm = ({
               }
             />
           )}
-        </VStack>
+        </FormGrid>
       </form>
 
       {esModoCrear && (

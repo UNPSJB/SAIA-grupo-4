@@ -702,3 +702,49 @@ def test_busqueda_incluye_insumos_dados_de_baja():
     assert client.delete(f"/insumos-quimicos/{quimico['id']}").status_code == 200
 
     assert quimico["id"] in ids_buscados(busqueda=f"amoniaco {sufijo}")
+
+
+# --- Filtro por estado ---
+
+def test_filtrar_insumos_quimicos_por_estado():
+    sufijo = sufijo_unico()
+    unidad_id = crear_unidad_medida()
+    activo = crear_quimico(f"Activo {sufijo}", unidad_id)
+    inactivo = crear_quimico(f"Inactivo {sufijo}", unidad_id)
+    assert (
+        client.delete(f"/insumos-quimicos/{inactivo['id']}").status_code == 200
+    )
+
+    assert ids_buscados(busqueda=sufijo, activo="true") == {activo["id"]}
+    assert ids_buscados(busqueda=sufijo, activo="false") == {inactivo["id"]}
+
+
+def test_filtro_por_sector_respeta_estado_inactivo():
+    sufijo = sufijo_unico()
+    unidad_id = crear_unidad_medida()
+    sector_id = crear_sector(f"Sector estado {sufijo}")
+
+    inactivo_sector = crear_quimico(
+        f"Inactivo sector {sufijo}", unidad_id, sector_id=sector_id
+    )
+    inactivo_general = crear_quimico(
+        f"Inactivo general {sufijo}", unidad_id
+    )
+    activo_sector = crear_quimico(
+        f"Activo sector {sufijo}", unidad_id, sector_id=sector_id
+    )
+
+    for insumo in (inactivo_sector, inactivo_general):
+        assert (
+            client.delete(f"/insumos-quimicos/{insumo['id']}").status_code
+            == 200
+        )
+
+    resultado = ids_buscados(
+        busqueda=sufijo,
+        sector_id=sector_id,
+        activo="false",
+    )
+
+    assert resultado == {inactivo_sector["id"], inactivo_general["id"]}
+    assert activo_sector["id"] not in resultado

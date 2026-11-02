@@ -155,6 +155,54 @@ def test_listar_elementos_limpieza_sin_filtro_trae_todos():
     assert {e["id"] for e in solo_inactivos.json()} == {inactivo["id"]}
 
 
+def test_listar_elementos_limpieza_filtra_por_sector_y_equipo_desde_listado():
+    tipo_id = crear_tipo()
+    sector_id = crear_sector("Sector filtro listado")
+    equipo_id = crear_equipo(sector_id, nro_serie="SN-FILTRO-LISTADO")
+    otro_sector_id = crear_sector("Otro sector filtro listado")
+
+    del_sector = crear_elemento(tipo_id, "Elemento del sector", sector_id=sector_id)
+    del_equipo = crear_elemento(tipo_id, "Elemento del equipo", equipo_id=equipo_id)
+    general = crear_elemento(tipo_id, "Elemento general")
+    de_otro_sector = crear_elemento(
+        tipo_id, "Elemento de otro sector", sector_id=otro_sector_id
+    )
+    inactivo = crear_elemento(
+        tipo_id, "Elemento inactivo del sector", sector_id=sector_id
+    )
+    assert client.delete(f"/elementos-limpieza/{inactivo['id']}").status_code == 200
+
+    res_sector = client.get(
+        "/elementos-limpieza/",
+        params={"sector_id": sector_id, "activo": "true"},
+    )
+    assert res_sector.status_code == 200, res_sector.text
+    ids_sector = {e["id"] for e in res_sector.json()}
+    assert ids_sector == {del_sector["id"], general["id"]}
+    assert de_otro_sector["id"] not in ids_sector
+
+    res_equipo = client.get(
+        "/elementos-limpieza/",
+        params={"equipo_id": equipo_id, "activo": "true"},
+    )
+    assert res_equipo.status_code == 200, res_equipo.text
+    ids_equipo = {e["id"] for e in res_equipo.json()}
+    assert ids_equipo == {del_equipo["id"], general["id"]}
+    assert de_otro_sector["id"] not in ids_equipo
+
+    # Sin estado explícito, el filtro por sector también incluye los inactivos.
+    res_todos = client.get(
+        "/elementos-limpieza/",
+        params={"sector_id": sector_id},
+    )
+    assert res_todos.status_code == 200, res_todos.text
+    assert {e["id"] for e in res_todos.json()} == {
+        del_sector["id"],
+        general["id"],
+        inactivo["id"],
+    }
+
+
 def test_listar_elementos_limpieza_por_sector_inexistente():
     res = client.get("/elementos-limpieza/por-sector/9999")
 

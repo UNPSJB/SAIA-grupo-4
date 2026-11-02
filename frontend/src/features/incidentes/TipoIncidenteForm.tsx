@@ -1,11 +1,12 @@
 import { BASE_URL } from "../../config";
-import { useState } from "react";
-import { VStack } from "@chakra-ui/react";
+import { useState, useMemo } from "react";
+
 import { FiTag, FiSave, FiXCircle, FiEdit2 } from "react-icons/fi";
 import { useTipoIncidenteSubmit } from "./hooks/useTipoIncidenteSubmit";
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
   TextField,
   FormActions,
   SubmitButton,
@@ -39,6 +40,14 @@ export const TipoIncidenteForm = ({
   const [errorDescripcion, setErrorDescripcion] = useState("");
   const [errorEnvio, setErrorEnvio] = useState("");
   const [success, setSuccess] = useState(false);
+
+  // Determinar si el formulario es válido para habilitar el botón Guardar
+  const esValido = useMemo(() => {
+    if (!nombre.trim()) return false;
+    if (!esModoModificar && !descripcion.trim()) return false;
+    if (!esModoModificar && descripcion.trim().length > 200) return false;
+    return true;
+  }, [nombre, descripcion, esModoModificar]);
 
   const { submit, isSubmitting } = useTipoIncidenteSubmit({
     endpoint: `${BASE_URL}/tipos-incidente/`,
@@ -90,7 +99,7 @@ export const TipoIncidenteForm = ({
   };
 
   return (
-    <FormContainer modal={enModal}>
+    <FormContainer modal={enModal} maxW='4xl'>
       <FormHeader
         title={
           esModoModificar
@@ -99,7 +108,7 @@ export const TipoIncidenteForm = ({
         }
         icon={esModoModificar ? FiEdit2 : FiTag}
       />
-      <VStack gap={4}>
+      <FormGrid>
         <TextField
           label='Nombre del tipo'
           value={nombre}
@@ -121,6 +130,7 @@ export const TipoIncidenteForm = ({
             loading={isSubmitting}
             onClick={handleGuardar}
             colorPalette='green'
+            disabled={!esValido}
           />
           <CancelButton
             text='Cancelar'
@@ -141,7 +151,7 @@ export const TipoIncidenteForm = ({
             }
           />
         )}
-      </VStack>
+      </FormGrid>
     </FormContainer>
   );
 };

@@ -57,7 +57,7 @@ export default function NuevoPlanPage() {
   }
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <ListadoHeader title='Nuevo Plan POES' icon={FiTool}>
         <HStack justify='space-between' mb={6} align='center'>
           <Button variant='outline' colorPalette='green' onClick={irHistorial}>

@@ -97,6 +97,7 @@ export default function SectoresPage() {
 
       {(vista === "crear" || vista === "modificar") && (
         <FormModal
+          maxW='4xl'
           open
           onClose={() => {
             setError("");

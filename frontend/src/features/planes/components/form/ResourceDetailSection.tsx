@@ -51,6 +51,7 @@ export const ResourceDetailSection = ({
   return (
     <Box
       w="100%"
+      gridColumn="1 / -1"
       borderWidth="1px"
       borderColor="border.subtle"
       borderRadius="md"

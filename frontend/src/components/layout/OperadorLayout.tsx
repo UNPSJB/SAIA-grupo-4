@@ -43,7 +43,7 @@ const defaultItems: OperadorNavItem[] = [
   { to: "/incidentes-reportados", label: "Incidentes Reportados", icon: FiAlertTriangle },
 ];
 
-// Igual criterio que el NavBar del admin: mantiene activo el ítem también en subrutas (p. ej. el visor de PDF depende de /documentos).
+// Igual criterio que el SideBar del admin: mantiene activo el ítem también en subrutas (p. ej. el visor de PDF depende de /documentos).
 const isActiveRoute = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`);
 
@@ -197,7 +197,7 @@ export const OperadorLayout = ({
 
   return (
     <Flex minH="100vh" w="100%">
-      {/* Sidebar de escritorio (comprimible, igual que el NavBar del admin) */}
+      {/* SideBar de escritorio (comprimible, igual que el SideBar del admin) */}
       <VStack
         as="nav"
         aria-label="Navegación del operador"

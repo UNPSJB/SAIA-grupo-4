@@ -16,6 +16,25 @@ client = TestClient(app)
 def generar_string_unico(prefijo: str):
     return f"{prefijo}_{uuid.uuid4().hex[:6]}"
 
+
+def crear_documento(
+    autor_id: int,
+    titulo: str,
+    tipo_documento: str,
+    descripcion: str | None = None,
+) -> dict:
+    payload = {
+        "titulo": titulo,
+        "tipo_documento": tipo_documento,
+        "creado_por_id": autor_id,
+    }
+    if descripcion is not None:
+        payload["descripcion"] = descripcion
+
+    res = client.post("/documentos/", data={"datos": json.dumps(payload)})
+    assert res.status_code == 201, res.text
+    return res.json()
+
 @pytest.fixture
 def autor_base(session):
     """Crea una Persona activa en la base de datos para usar como creador."""
@@ -164,6 +183,66 @@ def test_bloquear_baja_por_patch(autor_base):
     res_patch = client.patch(f"/documentos/{doc_id}", json={"activo": False})
     
     assert res_patch.status_code == 400
+
+
+def test_listar_documentos_filtra_por_texto_tipo_y_estado(autor_base):
+    sufijo = uuid.uuid4().hex[:8]
+    procedimiento = crear_documento(
+        autor_base,
+        f"Procedimiento Único {sufijo}",
+        "PROCEDIMIENTO",
+        descripcion=f"Descripción especial {sufijo}",
+    )
+    manual = crear_documento(
+        autor_base,
+        f"Manual de planta {sufijo}",
+        "MANUAL_BPM",
+    )
+    inactivo = crear_documento(
+        autor_base,
+        f"Instructivo dado de baja {sufijo}",
+        "INSTRUCTIVO",
+    )
+    assert client.delete(f"/documentos/{inactivo['id']}").status_code == 204
+
+    # Búsqueda sin mayúsculas ni acentos sobre el título.
+    res_texto = client.get(
+        "/documentos/",
+        params={"busqueda": f"procedimiento unico {sufijo}"},
+    )
+    assert res_texto.status_code == 200, res_texto.text
+    assert {d["id"] for d in res_texto.json()} == {procedimiento["id"]}
+
+    # La misma búsqueda también alcanza la descripción.
+    res_descripcion = client.get(
+        "/documentos/",
+        params={"busqueda": f"descripcion especial {sufijo}"},
+    )
+    assert res_descripcion.status_code == 200, res_descripcion.text
+    assert {d["id"] for d in res_descripcion.json()} == {procedimiento["id"]}
+
+    res_tipo = client.get(
+        "/documentos/",
+        params={"tipo_documento": "MANUAL_BPM"},
+    )
+    assert res_tipo.status_code == 200, res_tipo.text
+    assert {d["id"] for d in res_tipo.json()} == {manual["id"]}
+
+    res_inactivos = client.get("/documentos/", params={"activo": "false"})
+    assert res_inactivos.status_code == 200, res_inactivos.text
+    assert {d["id"] for d in res_inactivos.json()} == {inactivo["id"]}
+
+    # Los filtros se combinan entre sí.
+    res_combinado = client.get(
+        "/documentos/",
+        params={
+            "busqueda": f"procedimiento unico {sufijo}",
+            "tipo_documento": "PROCEDIMIENTO",
+            "activo": "true",
+        },
+    )
+    assert res_combinado.status_code == 200, res_combinado.text
+    assert {d["id"] for d in res_combinado.json()} == {procedimiento["id"]}
 
 
 def test_ciclo_completo_versiones_y_vigencia(autor_base):

@@ -14,6 +14,7 @@ import {
   AlertMessage,
   DataTable,
   FiltrosBar,
+  FiltroSelect,
   FiltroTexto,
   LoadingState,
   RowActionButton,
@@ -36,13 +37,20 @@ interface ListadoInsumosProps {
 }
 
 // Arma el endpoint del listado: solo se manda la búsqueda si tiene valor.
-const construirEndpoint = (busqueda: string) => {
+const construirEndpoint = (busqueda: string, estado: string) => {
   const params = new URLSearchParams();
   if (busqueda) params.set("busqueda", busqueda);
+  if (estado === "disponible") params.set("disponible", "true");
+  if (estado === "no_disponible") params.set("disponible", "false");
 
   const query = params.toString();
   return `${BASE_URL}/insumos/${query ? `?${query}` : ""}`;
 };
+
+const OPCIONES_ESTADO = [
+  { label: "Activos", value: "disponible" },
+  { label: "Inactivos", value: "no_disponible" },
+];
 
 export const ListadoInsumos = ({
   onCrear,
@@ -52,17 +60,35 @@ export const ListadoInsumos = ({
   onDarAlta,
   onVerUnidades,
 }: ListadoInsumosProps) => {
-  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  // La búsqueda se aplica sola con debounce; el select espera a "Filtrar".
   const [busqueda, setBusqueda] = useState("");
   const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
+  const [estado, setEstado] = useState("");
+  const [estadoAplicado, setEstadoAplicado] = useState("");
+
+  const hayFiltros = busqueda.trim() !== "" || estado !== "";
+  const hayAplicados = busquedaAplicada !== "" || estadoAplicado !== "";
 
   // La página vuelve a 1 sola cuando cambia el endpoint (lo resuelve el hook)
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Insumo>({
-      endpoint: construirEndpoint(busquedaAplicada),
+      endpoint: construirEndpoint(busquedaAplicada, estadoAplicado),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de insumos.",
     });
+
+  const aplicar = () => {
+    setEstadoAplicado(estado);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBusqueda("");
+    setEstado("");
+    setEstadoAplicado("");
+    setPage(1);
+  };
 
   const columnas: ColumnDef<Insumo>[] = [
     {
@@ -124,7 +150,7 @@ export const ListadoInsumos = ({
   ];
 
   return (
-    <ListadoContainer maxW='6xl'>
+    <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
         <ListadoHeader title="Insumos" icon={FiBox} />
         <HStack gap={2}>
@@ -143,10 +169,9 @@ export const ListadoInsumos = ({
 
       <Box mb={4}>
         <FiltrosBar
-          ocultarAplicar
-          onAplicar={() => {}} // la búsqueda se aplica sola mientras se escribe
-          onLimpiar={() => setBusqueda("")}
-          hayFiltrosActivos={busqueda !== ""}
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
           loading={loading}
         >
           <FiltroTexto
@@ -154,6 +179,16 @@ export const ListadoInsumos = ({
             placeholder='Nombre o unidad de medida'
             value={busqueda}
             onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel='Estado del insumo'
+            placeholder='Todos los estados'
+            options={OPCIONES_ESTADO}
+            value={estado}
+            onChange={setEstado}
           />
         </FiltrosBar>
       </Box>
@@ -166,8 +201,8 @@ export const ListadoInsumos = ({
         <AlertMessage
           type='info'
           message={
-            busquedaAplicada
-              ? "No hay insumos que coincidan con la búsqueda."
+            hayAplicados
+              ? "No hay insumos que coincidan con los filtros."
               : "Todavía no hay insumos cargados."
           }
         />

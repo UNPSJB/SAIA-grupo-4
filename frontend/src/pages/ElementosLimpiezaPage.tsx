@@ -180,11 +180,7 @@ export default function ElementosLimpiezaPage() {
       )}
 
       {tipoModalAbierto && (
-        <FormModal
-          open
-          maxW='3xl'
-          onClose={() => setTipoModalAbierto(false)}
-        >
+        <FormModal open onClose={() => setTipoModalAbierto(false)} maxW='4xl'>
           <GestionTiposElementoLimpieza />
         </FormModal>
       )}

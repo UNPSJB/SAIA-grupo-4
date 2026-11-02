@@ -344,3 +344,18 @@ def test_busqueda_por_simbolo_de_unidad():
     insumo = crear_insumo_con_nombre(f"Pimienta {sufijo_unico()}")
 
     assert insumo["id"] in ids_buscados(busqueda="kg")
+
+
+# --- Filtro por disponibilidad ---
+
+def test_filtrar_por_disponibilidad():
+    sufijo = sufijo_unico()
+    unidad_id = crear_unidad_medida()
+    disponible = crear_insumo_con_nombre(f"Disponible {sufijo}", unidad_id=unidad_id)
+    no_disponible = crear_insumo_con_nombre(
+        f"No disponible {sufijo}", unidad_id=unidad_id
+    )
+    assert client.delete(f"/insumos/{no_disponible['id']}").status_code == 200
+
+    assert ids_buscados(busqueda=sufijo, disponible="true") == {disponible["id"]}
+    assert ids_buscados(busqueda=sufijo, disponible="false") == {no_disponible["id"]}

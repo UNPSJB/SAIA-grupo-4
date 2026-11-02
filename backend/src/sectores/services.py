@@ -38,13 +38,20 @@ def crear_sector(db: Session, sector: schemas.SectorCreate) -> Sector:
 
     return _sector
 
-def listar_sectores(db: Session, busqueda: str | None = None) -> List[Sector]:
+def listar_sectores(
+    db: Session,
+    busqueda: str | None = None,
+    activo: bool | None = None,
+) -> List[Sector]:
     consulta = select(Sector)
 
     # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos,
     # en las columnas de texto visibles del listado.
     if busqueda and busqueda.strip():
         consulta = consulta.where(condicion_busqueda([Sector.nombre], busqueda))
+
+    if activo is not None:
+        consulta = consulta.where(Sector.activo.is_(activo))
 
     return db.scalars(consulta).all()
 

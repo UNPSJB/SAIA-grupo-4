@@ -1,17 +1,27 @@
-import { Badge } from "@chakra-ui/react";
+import { useState } from "react";
+import { Badge, Box } from "@chakra-ui/react";
 import { FiFileText } from "react-icons/fi";
 
 import {
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
+  SemaforoLegend,
   TablePagination,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import { BASE_URL } from "../../config";
-import type { Documento } from "./types";
+import {
+  TIPOS_DOCUMENTO,
+  type Documento,
+  type TipoDocumento,
+} from "./types";
 import { ProximaRevision } from "./ProximaRevision";
 import { AccionesDocumento } from "./AccionesDocumento";
 
@@ -26,8 +36,49 @@ interface ListadoDocumentosProps {
   onVerHistorial?: (doc: Documento) => void;
 }
 
-const ENDPOINT = `${BASE_URL}/documentos/`;
 const ITEMS_POR_PAGINA = 5;
+
+const TIPOS_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
+  MANUAL_BPM: "Manual BPM",
+  PROCEDIMIENTO: "Procedimiento",
+  INSTRUCTIVO: "Instructivo",
+  PLANILLA: "Planilla",
+  OTRO: "Otro",
+};
+
+const OPCIONES_TIPO = TIPOS_DOCUMENTO.map((value) => ({
+  label: TIPOS_DOCUMENTO_LABELS[value],
+  value,
+}));
+
+const OPCIONES_ESTADO = [
+  { label: "Activos", value: "activos" },
+  { label: "Inactivos", value: "inactivos" },
+];
+
+type FiltrosDocumento = {
+  tipoDocumento: string;
+  estado: string;
+};
+
+const FILTROS_INICIALES: FiltrosDocumento = {
+  tipoDocumento: "",
+  estado: "",
+};
+
+// Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
+const construirEndpoint = (filtros: FiltrosDocumento, busqueda: string) => {
+  const params = new URLSearchParams();
+  if (busqueda) params.set("busqueda", busqueda);
+  if (filtros.tipoDocumento) {
+    params.set("tipo_documento", filtros.tipoDocumento);
+  }
+  if (filtros.estado === "activos") params.set("activo", "true");
+  if (filtros.estado === "inactivos") params.set("activo", "false");
+
+  const query = params.toString();
+  return `${BASE_URL}/documentos/${query ? `?${query}` : ""}`;
+};
 
 export const ListadoDocumentos = ({
   onCrear,
@@ -39,12 +90,45 @@ export const ListadoDocumentos = ({
   onRegistrarRevision,
   onVerHistorial,
 }: ListadoDocumentosProps) => {
+  // La búsqueda se aplica sola con debounce; los selects esperan a "Filtrar".
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
+  const [borrador, setBorrador] =
+    useState<FiltrosDocumento>(FILTROS_INICIALES);
+  const [aplicados, setAplicados] =
+    useState<FiltrosDocumento>(FILTROS_INICIALES);
+
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Documento>({
-      endpoint: ENDPOINT,
+      endpoint: construirEndpoint(aplicados, busquedaAplicada),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de documentos.",
     });
+
+  const hayFiltros =
+    busqueda.trim() !== "" ||
+    busquedaAplicada !== "" ||
+    borrador.tipoDocumento !== "" ||
+    aplicados.tipoDocumento !== "" ||
+    borrador.estado !== FILTROS_INICIALES.estado ||
+    aplicados.estado !== FILTROS_INICIALES.estado;
+  const hayAplicados =
+    busquedaAplicada !== "" ||
+    aplicados.tipoDocumento !== "" ||
+    aplicados.estado !== FILTROS_INICIALES.estado;
+
+  const aplicar = () => {
+    setAplicados(borrador);
+    setPage(1);
+  };
+
+  const limpiar = () => {
+    setBusqueda("");
+    setBorrador(FILTROS_INICIALES);
+    setAplicados(FILTROS_INICIALES);
+    setPage(1);
+  };
 
   const columnas: ColumnDef<Documento>[] = [
     {
@@ -67,7 +151,7 @@ export const ListadoDocumentos = ({
       w: "150px",
       render: (doc) => (
         <Badge colorPalette="blue" variant="subtle">
-          {doc.tipo_documento.replace("_", " ")}
+          {TIPOS_DOCUMENTO_LABELS[doc.tipo_documento]}
         </Badge>
       ),
     },
@@ -129,7 +213,7 @@ export const ListadoDocumentos = ({
   ];
 
   return (
-    <ListadoContainer maxW="6xl">
+    <ListadoContainer>
       <ListadoHeader
         title="Gestión Documental"
         icon={FiFileText}
@@ -137,12 +221,59 @@ export const ListadoDocumentos = ({
         onCrear={onCrear}
       />
 
+      <Box mb={4}>
+        <FiltrosBar
+          onAplicar={aplicar}
+          onLimpiar={limpiar}
+          hayFiltrosActivos={hayFiltros}
+          loading={loading}
+        >
+          <FiltroTexto
+            ariaLabel="Buscar documento"
+            placeholder="Código, título o descripción"
+            value={busqueda}
+            onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") aplicar();
+            }}
+          />
+          <FiltroSelect
+            ariaLabel="Tipo de documento"
+            placeholder="Todos los tipos"
+            options={OPCIONES_TIPO}
+            value={borrador.tipoDocumento}
+            onChange={(valor) =>
+              setBorrador((actual) => ({
+                ...actual,
+                tipoDocumento: valor,
+              }))
+            }
+          />
+          <FiltroSelect
+            ariaLabel="Estado del documento"
+            placeholder="Todos los estados"
+            options={OPCIONES_ESTADO}
+            value={borrador.estado}
+            onChange={(valor) =>
+              setBorrador((actual) => ({ ...actual, estado: valor }))
+            }
+          />
+        </FiltrosBar>
+      </Box>
+
       {loading && <LoadingState message="Cargando documentos..." />}
 
       {!loading && error && <AlertMessage type="error" message={error} />}
 
       {!loading && !error && data.length === 0 && (
-        <AlertMessage type="info" message="Todavía no hay documentos cargados." />
+        <AlertMessage
+          type="info"
+          message={
+            hayAplicados
+              ? "No hay documentos que coincidan con los filtros seleccionados."
+              : "Todavía no hay documentos cargados."
+          }
+        />
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -153,6 +284,9 @@ export const ListadoDocumentos = ({
             getRowKey={(doc) => doc.id}
             minW="1150px"
           />
+
+          <SemaforoLegend />
+
           <TablePagination
             count={data.length}
             page={page}

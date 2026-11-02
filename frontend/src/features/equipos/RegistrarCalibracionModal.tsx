@@ -1,13 +1,5 @@
-import { useState } from "react";
-import {
-  Dialog,
-  Field,
-  Input,
-  Portal,
-  Text,
-  Textarea,
-  VStack,
-} from "@chakra-ui/react";
+import { useState, useMemo } from "react";
+import { Field, Input, Text, Textarea } from "@chakra-ui/react";
 import { FiCheck, FiXCircle } from "react-icons/fi";
 import { BASE_URL } from "../../config";
 import { apiFetch } from "../auth/apiFetch";
@@ -15,7 +7,9 @@ import { FilePicker } from "../../components/ui/FilePicker";
 import {
   FormActions,
   FormContainer,
+  FormGrid,
   FormHeader,
+  FormModal,
 } from "../../components/layout";
 import { AlertMessage, CancelButton, SubmitButton } from "../../components/ui";
 import type { Equipo } from "./types";
@@ -48,6 +42,9 @@ export const RegistrarCalibracionForm = ({
   const [archivo, setArchivo] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Validación para habilitar/deshabilitar el botón Guardar
+  const esValido = useMemo(() => fecha !== "", [fecha]);
 
   const handleGuardar = async () => {
     if (!fecha) {
@@ -89,8 +86,8 @@ export const RegistrarCalibracionForm = ({
   return (
     <FormContainer modal={enModal}>
       <FormHeader title='Registrar Calibración' icon={FiCheck} />
-      <VStack gap={4} align='stretch'>
-        <Text fontSize='sm' color='gray.600'>
+      <FormGrid>
+        <Text fontSize='sm' color='gray.600' gridColumn='1 / -1'>
           {equipo.nombre} ({equipo.marca} - {equipo.numero_serie})
         </Text>
 
@@ -105,7 +102,7 @@ export const RegistrarCalibracionForm = ({
           />
         </Field.Root>
 
-        <Field.Root>
+        <Field.Root gridColumn='1 / -1'>
           <Field.Label fontSize='md' fontFamily='sans-serif'>
             Observaciones (Opcional)
           </Field.Label>
@@ -128,6 +125,7 @@ export const RegistrarCalibracionForm = ({
             loading={loading}
             onClick={handleGuardar}
             colorPalette='green'
+            disabled={!esValido}
           />
           <CancelButton
             text='Cancelar'
@@ -137,7 +135,7 @@ export const RegistrarCalibracionForm = ({
             variant='outline'
           />
         </FormActions>
-      </VStack>
+      </FormGrid>
     </FormContainer>
   );
 };
@@ -165,28 +163,16 @@ export const RegistrarCalibracionModal = ({
   if (!isOpen || !equipo) return null;
 
   return (
-    <Dialog.Root
-      open={isOpen}
-      onOpenChange={(details) => {
-        if (!details.open) onClose();
-      }}
-    >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content maxW='md' p={6}>
-            <RegistrarCalibracionForm
-              equipo={equipo}
-              enModal
-              onCancelar={onClose}
-              onGuardado={() => {
-                onSuccess();
-                onClose();
-              }}
-            />
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+    <FormModal open={isOpen} onClose={onClose}>
+      <RegistrarCalibracionForm
+        equipo={equipo}
+        enModal
+        onCancelar={onClose}
+        onGuardado={() => {
+          onSuccess();
+          onClose();
+        }}
+      />
+    </FormModal>
   );
 };

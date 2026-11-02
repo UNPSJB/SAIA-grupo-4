@@ -1,7 +1,7 @@
 import { BASE_URL } from "../../config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HStack, VStack } from "@chakra-ui/react";
+import { HStack } from "@chakra-ui/react";
 import { FiEdit2, FiSave, FiXCircle, FiEye, FiPlus } from "react-icons/fi";
 import { useMemo, useState } from "react";
 import {
@@ -23,6 +23,7 @@ import type {
 import {
   FormContainer,
   FormHeader,
+  FormGrid,
   TextField,
   SelectField,
   FormActions,
@@ -100,13 +101,14 @@ export const ElementoLimpiezaForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
     reset,
   } = useForm<ElementoLimpiezaFormInput, unknown, ElementoLimpiezaFormValues>({
     resolver: zodResolver(elementoLimpiezaSchema),
     defaultValues,
+    mode: "onChange",
   });
 
   const {
@@ -206,14 +208,15 @@ export const ElementoLimpiezaForm = ({
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiPlus}
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4}>
+        <FormGrid>
           <TextField
             label='Nombre'
             disabled={esModoVer}
+            placeholder='Ej. Esponja, Paño, Cepillo...'
             error={errors.nombre?.message}
             {...register("nombre")}
           />
-          <HStack width='100%' align='end' gap={2}>
+          <HStack width='100%' align='end' gap={2} gridColumn='1 / -1'>
             <SelectField
               label='Tipo'
               placeholder='Seleccioná un tipo'
@@ -306,6 +309,7 @@ export const ElementoLimpiezaForm = ({
                   loading={isSubmitting}
                   type='submit'
                   colorPalette='green'
+                  disabled={!isValid}
                 />
                 <CancelButton
                   text='Cancelar'
@@ -331,7 +335,7 @@ export const ElementoLimpiezaForm = ({
               }
             />
           )}
-        </VStack>
+        </FormGrid>
       </form>
     </FormContainer>
   );

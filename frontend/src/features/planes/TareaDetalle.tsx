@@ -77,6 +77,7 @@ export const TareaDetalle = ({ tarea, catalogs, onCerrar }: TareaDetalleProps) =
     {
       titulo: "Guía y Procedimiento",
       icono: FiList,
+      columnas: 1,
       items:
         tarea.metodo.split("\n").filter(Boolean).length > 0
           ? tarea.metodo
