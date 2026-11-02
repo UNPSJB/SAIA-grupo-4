@@ -2,7 +2,7 @@ import { BASE_URL, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+import { VStack, SimpleGrid } from "@chakra-ui/react";
 import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoSchema, type InsumoFormValues } from "./validationSchema";
@@ -154,51 +154,53 @@ export const InsumoForm = ({
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
-          <TextField
-            label='Nombre'
-            disabled={esModoVer}
-            defaultValue={defaultValues.nombre}
-            placeholder='Ej. Harina 0000'
-            error={errors.nombre?.message}
-            {...register("nombre")}
-          />
-          <SelectField
-            label='Unidad de medida'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.unidad_medida_id}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={opcionesUnidad}
-            error={errors.unidad_medida_id?.message}
-            {...register("unidad_medida_id")}
-          />
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <TextField
+              label='Nombre'
+              disabled={esModoVer}
+              defaultValue={defaultValues.nombre}
+              placeholder='Ej. Harina 0000'
+              error={errors.nombre?.message}
+              {...register("nombre")}
+            />
+            <SelectField
+              label='Unidad de medida'
+              placeholder='Selecciona una opcion'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.unidad_medida_id}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={opcionesUnidad}
+              error={errors.unidad_medida_id?.message}
+              {...register("unidad_medida_id")}
+            />
 
-          <SelectField
-            label='Categoria'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.categoria}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={[
-              { label: "Materia Prima", value: "materia prima" },
-              { label: "Aditivo", value: "aditivo" },
-              { label: "Envase", value: "envase" },
-              { label: "Otro", value: "otro" },
-            ]}
-            error={errors.categoria?.message}
-            {...register("categoria")}
-          />
+            <SelectField
+              label='Categoria'
+              placeholder='Selecciona una opcion'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.categoria}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={[
+                { label: "Materia Prima", value: "materia prima" },
+                { label: "Aditivo", value: "aditivo" },
+                { label: "Envase", value: "envase" },
+                { label: "Otro", value: "otro" },
+              ]}
+              error={errors.categoria?.message}
+              {...register("categoria")}
+            />
 
-          <TextField
-            label='Descripcion'
-            disabled={esModoVer}
-            defaultValue={defaultValues.descripcion}
-            placeholder='Breve descripcion del insumo'
-            error={errors.descripcion?.message}
-            {...register("descripcion")}
-          />
+            <TextField
+              label='Descripcion'
+              disabled={esModoVer}
+              defaultValue={defaultValues.descripcion}
+              placeholder='Breve descripcion del insumo'
+              error={errors.descripcion?.message}
+              {...register("descripcion")}
+            />
+          </SimpleGrid>
 
           <FormActions>
             {esModoVer ? (

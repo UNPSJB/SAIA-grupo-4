@@ -2,7 +2,7 @@ import { BASE_URL } from "../../config";
 import { useState, useMemo } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack, Text, Box, Button } from "@chakra-ui/react";
+import { VStack, Text, Box, Button, SimpleGrid } from "@chakra-ui/react";
 import {
   usePersonalSubmit,
   type PersonalPayload,
@@ -222,42 +222,44 @@ export const PersonalForm = ({
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
-          <TextField
-            label='Nombre'
-            disabled={esModoVer}
-            error={errors.nombre?.message}
-            {...register("nombre")}
-          />
-          <TextField
-            label='Apellido'
-            disabled={esModoVer}
-            error={errors.apellido?.message}
-            {...register("apellido")}
-          />
-          <TextField
-            label='DNI'
-            disabled={esModoVer}
-            error={errors.dni?.message}
-            {...register("dni")}
-          />
-          <TextField
-            label='Legajo'
-            disabled={esModoVer}
-            error={errors.legajo?.message}
-            {...register("legajo")}
-          />
-          <TextField
-            label='Email (Opcional)'
-            disabled={esModoVer}
-            error={errors.email?.message}
-            {...register("email")}
-          />
-          <TextField
-            label='Teléfono (Opcional)'
-            disabled={esModoVer}
-            error={errors.telefono?.message}
-            {...register("telefono")}
-          />
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <TextField
+              label='Nombre'
+              disabled={esModoVer}
+              error={errors.nombre?.message}
+              {...register("nombre")}
+            />
+            <TextField
+              label='Apellido'
+              disabled={esModoVer}
+              error={errors.apellido?.message}
+              {...register("apellido")}
+            />
+            <TextField
+              label='DNI'
+              disabled={esModoVer}
+              error={errors.dni?.message}
+              {...register("dni")}
+            />
+            <TextField
+              label='Legajo'
+              disabled={esModoVer}
+              error={errors.legajo?.message}
+              {...register("legajo")}
+            />
+            <TextField
+              label='Email (Opcional)'
+              disabled={esModoVer}
+              error={errors.email?.message}
+              {...register("email")}
+            />
+            <TextField
+              label='Teléfono (Opcional)'
+              disabled={esModoVer}
+              error={errors.telefono?.message}
+              {...register("telefono")}
+            />
+          </SimpleGrid>
 
           <Controller
             name='capacidades_ids'

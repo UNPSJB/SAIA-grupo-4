@@ -160,6 +160,8 @@ export default function DocumentosPage() {
       {(vista === "crear" || vista === "modificar" || vista === "ver") && (
         <FormModal
           open
+          maxW='3xl'
+          showClose={vista === "ver"}
           onClose={() => {
             setError("");
             setVista("listado");

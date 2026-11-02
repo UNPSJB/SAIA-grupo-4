@@ -2,7 +2,7 @@ import { BASE_URL, ITEMS_SELECT } from "../../config";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+import { VStack, SimpleGrid } from "@chakra-ui/react";
 import { useInsumoQuimicoSubmit } from "./hooks/useInsumoQuimicoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoQuimicoSchema, type InsumoQuimicoFormValues } from "./validationSchema";
@@ -227,75 +227,77 @@ export const InsumoQuimicoForm = ({
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
-          <TextField
-            label='Nombre'
-            disabled={esModoVer}
-            defaultValue={defaultValues.nombre}
-            placeholder='Ej. Lavandina'
-            error={errors.nombre?.message}
-            {...register("nombre")}
-          />
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <TextField
+              label='Nombre'
+              disabled={esModoVer}
+              defaultValue={defaultValues.nombre}
+              placeholder='Ej. Lavandina'
+              error={errors.nombre?.message}
+              {...register("nombre")}
+            />
 
-          <SelectField
-            label='Unidad de medida'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.unidad_medida_id}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={opcionesUnidad}
-            error={errors.unidad_medida_id?.message}
-            {...register("unidad_medida_id")}
-          />
+            <SelectField
+              label='Unidad de medida'
+              placeholder='Selecciona una opcion'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.unidad_medida_id}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={opcionesUnidad}
+              error={errors.unidad_medida_id?.message}
+              {...register("unidad_medida_id")}
+            />
 
-          <SelectField
-            label='Tipo'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.tipo}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={[
-              { label: "Detergente", value: "detergente" },
-              { label: "Desinfectante", value: "desinfectante" },
-              { label: "Desengrasante", value: "desengrasante" },
-              { label: "Otro", value: "otro" },
-            ]}
-            error={errors.tipo?.message}
-            {...register("tipo")}
-          />
+            <SelectField
+              label='Tipo'
+              placeholder='Selecciona una opcion'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.tipo}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              options={[
+                { label: "Detergente", value: "detergente" },
+                { label: "Desinfectante", value: "desinfectante" },
+                { label: "Desengrasante", value: "desengrasante" },
+                { label: "Otro", value: "otro" },
+              ]}
+              error={errors.tipo?.message}
+              {...register("tipo")}
+            />
 
-          <SelectField
-            label='Equipo'
-            placeholder='Selecciona un equipo'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.equipo_id}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            {...register("equipo_id", {
-              onChange: (e) => {
-                if (e.target.value) setValue("sector_id", "", { shouldValidate: true });
-              },
-            })}
-            options={opcionesEquipos}
-            error={errors.equipo_id?.message}
-          />
+            <SelectField
+              label='Equipo'
+              placeholder='Selecciona un equipo'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.equipo_id}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              {...register("equipo_id", {
+                onChange: (e) => {
+                  if (e.target.value) setValue("sector_id", "", { shouldValidate: true });
+                },
+              })}
+              options={opcionesEquipos}
+              error={errors.equipo_id?.message}
+            />
 
-          <SelectField
-            label='Sector'
-            placeholder='Selecciona un sector'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.sector_id}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            {...register("sector_id", {
-              onChange: (e) => {
-                if (e.target.value) setValue("equipo_id", "", { shouldValidate: true });
-              },
-            })}
-            options={opcionesSectores}
-            error={errors.sector_id?.message}
-          />
+            <SelectField
+              label='Sector'
+              placeholder='Selecciona un sector'
+              readOnly={esModoVer}
+              defaultValue={defaultValues.sector_id}
+              onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+              onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+              {...register("sector_id", {
+                onChange: (e) => {
+                  if (e.target.value) setValue("equipo_id", "", { shouldValidate: true });
+                },
+              })}
+              options={opcionesSectores}
+              error={errors.sector_id?.message}
+            />
+          </SimpleGrid>
 
           <FormActions>
             {esModoVer ? (

@@ -142,6 +142,13 @@ export default function LoginPage() {
             {errorRoot && <AlertMessage type='error' message={errorRoot} />}
 
             <FormActions>
+              <SubmitButton
+                text='Ingresar'
+                icon={FiLogIn}
+                loading={isSubmitting}
+                type='submit'
+                colorPalette='green'
+              />
               <CancelButton
                 text='Limpiar'
                 icon={FiXCircle}
@@ -153,13 +160,6 @@ export default function LoginPage() {
                 }}
                 colorPalette='red'
                 variant='outline'
-              />
-              <SubmitButton
-                text='Ingresar'
-                icon={FiLogIn}
-                loading={isSubmitting}
-                type='submit'
-                colorPalette='green'
               />
             </FormActions>
           </VStack>

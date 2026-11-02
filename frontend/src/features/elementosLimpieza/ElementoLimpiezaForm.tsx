@@ -1,7 +1,7 @@
 import { BASE_URL } from "../../config";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HStack, VStack } from "@chakra-ui/react";
+import { HStack, VStack, SimpleGrid } from "@chakra-ui/react";
 import { FiEdit2, FiSave, FiXCircle, FiEye, FiPlus } from "react-icons/fi";
 import { useMemo, useState } from "react";
 import {
@@ -207,88 +207,90 @@ export const ElementoLimpiezaForm = ({
       />
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4}>
-          <TextField
-            label='Nombre'
-            disabled={esModoVer}
-            error={errors.nombre?.message}
-            {...register("nombre")}
-          />
-          <HStack width='100%' align='end' gap={2}>
-            <SelectField
-              label='Tipo'
-              placeholder='Seleccioná un tipo'
-              options={opcionesTipo}
-              error={
-                errors.tipo_id?.message || (cargandoCatalogos ? "" : errorTipos)
-              }
-              readOnly={esModoVer || esModoModificar}
-              onFocus={
-                esModoVer || esModoModificar
-                  ? (e) => e.preventDefault()
-                  : undefined
-              }
-              onClick={
-                esModoVer || esModoModificar
-                  ? (e) => e.preventDefault()
-                  : undefined
-              }
-              {...register("tipo_id")}
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <TextField
+              label='Nombre'
+              disabled={esModoVer}
+              error={errors.nombre?.message}
+              {...register("nombre")}
             />
-            {esModoCrear && (
-              <RowActionButton
-                icon={FiPlus}
-                label='Crear tipo'
-                colorPalette='green'
-                onClick={() => setTipoModalAbierto(true)}
+            <HStack width='100%' align='end' gap={2}>
+              <SelectField
+                label='Tipo'
+                placeholder='Seleccioná un tipo'
+                options={opcionesTipo}
+                error={
+                  errors.tipo_id?.message || (cargandoCatalogos ? "" : errorTipos)
+                }
+                readOnly={esModoVer || esModoModificar}
+                onFocus={
+                  esModoVer || esModoModificar
+                    ? (e) => e.preventDefault()
+                    : undefined
+                }
+                onClick={
+                  esModoVer || esModoModificar
+                    ? (e) => e.preventDefault()
+                    : undefined
+                }
+                {...register("tipo_id")}
+              />
+              {esModoCrear && (
+                <RowActionButton
+                  icon={FiPlus}
+                  label='Crear tipo'
+                  colorPalette='green'
+                  onClick={() => setTipoModalAbierto(true)}
+                />
+              )}
+            </HStack>
+
+            <SelectField
+              label='Sector (Opcional)'
+              placeholder='Sin asignar'
+              options={opcionesSector}
+              error={
+                errors.sector_id?.message ||
+                (cargandoCatalogos ? "" : errorSectores)
+              }
+              disabled={esModoVer}
+              {...register("sector_id")}
+            />
+
+            <SelectField
+              label='Equipo (Opcional)'
+              placeholder='Sin asignar'
+              options={opcionesEquipo}
+              error={
+                errors.equipo_id?.message ||
+                (cargandoCatalogos ? "" : errorEquipos)
+              }
+              disabled={esModoVer}
+              {...register("equipo_id")}
+            />
+
+            <TextField
+              label='Frecuencia de recambio en días (Opcional)'
+              placeholder='Ej. 30'
+              disabled={esModoVer}
+              error={errors.frecuencia_recambio_dias?.message}
+              {...register("frecuencia_recambio_dias")}
+            />
+
+            {esModoVer && (
+              <TextField
+                label='Último recambio'
+                disabled
+                value={
+                  elemento?.fecha_ultimo_recambio
+                    ? new Date(elemento.fecha_ultimo_recambio).toLocaleString(
+                        "es-AR",
+                      )
+                    : "—"
+                }
               />
             )}
-          </HStack>
-
-          <SelectField
-            label='Sector (Opcional)'
-            placeholder='Sin asignar'
-            options={opcionesSector}
-            error={
-              errors.sector_id?.message ||
-              (cargandoCatalogos ? "" : errorSectores)
-            }
-            disabled={esModoVer}
-            {...register("sector_id")}
-          />
-
-          <SelectField
-            label='Equipo (Opcional)'
-            placeholder='Sin asignar'
-            options={opcionesEquipo}
-            error={
-              errors.equipo_id?.message ||
-              (cargandoCatalogos ? "" : errorEquipos)
-            }
-            disabled={esModoVer}
-            {...register("equipo_id")}
-          />
-
-          <TextField
-            label='Frecuencia de recambio en días (Opcional)'
-            placeholder='Ej. 30'
-            disabled={esModoVer}
-            error={errors.frecuencia_recambio_dias?.message}
-            {...register("frecuencia_recambio_dias")}
-          />
-
-          {esModoVer && (
-            <TextField
-              label='Último recambio'
-              disabled
-              value={
-                elemento?.fecha_ultimo_recambio
-                  ? new Date(elemento.fecha_ultimo_recambio).toLocaleString(
-                      "es-AR",
-                    )
-                  : "—"
-              }
-            />
-          )}
+          </SimpleGrid>
 
           <FormActions>
             {esModoVer ? (

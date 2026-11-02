@@ -168,6 +168,7 @@ export default function PersonalPage() {
       {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
+          maxW='3xl'
           onClose={() => {
             setError("");
             setVista("listado");

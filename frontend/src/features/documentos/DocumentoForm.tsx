@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack, Field, Input, Text, Box } from "@chakra-ui/react";
+import { VStack, Field, Input, Text, Box, SimpleGrid } from "@chakra-ui/react";
 import { FiFileText, FiEdit2, FiEye, FiSave, FiXCircle, FiCheckCircle } from "react-icons/fi";
 
 import { BASE_URL } from "../../config";
@@ -221,10 +221,6 @@ export const DocumentoForm = ({
             </DetalleSection>
           )}
         </VStack>
-
-        <FormActions>
-          <CancelButton text="Cerrar" onClick={onCancelar} icon={FiXCircle} />
-        </FormActions>
       </FormContainer>
     );
   }
@@ -243,30 +239,32 @@ export const DocumentoForm = ({
         <VStack gap={4}>
           {errors.root?.message && <AlertMessage type="error" message={errors.root.message} />}
 
-          <TextField
-            label="Código (Opcional)"
-            defaultValue={defaultValues.codigo}
-            placeholder="Ej. POES-001 (Se autogenera)"
-            error={errors.codigo?.message}
-            {...register("codigo")}
-          />
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <TextField
+              label="Código (Opcional)"
+              defaultValue={defaultValues.codigo}
+              placeholder="Ej. POES-001 (Se autogenera)"
+              error={errors.codigo?.message}
+              {...register("codigo")}
+            />
 
-          <TextField
-            label="Título"
-            defaultValue={defaultValues.titulo}
-            placeholder="Ej. Sanitización de Equipos"
-            error={errors.titulo?.message}
-            {...register("titulo")}
-          />
+            <TextField
+              label="Título"
+              defaultValue={defaultValues.titulo}
+              placeholder="Ej. Sanitización de Equipos"
+              error={errors.titulo?.message}
+              {...register("titulo")}
+            />
 
-          <SelectField
-            label="Tipo de Documento"
-            placeholder="Seleccioná un tipo"
-            defaultValue={defaultValues.tipo_documento}
-            options={opcionesTipo}
-            error={errors.tipo_documento?.message}
-            {...register("tipo_documento")}
-          />
+            <SelectField
+              label="Tipo de Documento"
+              placeholder="Seleccioná un tipo"
+              defaultValue={defaultValues.tipo_documento}
+              options={opcionesTipo}
+              error={errors.tipo_documento?.message}
+              {...register("tipo_documento")}
+            />
+          </SimpleGrid>
 
           <TextAreaField
             label="Descripción"

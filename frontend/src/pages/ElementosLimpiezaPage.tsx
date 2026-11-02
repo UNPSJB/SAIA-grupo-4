@@ -136,6 +136,7 @@ export default function ElementosLimpiezaPage() {
       {(vista === "crear" || vista === "modificar") && (
         <FormModal
           open
+          maxW='3xl'
           onClose={() => {
             setError("");
             setVista("listado");
