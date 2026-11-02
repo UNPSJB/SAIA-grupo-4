@@ -1,18 +1,21 @@
 import { useMemo, useState } from "react";
 import { Badge, Button, Dialog, HStack, Image, Portal } from "@chakra-ui/react";
-import { 
-    FiEye,
-    FiImage,
-    FiPlus,
-    FiSettings,
-    FiAlertTriangle,
-    FiX,
-    FiCheckCircle,
-    FiRotateCcw,
-} from "react-icons/fi"; // Importar otros íconos según sea necesario
+import {
+  FiEye,
+  FiImage,
+  FiPlus,
+  FiSettings,
+  FiAlertTriangle,
+  FiX,
+  FiCheckCircle,
+  FiRotateCcw,
+} from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
+  FiltroSelect,
+  FiltrosBar,
+  FiltroTexto,
   LoadingState,
   RowActionButton,
   RowActions,
@@ -21,9 +24,9 @@ import {
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
+import { useDebounce } from "../../hooks/useDebounce";
 import type { Incidente } from "./types";
 import type { ColumnDef } from "../../components/ui";
-import { FiltroSelect, FiltrosBar } from "../../components/ui";
 
 interface ListadoIncidentesProps {
   onVer?: (incidente: Incidente) => void;
@@ -92,22 +95,30 @@ export const ListadoIncidentes = ({
   tipoId,
   desde,
   hasta,
-  refreshKey
+  refreshKey,
 }: ListadoIncidentesProps) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState("");
   const [estadoAplicado, setEstadoAplicado] = useState("");
 
+  // Texto del input (inmediato) y texto que realmente viaja al backend (con debounce)
+  const [busqueda, setBusqueda] = useState("");
+  const busquedaAplicada = useDebounce(busqueda.trim(), 300);
+
   const [incidenteConFoto, setIncidenteConFoto] = useState<Incidente | null>(null);
+
   const parametros = new URLSearchParams();
   if (tipoId !== undefined && tipoId !== null) {
     parametros.set("tipo_id", String(tipoId));
   }
   if (desde) parametros.set("desde", desde);
   if (hasta) parametros.set("hasta", hasta);
+  if (busquedaAplicada) parametros.set("busqueda", busquedaAplicada);
+
   const endpointFiltrado = parametros.toString()
     ? `${endpoint}?${parametros.toString()}`
     : endpoint;
-  const filtrado = parametros.toString().length > 0;
+  // Hay algún filtro enviado al backend (tipo, período o búsqueda) o aplicado acá (estado)
+  const hayFiltrosAplicados = parametros.toString().length > 0 || estadoAplicado !== "";
 
   const { data, loading, error, page, setPage } =
     useListadoData<Incidente>({
@@ -121,12 +132,13 @@ export const ListadoIncidentes = ({
   // plano (refreshKey) conservamos la tabla para evitar el parpadeo.
   const primerCarga = loading && data.length === 0;
 
-  const incidentesFiltrados = useMemo(() => 
-    data.filter((incidente) => {
-      if (estadoAplicado === "abierto") return incidente.abierto; // Muestra solo los abiertos
-      if (estadoAplicado === "cerrado") return !incidente.abierto; // Muestra solo los cerrados
-      return true; // Muestra todos los incidentes
-    }),
+  const incidentesFiltrados = useMemo(
+    () =>
+      data.filter((incidente) => {
+        if (estadoAplicado === "abierto") return incidente.abierto; // Muestra solo los abiertos
+        if (estadoAplicado === "cerrado") return !incidente.abierto; // Muestra solo los cerrados
+        return true; // Muestra todos los incidentes
+      }),
     [data, estadoAplicado],
   );
 
@@ -160,7 +172,7 @@ export const ListadoIncidentes = ({
       label: "Estado",
       render: (incidente) => (
         <Badge colorPalette={incidente.abierto ? "green" : "red"}>
-            {incidente.abierto ? "Abierto" : "Cerrado"}
+          {incidente.abierto ? "Abierto" : "Cerrado"}
         </Badge>
       ),
     },
@@ -170,20 +182,20 @@ export const ListadoIncidentes = ({
       align: "end",
       render: (incidente) => (
         <RowActions>
-            {incidente.foto_url && (
-              <RowActionButton
-                icon={FiImage}
-                label="Ver foto"
-                colorPalette="blue"
-                onClick={() => setIncidenteConFoto(incidente)}
-              />
-            )}
-            <RowActionButton 
-              icon={FiEye}
-              label="Ver"
-              colorPalette="yellow"
-              onClick={() => onVer?.(incidente)} 
+          {incidente.foto_url && (
+            <RowActionButton
+              icon={FiImage}
+              label="Ver foto"
+              colorPalette="blue"
+              onClick={() => setIncidenteConFoto(incidente)}
             />
+          )}
+          <RowActionButton
+            icon={FiEye}
+            label="Ver"
+            colorPalette="yellow"
+            onClick={() => onVer?.(incidente)}
+          />
           {incidente.abierto ? (
             <RowActionButton
               icon={FiCheckCircle}
@@ -207,60 +219,68 @@ export const ListadoIncidentes = ({
   return (
     <ListadoContainer>
       <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title={titulo} icon={FiAlertTriangle}/>
+        <ListadoHeader title={titulo} icon={FiAlertTriangle} />
         <HStack gap={2}>
           {onGestionarTipos && (
-            <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
+            <Button variant="outline" colorPalette="green" onClick={onGestionarTipos}>
               <FiSettings /> Gestionar Tipos
             </Button>
           )}
           {onCrear && (
-          <Button variant='solid' colorPalette='green' onClick={onCrear}>
-            <FiPlus /> Registrar Incidente
-          </Button>
+            <Button variant="solid" colorPalette="green" onClick={onCrear}>
+              <FiPlus /> Registrar Incidente
+            </Button>
           )}
         </HStack>
       </HStack>
+
       <FiltrosBar
-          onAplicar={() => {
-            setEstadoAplicado(estadoSeleccionado);
-            setPage(1);
-          }}
-          onLimpiar={() => {
-            setEstadoSeleccionado("");
-            setEstadoAplicado("");
-            setPage(1);
-          }}
-          hayFiltrosActivos={estadoAplicado !== ""}
-        >
-          <FiltroSelect
-            ariaLabel="Filtrar por estado"
-            placeholder="Todos los estados"
-            value={estadoSeleccionado}
-            onChange={setEstadoSeleccionado}
-            options={[
-              { label: "Abiertos", value: "abierto" },
-              { label: "Cerrados", value: "cerrado" },
-            ]}
-          />
-        </FiltrosBar>
-    
+        onAplicar={() => {
+          setEstadoAplicado(estadoSeleccionado);
+          setPage(1);
+        }}
+        onLimpiar={() => {
+          setBusqueda("");
+          setEstadoSeleccionado("");
+          setEstadoAplicado("");
+          setPage(1);
+        }}
+        hayFiltrosActivos={busqueda !== "" || estadoAplicado !== ""}
+      >
+        <FiltroTexto
+          ariaLabel="Buscar incidente"
+          placeholder="Título o descripción"
+          value={busqueda}
+          onChange={setBusqueda}
+        />
+        <FiltroSelect
+          ariaLabel="Filtrar por estado"
+          placeholder="Todos los estados"
+          value={estadoSeleccionado}
+          onChange={setEstadoSeleccionado}
+          options={[
+            { label: "Abiertos", value: "abierto" },
+            { label: "Cerrados", value: "cerrado" },
+          ]}
+        />
+      </FiltrosBar>
+
       {primerCarga && <LoadingState message="Cargando incidentes..." />}
 
       {!primerCarga && error && <AlertMessage type="error" message={error} />}
 
-      {!primerCarga && !error && data.length === 0 && (
+      {!primerCarga && !error && incidentesFiltrados.length === 0 && (
         <AlertMessage
           type="info"
           message={
-            filtrado
-              ? "No hay incidentes de este tipo en el período seleccionado."
+            hayFiltrosAplicados
+              ? "No hay incidentes que coincidan con la búsqueda o los filtros seleccionados."
               : "Todavía no hay incidentes reportados."
           }
         />
       )}
 
-      {!primerCarga && !error && data.length > 0 && (
+      {!primerCarga && !error && incidentesFiltrados.length > 0 && (
         <>
           <DataTable
             items={itemsFiltradosPaginados}
@@ -291,10 +311,10 @@ export const ListadoIncidentes = ({
                 <Dialog.Title>
                   Foto del incidente{incidenteConFoto ? `: ${incidenteConFoto.titulo}` : ""}
                 </Dialog.Title>
-                <Dialog.CloseTrigger 
+                <Dialog.CloseTrigger
                   _hover={{ color: "red.500", bg: "red.50" }}
-                  transition='background 0.2s, color 0.2s'
-                  cursor='pointer'
+                  transition="background 0.2s, color 0.2s"
+                  cursor="pointer"
                 >
                   <FiX />
                 </Dialog.CloseTrigger>
