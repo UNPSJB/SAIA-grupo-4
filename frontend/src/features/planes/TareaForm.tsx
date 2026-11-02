@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { VStack } from "@chakra-ui/react";
+import { SimpleGrid, VStack } from "@chakra-ui/react";
 import { FiEdit2, FiEye, FiSave, FiTool, FiXCircle } from "react-icons/fi";
 import {
   AlertMessage,
@@ -259,87 +259,89 @@ export const TareaForm = ({
       {/* En modo ver no hay submit: el form sirve solo para mostrar los datos. */}
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4} align='stretch'>
-          <Seccion numero={1} titulo='Identificación y Destino'>
-            <TextField
-              label='Nombre de la Tarea'
-              disabled={esModoVer}
-              placeholder='Ej. Sanitización profunda de Heladera y Burletes'
-              error={errors.nombre?.message}
-              {...register("nombre")}
-            />
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w='100%'>
+            <Seccion numero={1} titulo='Identificación y Destino'>
+              <TextField
+                label='Nombre de la Tarea'
+                disabled={esModoVer}
+                placeholder='Ej. Sanitización profunda de Heladera y Burletes'
+                error={errors.nombre?.message}
+                {...register("nombre")}
+              />
 
-            <DestinoSelector
-              destinoTipo={destinoTipo}
-              onChangeDestino={(value) =>
-                setValue("destino_tipo", value as DestinoTipo, {
-                  shouldValidate: true,
-                })
-              }
-              opcionesEquipos={opcionesEquipos}
-              opcionesSectores={opcionesSectores}
-              catalogosCargando={catalogosCargando}
-              errorCatalogos={errorCatalogos}
-              disabled={esModoVer}
-              equipoId={equipoId}
-              sectorId={sectorId}
-              onChangeEquipo={(value) =>
-                setValue("equipo_id", value, { shouldValidate: true })
-              }
-              onChangeSector={(value) =>
-                setValue("sector_id", value, { shouldValidate: true })
-              }
-              errorEquipo={errors.equipo_id?.message?.toString()}
-              errorSector={errors.sector_id?.message?.toString()}
-            />
-          </Seccion>
+              <DestinoSelector
+                destinoTipo={destinoTipo}
+                onChangeDestino={(value) =>
+                  setValue("destino_tipo", value as DestinoTipo, {
+                    shouldValidate: true,
+                  })
+                }
+                opcionesEquipos={opcionesEquipos}
+                opcionesSectores={opcionesSectores}
+                catalogosCargando={catalogosCargando}
+                errorCatalogos={errorCatalogos}
+                disabled={esModoVer}
+                equipoId={equipoId}
+                sectorId={sectorId}
+                onChangeEquipo={(value) =>
+                  setValue("equipo_id", value, { shouldValidate: true })
+                }
+                onChangeSector={(value) =>
+                  setValue("sector_id", value, { shouldValidate: true })
+                }
+                errorEquipo={errors.equipo_id?.message?.toString()}
+                errorSector={errors.sector_id?.message?.toString()}
+              />
+            </Seccion>
 
-          <Seccion numero={2} titulo='Momento Operativo y Frecuencia'>
-            <Controller
-              control={control}
-              name='momento'
-              render={({ field }) => (
-                <RadioGroupField
-                  label='Momento'
-                  disabled={esModoVer}
-                  value={field.value}
-                  onChange={(value) =>
-                    field.onChange(
-                      value as
-                        | "pre-operacional"
-                        | "operacional"
-                        | "post-operacional",
-                    )
-                  }
-                  options={[
-                    { label: "Pre-operacional", value: "pre-operacional" },
-                    { label: "Operacional", value: "operacional" },
-                    { label: "Post-operacional", value: "post-operacional" },
-                  ]}
-                />
-              )}
-            />
+            <Seccion numero={2} titulo='Momento Operativo y Frecuencia'>
+              <Controller
+                control={control}
+                name='momento'
+                render={({ field }) => (
+                  <RadioGroupField
+                    label='Momento'
+                    disabled={esModoVer}
+                    value={field.value}
+                    onChange={(value) =>
+                      field.onChange(
+                        value as
+                          | "pre-operacional"
+                          | "operacional"
+                          | "post-operacional",
+                      )
+                    }
+                    options={[
+                      { label: "Pre-operacional", value: "pre-operacional" },
+                      { label: "Operacional", value: "operacional" },
+                      { label: "Post-operacional", value: "post-operacional" },
+                    ]}
+                  />
+                )}
+              />
 
-            <FrecuenciaSelector
-              periodicidad={periodicidad}
-              onChangePeriodicidad={(value) =>
-                setValue("periodicidad", value as Periodicidad, {
-                  shouldValidate: true,
-                })
-              }
-              dias={dias}
-              onChangeDias={(selected) =>
-                setValue("dias", selected, { shouldValidate: true })
-              }
-              diaMes={diaMes}
-              onChangeDiaMes={(value) =>
-                setValue("dia_mes", value, { shouldValidate: true })
-              }
-              disabled={esModoVer}
-              errorPeriodicidad={errors.periodicidad?.message?.toString()}
-              errorDias={errors.dias?.message?.toString()}
-              errorDiaMes={errors.dia_mes?.message}
-            />
-          </Seccion>
+              <FrecuenciaSelector
+                periodicidad={periodicidad}
+                onChangePeriodicidad={(value) =>
+                  setValue("periodicidad", value as Periodicidad, {
+                    shouldValidate: true,
+                  })
+                }
+                dias={dias}
+                onChangeDias={(selected) =>
+                  setValue("dias", selected, { shouldValidate: true })
+                }
+                diaMes={diaMes}
+                onChangeDiaMes={(value) =>
+                  setValue("dia_mes", value, { shouldValidate: true })
+                }
+                disabled={esModoVer}
+                errorPeriodicidad={errors.periodicidad?.message?.toString()}
+                errorDias={errors.dias?.message?.toString()}
+                errorDiaMes={errors.dia_mes?.message}
+              />
+            </Seccion>
+          </SimpleGrid>
 
           <Seccion numero={3} titulo='Guía y Procedimiento (Paso a Paso)'>
             <ProcedimientoField
