@@ -119,6 +119,8 @@ export const recetasApi = {
     request<Receta>(`/recetas/${id}/clonar`, { method: "POST" }),
   descartarReceta: (id: number) =>
     request<void>(`/recetas/${id}/descartar`, { method: "DELETE" }),
+  eliminarReceta: (id: number) =>
+    request<void>(`/recetas/${id}`, { method: "DELETE" }),
 
   listarPasos: (recetaId: number) =>
     request<PasoReceta[]>(`/recetas/${recetaId}/pasos`),

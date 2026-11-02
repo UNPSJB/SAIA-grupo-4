@@ -5,3 +5,7 @@ class ErrorCode:
     EQUIPO_INACTIVO = "El equipo está dado de baja y debe ser reactivado antes de modificarlo."
     EQUIPO_BAJA_NO_PERMITIDA = "La baja del equipo debe realizarse mediante el endpoint de eliminación."
     CALIBRACION_FECHA_FUTURA = "La fecha de calibración no puede ser futura."
+    EQUIPO_CON_RECETA_ACTIVA = (
+        "No se puede dar de baja el equipo '{equipo_nombre}' porque forma parte de la receta activa '{receta_nombre}'. "
+        "Modificá o inhabilitá la receta antes de dar de baja el equipo."
+    )

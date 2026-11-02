@@ -184,11 +184,7 @@ export default function RecetasPage() {
     setEliminando(true);
     setErrorEliminar("");
     try {
-      if (recetaEliminar.estado === "BORRADOR") {
-        await recetasApi.descartarReceta(recetaEliminar.id);
-      } else {
-        await recetasApi.inhabilitarReceta(recetaEliminar.id);
-      }
+      await recetasApi.eliminarReceta(recetaEliminar.id);
       setRecetaEliminar(null);
       await recargar();
     } catch (e) {
@@ -574,17 +570,25 @@ export default function RecetasPage() {
 
       <AlertDelete
         open={recetaEliminar !== null}
-        title="Eliminar receta"
+        title={
+          recetaEliminar?.estado === "ACTIVA" && recetaEliminar.tiene_lotes
+            ? "Dar de baja receta"
+            : "Eliminar receta"
+        }
         name={recetaEliminar?.nombre_receta ?? null}
         message={
           recetaEliminar
             ? recetaEliminar.estado === "BORRADOR"
-              ? `¿Está seguro que desea eliminar el borrador "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Se eliminará definitivamente.`
-              : `¿Está seguro que desea eliminar la receta "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Al no ser un borrador, se dará de baja lógicamente y quedará en estado INHABILITADA.`
+              ? `¿Está seguro que desea eliminar el borrador "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Se eliminará definitivamente de la base de datos.`
+              : recetaEliminar.tiene_lotes
+                ? `¿Está seguro que desea dar de baja la receta "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Al poseer lotes asociados, pasará a estado INHABILITADA para preservar el historial.`
+                : `¿Está seguro que desea eliminar la receta "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Al no tener lotes asociados, se eliminará definitivamente de la base de datos.`
             : ""
         }
         confirmLabel={
-          recetaEliminar?.estado === "BORRADOR" ? "Eliminar" : "Dar de baja"
+          recetaEliminar?.estado === "ACTIVA" && recetaEliminar.tiene_lotes
+            ? "Dar de baja"
+            : "Eliminar"
         }
         loadingText="Procesando..."
         loading={eliminando}

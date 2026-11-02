@@ -28,3 +28,13 @@ class NombreDuplicadoInactivo(Conflict):
             "insumo_id": insumo_id,
         }
         super().__init__(headers={"X-Insumo-Id": str(insumo_id)})
+
+
+class InsumoConRecetaActiva(Conflict):
+    def __init__(self, insumo_nombre: str, receta_nombre: str) -> None:
+        super().__init__(
+            detail=ErrorCode.INSUMO_CON_RECETA_ACTIVA.format(
+                insumo_nombre=insumo_nombre,
+                receta_nombre=receta_nombre,
+            )
+        )

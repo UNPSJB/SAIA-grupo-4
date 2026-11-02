@@ -6,6 +6,8 @@ from src.insumos.models import Insumo
 from src.insumos import schemas, exceptions
 from src.unidad_medida.models import UnidadMedida
 from src.unidad_medida.exceptions import UnidadMedidaReactivar
+from src.recetas.models import Receta, PasoReceta, PasoInsumo
+from src.recetas.constants import EstadoReceta
 
 
 # operaciones CRUD para Insumo
@@ -65,6 +67,22 @@ def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) 
                 raise exceptions.InsumoActivo()
             else:
                 raise exceptions.InsumoBaja()
+
+        if not insumo.disponible:
+            receta_activa = db.scalar(
+                select(Receta)
+                .join(PasoReceta, PasoReceta.receta_id == Receta.id)
+                .join(PasoInsumo, PasoInsumo.paso_id == PasoReceta.id)
+                .where(
+                    PasoInsumo.insumo_id == insumo_id,
+                    Receta.estado == EstadoReceta.ACTIVA,
+                )
+            )
+            if receta_activa:
+                raise exceptions.InsumoConRecetaActiva(
+                    insumo_nombre=db_insumo.nombre,
+                    receta_nombre=receta_activa.nombre_receta,
+                )
 
         if insumo.disponible:
             # Al dar de alta, la unidad de medida asociada debe existir y estar activa

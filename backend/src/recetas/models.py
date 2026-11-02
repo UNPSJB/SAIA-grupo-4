@@ -41,6 +41,7 @@ class Receta(ModeloBase):
         back_populates="receta", 
         cascade="all, delete-orphan"
     )
+    lotes: Mapped[list["Lote"]] = relationship("Lote", back_populates="receta")
 
     @property
     def usuario_creador_nombre(self) -> str:
@@ -58,11 +59,14 @@ class Receta(ModeloBase):
 
     @property
     def tiene_lotes(self) -> bool:
-        """Indica si la receta tiene lotes asociados.
+        """Indica si la receta tiene lotes asociados."""
+        if hasattr(self, "_tiene_lotes"):
+            return self._tiene_lotes
+        return len(self.lotes) > 0 if self.lotes is not None else False
 
-        TODO: Reemplazar por la consulta real cuando exista el módulo de Lotes.
-        """
-        return False
+    @tiene_lotes.setter
+    def tiene_lotes(self, valor: bool) -> None:
+        self._tiene_lotes = valor
 
 
 class PasoReceta(ModeloBase):

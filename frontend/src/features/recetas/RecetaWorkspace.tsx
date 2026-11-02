@@ -477,11 +477,7 @@ export default function RecetaWorkspace({
     setDandoDeBaja(true);
     setErrorAccion("");
     try {
-      if (esBorrador) {
-        await recetasApi.descartarReceta(receta.id);
-      } else {
-        await recetasApi.inhabilitarReceta(receta.id);
-      }
+      await recetasApi.eliminarReceta(receta.id);
       setConfirmarBaja(false);
       volver();
     } catch (e) {
@@ -570,7 +566,12 @@ export default function RecetaWorkspace({
                   setConfirmarBaja(true);
                 }}
               >
-                <FiTrash2 /> Dar de baja
+                <FiTrash2 />{" "}
+                {esBorrador
+                  ? "Descartar borrador"
+                  : receta.tiene_lotes
+                  ? "Dar de baja"
+                  : "Eliminar receta"}
               </Button>
             )}
             {esBorrador && onCrearReceta && (
@@ -798,11 +799,22 @@ export default function RecetaWorkspace({
 
       <AlertConfirm
         open={confirmarBaja}
-        title={esBorrador ? "Descartar borrador" : "Dar de baja la receta"}
+        title={
+          esActiva && receta.tiene_lotes
+            ? "Dar de baja la receta"
+            : esBorrador
+            ? "Descartar borrador"
+            : "Eliminar receta"
+        }
         message={
           esBorrador
             ? `¿Está seguro que desea descartar la receta "${receta.nombre_receta}"? Se eliminará definitivamente.`
-            : `¿Está seguro que desea dar de baja la receta "${receta.nombre_receta}"? Pasará a estado INHABILITADA.`
+            : receta.tiene_lotes
+            ? `¿Está seguro que desea dar de baja la receta "${receta.nombre_receta}"? Pasará a estado INHABILITADA ya que posee lotes de producción asociados.`
+            : `¿Está seguro que desea eliminar la receta "${receta.nombre_receta}"? Se eliminará definitivamente ya que no posee lotes asociados.`
+        }
+        confirmLabel={
+          esActiva && receta.tiene_lotes ? "Dar de baja" : "Eliminar"
         }
         loading={dandoDeBaja}
         error={errorAccion}

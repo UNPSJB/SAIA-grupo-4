@@ -40,7 +40,7 @@ def datos_base(session):
         nombre=generar_string_unico("Equipo"),
         marca="Test",
         numero_serie=generar_string_unico("SN"),
-        categoria="Maquinaria",
+        categoria="horno",
         sector_id=s.id,
         activo=True,
     )
@@ -48,7 +48,7 @@ def datos_base(session):
         nombre=generar_string_unico("EquipoInactivo"),
         marca="Test",
         numero_serie=generar_string_unico("SNI"),
-        categoria="Maquinaria",
+        categoria="horno",
         sector_id=s.id,
         activo=False,
     )
@@ -98,8 +98,10 @@ def datos_base(session):
         "sector_id": s.id,
         "unidad_medida_id": um.id,
         "equipo_id": eq.id,
+        "equipo_nombre": eq.nombre,
         "equipo_inactivo_id": eq_inactivo.id,
         "insumo_id": ins.id,
+        "insumo_nombre": ins.nombre,
         "insumo_inactivo_id": ins_inactivo.id,
     }
 
@@ -836,3 +838,82 @@ def test_listar_recetas_activas_filtro_y_detalle(datos_base):
     # 7. Detalle de receta en borrador en /activas/{id} debe dar 404
     res_det_borrador = client.get(f"/recetas/activas/{r2['id']}")
     assert res_det_borrador.status_code == 404
+
+
+def test_no_se_puede_dar_de_baja_insumo_con_receta_activa(datos_base):
+    # Crear receta activa con un insumo
+    res_rec = client.post("/recetas/", json={
+        "nombre_receta": "Receta Bloqueo Insumo",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 50,
+    })
+    rec_id = res_rec.json()["id"]
+    res_paso = client.post(f"/recetas/{rec_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Paso Insumo",
+        "instrucciones": "Mezclar los insumos",
+        "insumos": [{"insumo_id": datos_base["insumo_id"], "cantidad_consumo_estimada": 10}],
+        "equipos": [],
+    })
+    assert res_paso.status_code == 201
+    res_act = client.post(f"/recetas/{rec_id}/activar")
+    assert res_act.status_code == 200
+
+    # Intentar dar de baja el insumo via DELETE
+    res_del = client.delete(f"/insumos/{datos_base['insumo_id']}")
+    assert res_del.status_code == 409
+    assert res_del.json()["detail"] == (
+        f"No se puede dar de baja el insumo '{datos_base['insumo_nombre']}' porque forma parte de la receta activa 'Receta Bloqueo Insumo'. Modificá o inhabilitá la receta antes de dar de baja el insumo."
+    )
+
+    # Intentar dar de baja el insumo via PUT (disponible=False)
+    res_put = client.put(f"/insumos/{datos_base['insumo_id']}", json={"disponible": False})
+    assert res_put.status_code == 409
+    assert res_put.json()["detail"] == (
+        f"No se puede dar de baja el insumo '{datos_base['insumo_nombre']}' porque forma parte de la receta activa 'Receta Bloqueo Insumo'. Modificá o inhabilitá la receta antes de dar de baja el insumo."
+    )
+
+    # Si inhabilitamos la receta, ahora sí debe permitir dar de baja el insumo
+    client.post(f"/recetas/{rec_id}/inhabilitar")
+    res_del_ok = client.delete(f"/insumos/{datos_base['insumo_id']}")
+    assert res_del_ok.status_code == 200
+
+
+def test_no_se_puede_dar_de_baja_equipo_con_receta_activa(datos_base):
+    # Crear receta activa con un equipo
+    res_rec = client.post("/recetas/", json={
+        "nombre_receta": "Receta Bloqueo Equipo",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 50,
+    })
+    rec_id = res_rec.json()["id"]
+    res_paso = client.post(f"/recetas/{rec_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Paso Equipo",
+        "instrucciones": "Usar el equipo correspondiente",
+        "insumos": [],
+        "equipos": [{"equipo_id": datos_base["equipo_id"], "cantidad": 1}],
+    })
+    assert res_paso.status_code == 201
+    res_act = client.post(f"/recetas/{rec_id}/activar")
+    assert res_act.status_code == 200
+
+    # Intentar dar de baja el equipo via DELETE
+    res_del = client.delete(f"/equipos/{datos_base['equipo_id']}")
+    assert res_del.status_code == 409
+    assert res_del.json()["detail"] == (
+        f"No se puede dar de baja el equipo '{datos_base['equipo_nombre']}' porque forma parte de la receta activa 'Receta Bloqueo Equipo'. Modificá o inhabilitá la receta antes de dar de baja el equipo."
+    )
+
+    # Intentar dar de baja el equipo via PUT con activo=False
+    res_put = client.put(f"/equipos/{datos_base['equipo_id']}", json={"activo": False})
+    assert res_put.status_code == 409
+    assert res_put.json()["detail"] == (
+        f"No se puede dar de baja el equipo '{datos_base['equipo_nombre']}' porque forma parte de la receta activa 'Receta Bloqueo Equipo'. Modificá o inhabilitá la receta antes de dar de baja el equipo."
+    )
+
+    # Si inhabilitamos la receta, ahora sí debe permitir dar de baja el equipo
+    client.post(f"/recetas/{rec_id}/inhabilitar")
+    res_del_ok = client.delete(f"/equipos/{datos_base['equipo_id']}")
+    assert res_del_ok.status_code == 200
+

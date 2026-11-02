@@ -485,6 +485,68 @@ def descartar_receta(db: Session, receta_id: int) -> None:
         raise exceptions.RecetaNoEditable()
 
 
+def eliminar_receta(db: Session, receta_id: int) -> dict:
+    """Elimina o da de baja una receta según su estado y su histórico de lotes:
+
+    - Si la receta está en estado BORRADOR:
+        Se realiza baja física (eliminación definitiva de la base de datos).
+    - Si la receta está ACTIVA:
+        - Si NO tiene lotes asociados (not receta.tiene_lotes):
+            Se realiza baja física (eliminación definitiva de la base de datos).
+        - Si TIENE lotes asociados (receta.tiene_lotes):
+            Pasa a estado INHABILITADA (baja lógica) y queda inmutable para preservar
+            la trazabilidad histórica de los lotes ya fabricados.
+    - Si la receta está INHABILITADA:
+        - Si no tiene lotes asociados: se permite baja física.
+        - Si tiene lotes asociados: no se permite eliminar (inmutable por trazabilidad).
+    """
+    receta = obtener_receta_por_id(db, receta_id)
+    estado_actual = _estado_actual(receta)
+
+    if estado_actual == EstadoReceta.BORRADOR.value:
+        try:
+            db.delete(receta)
+            db.commit()
+            return {"resultado": "eliminada"}
+        except IntegrityError:
+            db.rollback()
+            raise exceptions.RecetaNoEditable()
+
+    elif estado_actual == EstadoReceta.ACTIVA.value:
+        if not receta.tiene_lotes:
+            try:
+                db.delete(receta)
+                db.commit()
+                return {"resultado": "eliminada"}
+            except IntegrityError:
+                db.rollback()
+                raise exceptions.RecetaNoEditable()
+        else:
+            receta.estado = EstadoReceta.INHABILITADA
+            receta.fecha_baja = datetime.now()
+            try:
+                db.commit()
+                db.refresh(receta)
+                return {"resultado": "inhabilitada"}
+            except IntegrityError:
+                db.rollback()
+                raise exceptions.RecetaNoEditable()
+
+    elif estado_actual == EstadoReceta.INHABILITADA.value:
+        if not receta.tiene_lotes:
+            try:
+                db.delete(receta)
+                db.commit()
+                return {"resultado": "eliminada"}
+            except IntegrityError:
+                db.rollback()
+                raise exceptions.RecetaNoEditable()
+        else:
+            raise exceptions.RecetaConLotesNoEditable()
+
+    return {"resultado": "eliminada"}
+
+
 # --- SERVICIOS DE PASOS DE RECETA ---
 
 def obtener_paso_por_id(db: Session, paso_id: int) -> PasoReceta:

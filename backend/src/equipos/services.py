@@ -13,6 +13,8 @@ from src.equipos.models import Equipo
 from src.sectores.models import Sector
 from src.equipos import schemas, exceptions
 from src.sectores import exceptions as sector_exceptions
+from src.recetas.models import Receta, PasoReceta, PasoEquipo
+from src.recetas.constants import EstadoReceta
 
 from datetime import date, timedelta
 from fastapi import HTTPException, status, UploadFile
@@ -150,6 +152,20 @@ def modificar_equipo(db: Session, equipo_id: int, equipo: schemas.EquipoUpdate) 
 
         # La baja se realiza exclusivamente mediante DELETE.
         if update_data.get("activo") is False:
+            receta_activa = db.scalar(
+                select(Receta)
+                .join(PasoReceta, PasoReceta.receta_id == Receta.id)
+                .join(PasoEquipo, PasoEquipo.paso_id == PasoReceta.id)
+                .where(
+                    PasoEquipo.equipo_id == equipo_id,
+                    Receta.estado == EstadoReceta.ACTIVA,
+                )
+            )
+            if receta_activa:
+                raise exceptions.EquipoConRecetaActiva(
+                    equipo_nombre=db_equipo.nombre,
+                    receta_nombre=receta_activa.nombre_receta,
+                )
             raise exceptions.EquipoBajaNoPermitida()
 
         # Comprobar duplicados si cambian nombre, marca o número de serie.
@@ -203,6 +219,8 @@ def modificar_equipo(db: Session, equipo_id: int, equipo: schemas.EquipoUpdate) 
             if not sector_nuevo.activo:
                 raise sector_exceptions.SectorInactivo()
 
+
+
     # 3. IMPACTAR CAMBIOS
     if update_data:
         db.execute(
@@ -225,6 +243,22 @@ def modificar_equipo(db: Session, equipo_id: int, equipo: schemas.EquipoUpdate) 
 
 def eliminar_equipo(db: Session, equipo_id: int) -> Equipo:
     db_equipo = leer_equipo(db, equipo_id)
+
+    receta_activa = db.scalar(
+        select(Receta)
+        .join(PasoReceta, PasoReceta.receta_id == Receta.id)
+        .join(PasoEquipo, PasoEquipo.paso_id == PasoReceta.id)
+        .where(
+            PasoEquipo.equipo_id == equipo_id,
+            Receta.estado == EstadoReceta.ACTIVA,
+        )
+    )
+    if receta_activa:
+        raise exceptions.EquipoConRecetaActiva(
+            equipo_nombre=db_equipo.nombre,
+            receta_nombre=receta_activa.nombre_receta,
+        )
+
     db_equipo.activo = False
     try:
         db.commit()

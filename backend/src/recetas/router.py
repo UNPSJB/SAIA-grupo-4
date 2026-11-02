@@ -117,6 +117,13 @@ def clonar_receta(
     return services.clonar_receta(db, receta_id, current_user.id)
 
 
+@router.delete("/{receta_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(requiere_administracion)])
+def eliminar_receta(receta_id: int, db: Session = Depends(get_db)):
+    """Elimina físicamente la receta (si es borrador o activa sin lotes), o la inhabilita si tiene lotes asociados."""
+    services.eliminar_receta(db, receta_id)
+    return None
+
+
 @router.delete("/{receta_id}/descartar", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(requiere_administracion)])
 def descartar_receta(receta_id: int, db: Session = Depends(get_db)):
     """Elimina físicamente una receta en estado BORRADOR."""

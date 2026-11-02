@@ -24,3 +24,13 @@ class EquipoBajaNoPermitida(BadRequest):
 
 class CalibracionFechaFutura(BadRequest):
     DETAIL = ErrorCode.CALIBRACION_FECHA_FUTURA
+
+
+class EquipoConRecetaActiva(Conflict):
+    def __init__(self, equipo_nombre: str, receta_nombre: str) -> None:
+        super().__init__(
+            detail=ErrorCode.EQUIPO_CON_RECETA_ACTIVA.format(
+                equipo_nombre=equipo_nombre,
+                receta_nombre=receta_nombre,
+            )
+        )
