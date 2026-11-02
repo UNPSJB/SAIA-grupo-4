@@ -39,3 +39,10 @@ class LoteOut(LoteBase):
     insumos_asociados: list[LoteInsumoOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class EstadisticaProductoOut(BaseModel):
+    producto_id: int
+    producto_nombre: str
+    cantidad_total: float
+
+    model_config = ConfigDict(from_attributes=True)    

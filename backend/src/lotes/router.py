@@ -22,6 +22,19 @@ def listar_lotes(
 ):
     return services.listar_lotes(db, producto_id=producto_id, desde=desde, hasta=hasta)
 
+@router.get("/estadisticas", response_model=List[schemas.EstadisticaProductoOut])
+def obtener_estadisticas(
+    desde: Optional[date] = Query(default=None, description="Fecha desde (YYYY-MM-DD)"),
+    hasta: Optional[date] = Query(default=None, description="Fecha hasta (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    _usuario = Depends(requiere_administracion)
+):
+    """
+    Devuelve la suma de cantidades producidas agrupadas por producto, 
+    filtradas por un rango de fechas opcional.
+    """
+    return services.obtener_estadisticas_produccion(db, desde=desde, hasta=hasta)
+
 @router.post("/", response_model=schemas.LoteOut, status_code=status.HTTP_201_CREATED)
 def crear_lote(
     lote_in: schemas.LoteCreate, 

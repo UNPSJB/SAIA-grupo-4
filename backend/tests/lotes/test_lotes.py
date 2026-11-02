@@ -183,3 +183,33 @@ def test_filtrar_lotes_por_producto_y_fechas():
     datos_fechas = res_fechas.json()
     assert any(l["producto_id"] == prod2_id for l in datos_fechas)
     assert all("2026-10-10" <= l["fecha"] <= "2026-10-20" for l in datos_fechas)
+def test_obtener_estadisticas_produccion():
+    # 1. Crear productos
+    p1 = client.post("/productos/", json={"nombre": "Producto Stat A"}).json()["id"]
+    p2 = client.post("/productos/", json={"nombre": "Producto Stat B"}).json()["id"]
+    
+    # 2. Crear lotes (Producto A = 30 en total, Producto B = 15 en total)
+    client.post("/lotes/", json={"producto_id": p1, "fecha": "2026-11-01", "cantidad": 10})
+    client.post("/lotes/", json={"producto_id": p1, "fecha": "2026-11-02", "cantidad": 20})
+    client.post("/lotes/", json={"producto_id": p2, "fecha": "2026-11-01", "cantidad": 15})
+    
+    # 3. Probar endpoint general sin filtros
+    res = client.get("/lotes/estadisticas")
+    assert res.status_code == 200
+    data = res.json()
+    
+    stat_p1 = next((item for item in data if item["producto_id"] == p1), None)
+    stat_p2 = next((item for item in data if item["producto_id"] == p2), None)
+    
+    assert stat_p1 is not None
+    assert stat_p1["cantidad_total"] == 30.0
+    assert stat_p2 is not None
+    assert stat_p2["cantidad_total"] == 15.0
+    
+    # 4. Probar endpoint con filtro de fechas
+    res_fechas = client.get("/lotes/estadisticas?desde=2026-11-02&hasta=2026-11-05")
+    data_fechas = res_fechas.json()
+    stat_p1_fechas = next((item for item in data_fechas if item["producto_id"] == p1), None)
+    
+    # Solo debería contar el lote del 11-02 (cantidad 20)
+    assert stat_p1_fechas["cantidad_total"] == 20.0

@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from src.lotes.models import Lote, LoteInsumo
 from src.lotes.schemas import LoteCreate, AsociarInsumosRequest, LoteInsumoOut, LoteOut
 from src.productos.models import Producto
@@ -68,6 +69,43 @@ def listar_lotes(
         
     lotes = query.order_by(Lote.fecha.desc(), Lote.id.desc()).all()
     return [mapear_lote_out(l) for l in lotes]
+
+def obtener_estadisticas_produccion(
+    db: Session,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None
+) -> list[dict]:
+    """
+    Devuelve la suma total de las cantidades producidas agrupadas por producto.
+    Filtra opcionalmente por un rango de fechas.
+    """
+    query = (
+        db.query(
+            Lote.producto_id,
+            Producto.nombre.label("producto_nombre"),
+            func.sum(Lote.cantidad).label("cantidad_total")
+        )
+        .join(Producto, Lote.producto_id == Producto.id)
+        .group_by(Lote.producto_id, Producto.nombre)
+    )
+
+    if desde is not None:
+        query = query.filter(Lote.fecha >= desde)
+
+    if hasta is not None:
+        query = query.filter(Lote.fecha <= hasta)
+
+    resultados = query.all()
+
+    estadisticas = []
+    for fila in resultados:
+        estadisticas.append({
+            "producto_id": fila.producto_id,
+            "producto_nombre": fila.producto_nombre,
+            "cantidad_total": float(fila.cantidad_total) if fila.cantidad_total else 0.0
+        })
+
+    return estadisticas
 
 def obtener_lote_por_id(db: Session, lote_id: int) -> Lote:
     lote = db.query(Lote).filter(Lote.id == lote_id).first()
