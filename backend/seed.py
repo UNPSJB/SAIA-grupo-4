@@ -103,6 +103,7 @@ from src.incidentes.models import Incidente
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.productos.models import Producto
+from src.lotes.models import Lote, ConsumoInsumoLote
 from src.recetas.constants import EstadoReceta
 from src.recetas.models import PasoEquipo, PasoInsumo, PasoReceta, Receta
 from src.recetas.services import _extraer_prefijo_producto
@@ -758,6 +759,7 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             unidad_medida=unidades[indice_unidad % len(unidades)],
             categoria=categoria,
             descripcion=descripcion,
+            consumo=Decimal("0"),
             disponible=True,
         )
         for nombre, indice_unidad, categoria, descripcion in _ciclar(INSUMOS, cantidad)
@@ -768,6 +770,7 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             nombre=nombre,
             descripcion=descripcion,
             unidad_medida=unidades[indice_unidad % len(unidades)],
+            dias_vida_util=7 + (indice_unidad % 4) * 7,
             activo=True,
         )
         for nombre, descripcion, indice_unidad in _ciclar(PRODUCTOS, cantidad)
@@ -1521,6 +1524,9 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     prod_pi = productos[2]   # Pan Integral
     pref_pi = _extraer_prefijo_producto(prod_pi.nombre)
 
+    prod_bs = productos[3]   # Bizcochos Salados
+    pref_bs = _extraer_prefijo_producto(prod_bs.nombre)
+
     prod_tc = productos[4]   # Torta de Chocolate
     pref_tc = _extraer_prefijo_producto(prod_tc.nombre)
 
@@ -1782,6 +1788,97 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
         (
             (
+                "Bizcochos Salados Crocantes",
+                prod_bs,
+                f"REC-{pref_bs}-001",
+                EstadoReceta.ACTIVA,
+                Decimal("50.00"),
+                90,
+                25,
+                "Formula activa tradicional de bizcochos salados horneados a alta temperatura.",
+            ),
+            [
+                (
+                    1,
+                    "Pesaje de secos y sal fina",
+                    "Pesar la harina de trigo y sal marina segun la proporcion estandar.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_harina, Decimal("15.000")), (ins_sal, Decimal("400.000"))],
+                ),
+                (
+                    2,
+                    "Amasado con manteca y levadura",
+                    "Integrar grasa y levadura fresca en la amasadora a velocidad media.",
+                    [(eq_amasadora, 1)],
+                    [(ins_manteca, Decimal("4.000")), (ins_levadura, Decimal("300.000"))],
+                ),
+                (
+                    3,
+                    "Laminado y picado de masa",
+                    "Estirar sobre mesa de acero inoxidable y realizar el clasico picado superficial.",
+                    [(eq_mesa, 1)],
+                    [],
+                ),
+                (
+                    4,
+                    "Horneado a alta temperatura",
+                    "Hornear a 220C durante 18 minutos hasta conseguir crocancia uniforme.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Torta de Chocolate Artesanal v2",
+                prod_tc,
+                f"REC-{pref_tc}-002",
+                EstadoReceta.ACTIVA,
+                Decimal("18.00"),
+                140,
+                15,
+                "Version optimizada con cacao amargo seleccionado y textura esponjosa.",
+            ),
+            [
+                (
+                    1,
+                    "Tamizado de harina, cacao y azucar",
+                    "Tamizar harina, azucar comun y cacao amargo desgrasado en balanza de laboratorio.",
+                    [(eq_balanza_lab, 1)],
+                    [(ins_harina, Decimal("5.000")), (ins_cacao, Decimal("2500.000")), (ins_azucar, Decimal("6.000"))],
+                ),
+                (
+                    2,
+                    "Emulsion con manteca, huevos y leche",
+                    "Batir manteca blanda con huevos y leche fluida hasta emulsion uniforme.",
+                    [(eq_amasadora, 1)],
+                    [(ins_manteca, Decimal("3.500")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.500"))],
+                ),
+                (
+                    3,
+                    "Perfume de vainilla natural",
+                    "Incorporar extracto de vainilla para equilibrar la intensidad del cacao.",
+                    [],
+                    [(ins_vainilla, Decimal("60.000"))],
+                ),
+                (
+                    4,
+                    "Dosificacion en moldes circulares",
+                    "Fraccionar en moldes previamente enmantecados.",
+                    [(eq_mesa, 1)],
+                    [],
+                ),
+                (
+                    5,
+                    "Horneado parejo",
+                    "Hornear a 160C por 45 minutos hasta coccion completa.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
                 "Medialunas de Manteca Portenas",
                 prod_med,
                 f"REC-{pref_med}-001",
@@ -1929,6 +2026,100 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     db.add_all(recetas_creadas)
     db.flush()
     return recetas_creadas
+
+
+def _crear_lotes(db, personas, recetas, hoy):
+    operadores = _operadores(personas)
+    if not operadores:
+        operadores = [persona for persona in personas if persona.activo]
+    if not operadores:
+        raise RuntimeError("Se necesita al menos una persona activa para sembrar lotes.")
+
+    recetas_activas = {r.codigo_receta: r for r in recetas if r.estado == EstadoReceta.ACTIVA}
+
+    datos_lotes = [
+        ("REC-PC-002", 6, Decimal("50.00"), 0, "Produccion matutina de Pan de Campo. Miga esponjosa."),
+        ("REC-GV-001", 5, Decimal("120.00"), 1, "Galletas dulces clasicas. Empaquetado completo."),
+        ("REC-PI-001", 4, Decimal("60.00"), 2, "Pan integral multicereal con abundante sesamo."),
+        ("REC-BS-001", 4, Decimal("50.00"), 3, "Bizcochos salados de textura crocante tradicional."),
+        ("REC-TC-002", 3, Decimal("18.00"), 0, "Tortas de chocolate para venta directa en confiteria."),
+        ("REC-PC-002", 3, Decimal("55.00"), 1, "Pan de campo con fermentacion en frio extendida."),
+        ("REC-GV-001", 2, Decimal("100.00"), 2, "Lote para reposicion de galletas en salon de ventas."),
+        ("REC-PI-001", 1, Decimal("60.00"), 3, "Pan integral elaborado a primera hora del turno."),
+        ("REC-BS-001", 0, Decimal("50.00"), 0, "Lote fresco del dia en control de calidad final."),
+        ("REC-TC-002", 0, Decimal("20.00"), 1, "Elaboracion especial de tortas de chocolate del dia."),
+    ]
+
+    lotes_creados = []
+    secuencias_dia: dict[tuple[str, str], int] = {}
+    consumo_acumulado: dict[int, Decimal] = {}
+
+    for codigo_receta, dias_atras, cantidad, idx_op, obs in datos_lotes:
+        receta = recetas_activas.get(codigo_receta)
+        if not receta:
+            continue
+
+        producto = receta.producto
+        fecha_elab = datetime.combine(hoy - timedelta(days=dias_atras), time(8, 30))
+        dias_vida = producto.dias_vida_util or 7
+        fecha_vto = fecha_elab.date() + timedelta(days=dias_vida)
+
+        operador = operadores[idx_op % len(operadores)]
+
+        prefijo_prod = _extraer_prefijo_producto(producto.nombre)
+        fecha_str = fecha_elab.strftime("%Y%m%d")
+        clave_sec = (prefijo_prod, fecha_str)
+        secuencias_dia[clave_sec] = secuencias_dia.get(clave_sec, 0) + 1
+        sec = secuencias_dia[clave_sec]
+        codigo_lote = f"LOT-{prefijo_prod}-{fecha_str}-{sec:03d}"
+
+        rendimiento = float(receta.rendimiento_estandar) if receta.rendimiento_estandar > 0 else 1.0
+        factor_escala = float(cantidad) / rendimiento
+
+        mapa_nominal: dict[int, float] = {}
+        for paso in receta.pasos:
+            for pi in paso.insumos:
+                mapa_nominal[pi.insumo_id] = mapa_nominal.get(pi.insumo_id, 0.0) + float(pi.cantidad_consumo_estimada)
+
+        consumos_orm = []
+        for ins_id, nominal in mapa_nominal.items():
+            teorica = round(nominal * factor_escala, 3)
+            consumos_orm.append(
+                ConsumoInsumoLote(
+                    insumo_id=ins_id,
+                    cantidad_teorica=teorica,
+                    cantidad_real_utilizada=teorica,
+                )
+            )
+            consumo_acumulado[ins_id] = (
+                consumo_acumulado.get(ins_id, Decimal("0"))
+                + Decimal(str(teorica))
+            )
+
+        lote = Lote(
+            codigo_lote=codigo_lote,
+            producto_id=producto.id,
+            receta_id=receta.id,
+            operador_id=operador.id,
+            fecha_elaboracion=fecha_elab,
+            fecha_vencimiento=fecha_vto,
+            fecha_registro_sistema=fecha_elab + timedelta(minutes=15),
+            cantidad_producida=cantidad,
+            observaciones=obs,
+            consumos_insumos=consumos_orm,
+        )
+        lotes_creados.append(lote)
+
+    db.add_all(lotes_creados)
+    db.flush()
+
+    for insumo_id, total in consumo_acumulado.items():
+        db.get(Insumo, insumo_id).consumo = total.quantize(
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )
+
+    db.flush()
+    return lotes_creados
 
 # --------------------------------------------------------------------------
 # Verificacion
@@ -2500,7 +2691,7 @@ def main():
             documentos_personal = _crear_documentos_personal(db)
             _crear_vencimientos_personal(db, personas, documentos_personal, hoy)
             _crear_incidentes(db, personas, args.cantidad, hoy)
-            _crear_recetas(
+            recetas = _crear_recetas(
                 db,
                 personas,
                 catalogo["productos"],
@@ -2508,6 +2699,7 @@ def main():
                 catalogo["insumos"],
                 hoy,
             )
+            _crear_lotes(db, personas, recetas, hoy)
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,
