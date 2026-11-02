@@ -21,6 +21,10 @@ export const ProductoDetalle = ({ producto, onCerrar }: DetalleProps) => {
         },
         { label: "Descripción", valor: producto.descripcion },
         {
+          label: "Vida útil",
+          valor: producto.dias_vida_util != null ? `${producto.dias_vida_util} días` : "No especificada",
+        },
+        {
           label: "Estado",
           valor: (
             <Badge colorPalette={producto.activo ? "green" : "red"}>

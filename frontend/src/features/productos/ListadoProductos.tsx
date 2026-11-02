@@ -109,8 +109,13 @@ export const ListadoProductos = ({
         `${p.unidad_medida.nombre} (${p.unidad_medida.simbolo})`,
     },
     {
+      key: "dias_vida_util",
+      label: "Vida útil",
+      render: (p) => (p.dias_vida_util != null ? `${p.dias_vida_util} días` : "—"),
+    },
+    {
       key: "activo",
-      label: "Activo",
+      label: "Estado",
       render: (p) => (
         <Badge colorPalette={p.activo ? "green" : "red"}>
           {p.activo ? "Activo" : "Inactivo"}

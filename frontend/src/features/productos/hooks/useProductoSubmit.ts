@@ -11,6 +11,7 @@ export interface ProductoPayload {
   nombre: string;
   descripcion: string;
   unidad_medida_id: string;
+  dias_vida_util?: number | null;
 }
 
 type FastApiError = {
@@ -44,6 +45,7 @@ export const useProductoSubmit = ({
           nombre: values?.nombre.toLocaleLowerCase() ?? "",
           descripcion: values?.descripcion ?? "",
           unidad_medida_id: values ? Number(values.unidad_medida_id) : undefined,
+          dias_vida_util: values?.dias_vida_util ?? null,
         };
 
         const url = id ? `${endpoint}${id}` : endpoint;

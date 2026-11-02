@@ -78,12 +78,14 @@ export const ProductoForm = ({
           nombre: producto!.nombre,
           descripcion: producto!.descripcion,
           unidad_medida_id: String(producto!.unidad_medida.id),
+          dias_vida_util: producto?.dias_vida_util ?? null,
         }
       : {
-        nombre: "",
-        descripcion: "",
-        unidad_medida_id: "",
-      };
+          nombre: "",
+          descripcion: "",
+          unidad_medida_id: "",
+          dias_vida_util: null,
+        };
 
   const {
     register,
@@ -193,6 +195,20 @@ export const ProductoForm = ({
             options={opcionesUnidad}
             error={errors.unidad_medida_id?.message}
             {...register("unidad_medida_id")}
+          />
+
+          <TextField
+            label='Días de vida útil (opcional)'
+            type='number'
+            disabled={esModoVer}
+            placeholder='Ej. 30'
+            error={errors.dias_vida_util?.message}
+            {...register("dias_vida_util", {
+              setValueAs: (v) =>
+                v === "" || v === null || v === undefined || Number.isNaN(Number(v))
+                  ? null
+                  : Number(v),
+            })}
           />
 
           <FormActions>
