@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Text, VStack } from "@chakra-ui/react";
+import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import {
+  FiArrowLeft,
+  FiArrowRight,
   FiEdit2,
   FiEye,
   FiFileText,
@@ -56,6 +58,28 @@ const TITULOS: Record<ModoPasoForm, string> = {
   crear: "Agregar Paso",
   modificar: "Editar Paso",
 };
+
+const PASOS = [
+  {
+    titulo: "Identificación del paso",
+    descripcion: "Orden y título del paso",
+    campos: ["numero_orden", "titulo"],
+  },
+  {
+    titulo: "Instrucciones y procedimiento",
+    descripcion: "Método de elaboración",
+    campos: ["instrucciones"],
+  },
+  {
+    titulo: "Recursos",
+    descripcion: "Insumos y equipos requeridos",
+    campos: ["insumos", "equipos"],
+  },
+] satisfies Array<{
+  titulo: string;
+  descripcion: string;
+  campos: Array<keyof PasoRecetaFormInput>;
+}>;
 
 const pasoAFormulario = (paso: PasoReceta): PasoRecetaFormInput => ({
   numero_orden: String(paso.numero_orden),
@@ -116,10 +140,17 @@ export const PasoRecetaForm = ({
   } = formMethods;
 
   const [success, setSuccess] = useState(false);
+  const [pasoActualIdx, setPasoActualIdx] = useState(0);
+  const inicioRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pasoActualIdx]);
 
   const regNumeroOrden = register("numero_orden");
   const regTitulo = register("titulo");
 
+  const numeroOrdenValor = useWatch({ control, name: "numero_orden" });
   const instrucciones = useWatch({ control, name: "instrucciones" }) ?? "";
   const insumosSeleccionados = (useWatch({
     control,
@@ -191,7 +222,45 @@ export const PasoRecetaForm = ({
       setErroresCantidad,
     },
     setSuccess,
+    onValidationError: (campos) => {
+      const indice = PASOS.findIndex((seccionPaso) =>
+        seccionPaso.campos.some((campo) => campos.includes(campo)),
+      );
+      if (indice >= 0) setPasoActualIdx(indice);
+    },
   });
+
+  const avanzar = async () => {
+    const camposPaso = PASOS[pasoActualIdx].campos;
+    await formMethods.trigger(camposPaso);
+
+    if (pasoActualIdx === 0) {
+      const val = Number(numeroOrdenValor);
+      const esDup = Boolean(
+        val &&
+          pasosExistentes?.some((p) =>
+            modo === "modificar" && paso?.id
+              ? p.id !== paso.id && p.numero_orden === val
+              : p.numero_orden === val,
+          ),
+      );
+      if (esDup) {
+        setError("numero_orden", {
+          type: "manual",
+          message: `Ya existe un paso con el número de orden ${val} en esta receta.`,
+        });
+        return;
+      }
+    }
+
+    const hayErrores = camposPaso.some(
+      (campo) => formMethods.getFieldState(campo).invalid,
+    );
+    if (!hayErrores) {
+      formMethods.clearErrors("root");
+      setPasoActualIdx((actual) => Math.min(actual + 1, PASOS.length - 1));
+    }
+  };
 
   const sinInsumos = opcionesInsumos.length === 0;
   const sinEquipos = opcionesEquipos.length === 0;
@@ -204,8 +273,70 @@ export const PasoRecetaForm = ({
       />
 
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <VStack gap={4} align="stretch">
-          <Seccion numero={1} titulo="Identificación del Paso" Icon={FiTag}>
+        <VStack gap={4} align="stretch" ref={inicioRef}>
+          {!esModoVer && (
+            <HStack
+              gap={2}
+              align="stretch"
+              w="100%"
+              flexWrap="wrap"
+              aria-label="Pasos del formulario"
+            >
+              {PASOS.map((seccionPaso, index) => {
+                const activo = index === pasoActualIdx;
+                const completado = index < pasoActualIdx;
+
+                return (
+                  <Box
+                    key={seccionPaso.titulo}
+                    flex="1"
+                    minW="180px"
+                    p={3}
+                    borderWidth="1px"
+                    borderRadius="md"
+                    borderColor={activo ? "green.400" : "border.subtle"}
+                    bg={activo || completado ? "green.50" : undefined}
+                    opacity={activo || completado ? 1 : 0.72}
+                  >
+                    <HStack gap={2} align="start">
+                      <Box
+                        boxSize="6"
+                        borderRadius="full"
+                        bg={activo || completado ? "green.500" : "gray.200"}
+                        color={activo || completado ? "white" : "gray.600"}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        fontSize="sm"
+                        fontWeight="bold"
+                        flexShrink={0}
+                      >
+                        {index + 1}
+                      </Box>
+                      <Box minW="0">
+                        <Text
+                          fontSize="sm"
+                          fontWeight={activo ? "bold" : "semibold"}
+                        >
+                          {seccionPaso.titulo}
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted">
+                          {seccionPaso.descripcion}
+                        </Text>
+                      </Box>
+                    </HStack>
+                  </Box>
+                );
+              })}
+            </HStack>
+          )}
+
+          <Seccion
+            numero={1}
+            titulo="Identificación del Paso"
+            Icon={FiTag}
+            visible={esModoVer || pasoActualIdx === 0}
+          >
             <TextField
               label="Número de orden"
               type="number"
@@ -271,6 +402,7 @@ export const PasoRecetaForm = ({
             numero={2}
             titulo="Instrucciones y Procedimiento"
             Icon={FiFileText}
+            visible={esModoVer || pasoActualIdx === 1}
           >
             <TextAreaField
               label="Instrucciones del paso"
@@ -290,7 +422,12 @@ export const PasoRecetaForm = ({
             />
           </Seccion>
 
-          <Seccion numero={3} titulo="Recursos Utilizados" Icon={FiTool}>
+          <Seccion
+            numero={3}
+            titulo="Recursos Utilizados"
+            Icon={FiTool}
+            visible={esModoVer || pasoActualIdx === 2}
+          >
             {catalogosCargando && (
               <Text fontSize="sm" color="gray.600">
                 Cargando insumos y equipos disponibles...
@@ -350,7 +487,7 @@ export const PasoRecetaForm = ({
             )}
           </Seccion>
 
-          <FormActions justify="center">
+          <FormActions justify="end">
             {esModoVer ? (
               <CancelButton
                 text="Cerrar"
@@ -360,13 +497,35 @@ export const PasoRecetaForm = ({
               />
             ) : (
               <>
-                <SubmitButton
-                  text="Guardar Paso"
-                  icon={FiSave}
-                  loading={isSubmitting}
-                  type="submit"
-                  colorPalette="green"
-                />
+                {pasoActualIdx > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      formMethods.clearErrors("root");
+                      setPasoActualIdx((actual) => Math.max(actual - 1, 0));
+                    }}
+                  >
+                    <FiArrowLeft /> Atrás
+                  </Button>
+                )}
+                {pasoActualIdx < PASOS.length - 1 ? (
+                  <Button
+                    type="button"
+                    colorPalette="green"
+                    onClick={() => void avanzar()}
+                  >
+                    Siguiente <FiArrowRight />
+                  </Button>
+                ) : (
+                  <SubmitButton
+                    text="Guardar Paso"
+                    icon={FiSave}
+                    loading={isSubmitting}
+                    type="submit"
+                    colorPalette="green"
+                  />
+                )}
                 <CancelButton
                   text="Cancelar"
                   icon={FiXCircle}

@@ -40,6 +40,7 @@ export interface Documento {
   activo: boolean;
   fecha_creacion: string;
   version_vigente: VersionDocumento | null;
+  versiones?: VersionDocumento[];
 }
 
 export interface DocumentoDetalle extends Documento {

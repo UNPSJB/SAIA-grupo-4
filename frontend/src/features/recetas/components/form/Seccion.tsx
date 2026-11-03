@@ -1,12 +1,15 @@
-import { Box, Heading, VStack } from "@chakra-ui/react";
+import { Box, Heading } from "@chakra-ui/react";
 import type { ComponentType, ReactNode } from "react";
 import { FiTag } from "react-icons/fi";
+import { FormGrid } from "../../../../components/ui";
 
 interface SeccionProps {
   numero: number;
   titulo: string;
   children: ReactNode;
   Icon?: ComponentType<{ size?: number }>;
+  /** Permite ocultar la sección sin desmontarla (conserva los valores del form). */
+  visible?: boolean;
 }
 
 /**
@@ -18,9 +21,11 @@ export const Seccion = ({
   titulo,
   children,
   Icon = FiTag,
+  visible = true,
 }: SeccionProps) => (
   <Box
     w="100%"
+    display={visible ? "block" : "none"}
     borderWidth="1px"
     borderColor="border.subtle"
     borderRadius="md"
@@ -37,8 +42,6 @@ export const Seccion = ({
     >
       <Icon /> {numero}. {titulo}
     </Heading>
-    <VStack gap={4} align="start" w="100%">
-      {children}
-    </VStack>
+    <FormGrid>{children}</FormGrid>
   </Box>
 );

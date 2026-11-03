@@ -1,6 +1,28 @@
+import re
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, model_validator
-from src.documentos.constants import EstadoVencimiento, TipoDocumentoEnum
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from src.documentos.constants import ErrorCode, EstadoVencimiento, TipoDocumentoEnum
+
+PATRON_VERSION = re.compile(r"^[vV]?(\d+)\.(\d+)$")
+
+
+def parsear_version(valor: str) -> tuple[int, int]:
+    """Extrae (mayor, menor) de una versión con formato '1.0' o 'v1.0'."""
+    limpio = (valor or "").strip()
+    match = PATRON_VERSION.match(limpio)
+    if not match:
+        raise ValueError(ErrorCode.VERSION_FORMATO_INVALIDO)
+    mayor = int(match.group(1))
+    menor = int(match.group(2))
+    if (mayor, menor) < (1, 0):
+        raise ValueError("El número de versión mínimo permitido es v1.0.")
+    return mayor, menor
+
+
+def normalizar_version(valor: str) -> str:
+    """Valida y normaliza una versión al formato canónico 'vX.Y'."""
+    mayor, menor = parsear_version(valor)
+    return f"v{mayor}.{menor}"
 
 
 class VersionDocumentoBase(BaseModel):
@@ -9,8 +31,16 @@ class VersionDocumentoBase(BaseModel):
     observaciones_cambio: str | None = None  # Opcional (motivo o detalle del cambio)
 
 class VersionDocumentoCreate(VersionDocumentoBase):
+    version: str | None = None
     creado_por_id: int
     # Nota: El archivo PDF se recibe mediante UploadFile / Form en el Router
+
+    @field_validator("version")
+    @classmethod
+    def _validar_formato_version(cls, v: str | None) -> str | None:
+        if v is None or v.strip() == "":
+            return None
+        return normalizar_version(v)
     
 class VersionDocumentoRenovacion(BaseModel):
     # Schema exclusivo para extender la vigencia sin subir un archivo nuevo.
@@ -64,6 +94,14 @@ class DocumentoCreate(DocumentoBase):
     fecha_proxima_revision: date | None = None
     observaciones_cambio: str | None = None
     creado_por_id: int
+
+    @field_validator("version_inicial")
+    @classmethod
+    def _validar_version_inicial(cls, v: str) -> str:
+        normalizada = normalizar_version(v)
+        if normalizada != "v1.0":
+            raise ValueError("La versión inicial de un documento nuevo debe ser v1.0.")
+        return normalizada
 
 class DocumentoUpdate(BaseModel):
     # Todos los campos opcionales para permitir actualización parcial (PATCH)

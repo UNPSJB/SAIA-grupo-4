@@ -13,7 +13,7 @@ import {
 
 import { BASE_URL } from "../../config";
 import { useDocumentoSubmit } from "./hooks/useDocumentoSubmit";
-import { documentoSchema } from "./validationSchema";
+import { documentoSchema, normalizarVersion } from "./validationSchema";
 import type { Documento, DocumentoFormData } from "./types";
 import { TIPOS_DOCUMENTO } from "./types";
 import { useAuth } from "../auth/useAuth";
@@ -160,8 +160,9 @@ export const DocumentoForm = ({
 
       // La versión inicial y su fecha de revisión solo aplican si se adjunta el PDF
       if (values.archivo) {
-        if (values.version_inicial)
-          datos.version_inicial = values.version_inicial;
+        datos.version_inicial = values.version_inicial
+          ? normalizarVersion(values.version_inicial)
+          : "v1.0";
         if (values.fecha_proxima_revision)
           datos.fecha_proxima_revision = values.fecha_proxima_revision;
       }
@@ -334,9 +335,10 @@ export const DocumentoForm = ({
                 <>
                   <Box mb={4}>
                     <TextField
-                      label='Número de Versión'
+                      label='Número de Versión (Inicial)'
                       defaultValue={defaultValues.version_inicial}
-                      placeholder='ej. v1.0'
+                      placeholder='v1.0'
+                      disabled
                       error={errors.version_inicial?.message}
                       {...register("version_inicial")}
                     />

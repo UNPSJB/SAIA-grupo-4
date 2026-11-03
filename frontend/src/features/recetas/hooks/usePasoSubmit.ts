@@ -25,6 +25,8 @@ interface UsePasoSubmitArgs {
     | "setErroresCantidad"
   >;
   setSuccess: Dispatch<SetStateAction<boolean>>;
+  /** Avisa qué campos fallaron para que el formulario pueda saltar al paso correcto. */
+  onValidationError?: (campos: string[]) => void;
 }
 
 /**
@@ -44,6 +46,7 @@ export const usePasoSubmit = ({
   formMethods,
   estadoRecursos,
   setSuccess,
+  onValidationError,
 }: UsePasoSubmitArgs) => {
   const { handleSubmit, clearErrors, setError } = formMethods;
   const {
@@ -116,18 +119,21 @@ export const usePasoSubmit = ({
           type: "manual",
           message: MENSAJE_ERROR_CAMPOS,
         });
+        onValidationError?.(["numero_orden"]);
         return;
       }
 
       const errorConsumos = validarConsumos(values.insumos ?? []);
       if (errorConsumos) {
         setError("root", { type: "manual", message: MENSAJE_ERROR_CAMPOS });
+        onValidationError?.(["insumos"]);
         return;
       }
 
       const errorCantidades = validarCantidades(values.equipos ?? []);
       if (errorCantidades) {
         setError("root", { type: "manual", message: MENSAJE_ERROR_CAMPOS });
+        onValidationError?.(["equipos"]);
         return;
       }
 
@@ -184,6 +190,7 @@ export const usePasoSubmit = ({
             type: "manual",
             message: MENSAJE_ERROR_CAMPOS,
           });
+          onValidationError?.(["numero_orden"]);
         } else {
           setError("root", {
             message: mensaje,
@@ -191,7 +198,8 @@ export const usePasoSubmit = ({
         }
       }
     },
-    () => {
+    (formErrors) => {
+      onValidationError?.(Object.keys(formErrors));
       setError("root", {
         type: "manual",
         message: MENSAJE_ERROR_CAMPOS,

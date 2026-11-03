@@ -483,3 +483,67 @@ def test_listar_alertas_sin_documentos_devuelve_vacio():
     res = client.get("/documentos/alertas")
     assert res.status_code == 200
     assert res.json() == []
+
+
+def test_version_formato_invalido_rechazada(autor_base):
+    doc = crear_documento(autor_base, "Doc Formato Version", "PROCEDIMIENTO")
+    doc_id = doc["id"]
+
+    for version_invalida in ["abc", "1", "v1", "1.0.0", "0.5"]:
+        res = client.post(
+            f"/documentos/{doc_id}/versiones",
+            data={"datos": json.dumps({"version": version_invalida, "creado_por_id": autor_base})},
+            files={"archivo": ("v.pdf", b"pdf", "application/pdf")},
+        )
+        assert res.status_code == 400, f"Debería rechazar {version_invalida}"
+
+
+def test_version_incremental_obligatoria_y_normalizacion(autor_base):
+    payload_doc = {
+        "titulo": "Doc Incremental",
+        "tipo_documento": "PROCEDIMIENTO",
+        "creado_por_id": autor_base,
+        "version_inicial": "1.0",
+    }
+    res_doc = client.post(
+        "/documentos/",
+        data={"datos": json.dumps(payload_doc)},
+        files={"archivo": ("v1.pdf", b"pdf1", "application/pdf")},
+    )
+    assert res_doc.status_code == 201
+    assert res_doc.json()["version_vigente"]["version"] == "v1.0"
+    doc_id = res_doc.json()["id"]
+
+    # Intentar subir la misma versión (1.0 / v1.0) debe fallar
+    res_igual = client.post(
+        f"/documentos/{doc_id}/versiones",
+        data={"datos": json.dumps({"version": "1.0", "creado_por_id": autor_base})},
+        files={"archivo": ("v1_dup.pdf", b"pdf", "application/pdf")},
+    )
+    assert res_igual.status_code == 400
+
+    # Subir versión menor incremental ("1.1" sin 'v') se acepta y normaliza a "v1.1"
+    res_v1_1 = client.post(
+        f"/documentos/{doc_id}/versiones",
+        data={"datos": json.dumps({"version": "1.1", "creado_por_id": autor_base})},
+        files={"archivo": ("v1_1.pdf", b"pdf", "application/pdf")},
+    )
+    assert res_v1_1.status_code == 201
+    assert res_v1_1.json()["version"] == "v1.1"
+
+    # Subir v2.0 se acepta
+    res_v2 = client.post(
+        f"/documentos/{doc_id}/versiones",
+        data={"datos": json.dumps({"version": "v2.0", "creado_por_id": autor_base})},
+        files={"archivo": ("v2.pdf", b"pdf", "application/pdf")},
+    )
+    assert res_v2.status_code == 201
+    assert res_v2.json()["version"] == "v2.0"
+
+    # Intentar subir una versión menor a la máxima existente (ej. v1.5 < v2.0) debe fallar
+    res_menor = client.post(
+        f"/documentos/{doc_id}/versiones",
+        data={"datos": json.dumps({"version": "v1.5", "creado_por_id": autor_base})},
+        files={"archivo": ("v1_5.pdf", b"pdf", "application/pdf")},
+    )
+    assert res_menor.status_code == 400

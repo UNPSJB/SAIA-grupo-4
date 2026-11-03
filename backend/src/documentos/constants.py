@@ -16,6 +16,8 @@ class ErrorCode:
     BAJA_NO_PERMITIDA = "No se puede dar de baja el documento mediante actualización. Utilice la acción de eliminación correspondiente."
     
     ARCHIVO_INVALIDO = "El archivo adjunto no es válido. Debe ser un documento con formato PDF."
+    VERSION_FORMATO_INVALIDO = "El número de versión debe tener el formato X.Y (ej. v1.0, v1.1, v2.0)."
+    VERSION_NO_INCREMENTAL = "El número de versión debe ser mayor a la última versión registrada."
     
     # Útiles para cuando atajemos JSON + UploadFile en el Router
     FORMATO_JSON_INVALIDO = "Los datos enviados no tienen un formato JSON válido."

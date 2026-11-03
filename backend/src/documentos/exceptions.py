@@ -28,6 +28,14 @@ class DocumentoBajaNoPermitida(BadRequest):
 class ArchivoInvalido(BadRequest):
     DETAIL = ErrorCode.ARCHIVO_INVALIDO
 
+class VersionNoIncremental(BadRequest):
+    def __init__(self, ultima_version: str | None = None):
+        if ultima_version:
+            detail = f"El número de versión debe ser mayor a la última versión registrada ({ultima_version})."
+        else:
+            detail = ErrorCode.VERSION_NO_INCREMENTAL
+        super().__init__(detail=detail)
+
 class FormatoJSONInvalido(BadRequest):
     DETAIL = ErrorCode.FORMATO_JSON_INVALIDO
     
