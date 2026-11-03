@@ -142,7 +142,7 @@ export const ListadoIncidentes = ({
     estadoSeleccionado !== "";
 
   const aplicarFiltros = (busquedaManual?: string) => {
-    const texto = busquedaManual !== undefined ? busquedaManual : busqueda;
+    const texto = typeof busquedaManual === "string" ? busquedaManual : busqueda;
     setBusquedaAplicada(texto.trim());
     setEstadoAplicado(estadoSeleccionado);
     setPage(1);

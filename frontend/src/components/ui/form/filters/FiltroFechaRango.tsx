@@ -280,7 +280,7 @@ export function FiltroFechaRango({
                 type="date"
                 value={fechaDesde}
                 min={fechaMin}
-                max={fechaHasta || fechaMax}
+                max={fechaHasta && fechaMax ? (fechaHasta < fechaMax ? fechaHasta : fechaMax) : (fechaHasta || fechaMax)}
                 onChange={(e) => {
                   if (e.target.value) onCambiarFechaDesde(e.target.value);
                 }}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Box } from "@chakra-ui/react";
+import { Box, Flex, HStack, Input, Text } from "@chakra-ui/react";
 import { FiBox } from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -29,15 +29,47 @@ export default function LotesOperadorPage() {
   // Filtros borradores
   const [busquedaDraft, setBusquedaDraft] = useState("");
   const [productoIdDraft, setProductoIdDraft] = useState("");
+  const [desdeFiltro, setDesdeFiltro] = useState("");
+  const [hastaFiltro, setHastaFiltro] = useState("");
 
   // Filtros aplicados
   const [filtrosAplicados, setFiltrosAplicados] = useState({
     busqueda: "",
     productoId: "",
+    desde: "",
+    hasta: "",
   });
 
   const [page, setPage] = useState(1);
   const [loteSeleccionado, setLoteSeleccionado] = useState<Lote | null>(null);
+
+  const hoy = useMemo(() => {
+    const d = new Date();
+    const anio = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${anio}-${mes}-${dia}`;
+  }, []);
+
+  const handleCambiarDesde = (valor: string) => {
+    if (valor > hoy) {
+      valor = hoy;
+    }
+    setDesdeFiltro(valor);
+    if (hastaFiltro && valor > hastaFiltro) {
+      setHastaFiltro(valor);
+    }
+  };
+
+  const handleCambiarHasta = (valor: string) => {
+    if (valor > hoy) {
+      valor = hoy;
+    }
+    if (desdeFiltro && valor < desdeFiltro) {
+      valor = desdeFiltro;
+    }
+    setHastaFiltro(valor);
+  };
 
   // Modal para registrar lote
   const [crearAbierto, setCrearAbierto] = useState<boolean>(() => {
@@ -56,6 +88,8 @@ export default function LotesOperadorPage() {
       const data = await lotesApi.getMisLotes({
         busqueda: filtrosAplicados.busqueda || undefined,
         producto_id: filtrosAplicados.productoId ? Number(filtrosAplicados.productoId) : undefined,
+        desde: filtrosAplicados.desde || undefined,
+        hasta: filtrosAplicados.hasta || undefined,
       });
 
       setLotes(data);
@@ -71,10 +105,28 @@ export default function LotesOperadorPage() {
   }, [cargarLotes]);
 
   const aplicarFiltros = (busquedaManual?: string) => {
-    const texto = busquedaManual !== undefined ? busquedaManual : busquedaDraft;
+    const texto = typeof busquedaManual === "string" ? busquedaManual : busquedaDraft;
+    let desde = desdeFiltro;
+    let hasta = hastaFiltro;
+
+    if (desde && desde > hoy) {
+      desde = hoy;
+      setDesdeFiltro(hoy);
+    }
+    if (hasta && hasta > hoy) {
+      hasta = hoy;
+      setHastaFiltro(hoy);
+    }
+    if (desde && hasta && desde > hasta) {
+      hasta = desde;
+      setHastaFiltro(desde);
+    }
+
     setFiltrosAplicados({
       busqueda: texto.trim(),
       productoId: productoIdDraft,
+      desde,
+      hasta,
     });
     setPage(1);
   };
@@ -82,9 +134,13 @@ export default function LotesOperadorPage() {
   const limpiarFiltros = () => {
     setBusquedaDraft("");
     setProductoIdDraft("");
+    setDesdeFiltro("");
+    setHastaFiltro("");
     setFiltrosAplicados({
       busqueda: "",
       productoId: "",
+      desde: "",
+      hasta: "",
     });
     setPage(1);
   };
@@ -92,7 +148,9 @@ export default function LotesOperadorPage() {
   const hayFiltrosActivos = useMemo(() => {
     return (
       filtrosAplicados.busqueda !== "" ||
-      filtrosAplicados.productoId !== ""
+      filtrosAplicados.productoId !== "" ||
+      filtrosAplicados.desde !== "" ||
+      filtrosAplicados.hasta !== ""
     );
   }, [filtrosAplicados]);
 
@@ -132,7 +190,7 @@ export default function LotesOperadorPage() {
               gap: "12px",
               justifyContent: "space-between",
             },
-            "& input": {
+            "& input:not([type='date'])": {
               width: { base: "100%", sm: "auto" },
               minWidth: { base: "100%", sm: "14rem" },
             },
@@ -169,6 +227,60 @@ export default function LotesOperadorPage() {
                 value: String(p.id),
               }))}
             />
+            <Flex
+              direction={{ base: "column", sm: "row" }}
+              align={{ base: "stretch", sm: "center" }}
+              gap={2}
+              w={{ base: "100%", xl: "auto" }}
+            >
+              <HStack gap={2} align="center" flex={{ base: "1", sm: "none" }}>
+                <Text fontSize="xs" color="gray.600" whiteSpace="nowrap" minW={{ base: "45px", sm: "auto" }}>
+                  Desde:
+                </Text>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={desdeFiltro}
+                  max={hastaFiltro && hastaFiltro < hoy ? hastaFiltro : hoy}
+                  onChange={(e) => handleCambiarDesde(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      aplicarFiltros();
+                    }
+                  }}
+                  borderRadius="md"
+                  bg="white"
+                  w={{ base: "100%", sm: "9.5rem" }}
+                  minW={{ base: "0", sm: "9.5rem" }}
+                  flex="1"
+                />
+              </HStack>
+              <HStack gap={2} align="center" flex={{ base: "1", sm: "none" }}>
+                <Text fontSize="xs" color="gray.600" whiteSpace="nowrap" minW={{ base: "45px", sm: "auto" }}>
+                  Hasta:
+                </Text>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={hastaFiltro}
+                  min={desdeFiltro || undefined}
+                  max={hoy}
+                  onChange={(e) => handleCambiarHasta(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      aplicarFiltros();
+                    }
+                  }}
+                  borderRadius="md"
+                  bg="white"
+                  w={{ base: "100%", sm: "9.5rem" }}
+                  minW={{ base: "0", sm: "9.5rem" }}
+                  flex="1"
+                />
+              </HStack>
+            </Flex>
           </FiltrosBar>
         </Box>
 

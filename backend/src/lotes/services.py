@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from decimal import Decimal
 from typing import List, Optional
 
@@ -284,10 +284,10 @@ def _construir_query_lotes(
         query = query.where(Lote.operador_id == operador_id)
 
     if desde is not None:
-        query = query.where(func.date(Lote.fecha_elaboracion) >= desde)
+        query = query.where(Lote.fecha_elaboracion >= datetime.combine(desde, time.min))
 
     if hasta is not None:
-        query = query.where(func.date(Lote.fecha_elaboracion) <= hasta)
+        query = query.where(Lote.fecha_elaboracion <= datetime.combine(hasta, time.max))
 
     if busqueda:
         termino = f"%{busqueda.strip()}%"

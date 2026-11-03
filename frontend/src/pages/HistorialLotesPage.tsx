@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
+  Flex,
   HStack,
   Input,
   Text,
@@ -47,6 +48,34 @@ export default function HistorialLotesPage() {
   const [page, setPage] = useState(1);
   const [loteSeleccionado, setLoteSeleccionado] = useState<Lote | null>(null);
 
+  const hoy = useMemo(() => {
+    const d = new Date();
+    const anio = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${anio}-${mes}-${dia}`;
+  }, []);
+
+  const handleCambiarDesde = (valor: string) => {
+    if (valor > hoy) {
+      valor = hoy;
+    }
+    setDesdeFiltro(valor);
+    if (hastaFiltro && valor > hastaFiltro) {
+      setHastaFiltro(valor);
+    }
+  };
+
+  const handleCambiarHasta = (valor: string) => {
+    if (valor > hoy) {
+      valor = hoy;
+    }
+    if (desdeFiltro && valor < desdeFiltro) {
+      valor = desdeFiltro;
+    }
+    setHastaFiltro(valor);
+  };
+
   // Carga de catálogo completo de productos (incluyendo dados de baja o sin receta activa actual) para auditoría
   useEffect(() => {
     apiFetch(`${BASE_URL}/productos/`)
@@ -80,12 +109,28 @@ export default function HistorialLotesPage() {
   }, [cargarHistorial]);
 
   const aplicarFiltros = (busquedaManual?: string) => {
-    const texto = busquedaManual !== undefined ? busquedaManual : busqueda;
+    const texto = typeof busquedaManual === "string" ? busquedaManual : busqueda;
+    let desde = desdeFiltro;
+    let hasta = hastaFiltro;
+
+    if (desde && desde > hoy) {
+      desde = hoy;
+      setDesdeFiltro(hoy);
+    }
+    if (hasta && hasta > hoy) {
+      hasta = hoy;
+      setHastaFiltro(hoy);
+    }
+    if (desde && hasta && desde > hasta) {
+      hasta = desde;
+      setHastaFiltro(desde);
+    }
+
     setFiltrosAplicados({
       busqueda: texto.trim(),
       producto_id: productoIdFiltro,
-      desde: desdeFiltro,
-      hasta: hastaFiltro,
+      desde,
+      hasta,
     });
     setPage(1);
   };
@@ -136,7 +181,7 @@ export default function HistorialLotesPage() {
             gap: "12px",
             justifyContent: "space-between",
           },
-          "& input": {
+          "& input:not([type='date'])": {
             width: { base: "100%", sm: "auto" },
             minWidth: { base: "100%", sm: "14rem" },
           },
@@ -173,44 +218,60 @@ export default function HistorialLotesPage() {
               value: String(p.id),
             }))}
           />
-          <HStack gap={2} align="center">
-            <Text fontSize="xs" color="gray.600" whiteSpace="nowrap">
-              Desde:
-            </Text>
-            <Input
-              type="date"
-              size="sm"
-              value={desdeFiltro}
-              max={hastaFiltro || undefined}
-              onChange={(e) => setDesdeFiltro(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  aplicarFiltros();
-                }
-              }}
-              borderRadius="md"
-              bg="white"
-            />
-            <Text fontSize="xs" color="gray.600" whiteSpace="nowrap">
-              Hasta:
-            </Text>
-            <Input
-              type="date"
-              size="sm"
-              value={hastaFiltro}
-              min={desdeFiltro || undefined}
-              onChange={(e) => setHastaFiltro(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  aplicarFiltros();
-                }
-              }}
-              borderRadius="md"
-              bg="white"
-            />
-          </HStack>
+          <Flex
+            direction={{ base: "column", sm: "row" }}
+            align={{ base: "stretch", sm: "center" }}
+            gap={2}
+            w={{ base: "100%", xl: "auto" }}
+          >
+            <HStack gap={2} align="center" flex={{ base: "1", sm: "none" }}>
+              <Text fontSize="xs" color="gray.600" whiteSpace="nowrap" minW={{ base: "45px", sm: "auto" }}>
+                Desde:
+              </Text>
+              <Input
+                type="date"
+                size="sm"
+                value={desdeFiltro}
+                max={hastaFiltro && hastaFiltro < hoy ? hastaFiltro : hoy}
+                onChange={(e) => handleCambiarDesde(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    aplicarFiltros();
+                  }
+                }}
+                borderRadius="md"
+                bg="white"
+                w={{ base: "100%", sm: "9.5rem" }}
+                minW={{ base: "0", sm: "9.5rem" }}
+                flex="1"
+              />
+            </HStack>
+            <HStack gap={2} align="center" flex={{ base: "1", sm: "none" }}>
+              <Text fontSize="xs" color="gray.600" whiteSpace="nowrap" minW={{ base: "45px", sm: "auto" }}>
+                Hasta:
+              </Text>
+              <Input
+                type="date"
+                size="sm"
+                value={hastaFiltro}
+                min={desdeFiltro || undefined}
+                max={hoy}
+                onChange={(e) => handleCambiarHasta(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    aplicarFiltros();
+                  }
+                }}
+                borderRadius="md"
+                bg="white"
+                w={{ base: "100%", sm: "9.5rem" }}
+                minW={{ base: "0", sm: "9.5rem" }}
+                flex="1"
+              />
+            </HStack>
+          </Flex>
         </FiltrosBar>
       </Box>
 
