@@ -44,7 +44,15 @@ export default function NuevaRecetaPage() {
           key={receta.id}
           initialReceta={receta}
           onCambio={recargar}
-          onPromovido={() => navigate("/recetas")}
+          onPromovido={() =>
+            navigate("/recetas", {
+              state: {
+                from: "/nueva-receta",
+                label: "Nueva Receta",
+                origen: "nueva-receta",
+              },
+            })
+          }
           onCrearReceta={() => setCrearAbierto(true)}
         />
 
@@ -70,7 +78,15 @@ export default function NuevaRecetaPage() {
           <Button
             variant="outline"
             colorPalette="green"
-            onClick={() => navigate("/recetas")}
+            onClick={() =>
+              navigate("/recetas", {
+                state: {
+                  from: "/nueva-receta",
+                  label: "Nueva Receta",
+                  origen: "nueva-receta",
+                },
+              })
+            }
           >
             <FiList /> Ver listado
           </Button>

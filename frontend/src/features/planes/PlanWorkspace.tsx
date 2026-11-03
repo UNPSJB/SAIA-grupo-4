@@ -26,7 +26,7 @@ type Vista =
 interface PlanWorkspaceProps {
   initialPlan: PlanPOES;
   esBorrador?: boolean;
-  historialOrigen?: "nuevo-plan";
+  historialOrigen?: "nuevo-plan" | "plan-vigente";
   onPromovido?: () => void;
   onCambio?: () => void;
   onCrearPlan?: () => void;
@@ -43,10 +43,13 @@ export const PlanWorkspace = ({
   const navigate = useNavigate();
 
   const irAlHistorial = () =>
-    navigate(
-      "/historial-planes",
-      historialOrigen ? { state: { origen: historialOrigen } } : undefined,
-    );
+    navigate("/historial-planes", {
+      state: {
+        origen: historialOrigen || (esBorrador ? "nuevo-plan" : "plan-vigente"),
+        from: esBorrador ? "/nuevo-plan" : "/plan-poes",
+        label: esBorrador ? "Nuevo Plan" : "Plan Vigente",
+      },
+    });
 
   const {
     catalogs,

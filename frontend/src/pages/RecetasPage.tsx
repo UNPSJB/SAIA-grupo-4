@@ -115,7 +115,9 @@ export default function RecetasPage() {
 
   const guardarReceta = (receta: Receta) => {
     setCrearAbierto(false);
-    navigate(`/nueva-receta?recetaId=${receta.id}`);
+    navigate(`/nueva-receta?recetaId=${receta.id}`, {
+      state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+    });
   };
 
   const editarReceta = async (receta: Receta) => {
@@ -125,7 +127,9 @@ export default function RecetasPage() {
       setRetomando(true);
       try {
         await recetasApi.retomarBorrador(receta.id);
-        navigate(`/nueva-receta?recetaId=${receta.id}`);
+        navigate(`/nueva-receta?recetaId=${receta.id}`, {
+          state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+        });
       } catch (e) {
         setErrorRetomar(
           e instanceof Error ? e.message : "No se pudo retomar el borrador.",
@@ -150,7 +154,9 @@ export default function RecetasPage() {
       const id = recetaEditar.id;
       setRecetaEditar(null);
       await recargar();
-      navigate(`/nueva-receta?recetaId=${id}`);
+      navigate(`/nueva-receta?recetaId=${id}`, {
+        state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+      });
     } catch (e) {
       setErrorEditar(
         e instanceof Error

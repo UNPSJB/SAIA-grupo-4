@@ -158,7 +158,9 @@ export const ListadoRecetasOperador = () => {
   }, [recetasFiltradas, page]);
 
   const verFicha = (r: Receta) => {
-    navigate(`/recetas/${r.id}`);
+    navigate(`/recetas/${r.id}`, {
+      state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+    });
   };
 
   const obtenerCoincidenciasRecursos = (r: Receta, busqueda: string) => {

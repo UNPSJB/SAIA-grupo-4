@@ -16,6 +16,7 @@ export default function PlanPage() {
         <PlanWorkspace
           key={planVigente.id}
           initialPlan={planVigente}
+          historialOrigen='plan-vigente'
           onCambio={reload}
         />
       ) : (

@@ -3,11 +3,17 @@ import { Breadcrumb } from "@chakra-ui/react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 interface BreadcrumbsProps {
-  homeLabel: string;
-  homePath: string;
+  homeLabel?: string;
+  homePath?: string;
 }
 
-// Mapa completo de nombres legibles para cada segmento de ruta
+interface MigaItem {
+  nombre: string;
+  to: string;
+  esLink: boolean;
+}
+
+// Mapa de nombres legibles para cada segmento de ruta
 const NOMBRES_RUTA: Record<string, string> = {
   // Raíces principales
   dashboard: "Dashboard",
@@ -36,7 +42,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   "vista-publica": "Vista pública",
   historial: "Historial de Checklist",
 
-  // Sub-rutas (segundo nivel en adelante)
+  // Sub-rutas
   versiones: "Versiones",
   pdf: "Visor PDF",
   registrar: "Registrar",
@@ -46,10 +52,17 @@ const NOMBRES_RUTA: Record<string, string> = {
   ver: "Ver",
 };
 
-// Segmentos que no tienen página propia: se muestran pero sin link
+// Segmentos que no tienen página propia directa: se muestran pero sin navegación
 const SIN_LINK = new Set(["versiones", "pdf", "editar", "ver", "nuevo", "registrar"]);
 
-// Segmentos dinámicos (ids numéricos o UUID): no se muestran como miga
+// Jerarquías lógicas conocidas para rutas de primer nivel que dependen de otra pantalla
+const PADRES_LOGICOS: Record<string, { to: string; nombre: string }> = {
+  capacidades: { to: "/personal", nombre: "Personal" },
+  "documentos-personal": { to: "/personal", nombre: "Personal" },
+  "unidades-de-medida": { to: "/insumos", nombre: "Insumos" },
+};
+
+// Segmentos dinámicos (IDs numéricos o UUIDs)
 const esId = (s: string) =>
   /^\d+$/.test(s) ||
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -59,54 +72,135 @@ const legible = (segmento: string) =>
   segmento.charAt(0).toUpperCase() + segmento.slice(1).replace(/-/g, " ");
 
 export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname, state } = location;
   const segmentos = pathname.split("/").filter(Boolean);
 
-  // Filtrar IDs y segmentos vacíos
-  const migasValidas = segmentos.filter((s) => !esId(s));
+  // 1. Detectar si la navegación vino desde una card del Dashboard
+  const vinoDesdeDashboard = state && typeof state === "object" && (state as any).origen === "dashboard";
 
-  // Si estamos en la home, solo mostramos el home
-  if (
-    migasValidas.length === 0 ||
-    (migasValidas.length === 1 && migasValidas[0] === homePath.replace("/", ""))
-  ) {
-    return (
-      <Breadcrumb.Root>
-        <Breadcrumb.List>
-          <Breadcrumb.Item>
-            <Breadcrumb.CurrentLink as="span" fontSize="sm" fontWeight="medium" color="green.700">
-              {homeLabel}
-            </Breadcrumb.CurrentLink>
-          </Breadcrumb.Item>
-        </Breadcrumb.List>
-      </Breadcrumb.Root>
-    );
+  // 2. Si la ruta es exactamente la raíz (o dashboard/checklist puro)
+  if (segmentos.length === 0) {
+    return null;
   }
 
-  // Construir el path del home
-  const homeSegmento = homePath.replace("/", "");
+  const primerSegmento = segmentos[0];
 
-  // Verificar si el primer segmento ya es el home
-  const empiezaEnHome = migasValidas[0] === homeSegmento;
+  // Caso especial: si viene origen dinámico en el state (ej: { from: "/productos", label: "Productos" })
+  const origenState = state && typeof state === "object" ? (state as any) : null;
+  let dynamicFrom = origenState?.from;
+  let dynamicLabel = origenState?.label;
 
-  // Las migas a mostrar: home + resto de segmentos válidos (sin duplicar home)
-  const migasAmostrar = empiezaEnHome
-    ? migasValidas
-    : [homeSegmento, ...migasValidas];
+  // Fallbacks si sólo vino la propiedad origen
+  if (!dynamicFrom || !dynamicLabel) {
+    if (origenState?.origen === "nuevo-plan") {
+      dynamicFrom = "/nuevo-plan";
+      dynamicLabel = "Nuevo Plan";
+    } else if (
+      origenState?.origen === "plan-vigente" ||
+      origenState?.origen === "plan-poes" ||
+      origenState?.origen === "plan-activo"
+    ) {
+      dynamicFrom = "/plan-poes";
+      dynamicLabel = "Plan Vigente";
+    } else if (origenState?.origen === "nueva-receta") {
+      dynamicFrom = "/nueva-receta";
+      dynamicLabel = "Nueva Receta";
+    } else if (origenState?.origen === "receta-activa") {
+      dynamicFrom = "/recetas";
+      dynamicLabel = "Receta Activa";
+    }
+  }
 
+  if (segmentos.length === 1 && dynamicFrom && dynamicLabel) {
+    const migas: MigaItem[] = [
+      { nombre: dynamicLabel, to: dynamicFrom, esLink: true },
+      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
+    ];
+    return renderBreadcrumb(migas);
+  }
+
+  // Caso especial: si es una ruta subordinada directa definida en PADRES_LOGICOS (ej: /capacidades)
+  if (segmentos.length === 1 && PADRES_LOGICOS[primerSegmento]) {
+    const padre = PADRES_LOGICOS[primerSegmento];
+    const migas: MigaItem[] = [
+      { nombre: padre.nombre, to: padre.to, esLink: true },
+      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
+    ];
+    return renderBreadcrumb(migas);
+  }
+
+  // Si vino derivado de una card del Dashboard (ej: Dashboard -> /vencimientos)
+  if (vinoDesdeDashboard && primerSegmento !== "dashboard") {
+    const migas: MigaItem[] = [
+      { nombre: "Dashboard", to: "/dashboard", esLink: true },
+      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
+    ];
+    return renderBreadcrumb(migas);
+  }
+
+  // 3. Caso general: la ruta arranca desde su propio módulo (ej: SideBar -> /recetas, /personal, /vencimientos)
+  // Construir las migas filtrando IDs dinámicos
+  const migas: MigaItem[] = [];
+  let pathAcumulado = "";
+
+  for (let i = 0; i < segmentos.length; i++) {
+    const seg = segmentos[i];
+    pathAcumulado += `/${seg}`;
+
+    if (esId(seg)) {
+      // Si es un id al final de la ruta (ej: /recetas/12), agregamos la entidad
+      if (i === segmentos.length - 1 && segmentos[0] === "recetas") {
+        migas.push({
+          nombre: origenState?.label || "Receta Activa",
+          to: pathAcumulado,
+          esLink: false,
+        });
+      }
+      continue;
+    }
+
+    const esUltima = i === segmentos.length - 1;
+    const puedeTenerLink = !esUltima && !SIN_LINK.has(seg);
+
+    // Casos particulares de subrutas compuestas
+    if (seg === "historial" && i > 0 && segmentos[i - 1] === "documentos") {
+      migas.push({
+        nombre: "Historial de versiones",
+        to: pathAcumulado,
+        esLink: puedeTenerLink,
+      });
+      continue;
+    }
+
+    migas.push({
+      nombre: legible(seg),
+      to: pathAcumulado,
+      esLink: puedeTenerLink,
+    });
+  }
+
+  // Si por los filtros de ID no quedó ninguna miga válida
+  if (migas.length === 0) {
+    return null;
+  }
+
+  // Si la ruta es solo 1 nivel (ej: /recetas, /checklist, /dashboard, /vencimientos)
+  // Muestra solo ese nombre ("Recetas", "Checklist Diario", etc.)
+  return renderBreadcrumb(migas);
+};
+
+function renderBreadcrumb(migas: MigaItem[]) {
   return (
     <Breadcrumb.Root>
       <Breadcrumb.List>
-        {migasAmostrar.map((segmento, index) => {
-          const esUltima = index === migasAmostrar.length - 1;
-          const esHome = index === 0 && segmento === homeSegmento;
-          const nombre = esHome ? homeLabel : legible(segmento);
-          const to = "/" + migasAmostrar.slice(0, index + 1).join("/");
+        {migas.map((miga, index) => {
+          const esUltima = index === migas.length - 1;
 
           return (
-            <Fragment key={to}>
+            <Fragment key={miga.to || index}>
               <Breadcrumb.Item>
-                {esUltima || SIN_LINK.has(segmento) ? (
+                {esUltima || !miga.esLink ? (
                   <Breadcrumb.CurrentLink
                     as="span"
                     fontSize="sm"
@@ -116,12 +210,12 @@ export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
                       color: esUltima ? "green.300" : "gray.400",
                     }}
                   >
-                    {nombre}
+                    {miga.nombre}
                   </Breadcrumb.CurrentLink>
                 ) : (
                   <Breadcrumb.Link asChild>
                     <RouterLink
-                      to={to}
+                      to={miga.to}
                       style={{
                         fontSize: "sm",
                         fontWeight: "normal",
@@ -129,7 +223,7 @@ export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
                         textDecoration: "none",
                       }}
                     >
-                      {nombre}
+                      {miga.nombre}
                     </RouterLink>
                   </Breadcrumb.Link>
                 )}
@@ -150,4 +244,4 @@ export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
       </Breadcrumb.List>
     </Breadcrumb.Root>
   );
-};
+}

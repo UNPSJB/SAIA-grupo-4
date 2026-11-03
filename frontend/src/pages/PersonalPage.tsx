@@ -111,8 +111,16 @@ export default function PersonalPage() {
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       <ListadoPersonal
         key={refrescar}
-        onVerCapacidades={() => navigate("/capacidades")}
-        onVerDocumentos={() => navigate("/documentos-personal")}
+        onVerCapacidades={() =>
+          navigate("/capacidades", {
+            state: { from: "/personal", label: "Personal" },
+          })
+        }
+        onVerDocumentos={() =>
+          navigate("/documentos-personal", {
+            state: { from: "/personal", label: "Personal" },
+          })
+        }
         onCrear={() => setVista("crear")}
         onModificar={(persona) => {
           setError("");

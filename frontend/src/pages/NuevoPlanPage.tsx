@@ -19,7 +19,9 @@ export default function NuevoPlanPage() {
   };
 
   const irHistorial = () =>
-    navigate("/historial-planes", { state: { origen: "nuevo-plan" } });
+    navigate("/historial-planes", {
+      state: { from: "/nuevo-plan", label: "Nuevo Plan", origen: "nuevo-plan" },
+    });
 
   if (loading) {
     return (

@@ -179,7 +179,25 @@ export default function RecetaWorkspace({
     };
   }, [id, initialReceta, recetaId]);
 
-  const volver = () => navigate("/recetas");
+  const volver = () => {
+    if (receta?.estado === "BORRADOR") {
+      navigate("/recetas", {
+        state: {
+          from: "/nueva-receta",
+          label: "Nueva Receta",
+          origen: "nueva-receta",
+        },
+      });
+    } else {
+      navigate("/recetas", {
+        state: {
+          from: receta?.id ? `/recetas/${receta.id}` : "/recetas",
+          label: "Receta Activa",
+          origen: "receta-activa",
+        },
+      });
+    }
+  };
 
   const pasosOrdenados = useMemo(
     () =>

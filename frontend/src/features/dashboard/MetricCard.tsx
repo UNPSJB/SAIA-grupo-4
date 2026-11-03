@@ -34,7 +34,7 @@ export function MetricCard({
 
   const handleClick = () => {
     if (link) {
-      navigate(link);
+      navigate(link, { state: { origen: "dashboard" } });
     }
   };
 
