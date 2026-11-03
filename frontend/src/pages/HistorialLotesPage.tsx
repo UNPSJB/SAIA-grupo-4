@@ -79,9 +79,10 @@ export default function HistorialLotesPage() {
     cargarHistorial();
   }, [cargarHistorial]);
 
-  const aplicarFiltros = () => {
+  const aplicarFiltros = (busquedaManual?: string) => {
+    const texto = busquedaManual !== undefined ? busquedaManual : busqueda;
     setFiltrosAplicados({
-      busqueda: busqueda.trim(),
+      busqueda: texto.trim(),
       producto_id: productoIdFiltro,
       desde: desdeFiltro,
       hasta: hastaFiltro,
@@ -155,6 +156,12 @@ export default function HistorialLotesPage() {
             placeholder="Buscar por código, producto o receta..."
             value={busqueda}
             onChange={setBusqueda}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                aplicarFiltros(e.currentTarget.value);
+              }
+            }}
           />
           <FiltroSelect
             ariaLabel="Filtrar por producto"
@@ -176,6 +183,12 @@ export default function HistorialLotesPage() {
               value={desdeFiltro}
               max={hastaFiltro || undefined}
               onChange={(e) => setDesdeFiltro(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  aplicarFiltros();
+                }
+              }}
               borderRadius="md"
               bg="white"
             />
@@ -188,6 +201,12 @@ export default function HistorialLotesPage() {
               value={hastaFiltro}
               min={desdeFiltro || undefined}
               onChange={(e) => setHastaFiltro(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  aplicarFiltros();
+                }
+              }}
               borderRadius="md"
               bg="white"
             />

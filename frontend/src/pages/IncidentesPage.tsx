@@ -81,7 +81,7 @@ export default function IncidentesPage() {
 
   return (
     <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
-      <Box textAlign="left">
+      <Box textAlign="left" maxW="8xl" mx="auto">
         <HistorialFiltros
           fechaDesde={fechaDesde}
           fechaHasta={fechaHasta}

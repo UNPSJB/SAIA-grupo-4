@@ -161,7 +161,7 @@ export const ListadoProductos = ({
   ];
 
   return (
-    <ListadoContainer maxW="6xl">
+    <ListadoContainer maxW="8xl">
       <HStack justify="space-between" mb={6} align="center">
         <ListadoHeader title="Productos" icon={FiPackage}/>
           <HStack gap={2}>

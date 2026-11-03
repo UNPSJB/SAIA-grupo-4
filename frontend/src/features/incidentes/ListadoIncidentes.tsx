@@ -141,8 +141,9 @@ export const ListadoIncidentes = ({
     busqueda.trim() !== "" ||
     estadoSeleccionado !== "";
 
-  const aplicarFiltros = () => {
-    setBusquedaAplicada(busqueda.trim());
+  const aplicarFiltros = (busquedaManual?: string) => {
+    const texto = busquedaManual !== undefined ? busquedaManual : busqueda;
+    setBusquedaAplicada(texto.trim());
     setEstadoAplicado(estadoSeleccionado);
     setPage(1);
   };
@@ -252,7 +253,10 @@ export const ListadoIncidentes = ({
               setPage(1);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") aplicarFiltros();
+              if (e.key === "Enter") {
+                e.preventDefault();
+                aplicarFiltros(e.currentTarget.value);
+              }
             }}
           />
           <FiltroSelect

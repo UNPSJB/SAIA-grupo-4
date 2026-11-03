@@ -70,9 +70,10 @@ export default function LotesOperadorPage() {
     cargarLotes();
   }, [cargarLotes]);
 
-  const aplicarFiltros = () => {
+  const aplicarFiltros = (busquedaManual?: string) => {
+    const texto = busquedaManual !== undefined ? busquedaManual : busquedaDraft;
     setFiltrosAplicados({
-      busqueda: busquedaDraft.trim(),
+      busqueda: texto.trim(),
       productoId: productoIdDraft,
     });
     setPage(1);
@@ -151,6 +152,12 @@ export default function LotesOperadorPage() {
               placeholder="Buscar por código de lote o producto..."
               value={busquedaDraft}
               onChange={setBusquedaDraft}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  aplicarFiltros(e.currentTarget.value);
+                }
+              }}
             />
             <FiltroSelect
               ariaLabel="Filtrar por producto"
