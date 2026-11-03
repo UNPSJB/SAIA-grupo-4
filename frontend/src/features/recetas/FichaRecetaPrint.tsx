@@ -207,7 +207,7 @@ export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
             letterSpacing="wider"
             color="gray.600"
           >
-            SAIA · Sistema de Administración de la Industria Alimenticia
+            SAIA · Sistema de Apoyo para la Inocuidad Alimentaria
           </Text>
           <Heading size="xl" color="green.800" fontWeight="extrabold">
             {receta.nombre_receta}
