@@ -176,9 +176,13 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
         { label: "Nombre", valor: receta.nombre_receta },
         {
           label: "Producto",
-          valor: `${receta.producto?.nombre || receta.producto_id}${
-            receta.producto?.activo === false ? " (Dado de baja)" : ""
-          }`,
+          valor: (
+            <Badge colorPalette="purple" variant="subtle">
+              {`${receta.producto?.nombre || (receta.producto_id ? `Producto #${receta.producto_id}` : "—")}${
+                receta.producto?.activo === false ? " (Dado de baja)" : ""
+              }`}
+            </Badge>
+          ),
         },
         {
           label: "Rendimiento estándar",
@@ -210,7 +214,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
             ]
           : []),
         {
-          label: "Creado por",
+          label: "Creada por",
           valor: receta.usuario_creador_nombre || "—",
         },
         {

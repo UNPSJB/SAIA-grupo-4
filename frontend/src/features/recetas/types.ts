@@ -111,7 +111,7 @@ export interface RecetaCreatePayload {
 export interface RecetaUpdatePayload {
   nombre_receta?: string;
   rendimiento_estandar?: number;
-  tiempo_estimado_total?: number;
-  observaciones?: string;
+  tiempo_estimado_total?: number | null;
+  observaciones?: string | null;
 }
 

@@ -107,8 +107,12 @@ export const RecetaForm = ({
         const modificada = await recetasApi.modificarReceta(receta.id, {
           nombre_receta: values.nombre_receta.trim(),
           rendimiento_estandar: Number(values.rendimiento_estandar),
-          tiempo_estimado_total: values.tiempo_estimado_total ? Number(values.tiempo_estimado_total) : undefined,
-          observaciones: values.observaciones?.trim() || undefined,
+          tiempo_estimado_total: values.tiempo_estimado_total
+            ? Number(values.tiempo_estimado_total)
+            : null,
+          observaciones: values.observaciones?.trim()
+            ? values.observaciones.trim()
+            : null,
         });
         setSuccess(true);
         onGuardado?.(modificada);
@@ -208,7 +212,7 @@ export const RecetaForm = ({
           </FormGridFull>
 
           <FormActions>
-            <SubmitButton text={esModoCrear ? "Guardar Receta" : "Guardar"} icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
+            <SubmitButton text={esModoCrear ? "Guardar" : "Guardar"} icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
             <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
           </FormActions>
 

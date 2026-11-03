@@ -255,6 +255,20 @@ export default function RecetaWorkspace({
 
   const tieneRecursosInactivos = recursosInactivosPorPaso.length > 0;
 
+  const [page, setPage] = useState(1);
+
+  const pasosPaginados = useMemo(() => {
+    const inicio = (page - 1) * ITEMS_POR_PAGINA;
+    return pasosOrdenados.slice(inicio, inicio + ITEMS_POR_PAGINA);
+  }, [pasosOrdenados, page]);
+
+  useEffect(() => {
+    const totalPages = Math.ceil(pasosOrdenados.length / ITEMS_POR_PAGINA) || 1;
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [pasosOrdenados.length, page]);
+
   if (loading) {
     return (
       <Box p={10} bg="gray.100" minH="100vh">
@@ -291,20 +305,6 @@ export default function RecetaWorkspace({
   const tienePasos = pasos.length > 0;
   const puedeModificar = esBorrador || (esActiva && !receta.tiene_lotes);
   const productoInactivo = receta.producto ? receta.producto.activo === false : false;
-
-  const [page, setPage] = useState(1);
-
-  const pasosPaginados = useMemo(() => {
-    const inicio = (page - 1) * ITEMS_POR_PAGINA;
-    return pasos.slice(inicio, inicio + ITEMS_POR_PAGINA);
-  }, [pasos, page]);
-
-  useEffect(() => {
-    const totalPages = Math.ceil(pasos.length / ITEMS_POR_PAGINA) || 1;
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [pasos.length, page]);
 
 
 

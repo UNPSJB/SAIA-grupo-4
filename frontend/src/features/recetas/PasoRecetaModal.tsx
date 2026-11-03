@@ -519,7 +519,7 @@ export const PasoRecetaForm = ({
                   </Button>
                 ) : (
                   <SubmitButton
-                    text="Guardar Paso"
+                    text="Guardar"
                     icon={FiSave}
                     loading={isSubmitting}
                     type="submit"
