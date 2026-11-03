@@ -54,7 +54,9 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
   const obtenerFechaHoraLocal = (d = new Date()) =>
     `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const calcularVencimientoLocal = (fechaStr: string, dias: number) => {
-    const d = new Date(fechaStr);
+    const [y, m, day] = fechaStr.slice(0, 10).split("-").map(Number);
+    if (!y || !m || !day) return "";
+    const d = new Date(y, m - 1, day);
     if (isNaN(d.getTime())) return "";
     d.setDate(d.getDate() + dias);
     return obtenerFechaLocal(d);

@@ -156,10 +156,12 @@ def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lo
         if existe:
             raise exceptions.CodigoLoteDuplicado()
 
-    # Calcular mapa de insumos nominales de la receta
+    # Calcular mapa de insumos nominales de la receta (solo disponibles)
     mapa_nominal: dict[int, float] = {}
     for paso in receta_activa.pasos:
         for pi in paso.insumos:
+            if not pi.insumo or not pi.insumo.disponible:
+                continue
             mapa_nominal[pi.insumo_id] = mapa_nominal.get(pi.insumo_id, 0.0) + float(pi.cantidad_consumo_estimada)
 
     rendimiento = float(receta_activa.rendimiento_estandar) if receta_activa.rendimiento_estandar > 0 else 1.0
