@@ -164,7 +164,11 @@ export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
     const puedeTenerLink = !esUltima && !SIN_LINK.has(seg);
 
     // Casos particulares de subrutas compuestas
-    if (seg === "historial" && i > 0 && segmentos[i - 1] === "documentos") {
+    if (
+      seg === "historial" &&
+      i > 0 &&
+      (segmentos[i - 1] === "documentos" || segmentos[0] === "documentos")
+    ) {
       migas.push({
         nombre: "Historial de versiones",
         to: pathAcumulado,
