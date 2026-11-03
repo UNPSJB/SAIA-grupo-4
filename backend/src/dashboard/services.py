@@ -102,7 +102,8 @@ def _calcular_metricas_incidentes(db: Session, desde: date | None, hasta: date |
     """Calcula incidentes agrupados por tipo con estado abierto/cerrado."""
     query = select(Incidente)
     if desde:
-        query = query.where(Incidente.fecha_hora_reporte >= desde)
+        from datetime import datetime, time
+        query = query.where(Incidente.fecha_hora_reporte >= datetime.combine(desde, time.min))
     if hasta:
         from datetime import datetime, time
         query = query.where(Incidente.fecha_hora_reporte <= datetime.combine(hasta, time.max))

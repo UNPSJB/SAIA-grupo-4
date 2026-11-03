@@ -29,15 +29,17 @@ export function DashboardFilters({
     onFilterChange(undefined, undefined);
   };
 
+  const formatDateLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   // Selección rápida de períodos
   const handleSeleccionarRapido = (dias: number) => {
     const hasta = new Date();
     const desde = new Date();
     desde.setDate(desde.getDate() - (dias - 1));
 
-    const formatDate = (d: Date) => d.toISOString().split("T")[0];
-    const desdeStr = formatDate(desde);
-    const hastaStr = formatDate(hasta);
+    const desdeStr = formatDateLocal(desde);
+    const hastaStr = formatDateLocal(hasta);
 
     setDesde(desdeStr);
     setHasta(hastaStr);
@@ -48,7 +50,7 @@ export function DashboardFilters({
     <FiltroFechaRango
       fechaDesde={desde}
       fechaHasta={hasta}
-      fechaMax={new Date().toISOString().split("T")[0]}
+      fechaMax={formatDateLocal(new Date())}
       onCambiarFechaDesde={setDesde}
       onCambiarFechaHasta={setHasta}
       onAplicarFiltro={handleApply}

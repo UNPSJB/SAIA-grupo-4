@@ -154,8 +154,7 @@ export default function DashboardPage() {
   const datosIncidentesAgrupados = data
     ? construirDatosIncidentesAgrupados(data)
     : null;
-  const tieneIncidentesAgrupados =
-    datosIncidentesAgrupados && datosIncidentesAgrupados.length > 0;
+  const tieneGraficoIncidentes = Boolean(data?.graficos["incidentes"]);
 
   const graficosAdicionales = data
     ? Object.entries(data.graficos).filter(
@@ -254,11 +253,11 @@ export default function DashboardPage() {
                     />
                   ))}
 
-                  {tieneIncidentesAgrupados && (
+                  {tieneGraficoIncidentes && (
                     <GroupedStackedBar
                       key='incidentes-agrupados'
                       title='Incidentes por tipo'
-                      data={datosIncidentesAgrupados}
+                      data={datosIncidentesAgrupados ?? []}
                       keys={["Abiertos", "Cerrados"]}
                       keyLabels={{ Abiertos: "Abiertos", Cerrados: "Cerrados" }}
                     />
