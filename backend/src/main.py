@@ -29,6 +29,7 @@ from src.checklists.router import router as checklists_router
 from src.vencimientos.router import router as vencimientos_router
 from src.productos.router import router as productos_router
 from src.lotes.router import router as lotes_router
+from src.lotes_insumo.router import router as lotes_insumo_router
 
 # Router de autenticación: login/refresh/logout con JWT y endpoint /auth/me
 from src.auth.router import router as auth_router
@@ -105,3 +106,4 @@ app.include_router(lotes_router)
 app.include_router(dashboard_router)  # Dashboard consolidado de métricas
 app.include_router(vista_publica_router)  # Configuración admin de la vista pública
 app.include_router(vista_publica_publico_router)  # Indicadores públicos sin auth
+app.include_router(lotes_insumo_router)
