@@ -26,6 +26,7 @@ export { SemaforoLegend } from "./form/data-display/SemaforoLegend";
 export {
   COLOR_ESTADO,
   ETIQUETA_ESTADO,
+  textoSemaforo,
 } from "./form/data-display/estadoSemaforo";
 export type { EstadoSemaforo } from "./form/data-display/estadoSemaforo";
 export { DetalleItem } from "./form/data-display/DetalleItem";
@@ -35,3 +36,4 @@ export { FiltroSelect } from "./form/filters/FiltroSelect";
 export { FiltroTexto } from "./form/filters/FiltroTexto";
 export { FiltroNumero } from "./form/filters/FiltroNumero";
 export { FiltroFechaRango } from "./form/filters/FiltroFechaRango";
+export { ExportarMenu } from "./ExportarMenu";

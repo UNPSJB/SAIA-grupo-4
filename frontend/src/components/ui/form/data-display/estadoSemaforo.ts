@@ -46,3 +46,20 @@ export const leyendaDe = (
       return undefined;
   }
 };
+/**
+ * Versión en texto plano de <SemaforoFecha> para exportar a CSV/PDF:
+ * "20/11/2026 - Próximo a vencer (en 11 días)".
+ */
+export const textoSemaforo = (
+  fechaTexto: string,
+  estado: EstadoSemaforo,
+  diasRestantes: number,
+): string => {
+  const detalle =
+    estado === "proximo"
+      ? diasRestantes === 0
+        ? " (hoy)"
+        : ` (en ${diasRestantes} días)`
+      : "";
+  return `${fechaTexto} - ${LEYENDA_ESTADO[estado]}${detalle}`;
+};
