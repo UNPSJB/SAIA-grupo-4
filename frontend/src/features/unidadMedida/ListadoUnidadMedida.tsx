@@ -46,7 +46,7 @@ export const ListadoUnidadMedida = ({
     },
     {
       key: "simbolo",
-      label: "Simbolo",
+      label: "Símbolo",
       render: (unidad) => unidad.simbolo,
     },
     {
@@ -57,6 +57,7 @@ export const ListadoUnidadMedida = ({
     {
       key: "disponible",
       label: "Disponible",
+      valorExportacion: (unidad) => (unidad.disponible ? "Activo" : "Inactivo"),
       render: (unidad) => (
         <Badge colorPalette={unidad.disponible ? "green" : "red"}>
           {unidad.disponible ? "Activo" : "Inactivo"}
@@ -66,6 +67,7 @@ export const ListadoUnidadMedida = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (unidad) => (
         <RowActions>
@@ -125,6 +127,8 @@ export const ListadoUnidadMedida = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Unidades de medida"
             columns={columnas}
             getRowKey={(unidad) => unidad.id}
           />

@@ -42,10 +42,11 @@ export const ListadoTiposIncidentes = ({
 
   const columnas: ColumnDef<TipoIncidente>[] = [
     { key: "nombre", label: "Nombre", render: (t) => t.nombre },
-    { key: "descripcion", label: "Descripcion", render: (t) => t.descripcion },
+    { key: "descripcion", label: "Descripción", render: (t) => t.descripcion },
     {
       key: "activo",
       label: "Estado",
+      valorExportacion: (t) => (t.activo ? "Activo" : "Inactivo"),
       render: (t) => (
         <Badge colorPalette={t.activo ? "green" : "red"}>
           {t.activo ? "Activo" : "Inactivo"}
@@ -55,6 +56,7 @@ export const ListadoTiposIncidentes = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (t) => (
         <RowActions>
@@ -102,6 +104,8 @@ export const ListadoTiposIncidentes = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Tipos de incidente"
             columns={columnas}
             getRowKey={(t) => t.id}
           />
