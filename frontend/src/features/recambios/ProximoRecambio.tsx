@@ -11,9 +11,12 @@ const ESTADO_COMPARTIDO: Record<EstadoRecambio, EstadoSemaforo> = {
 };
 
 // Columna "Próximo Recambio" del listado de elementos de limpieza.
-// Sin alerta (elemento inactivo o sin frecuencia configurada) se muestra "—".
+// Sin alerta (elemento inactivo o sin frecuencia configurada) no hay fecha que
+// calcular: se muestra "Sin calcular" en gris.
+const SIN_CALCULAR = "Sin calcular";
+
 export const ProximoRecambio = ({ alerta }: { alerta?: AlertaRecambio }) => {
-  if (!alerta) return <>"—"</>;
+  if (!alerta) return <span style={{ color: "gray" }}>{SIN_CALCULAR}</span>;
 
   return (
     <SemaforoFecha

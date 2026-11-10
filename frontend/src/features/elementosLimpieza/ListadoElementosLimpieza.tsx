@@ -48,6 +48,10 @@ interface ListadoElementosLimpiezaProps {
   onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
+// Textos para columnas sin dato. "Sin calcular" coincide con <ProximoRecambio>.
+const SIN_ESTABLECER = "Sin establecer";
+const SIN_CALCULAR = "Sin calcular";
+
 // Recambios llama "al_dia" a lo que el semáforo compartido llama "vigente".
 const ESTADO_RECAMBIO: Record<EstadoRecambio, EstadoSemaforo> = {
   vencido: "vencido",
@@ -245,8 +249,14 @@ export const ListadoElementosLimpieza = ({
       key: "frecuencia",
       label: "Frecuencia (días)",
       w: "130px",
+      valorExportacion: (e) =>
+        e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : SIN_ESTABLECER,
       render: (e) =>
-        e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : "—",
+        e.frecuencia_recambio_dias ? (
+          `${e.frecuencia_recambio_dias} días`
+        ) : (
+          <span style={{ color: "gray" }}>{SIN_ESTABLECER}</span>
+        ),
     },
     {
       key: "ultimo_recambio",
@@ -266,7 +276,7 @@ export const ListadoElementosLimpieza = ({
               ESTADO_RECAMBIO[alerta.estado],
               alerta.dias_restantes,
             )
-          : "";
+          : SIN_CALCULAR;
       },
       render: (e) => <ProximoRecambio alerta={alertaPorElemento.get(e.id)} />,
     },
