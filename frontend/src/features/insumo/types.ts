@@ -16,3 +16,11 @@ export interface Insumo {
   descripcion: string;
   disponible: boolean;
 }
+
+export interface LoteInsumo {
+  id: number;
+  insumo_id: number;
+  codigo_lote: string;
+  fecha_vencimiento: string; // "YYYY-MM-DD"
+  activo: boolean;
+}

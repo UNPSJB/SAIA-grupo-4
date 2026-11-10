@@ -8,8 +8,9 @@ import {
   FiCheckCircle,
   FiEye,
   FiPlus,
+  FiPackage,
 } from "react-icons/fi";
-import { FaRuler } from "react-icons/fa";
+import { FaRuler,} from "react-icons/fa";
 import {
   AlertMessage,
   DataTable,
@@ -33,6 +34,7 @@ interface ListadoInsumosProps {
   onVer?: (insumo: Insumo) => void;
   onDarAlta?: (insumo: Insumo) => void;
   onVerUnidades?: () => void;
+  onRegistrarLote?: (insumo: Insumo) => void;
 }
 
 const formatearConsumo = (consumo: number) =>
@@ -63,6 +65,7 @@ export const ListadoInsumos = ({
   onVer,
   onDarAlta,
   onVerUnidades,
+  onRegistrarLote,
 }: ListadoInsumosProps) => {
   // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
@@ -141,6 +144,13 @@ export const ListadoInsumos = ({
             label='Ver'
             colorPalette='yellow'
             onClick={() => onVer?.(insumo)}
+          />
+          <RowActionButton
+            icon={FiPackage}
+            label='Registrar lote'
+            colorPalette='purple'
+            onClick={() => onRegistrarLote?.(insumo)}
+            visible={insumo.disponible}
           />
           <RowActionButton
             icon={FiTrash2}

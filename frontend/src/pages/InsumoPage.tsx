@@ -9,6 +9,7 @@ import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
 import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
 import type { Insumo } from "../features/insumo/types";
+import { LoteInsumoForm } from "../features/insumo/LoteInsumoForm";
 
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
@@ -25,6 +26,7 @@ export default function InsumoPage() {
   const [insumoAlta, setInsumoAlta] = useState<Insumo | null>(null);
   const [altaAbierto, setAltaAbierto] = useState(false);
   const [refescar, setRefrescar] = useState(0);
+  const [insumoLote, setInsumoLote] = useState<Insumo | null>(null);
   const confirmarEliminar = () => {
     handleDelete({
       insumo: insumoEliminar,
@@ -92,6 +94,10 @@ export default function InsumoPage() {
           setInsumoAlta(insumo);
           setAltaAbierto(true);
         }}
+        onRegistrarLote={(insumo) => {
+          setError("");
+          setInsumoLote(insumo);
+        }}
       />
       {vista === "ver" && insumoSeleccionado && (
         <InsumoDetalle
@@ -134,7 +140,17 @@ export default function InsumoPage() {
           )}
         </FormModal>
       )}
-
+      
+      {insumoLote && (
+        <FormModal open onClose={() => setInsumoLote(null)}>
+          <LoteInsumoForm
+            insumo={insumoLote}
+            onCancelar={() => setInsumoLote(null)}
+            onGuardado={() => setInsumoLote(null)}
+            enModal
+          />
+        </FormModal>
+      )}
       <AlertDelete
         open={eliminarAbierto}
         name={insumoEliminar?.nombre ?? null}
