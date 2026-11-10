@@ -17,6 +17,7 @@ import {
   TablePagination,
   type ColumnDef,
 } from "../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import {
   DetalleModal,
   ListadoContainer,
@@ -385,6 +386,7 @@ export default function HistorialPlanesPage() {
     {
       key: "estado",
       label: "Estado",
+      valorExportacion: (plan) => labelsEstado[derivarEstado(plan)].texto,
       render: (plan) => {
         const estado = labelsEstado[derivarEstado(plan)];
         return <Badge colorPalette={estado.color}>{estado.texto}</Badge>;
@@ -393,6 +395,7 @@ export default function HistorialPlanesPage() {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (plan) => {
         const estado = derivarEstado(plan);
@@ -579,6 +582,13 @@ export default function HistorialPlanesPage() {
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={planesFiltrados}
+            exportTitle="Historial de planes POES"
+            exportFilters={armarFiltros([
+              ["Búsqueda", busquedaAplicada],
+              ["Elaborado por", etiquetaOpcion(opcionesElaboradoPor, aplicados.elaboradoPorId)],
+              ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+            ])}
             columns={columnas}
             getRowKey={(plan) => plan.id}
           />
