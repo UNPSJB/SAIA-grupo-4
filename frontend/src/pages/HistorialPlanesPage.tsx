@@ -375,7 +375,21 @@ export default function HistorialPlanesPage() {
     {
       key: "fecha_hasta",
       label: "Fecha hasta",
-      render: (plan) => formatFecha(plan.fecha_hasta) ?? "—",
+      // Vigente: sigue en uso hasta hoy. Borrador: todavía no tiene vigencia.
+      valorExportacion: (plan) => {
+        const estado = derivarEstado(plan);
+        if (estado === "vigente") return "Hoy";
+        if (estado === "borrador") return "No tiene";
+        return formatFecha(plan.fecha_hasta);
+      },
+      render: (plan) => {
+        const estado = derivarEstado(plan);
+        if (estado === "vigente") return "Hoy";
+        if (estado === "borrador") {
+          return <span style={{ color: "gray" }}>No tiene</span>;
+        }
+        return formatFecha(plan.fecha_hasta);
+      },
     },
     {
       key: "tareas",
