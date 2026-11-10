@@ -26,6 +26,9 @@ import { useListadoData } from "../../hooks/useListadoData";
 import type { Producto } from "./types";
 import type { ColumnDef } from "../../components/ui";
 import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
+
+// Texto para productos sin vida útil cargada.
+const SIN_ESTABLECER = "Sin establecer";
 import type { UnidadMedida } from "../unidadMedida/types";
 
 type FiltrosProducto = {
@@ -122,7 +125,14 @@ export const ListadoProductos = ({
     {
       key: "dias_vida_util",
       label: "Vida útil",
-      render: (p) => (p.dias_vida_util != null ? `${p.dias_vida_util} días` : "—"),
+      valorExportacion: (p) =>
+        p.dias_vida_util != null ? `${p.dias_vida_util} días` : SIN_ESTABLECER,
+      render: (p) =>
+        p.dias_vida_util != null ? (
+          `${p.dias_vida_util} días`
+        ) : (
+          <span style={{ color: "gray" }}>{SIN_ESTABLECER}</span>
+        ),
     },
     {
       key: "activo",
