@@ -198,7 +198,7 @@ export const ListadoInsumosQuimicos = ({
             </Badge>
           );
         }
-        return "Sin asignar";
+        return <span style={{ color: "gray" }}>Sin asignar</span>;
       },
     },
     {
