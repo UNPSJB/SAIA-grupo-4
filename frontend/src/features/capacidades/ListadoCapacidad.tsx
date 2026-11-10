@@ -148,8 +148,8 @@ export const ListadoCapacidades = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Capacidades"
+            exportarItems={data}
+            exportarTitulo="Capacidades"
             columns={columnas}
             getRowKey={(cap) => cap.id}
           />

@@ -214,9 +214,9 @@ export const ListadoDocumentosOperador = () => {
           <Box>
             <DataTable
               items={itemsPagina}
-              exportItems={filtrados}
-              exportTitle="Documentos"
-              exportFilters={filtrosExportacion}
+              exportarItems={filtrados}
+              exportarTitulo="Documentos"
+              exportarFiltros={filtrosExportacion}
               hideTableOnMobile
               columns={columnas}
               getRowKey={(doc) => doc.id}

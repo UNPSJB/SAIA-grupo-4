@@ -231,9 +231,9 @@ export const ListadoProductos = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Productos"
-            exportFilters={filtrosExportacion}
+            exportarItems={data}
+            exportarTitulo="Productos"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(p) => p.id}
           />

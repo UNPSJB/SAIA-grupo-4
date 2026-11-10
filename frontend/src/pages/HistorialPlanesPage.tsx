@@ -582,9 +582,9 @@ export default function HistorialPlanesPage() {
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={planesFiltrados}
-            exportTitle="Historial de planes POES"
-            exportFilters={armarFiltros([
+            exportarItems={planesFiltrados}
+            exportarTitulo="Historial de planes POES"
+            exportarFiltros={armarFiltros([
               ["Búsqueda", busquedaAplicada],
               ["Elaborado por", etiquetaOpcion(opcionesElaboradoPor, aplicados.elaboradoPorId)],
               ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],

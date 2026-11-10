@@ -297,9 +297,9 @@ export default function HistorialVersionesPage() {
             <>
               <DataTable
                 items={versiones.slice((page - 1) * ITEMS_POR_PAGINA, page * ITEMS_POR_PAGINA)}
-                exportItems={versiones}
-                exportTitle={`Historial de versiones - ${documento.codigo ? `${documento.codigo} ` : ""}${documento.titulo}`}
-                exportFileName={`versiones-${documento.codigo || documento.titulo}`}
+                exportarItems={versiones}
+                exportarTitulo={`Historial de versiones - ${documento.codigo ? `${documento.codigo} ` : ""}${documento.titulo}`}
+                exportarNombreArchivo={`versiones-${documento.codigo || documento.titulo}`}
                 columns={columnas}
                 getRowKey={(v) => v.id}
                 minW="1150px"

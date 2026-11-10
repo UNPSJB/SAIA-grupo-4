@@ -328,9 +328,9 @@ export const ListadoIncidentes = ({
           <Box>
             <DataTable
               items={itemsFiltradosPaginados}
-              exportItems={incidentesFiltrados}
-              exportTitle={titulo}
-              exportFilters={filtrosExportacion}
+              exportarItems={incidentesFiltrados}
+              exportarTitulo={titulo}
+              exportarFiltros={filtrosExportacion}
               hideTableOnMobile={responsive}
               columns={columnas}
               getRowKey={(incidente) => incidente.id}

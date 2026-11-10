@@ -536,9 +536,9 @@ export default function RecetasPage() {
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={recetas}
-            exportTitle="Recetas"
-            exportFilters={filtrosExportacion}
+            exportarItems={recetas}
+            exportarTitulo="Recetas"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(r) => r.id}
           />

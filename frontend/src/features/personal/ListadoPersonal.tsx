@@ -377,9 +377,9 @@ export const ListadoPersonal = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Personal"
-            exportFilters={filtrosExportacion}
+            exportarItems={data}
+            exportarTitulo="Personal"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(p) => p.id}
             minW='1100px'

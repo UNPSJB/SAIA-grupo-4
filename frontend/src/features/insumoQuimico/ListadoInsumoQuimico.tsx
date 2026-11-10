@@ -347,9 +347,9 @@ export const ListadoInsumosQuimicos = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Insumos químicos"
-            exportFilters={filtrosExportacion}
+            exportarItems={data}
+            exportarTitulo="Insumos químicos"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(insumoQuimico) => insumoQuimico.id}
           />

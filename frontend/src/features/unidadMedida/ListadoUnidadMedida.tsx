@@ -127,8 +127,8 @@ export const ListadoUnidadMedida = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Unidades de medida"
+            exportarItems={data}
+            exportarTitulo="Unidades de medida"
             columns={columnas}
             getRowKey={(unidad) => unidad.id}
           />

@@ -415,9 +415,9 @@ export const ListadoElementosLimpieza = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Elementos de limpieza"
-            exportFilters={filtrosExportacion}
+            exportarItems={data}
+            exportarTitulo="Elementos de limpieza"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(e) => e.id}
             minW='1210px'

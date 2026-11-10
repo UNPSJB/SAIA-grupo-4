@@ -104,8 +104,8 @@ export const ListadoTiposIncidentes = ({
         <>
           <DataTable
             items={itemsPaginados}
-            exportItems={data}
-            exportTitle="Tipos de incidente"
+            exportarItems={data}
+            exportarTitulo="Tipos de incidente"
             columns={columnas}
             getRowKey={(t) => t.id}
           />

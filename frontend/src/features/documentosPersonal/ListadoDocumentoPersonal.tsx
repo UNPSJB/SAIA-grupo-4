@@ -57,7 +57,7 @@ export const ListadoDocumentosPersonal = ({ onCrear, onModificar, onEliminar, on
             {!loading && !error && data.length === 0 && <AlertMessage type="info" message="Todavía no hay documentos cargados." />}
             {!loading && !error && data.length > 0 && (
                 <>
-                    <DataTable items={itemsPaginados} exportItems={data} exportTitle="Documentos de personal" columns={columnas} getRowKey={(doc) => doc.id} />
+                    <DataTable items={itemsPaginados} exportarItems={data} exportarTitulo="Documentos de personal" columns={columnas} getRowKey={(doc) => doc.id} />
                     <TablePagination count={data.length} page={page} pageSize={5} onPageChange={setPage} labelSingular="documento" labelPlural="documentos" />
                 </>
             )}

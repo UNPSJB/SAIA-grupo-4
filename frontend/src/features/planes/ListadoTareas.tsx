@@ -316,9 +316,9 @@ export const ListadoTareas = ({
           <>
             <DataTable
               items={itemsPaginados}
-              exportItems={tareas}
-              exportTitle={`Tareas del plan ${plan.nombre}`}
-              exportFileName={`tareas-${plan.nombre}`}
+              exportarItems={tareas}
+              exportarTitulo={`Tareas del plan ${plan.nombre}`}
+              exportarNombreArchivo={`tareas-${plan.nombre}`}
               columns={columnas}
               getRowKey={(tarea) => tarea.id}
             />

@@ -294,8 +294,8 @@ export default function HistorialLotesPage() {
         <>
           <ListadoLotes
             lotes={itemsPaginados}
-            exportLotes={lotes}
-          exportFiltros={armarFiltros([
+            exportarLotes={lotes}
+          exportarFiltros={armarFiltros([
             ["Búsqueda", filtrosAplicados.busqueda],
             [
               "Producto",

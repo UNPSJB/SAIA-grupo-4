@@ -13,9 +13,9 @@ import type { Lote } from "./types";
 
 interface ListadoLotesProps {
   lotes: Lote[];
-  exportLotes?: Lote[];
+  exportarLotes?: Lote[];
   /** Filtros aplicados en la página, para el encabezado del PDF. */
-  exportFiltros?: FiltroAplicado[];
+  exportarFiltrosLotes?: FiltroAplicado[];
   loading?: boolean;
   onVer: (lote: Lote) => void;
   mostrarOperador?: boolean;
@@ -31,8 +31,8 @@ const formatearFechaSoloDia = (fechaIso: string) => {
 
 export const ListadoLotes = ({
   lotes,
-  exportLotes = lotes,
-  exportFiltros = [],
+  exportarLotes = lotes,
+  exportarFiltrosLotes = [],
   loading = false,
   onVer,
   mostrarOperador = true,
@@ -134,9 +134,9 @@ export const ListadoLotes = ({
       <Box>
         <DataTable
           items={lotes}
-          exportItems={exportLotes}
-          exportTitle="Lotes de producción"
-          exportFilters={exportFiltros}
+          exportarItems={exportarLotes}
+          exportarTitulo="Lotes de producción"
+          exportarFiltros={exportarFiltrosLotes}
           hideTableOnMobile
           columns={columnas}
           getRowKey={(l) => l.id}
