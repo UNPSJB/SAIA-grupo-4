@@ -34,6 +34,11 @@ def leer_lote_insumo(lote_id: int, db: Session = Depends(get_db)):
 def modificar_lote_insumo(lote_id: int, lote: schemas.LoteInsumoUpdate, db: Session = Depends(get_db)):
     return services.modificar_lote_insumo(db, lote_id, lote)
 
-@router.delete("/{lote_id}", response_model=schemas.LoteInsumo)
-def eliminar_lote_insumo(lote_id: int, db: Session = Depends(get_db)):
-    return services.eliminar_lote_insumo(db, lote_id)
+@router.patch("/{lote_id}/inhabilitar", response_model=schemas.LoteInsumo)
+def inhabilitar_lote_insumo(
+    lote_id: int,
+    datos: schemas.LoteInsumoInhabilitar,
+    db: Session = Depends(get_db),
+    usuario=Depends(requiere_administracion),
+):
+    return services.inhabilitar_lote_insumo(db, lote_id, datos, usuario.id)

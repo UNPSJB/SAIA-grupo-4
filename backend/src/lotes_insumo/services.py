@@ -5,6 +5,7 @@ from src.insumos.models import Insumo
 from src.insumos.exceptions import InsumoNoExiste
 from src.lotes_insumo.models import LoteInsumo
 from src.lotes_insumo import schemas, exceptions
+from datetime import datetime
 
 
 # operaciones CRUD para LoteInsumo
@@ -56,6 +57,9 @@ def listar_lotes_insumo(
 
 def modificar_lote_insumo(db: Session, lote_id: int, lote: schemas.LoteInsumoUpdate) -> schemas.LoteInsumo:
     db_lote = leer_lote_insumo(db, lote_id)
+    if not db_lote.activo:
+        raise exceptions.LoteBaja()
+
     update_data = lote.model_dump(exclude_unset=True)
 
     if update_data:
@@ -78,6 +82,37 @@ def eliminar_lote_insumo(db: Session, lote_id: int) -> schemas.LoteInsumo:
         raise exceptions.LoteBaja()
 
     db.execute(update(LoteInsumo).where(LoteInsumo.id == lote_id).values(activo=False))
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.ErrorInesperado()
+
+    db.refresh(db_lote)
+    return db_lote
+
+def inhabilitar_lote_insumo(
+    db: Session,
+    lote_id: int,
+    datos: schemas.LoteInsumoInhabilitar,
+    usuario_id: int,
+) -> schemas.LoteInsumo:
+    # Baja lógica con auditoría: el lote no se borra, queda inhabilitado
+    db_lote = leer_lote_insumo(db, lote_id)
+    if not db_lote.activo:
+        raise exceptions.LoteBaja()
+
+    db.execute(
+        update(LoteInsumo)
+        .where(LoteInsumo.id == lote_id)
+        .values(
+            activo=False,
+            motivo_inhabilitacion=datos.motivo,
+            fecha_inhabilitacion=datetime.now(),
+            usuario_inhabilitacion_id=usuario_id,
+        )
+    )
 
     try:
         db.commit()

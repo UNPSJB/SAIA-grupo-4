@@ -1,12 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field
-
 
 class LoteInsumoBase(BaseModel):
     codigo_lote: Annotated[str, Field(min_length=1, max_length=50, description="Código identificador del lote, obligatorio")]
     fecha_vencimiento: Annotated[date, Field(description="Fecha de vencimiento del lote, obligatoria")]
-
     # Saca espacios al principio y al final, así "   " no pasa como código válido
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -26,5 +24,14 @@ class LoteInsumo(LoteInsumoBase):
     id: int
     insumo_id: int
     activo: bool
+    motivo_inhabilitacion: Optional[str] = None
+    fecha_inhabilitacion: Optional[datetime] = None
+    usuario_inhabilitacion_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
+
+
+class LoteInsumoInhabilitar(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    motivo: str = Field(..., min_length=10, max_length=500)
