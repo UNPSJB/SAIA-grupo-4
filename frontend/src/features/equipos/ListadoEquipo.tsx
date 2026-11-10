@@ -32,15 +32,21 @@ import type { Sector } from "../sectores/types";
 import type { ColumnDef } from "../../components/ui";
 import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 
+// Texto para las columnas sin dato (frecuencia y calibraciones).
+const SIN_VALOR = "No tiene";
+
+// En la tabla se muestra en gris, igual que "Ninguno" en Personal.
+const SinValor = () => <span style={{ color: "gray" }}>{SIN_VALOR}</span>;
+
 const formatearFechaISO = (fecha: string | null | undefined) => {
-  if (!fecha) return "—";
+  if (!fecha) return SIN_VALOR;
   const [anio, mes, dia] = fecha.split("-");
   return `${dia}/${mes}/${anio}`;
 };
 
 const renderProximaCalibracion = (equipo: Equipo) => {
   if (!equipo.frecuencia_calibracion_dias || !equipo.fecha_ultima_calibracion) {
-    return <Text>—</Text>;
+    return <SinValor />;
   }
 
   const proxima = sumarDias(
@@ -61,7 +67,7 @@ const renderProximaCalibracion = (equipo: Equipo) => {
 // Texto plano de la próxima calibración, para exportar.
 const textoProximaCalibracion = (equipo: Equipo) => {
   if (!equipo.frecuencia_calibracion_dias || !equipo.fecha_ultima_calibracion) {
-    return "";
+    return SIN_VALOR;
   }
   const proxima = sumarDias(
     equipo.fecha_ultima_calibracion,
@@ -210,15 +216,27 @@ export const ListadoEquipos = ({
     {
       key: "frecuencia",
       label: "Frecuencia (días)",
-      render: (equipo) =>
+      valorExportacion: (equipo) =>
         equipo.frecuencia_calibracion_dias
           ? `${equipo.frecuencia_calibracion_dias} Días`
-          : "—",
+          : SIN_VALOR,
+      render: (equipo) =>
+        equipo.frecuencia_calibracion_dias ? (
+          `${equipo.frecuencia_calibracion_dias} Días`
+        ) : (
+          <SinValor />
+        ),
     },
     {
       key: "ultima_calibracion",
       label: "Última Calibración",
-      render: (equipo) => formatearFechaISO(equipo.fecha_ultima_calibracion),
+      valorExportacion: (equipo) => formatearFechaISO(equipo.fecha_ultima_calibracion),
+      render: (equipo) =>
+        equipo.fecha_ultima_calibracion ? (
+          formatearFechaISO(equipo.fecha_ultima_calibracion)
+        ) : (
+          <SinValor />
+        ),
     },
     {
       key: "proxima_calibracion",
