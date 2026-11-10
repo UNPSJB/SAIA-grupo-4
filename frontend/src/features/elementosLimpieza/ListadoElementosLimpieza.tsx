@@ -66,7 +66,7 @@ type FiltrosElemento = {
 };
 
 const FILTROS_INICIALES: FiltrosElemento = {
-  estado: "activos",
+  estado: "",
   sectorId: "",
   equipoId: "",
 };
@@ -74,7 +74,6 @@ const FILTROS_INICIALES: FiltrosElemento = {
 const OPCIONES_ESTADO = [
   { label: "Activos", value: "activos" },
   { label: "Inactivos", value: "inactivos" },
-  { label: "Todos", value: "todos" },
 ];
 
 const formatearFecha = (fechaStr?: string | null) => {
@@ -373,7 +372,7 @@ export const ListadoElementosLimpieza = ({
           />
           <FiltroSelect
             ariaLabel='Estado del elemento'
-            placeholder='Estado'
+            placeholder='Todos los estados'
             options={OPCIONES_ESTADO}
             value={borrador.estado}
             onChange={(valor) =>
