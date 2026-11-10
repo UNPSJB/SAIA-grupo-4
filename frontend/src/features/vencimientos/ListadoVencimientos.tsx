@@ -13,14 +13,18 @@ import {
   SemaforoFecha,
   SemaforoLegend,
   TablePagination,
+  textoSemaforo,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import {
   FILTROS_INICIALES,
+  OPCIONES_ESTADO,
   type FiltrosVencimientos,
 } from "./filtrosVencimientos";
+import { formatearFecha } from "../../utils/fecha";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import { VencimientosFiltros } from "./VencimientosFiltros";
 import { renovacionDe } from "./renovacionVencimientos";
 import { COLOR_CATEGORIA, construirEndpoint } from "./utils";
@@ -79,11 +83,23 @@ export const ListadoVencimientos = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", aplicados.busqueda],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+    [
+      "Categoría",
+      aplicados.categoria &&
+        (categorias.find((c) => c.valor === aplicados.categoria)?.nombre ?? aplicados.categoria),
+    ],
+    ["Ventana", aplicados.dias && `±${aplicados.dias} días desde hoy`],
+  ]);
+
   const columnas: ColumnDef<Vencimiento>[] = [
     {
       key: "categoria",
       label: "Categoría",
       w: "180px",
+      valorExportacion: (v) => v.entidad,
       render: (v) => (
         <Badge colorPalette={COLOR_CATEGORIA[v.categoria]} variant='subtle'>
           {v.entidad}
@@ -101,6 +117,7 @@ export const ListadoVencimientos = ({
       key: "detalle",
       label: "Detalle",
       w: "160px",
+      valorExportacion: (v) => v.detalle ?? "",
       render: (v) =>
         v.detalle ?? (
           <span style={{ color: "var(--chakra-colors-gray-400)" }}>—</span>
@@ -110,6 +127,8 @@ export const ListadoVencimientos = ({
       key: "vencimiento",
       label: "Vencimiento",
       w: "150px",
+      valorExportacion: (v) =>
+        textoSemaforo(formatearFecha(v.fecha_vencimiento), v.estado, v.dias_restantes),
       render: (v) => (
         <SemaforoFecha
           estado={v.estado}
@@ -122,6 +141,7 @@ export const ListadoVencimientos = ({
       key: "estado",
       label: "Estado",
       w: "110px",
+      valorExportacion: (v) => ETIQUETA_ESTADO[v.estado],
       render: (v) => (
         <Badge colorPalette={COLOR_ESTADO[v.estado]}>
           {ETIQUETA_ESTADO[v.estado]}
@@ -131,6 +151,7 @@ export const ListadoVencimientos = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       w: "110px",
       render: (v) => {
@@ -190,6 +211,9 @@ export const ListadoVencimientos = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Vencimientos"
+            exportFilters={filtrosExportacion}
             columns={columnas}
             getRowKey={(v) => v.id}
             minW='900px'

@@ -4,15 +4,12 @@ import {
   FiltroTexto,
   FiltrosBar,
 } from "../../components/ui";
-import { tieneFiltros, type FiltrosVencimientos } from "./filtrosVencimientos";
+import {
+  OPCIONES_ESTADO,
+  tieneFiltros,
+  type FiltrosVencimientos,
+} from "./filtrosVencimientos";
 import type { CategoriaDisponible, FiltroEstadoVencimiento } from "./types";
-
-const OPCIONES_ESTADO = [
-  { label: "Vencidos", value: "vencido" },
-  { label: "Próximos a vencer", value: "proximo" },
-  { label: "Vencidos y próximos a vencer", value: "por_vencer" },
-  { label: "Vigentes", value: "vigente" },
-];
 
 interface VencimientosFiltrosProps {
   filtros: FiltrosVencimientos;
