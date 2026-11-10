@@ -23,6 +23,7 @@ import {
   TablePagination,
   type ColumnDef,
 } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { ITEMS_POR_PAGINA } from "../../config";
 import { recetasApi } from "./hooks/recetaApi";
@@ -207,11 +208,17 @@ export const ListadoRecetasOperador = () => {
     return items;
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", filtrosAplicados.busqueda],
+    ["Producto", etiquetaOpcion(opcionesProductos, filtrosAplicados.producto_id)],
+  ]);
+
   const columnas: ColumnDef<Receta>[] = [
     {
       key: "codigo_receta",
       label: "Código",
       w: "140px",
+      valorExportacion: (r) => r.codigo_receta,
       render: (r) => (
         <Text>
           {r.codigo_receta}
@@ -221,6 +228,7 @@ export const ListadoRecetasOperador = () => {
     {
       key: "nombre_receta",
       label: "Receta",
+      valorExportacion: (r) => r.nombre_receta,
       render: (r) => {
         const coincidencias = obtenerCoincidenciasRecursos(r, filtrosAplicados.busqueda);
         return (
@@ -243,6 +251,7 @@ export const ListadoRecetasOperador = () => {
     {
       key: "producto",
       label: "Producto elaborado",
+      valorExportacion: (r) => r.producto?.nombre || `Producto #${r.producto_id}`,
       render: (r) => (
         <Badge colorPalette="purple" variant="subtle">
           {r.producto?.nombre || `Producto #${r.producto_id}`}
@@ -252,6 +261,10 @@ export const ListadoRecetasOperador = () => {
     {
       key: "rendimiento",
       label: "Rendimiento",
+      valorExportacion: (r) => {
+        const unidad = r.producto?.unidad_medida?.simbolo;
+        return unidad ? `${r.rendimiento_estandar} ${unidad}` : r.rendimiento_estandar;
+      },
       render: (r) => {
         const unidad = r.producto?.unidad_medida?.simbolo;
         return (
@@ -264,6 +277,8 @@ export const ListadoRecetasOperador = () => {
     {
       key: "tiempo_estimado",
       label: "Tiempo est.",
+      valorExportacion: (r) =>
+        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "",
       render: (r) => (
         <Text fontSize="sm">
           {r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—"}
@@ -273,6 +288,7 @@ export const ListadoRecetasOperador = () => {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       w: "130px",
       align: "end",
       render: (r) => (
@@ -366,9 +382,13 @@ export const ListadoRecetasOperador = () => {
       {!loading && !error && recetasFiltradas.length > 0 && (
         <>
           {/* Vista Escritorio / Tablet */}
-          <Box display={{ base: "none", md: "block" }}>
+          <Box>
             <DataTable
               items={itemsPagina}
+              exportItems={recetasFiltradas}
+              exportTitle="Recetas"
+              exportFilters={filtrosExportacion}
+              hideTableOnMobile
               columns={columnas}
               getRowKey={(r) => r.id}
             />
