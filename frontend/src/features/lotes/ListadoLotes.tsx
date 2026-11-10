@@ -8,10 +8,14 @@ import {
   RowActions,
   type ColumnDef,
 } from "../../components/ui";
+import type { FiltroAplicado } from "../../utils/exportacion";
 import type { Lote } from "./types";
 
 interface ListadoLotesProps {
   lotes: Lote[];
+  exportLotes?: Lote[];
+  /** Filtros aplicados en la página, para el encabezado del PDF. */
+  exportFiltros?: FiltroAplicado[];
   loading?: boolean;
   onVer: (lote: Lote) => void;
   mostrarOperador?: boolean;
@@ -27,6 +31,8 @@ const formatearFechaSoloDia = (fechaIso: string) => {
 
 export const ListadoLotes = ({
   lotes,
+  exportLotes = lotes,
+  exportFiltros = [],
   loading = false,
   onVer,
   mostrarOperador = true,
@@ -53,6 +59,7 @@ export const ListadoLotes = ({
     {
       key: "codigo_lote",
       label: "Código Lote",
+      valorExportacion: (l) => l.codigo_lote,
       render: (l) => (
         <Badge colorPalette="green" variant="subtle">
           {l.codigo_lote}
@@ -62,6 +69,7 @@ export const ListadoLotes = ({
     {
       key: "producto",
       label: "Producto",
+      valorExportacion: (l) => l.producto_nombre || `Producto #${l.producto_id}`,
       render: (l) => (
         <Badge colorPalette="purple" variant="subtle">
           {l.producto_nombre || `Producto #${l.producto_id}`}
@@ -107,6 +115,7 @@ export const ListadoLotes = ({
     key: "acciones",
     label: "Acciones",
     align: "end",
+    exportable: false,
     render: (l) => (
       <RowActions>
         <RowActionButton
@@ -122,9 +131,13 @@ export const ListadoLotes = ({
   return (
     <>
       {/* Vista de escritorio / tablet */}
-      <Box display={{ base: "none", md: "block" }}>
+      <Box>
         <DataTable
           items={lotes}
+          exportItems={exportLotes}
+          exportTitle="Lotes de producción"
+          exportFilters={exportFiltros}
+          hideTableOnMobile
           columns={columnas}
           getRowKey={(l) => l.id}
         />

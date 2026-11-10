@@ -20,6 +20,8 @@ import { BASE_URL, ITEMS_POR_PAGINA } from "../config";
 import { apiFetch } from "../features/auth/apiFetch";
 import { lotesApi } from "../features/lotes/hooks/lotesApi";
 import { ListadoLotes } from "../features/lotes/ListadoLotes";
+import { armarFiltros } from "../utils/exportacion";
+import { formatearFecha } from "../utils/fecha";
 import { LoteDetalle } from "../features/lotes/LoteDetalle";
 import type { Lote } from "../features/lotes/types";
 import type { Producto } from "../features/productos/types";
@@ -292,6 +294,18 @@ export default function HistorialLotesPage() {
         <>
           <ListadoLotes
             lotes={itemsPaginados}
+            exportLotes={lotes}
+          exportFiltros={armarFiltros([
+            ["Búsqueda", filtrosAplicados.busqueda],
+            [
+              "Producto",
+              filtrosAplicados.producto_id &&
+                (productos.find((p) => String(p.id) === filtrosAplicados.producto_id)?.nombre ??
+                  filtrosAplicados.producto_id),
+            ],
+            ["Desde", filtrosAplicados.desde && formatearFecha(filtrosAplicados.desde)],
+            ["Hasta", filtrosAplicados.hasta && formatearFecha(filtrosAplicados.hasta)],
+          ])}
             onVer={setLoteSeleccionado}
             mostrarOperador={true}
             hayFiltrosActivos={hayFiltrosActivos}
