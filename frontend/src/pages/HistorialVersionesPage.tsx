@@ -101,6 +101,7 @@ export default function HistorialVersionesPage() {
       key: "estado",
       label: "Estado",
       w: "110px",
+      valorExportacion: (v) => (v.es_vigente ? "Vigente" : "Histórica"),
       render: (v) => (
         <Badge colorPalette={v.es_vigente ? "green" : "gray"}>
           {v.es_vigente ? "Vigente" : "Histórica"}
@@ -137,6 +138,7 @@ export default function HistorialVersionesPage() {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       w: "170px",
       render: (v) => (
@@ -295,6 +297,9 @@ export default function HistorialVersionesPage() {
             <>
               <DataTable
                 items={versiones.slice((page - 1) * ITEMS_POR_PAGINA, page * ITEMS_POR_PAGINA)}
+                exportItems={versiones}
+                exportTitle={`Historial de versiones - ${documento.codigo ? `${documento.codigo} ` : ""}${documento.titulo}`}
+                exportFileName={`versiones-${documento.codigo || documento.titulo}`}
                 columns={columnas}
                 getRowKey={(v) => v.id}
                 minW="1150px"

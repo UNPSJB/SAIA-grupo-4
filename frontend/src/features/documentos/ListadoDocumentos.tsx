@@ -11,6 +11,7 @@ import {
   LoadingState,
   SemaforoLegend,
   TablePagination,
+  textoSemaforo,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
@@ -23,6 +24,9 @@ import {
 } from "./types";
 import { ProximaRevision } from "./ProximaRevision";
 import { AccionesDocumento } from "./AccionesDocumento";
+import { calcularSemaforo } from "../../utils/semaforo";
+import { formatearFecha } from "../../utils/fecha";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 
 interface ListadoDocumentosProps {
   onCrear?: () => void;
@@ -46,6 +50,13 @@ const OPCIONES_ESTADO = [
   { label: "Activos", value: "activos" },
   { label: "Inactivos", value: "inactivos" },
 ];
+
+// Texto plano de <ProximaRevision>, para exportar.
+const textoProximaRevision = (fecha?: string | null) => {
+  if (!fecha) return "";
+  const { estado, diasRestantes } = calcularSemaforo(fecha);
+  return textoSemaforo(formatearFecha(fecha), estado, diasRestantes);
+};
 
 type FiltrosDocumento = {
   tipoDocumento: string;
@@ -120,6 +131,12 @@ export const ListadoDocumentos = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    ["Tipo", etiquetaOpcion(OPCIONES_TIPO, aplicados.tipoDocumento)],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+  ]);
+
   const columnas: ColumnDef<Documento>[] = [
     {
       key: "codigo",
@@ -139,6 +156,7 @@ export const ListadoDocumentos = ({
       key: "tipo_documento",
       label: "Tipo",
       w: "150px",
+      valorExportacion: (doc) => TIPOS_DOCUMENTO_LABELS[doc.tipo_documento],
       render: (doc) => (
         <Badge colorPalette="blue" variant="subtle">
           {TIPOS_DOCUMENTO_LABELS[doc.tipo_documento]}
@@ -149,6 +167,7 @@ export const ListadoDocumentos = ({
       key: "version_vigente",
       label: "Versión",
       w: "140px",
+      valorExportacion: (doc) => doc.version_vigente?.version ?? "No tiene versión",
       render: (doc) =>
         doc.version_vigente ? (
           <Badge colorPalette="green">{doc.version_vigente.version}</Badge>
@@ -164,6 +183,9 @@ export const ListadoDocumentos = ({
       w: "170px",
       // Documento inactivo → "—" (mismo criterio que ProximoRecambio en
       // elementos de limpieza, que no muestra alerta si está dado de baja)
+      valorExportacion: (doc) => textoProximaRevision(
+        doc.activo ? doc.version_vigente?.fecha_proxima_revision : null,
+      ),
       render: (doc) => (
         <ProximaRevision
           fecha={
@@ -176,6 +198,7 @@ export const ListadoDocumentos = ({
       key: "activo",
       label: "Estado",
       w: "100px",
+      valorExportacion: (doc) => (doc.activo ? "Activo" : "Inactivo"),
       render: (doc) => (
         <Badge colorPalette={doc.activo ? "green" : "red"}>
           {doc.activo ? "Activo" : "Inactivo"}
@@ -185,6 +208,7 @@ export const ListadoDocumentos = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       w: "260px",
       align: "end",
       render: (doc) => (
@@ -270,6 +294,9 @@ export const ListadoDocumentos = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Documentos"
+            exportFilters={filtrosExportacion}
             columns={columnas}
             getRowKey={(doc) => doc.id}
             minW="1150px"
