@@ -15,7 +15,7 @@ interface ListadoLotesProps {
   lotes: Lote[];
   exportarLotes?: Lote[];
   /** Filtros aplicados en la página, para el encabezado del PDF. */
-  exportarFiltrosLotes?: FiltroAplicado[];
+  exportarFiltros?: FiltroAplicado[];
   loading?: boolean;
   onVer: (lote: Lote) => void;
   mostrarOperador?: boolean;
@@ -32,7 +32,7 @@ const formatearFechaSoloDia = (fechaIso: string) => {
 export const ListadoLotes = ({
   lotes,
   exportarLotes = lotes,
-  exportarFiltrosLotes = [],
+  exportarFiltros = [],
   loading = false,
   onVer,
   mostrarOperador = true,
@@ -136,7 +136,7 @@ export const ListadoLotes = ({
           items={lotes}
           exportarItems={exportarLotes}
           exportarTitulo="Lotes de producción"
-          exportarFiltros={exportarFiltrosLotes}
+          exportarFiltros={exportarFiltros}
           hideTableOnMobile
           columns={columnas}
           getRowKey={(l) => l.id}

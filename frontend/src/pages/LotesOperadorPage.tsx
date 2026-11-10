@@ -295,7 +295,7 @@ export default function LotesOperadorPage() {
         <ListadoLotes
           lotes={itemsPaginados}
           exportarLotes={lotes}
-          exportarFiltrosLotes={armarFiltros([
+          exportarFiltros={armarFiltros([
             ["Búsqueda", filtrosAplicados.busqueda],
             [
               "Producto",
