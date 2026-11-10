@@ -34,6 +34,14 @@ import {
 } from "../../components/ui";
 import { EstadoIncidenteBadge } from "./EstadoIncidenteBadge";
 import { SemaforoFechaIncidente } from "./SemaforoFechaIncidente";
+import { formatearFechaHoraIncidente } from "./fechaIncidente";
+import { formatearFecha } from "../../utils/fecha";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
+
+const OPCIONES_ESTADO = [
+  { label: "Pendientes", value: "abierto" },
+  { label: "Resueltos", value: "cerrado" },
+];
 
 interface ListadoIncidentesProps {
   onVer?: (incidente: Incidente) => void;
@@ -156,6 +164,20 @@ export const ListadoIncidentes = ({
     setPage(1);
   };
 
+  // Filtros que vienen de la pantalla (tipo y período) más los locales.
+  const filtrosExportacion = armarFiltros([
+    [
+      "Tipo",
+      tipoId !== undefined && tipoId !== null
+        ? (data.find((incidente) => incidente.tipo_id === tipoId)?.tipo?.nombre ?? String(tipoId))
+        : undefined,
+    ],
+    ["Desde", desde && formatearFecha(desde)],
+    ["Hasta", hasta && formatearFecha(hasta)],
+    ["Búsqueda", busquedaAplicada],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, estadoAplicado)],
+  ]);
+
   const columnas: ColumnDef<Incidente>[] = [
     {
       key: "titulo",
@@ -170,6 +192,10 @@ export const ListadoIncidentes = ({
     {
       key: "fecha",
       label: "Fecha",
+      valorExportacion: (incidente) =>
+        incidente.fecha_hora_reporte
+          ? formatearFechaHoraIncidente(incidente.fecha_hora_reporte)
+          : "",
       render: (incidente) => (
         <SemaforoFechaIncidente fecha={incidente.fecha_hora_reporte} />
       ),
@@ -177,6 +203,7 @@ export const ListadoIncidentes = ({
     {
       key: "estado",
       label: "Estado",
+      valorExportacion: (incidente) => (incidente.abierto ? "Pendiente" : "Resuelto"),
       render: (incidente) => (
         <EstadoIncidenteBadge abierto={incidente.abierto} />
       ),
@@ -185,6 +212,7 @@ export const ListadoIncidentes = ({
       key: "acciones",
       label: "Acciones",
       align: "end",
+      exportable: false,
       render: (incidente) => (
         <RowActions>
             {incidente.foto_url && (
@@ -264,10 +292,7 @@ export const ListadoIncidentes = ({
             placeholder="Todos los estados"
             value={estadoSeleccionado}
             onChange={setEstadoSeleccionado}
-            options={[
-              { label: "Pendientes", value: "abierto" },
-              { label: "Resueltos", value: "cerrado" },
-            ]}
+            options={OPCIONES_ESTADO}
           />
         </FiltrosBar>
       </Box>
@@ -300,9 +325,13 @@ export const ListadoIncidentes = ({
       {!primerCarga && !error && incidentesFiltrados.length > 0 && (
         <>
           {/* Tabla: tablet y escritorio */}
-          <Box display={{ base: responsive ? "none" : "block", md: "block" }}>
+          <Box>
             <DataTable
               items={itemsFiltradosPaginados}
+              exportItems={incidentesFiltrados}
+              exportTitle={titulo}
+              exportFilters={filtrosExportacion}
+              hideTableOnMobile={responsive}
               columns={columnas}
               getRowKey={(incidente) => incidente.id}
             />
