@@ -25,6 +25,7 @@ import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Producto } from "./types";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import type { UnidadMedida } from "../unidadMedida/types";
 
 type FiltrosProducto = {
@@ -96,6 +97,16 @@ export const ListadoProductos = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", aplicados.busqueda],
+    [
+      "Unidad de medida",
+      aplicados.unidadId &&
+        (unidades.find((u) => String(u.id) === aplicados.unidadId)?.nombre ?? aplicados.unidadId),
+    ],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+  ]);
+
   const columnas: ColumnDef<Producto>[] = [
     {
       key: "nombre",
@@ -116,6 +127,7 @@ export const ListadoProductos = ({
     {
       key: "activo",
       label: "Estado",
+      valorExportacion: (p) => (p.activo ? "Activo" : "Inactivo"),
       render: (p) => (
         <Badge colorPalette={p.activo ? "green" : "red"}>
           {p.activo ? "Activo" : "Inactivo"}
@@ -125,6 +137,7 @@ export const ListadoProductos = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (p) => (
         <RowActions>
@@ -218,6 +231,9 @@ export const ListadoProductos = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Productos"
+            exportFilters={filtrosExportacion}
             columns={columnas}
             getRowKey={(p) => p.id}
           />

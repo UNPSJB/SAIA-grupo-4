@@ -27,6 +27,7 @@ export const ListadoDocumentosPersonal = ({ onCrear, onModificar, onEliminar, on
         {
             key: "activo",
             label: "Estado",
+            valorExportacion: (doc) => (doc.activo ? "Activo" : "Inactivo"),
             render: (doc) => (
                 <Badge colorPalette={doc.activo ? "green" : "red"}>
                     {doc.activo ? "Activo" : "Inactivo"}
@@ -36,6 +37,7 @@ export const ListadoDocumentosPersonal = ({ onCrear, onModificar, onEliminar, on
         {
             key: "acciones",
             label: "Acciones",
+            exportable: false,
             align: "end",
             render: (doc) => (
                 <RowActions>
@@ -55,7 +57,7 @@ export const ListadoDocumentosPersonal = ({ onCrear, onModificar, onEliminar, on
             {!loading && !error && data.length === 0 && <AlertMessage type="info" message="Todavía no hay documentos cargados." />}
             {!loading && !error && data.length > 0 && (
                 <>
-                    <DataTable items={itemsPaginados} columns={columnas} getRowKey={(doc) => doc.id} />
+                    <DataTable items={itemsPaginados} exportItems={data} exportTitle="Documentos de personal" columns={columnas} getRowKey={(doc) => doc.id} />
                     <TablePagination count={data.length} page={page} pageSize={5} onPageChange={setPage} labelSingular="documento" labelPlural="documentos" />
                 </>
             )}

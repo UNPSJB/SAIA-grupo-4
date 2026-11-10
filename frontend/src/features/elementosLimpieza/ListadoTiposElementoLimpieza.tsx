@@ -46,6 +46,7 @@ export const ListadoTiposElementoLimpieza = ({
     {
       key: "activo",
       label: "Estado",
+      valorExportacion: (t) => (t.activo ? "Activo" : "Inactivo"),
       render: (t) => (
         <Badge colorPalette={t.activo ? "green" : "red"}>
           {t.activo ? "Activo" : "Inactivo"}
@@ -55,6 +56,7 @@ export const ListadoTiposElementoLimpieza = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (t) => (
         <RowActions>
@@ -102,6 +104,8 @@ export const ListadoTiposElementoLimpieza = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Tipos de elementos de limpieza"
             columns={columnas}
             getRowKey={(t) => t.id}
           />

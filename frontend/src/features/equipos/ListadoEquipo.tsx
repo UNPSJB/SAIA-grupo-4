@@ -22,6 +22,7 @@ import {
   SemaforoFecha,
   SemaforoLegend,
   TablePagination,
+  textoSemaforo,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -29,6 +30,7 @@ import { calcularSemaforo, sumarDias } from "../../utils/semaforo";
 import type { Equipo } from "./types";
 import type { Sector } from "../sectores/types";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 
 const formatearFechaISO = (fecha: string | null | undefined) => {
   if (!fecha) return "—";
@@ -55,6 +57,30 @@ const renderProximaCalibracion = (equipo: Equipo) => {
     />
   );
 };
+
+// Texto plano de la próxima calibración, para exportar.
+const textoProximaCalibracion = (equipo: Equipo) => {
+  if (!equipo.frecuencia_calibracion_dias || !equipo.fecha_ultima_calibracion) {
+    return "";
+  }
+  const proxima = sumarDias(
+    equipo.fecha_ultima_calibracion,
+    equipo.frecuencia_calibracion_dias,
+  );
+  const { estado, diasRestantes } = calcularSemaforo(proxima);
+  return textoSemaforo(formatearFechaISO(proxima), estado, diasRestantes);
+};
+
+const OPCIONES_ESTADO = [
+  { label: "Activos", value: "activos" },
+  { label: "Inactivos", value: "inactivos" },
+];
+
+const OPCIONES_VENCIMIENTO = [
+  { label: "Vencidos", value: "vencido" },
+  { label: "Próximos a vencer", value: "proximo" },
+  { label: "Vigentes", value: "al_dia" },
+];
 
 type FiltrosEquipo = {
   estado: string;
@@ -140,6 +166,19 @@ export const ListadoEquipos = ({
     setPage(1);
   };
 
+  // Filtros efectivamente aplicados (no el borrador), para el PDF.
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+    [
+      "Sector",
+      aplicados.sectorId &&
+        (sectores.find((sector) => String(sector.id) === aplicados.sectorId)?.nombre ??
+          aplicados.sectorId),
+    ],
+    ["Calibración", etiquetaOpcion(OPCIONES_VENCIMIENTO, aplicados.vencimiento)],
+  ]);
+
   const columnas: ColumnDef<Equipo>[] = [
     {
       key: "codigo",
@@ -149,6 +188,8 @@ export const ListadoEquipos = ({
     {
       key: "nombre",
       label: "Nombre",
+      valorExportacion: (equipo) =>
+        equipo.marca ? `${equipo.nombre} (${equipo.marca})` : equipo.nombre,
       render: (equipo) => (
         <VStack align='start' gap={0}>
           <Text>{equipo.nombre}</Text>
@@ -161,6 +202,7 @@ export const ListadoEquipos = ({
     {
       key: "asociado_a",
       label: "Asociado a",
+      valorExportacion: (equipo) => `Sector: ${equipo.sector.nombre}`,
       render: (equipo) => (
         <Badge colorPalette='blue'>Sector: {equipo.sector.nombre}</Badge>
       ),
@@ -181,11 +223,13 @@ export const ListadoEquipos = ({
     {
       key: "proxima_calibracion",
       label: "Próxima Calibración",
+      valorExportacion: textoProximaCalibracion,
       render: (equipo) => renderProximaCalibracion(equipo),
     },
     {
       key: "activo",
       label: "Estado",
+      valorExportacion: (equipo) => (equipo.activo ? "Activo" : "Inactivo"),
       render: (equipo) => (
         <Badge colorPalette={equipo.activo ? "green" : "red"}>
           {equipo.activo ? "Activo" : "Inactivo"}
@@ -196,6 +240,7 @@ export const ListadoEquipos = ({
       key: "acciones",
       label: "Acciones",
       align: "end",
+      exportable: false,
       render: (equipo) => (
         <RowActions>
           <RowActionButton
@@ -271,10 +316,7 @@ export const ListadoEquipos = ({
           <FiltroSelect
             ariaLabel='Estado del equipo'
             placeholder='Todos los estados'
-            options={[
-              { label: "Activos", value: "activos" },
-              { label: "Inactivos", value: "inactivos" },
-            ]}
+            options={OPCIONES_ESTADO}
             value={borrador.estado}
             onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
           />
@@ -291,11 +333,7 @@ export const ListadoEquipos = ({
           <FiltroSelect
             ariaLabel='Estado de calibración'
             placeholder='Todos los vencimientos'
-            options={[
-              { label: "Vencidos", value: "vencido" },
-              { label: "Próximos a vencer", value: "proximo" },
-              { label: "Vigentes", value: "al_dia" },
-            ]}
+            options={OPCIONES_VENCIMIENTO}
             value={borrador.vencimiento}
             onChange={(valor) =>
               setBorrador({ ...borrador, vencimiento: valor })
@@ -323,6 +361,9 @@ export const ListadoEquipos = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportItems={data}
+            exportTitle="Equipos"
+            exportFilters={filtrosExportacion}
             columns={columnas}
             getRowKey={(equipo) => equipo.id}
           />
