@@ -53,7 +53,7 @@ const OPCIONES_ESTADO = [
 
 // Texto plano de <ProximaRevision>, para exportar.
 const textoProximaRevision = (fecha?: string | null) => {
-  if (!fecha) return "";
+  if (!fecha) return "No tiene";
   const { estado, diasRestantes } = calcularSemaforo(fecha);
   return textoSemaforo(formatearFecha(fecha), estado, diasRestantes);
 };

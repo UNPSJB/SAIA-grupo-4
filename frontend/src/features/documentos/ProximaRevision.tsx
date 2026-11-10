@@ -6,10 +6,11 @@ interface ProximaRevisionProps {
 }
 
 // Columna "Próxima Revisión" del listado de documentos.
-// Sin fecha (documento sin versión vigente o sin revisión programada) se muestra "—".
+// Sin fecha (documento inactivo, sin versión vigente o sin revisión programada)
+// se muestra "No tiene" en gris.
 // Usa el mismo semáforo compartido que equipos, personal y vencimientos.
 export const ProximaRevision = ({ fecha }: ProximaRevisionProps) => {
-  if (!fecha) return <>—</>;
+  if (!fecha) return <span style={{ color: "gray" }}>No tiene</span>;
 
   const { estado, diasRestantes } = calcularSemaforo(fecha);
 
