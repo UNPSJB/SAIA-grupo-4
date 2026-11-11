@@ -50,6 +50,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   editar: "Editar",
   nuevo: "Nuevo",
   ver: "Ver",
+  "ficha-tecnica": "Ficha Técnica",
 };
 
 // Segmentos que no tienen página propia directa: se muestran pero sin navegación
@@ -71,7 +72,10 @@ const legible = (segmento: string) =>
   NOMBRES_RUTA[segmento] ??
   segmento.charAt(0).toUpperCase() + segmento.slice(1).replace(/-/g, " ");
 
-export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
+export const Breadcrumbs = ({
+  homeLabel: _homeLabel,
+  homePath: _homePath,
+}: BreadcrumbsProps) => {
   const location = useLocation();
   const { pathname, state } = location;
   const segmentos = pathname.split("/").filter(Boolean);
@@ -113,10 +117,16 @@ export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
   }
 
   if (segmentos.length === 1 && dynamicFrom && dynamicLabel) {
-    const migas: MigaItem[] = [
-      { nombre: dynamicLabel, to: dynamicFrom, esLink: true },
-      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
-    ];
+    const migas: MigaItem[] = [];
+    if (origenState?.padre && origenState.padre.nombre && origenState.padre.to) {
+      migas.push({
+        nombre: origenState.padre.nombre,
+        to: origenState.padre.to,
+        esLink: true,
+      });
+    }
+    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({ nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false });
     return renderBreadcrumb(migas);
   }
 
@@ -151,8 +161,12 @@ export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
     if (esId(seg)) {
       // Si es un id al final de la ruta (ej: /recetas/12), agregamos la entidad
       if (i === segmentos.length - 1 && segmentos[0] === "recetas") {
+        const nombreItem =
+          origenState?.label && origenState.label !== "Recetas"
+            ? origenState.label
+            : "Ficha Técnica";
         migas.push({
-          nombre: origenState?.label || "Receta Activa",
+          nombre: nombreItem,
           to: pathAcumulado,
           esLink: false,
         });

@@ -15,4 +15,6 @@ export interface Insumo {
   categoria: string;
   descripcion: string;
   disponible: boolean;
+  densidad_g_ml?: number | null;
+  peso_unitario_g?: number | null;
 }

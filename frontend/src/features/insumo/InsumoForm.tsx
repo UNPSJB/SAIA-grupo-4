@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
+import { useInsumoSubmit, type InsumoPayload } from "./hooks/useInsumoSubmit";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoSchema, type InsumoFormValues } from "./validationSchema";
 import type { Insumo, UnidadMedida } from "./types";
@@ -71,12 +71,24 @@ export const InsumoForm = ({
           unidad_medida_id: String(insumo!.unidad_medida.id),
           categoria: insumo!.categoria,
           descripcion: insumo!.descripcion,
+          densidad_g_ml:
+            insumo?.densidad_g_ml != null ? String(insumo.densidad_g_ml) : "",
+          peso_unitario_g:
+            insumo?.peso_unitario_g != null ? String(insumo.peso_unitario_g) : "",
         }
-      : { nombre: "", unidad_medida_id: "", categoria: "", descripcion: "" };
+      : {
+          nombre: "",
+          unidad_medida_id: "",
+          categoria: "",
+          descripcion: "",
+          densidad_g_ml: "",
+          peso_unitario_g: "",
+        };
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting, isValid },
     setError,
     clearErrors,
@@ -86,6 +98,20 @@ export const InsumoForm = ({
     defaultValues,
     mode: "onChange",
   });
+
+  const unidadSeleccionadaId = watch("unidad_medida_id");
+
+  const unidadSeleccionada = useMemo(() => {
+    return (
+      unidades.find((u) => String(u.id) === String(unidadSeleccionadaId)) ||
+      (insumo?.unidad_medida &&
+      String(insumo.unidad_medida.id) === String(unidadSeleccionadaId)
+        ? insumo.unidad_medida
+        : undefined)
+    );
+  }, [unidades, unidadSeleccionadaId, insumo]);
+
+  const tipoMagnitud = unidadSeleccionada?.tipo_magnitud?.toLowerCase();
 
   const [success, setSuccess] = useState(false);
   const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
@@ -134,7 +160,12 @@ export const InsumoForm = ({
     setSuccess(false);
     clearErrors("root");
     setNombreEnviado(values.nombre);
-    const res = await submit(values);
+    const cleanedValues: InsumoPayload = {
+      ...values,
+      densidad_g_ml: tipoMagnitud === "volumen" ? values.densidad_g_ml : undefined,
+      peso_unitario_g: tipoMagnitud === "cantidad" ? values.peso_unitario_g : undefined,
+    };
+    const res = await submit(cleanedValues);
     if (res.status === "error") {
       setError("root", { message: res.message });
     } else if (res.status === "success") {
@@ -175,6 +206,36 @@ export const InsumoForm = ({
             error={errors.unidad_medida_id?.message}
             {...register("unidad_medida_id")}
           />
+
+          {tipoMagnitud === "volumen" && (
+            <TextField
+              label='Densidad (g/ml)'
+              disabled={esModoVer}
+              defaultValue={defaultValues.densidad_g_ml}
+              placeholder='Ej. 0.92'
+              type='number'
+              step='0.001'
+              min='0.001'
+              hideSpinners
+              error={errors.densidad_g_ml?.message}
+              {...register("densidad_g_ml")}
+            />
+          )}
+
+          {tipoMagnitud === "cantidad" && (
+            <TextField
+              label='Peso promedio unitario (g)'
+              disabled={esModoVer}
+              defaultValue={defaultValues.peso_unitario_g}
+              placeholder='Ej. 50'
+              type='number'
+              step='0.01'
+              min='0.01'
+              hideSpinners
+              error={errors.peso_unitario_g?.message}
+              {...register("peso_unitario_g")}
+            />
+          )}
 
           <SelectField
             label='Categoria'

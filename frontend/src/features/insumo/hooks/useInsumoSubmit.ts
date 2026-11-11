@@ -12,6 +12,8 @@ export interface InsumoPayload {
   unidad_medida_id: string;
   categoria: string;
   descripcion: string;
+  densidad_g_ml?: string;
+  peso_unitario_g?: string;
 }
 
 type FastApiError = {
@@ -51,6 +53,14 @@ export const useInsumoSubmit = ({
           unidad_medida_id: values ? Number(values.unidad_medida_id) : undefined,
           categoria: values?.categoria ?? "",
           descripcion: values?.descripcion ?? "",
+          densidad_g_ml:
+            values?.densidad_g_ml && values.densidad_g_ml.trim() !== ""
+              ? Number(values.densidad_g_ml)
+              : null,
+          peso_unitario_g:
+            values?.peso_unitario_g && values.peso_unitario_g.trim() !== ""
+              ? Number(values.peso_unitario_g)
+              : null,
         };
 
         const url = id ? `${endpoint}${id}` : endpoint;

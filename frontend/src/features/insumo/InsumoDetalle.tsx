@@ -27,6 +27,12 @@ export const InsumoDetalle = ({ insumo, onCerrar }: InsumoDetalleProps) => {
         },
         { label: "Categoría", valor: insumo.categoria },
         { label: "Descripción", valor: insumo.descripcion || "—" },
+        ...(insumo.densidad_g_ml != null
+          ? [{ label: "Densidad", valor: `${insumo.densidad_g_ml} g/ml` }]
+          : []),
+        ...(insumo.peso_unitario_g != null
+          ? [{ label: "Peso unitario promedio", valor: `${insumo.peso_unitario_g} g` }]
+          : []),
         {
           label: "Estado",
           valor: (
