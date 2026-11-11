@@ -38,6 +38,7 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer } from "../../components/layout";
 import { ITEMS_POR_PAGINA } from "../../config";
@@ -410,7 +411,7 @@ export default function RecetaWorkspace({
             })}
           </HStack>
         ) : (
-          "—"
+          <TextoSinValor>Sin asignar</TextoSinValor>
         ),
     },
     {
@@ -434,7 +435,7 @@ export default function RecetaWorkspace({
             })}
           </HStack>
         ) : (
-          "—"
+          <TextoSinValor>Sin asignar</TextoSinValor>
         ),
     },
     {

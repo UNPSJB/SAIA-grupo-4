@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash, FiPrinter } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
+import { TextoSinValor } from "../../components/ui";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
 import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
@@ -219,7 +220,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
         },
         {
           label: "Observaciones",
-          valor: receta.observaciones || "—",
+          valor: receta.observaciones || <TextoSinValor>No tiene</TextoSinValor>,
         },
         ...(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA"
           ? [
