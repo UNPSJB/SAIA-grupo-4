@@ -191,14 +191,14 @@ def test_obtener_insumo_por_id():
     )
     insumo_id = res_post.json()["id"]
 
-    res_get = client.post(f"/insumos/{insumo_id}")
+    res_get = client.get(f"/insumos/{insumo_id}")
     assert res_get.status_code == 200
     assert res_get.json()["nombre"] == "Aceite"
     assert res_get.json()["unidad_medida"]["nombre"] == "Litro"
 
 
 def test_obtener_insumo_inexistente():
-    response = client.post("/insumos/9999")
+    response = client.get("/insumos/9999")
     assert response.status_code == 404
 
 
@@ -359,3 +359,88 @@ def test_filtrar_por_disponibilidad():
 
     assert ids_buscados(busqueda=sufijo, disponible="true") == {disponible["id"]}
     assert ids_buscados(busqueda=sufijo, disponible="false") == {no_disponible["id"]}
+
+
+# --- Validaciones de campo disponible y equivalencias según tipo de magnitud ---
+
+def test_crear_insumo_no_admite_campo_disponible():
+    unidad_id = crear_unidad_medida(nombre=f"Unidad Disp {sufijo_unico()}", simbolo="ud", tipo="masa")
+    res = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Insumo No Disponible {sufijo_unico()}",
+            "unidad_medida_id": unidad_id,
+            "categoria": "materia prima",
+            "disponible": False,
+        },
+    )
+    # Extra inputs are forbidden in InsumoCreate
+    assert res.status_code == 422
+
+
+def test_crear_insumo_validacion_magnitud_equivalencia():
+    # 1. Magnitud CANTIDAD: solo admite peso_unitario_g, no densidad_g_ml
+    u_cant = crear_unidad_medida(nombre=f"Piezas {sufijo_unico()}", simbolo="pz", tipo="cantidad")
+    res_err_dens = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Huevos {sufijo_unico()}",
+            "unidad_medida_id": u_cant,
+            "categoria": "materia prima",
+            "densidad_g_ml": 0.95,
+        },
+    )
+    assert res_err_dens.status_code == 400
+    assert "densidad" in res_err_dens.json()["detail"].lower()
+
+    res_ok_cant = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Huevos OK {sufijo_unico()}",
+            "unidad_medida_id": u_cant,
+            "categoria": "materia prima",
+            "peso_unitario_g": 50.0,
+        },
+    )
+    assert res_ok_cant.status_code == 201
+    assert res_ok_cant.json()["peso_unitario_g"] == 50.0
+
+    # 2. Magnitud VOLUMEN: solo admite densidad_g_ml, no peso_unitario_g
+    u_vol = crear_unidad_medida(nombre=f"Centilitro {sufijo_unico()}", simbolo="cl", tipo="volumen")
+    res_err_peso = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Aceite {sufijo_unico()}",
+            "unidad_medida_id": u_vol,
+            "categoria": "materia prima",
+            "peso_unitario_g": 10.0,
+        },
+    )
+    assert res_err_peso.status_code == 400
+    assert "peso unitario" in res_err_peso.json()["detail"].lower()
+
+    res_ok_vol = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Aceite OK {sufijo_unico()}",
+            "unidad_medida_id": u_vol,
+            "categoria": "materia prima",
+            "densidad_g_ml": 0.92,
+        },
+    )
+    assert res_ok_vol.status_code == 201
+    assert res_ok_vol.json()["densidad_g_ml"] == 0.92
+
+    # 3. Magnitud MASA: no admite densidad ni peso unitario
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="gr", tipo="masa")
+    res_err_masa = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Sal {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "densidad_g_ml": 1.2,
+        },
+    )
+    assert res_err_masa.status_code == 400
+    assert "masa" in res_err_masa.json()["detail"].lower()

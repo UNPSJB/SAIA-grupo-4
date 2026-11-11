@@ -38,3 +38,15 @@ class InsumoConRecetaActiva(Conflict):
                 receta_nombre=receta_nombre,
             )
         )
+
+
+class DensidadSoloVolumen(BadRequest):
+    DETAIL = ErrorCode.DENSIDAD_SOLO_VOLUMEN
+
+
+class PesoUnitarioSoloCantidad(BadRequest):
+    DETAIL = ErrorCode.PESO_UNITARIO_SOLO_CANTIDAD
+
+
+class EquivalenciaNoAplicaMasa(BadRequest):
+    DETAIL = ErrorCode.EQUIVALENCIA_NO_APLICA_MASA

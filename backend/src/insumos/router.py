@@ -19,7 +19,7 @@ router = APIRouter(prefix="/insumos", tags=["insumos"], dependencies=[Depends(re
 def crear_insumo(insumo: schemas.InsumoCreate, db: Session = Depends(get_db)):
     return services.crear_insumo(db, insumo)
 
-@router.post("/{insumo_id}", response_model=schemas.Insumo)
+@router.get("/{insumo_id}", response_model=schemas.Insumo)
 def leer_insumo(insumo_id: int, db: Session = Depends(get_db)):
     return services.leer_insumo(db, insumo_id)
 

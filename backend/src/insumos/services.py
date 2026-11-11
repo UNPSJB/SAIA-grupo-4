@@ -13,6 +13,24 @@ from src.utils.busqueda import condicion_busqueda
 
 # operaciones CRUD para Insumo
 
+def _validar_equivalencias_magnitud(
+    tipo_magnitud: str,
+    densidad_g_ml: float | None,
+    peso_unitario_g: float | None,
+) -> None:
+    magnitud = (tipo_magnitud or "").strip().lower()
+
+    if magnitud == "volumen":
+        if peso_unitario_g is not None:
+            raise exceptions.PesoUnitarioSoloCantidad()
+    elif magnitud == "cantidad":
+        if densidad_g_ml is not None:
+            raise exceptions.DensidadSoloVolumen()
+    elif magnitud == "masa":
+        if densidad_g_ml is not None or peso_unitario_g is not None:
+            raise exceptions.EquivalenciaNoAplicaMasa()
+
+
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
     # Verifica que no exista un insumo con el mismo nombre
     db_insumo_existente = db.scalar(select(Insumo).where(Insumo.nombre == insumo.nombre))
@@ -26,8 +44,17 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
     if db_unidad is None or not db_unidad.disponible:
         raise UnidadMedidaReactivar()
 
-    # Crea el insumo y lo sube a la db
-    db_insumo = Insumo(**insumo.model_dump())
+    # Validar que los campos de equivalencia correspondan a la magnitud de la unidad
+    _validar_equivalencias_magnitud(
+        db_unidad.tipo_magnitud,
+        insumo.densidad_g_ml,
+        insumo.peso_unitario_g,
+    )
+
+    # Crea el insumo y lo sube a la db siempre con disponible=True
+    datos_creacion = insumo.model_dump()
+    datos_creacion["disponible"] = True
+    db_insumo = Insumo(**datos_creacion)
     db.add(db_insumo)
     try:
         db.commit()
@@ -87,6 +114,30 @@ def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) 
             db_unidad = db.scalar(select(UnidadMedida).where(UnidadMedida.id == unidad_id))
             if db_unidad is None or not db_unidad.disponible:
                 raise UnidadMedidaReactivar()
+
+    # Validar equivalencias de magnitud al modificar
+    if any(k in update_data for k in ("unidad_medida_id", "densidad_g_ml", "peso_unitario_g")):
+        target_unidad_id = update_data.get("unidad_medida_id", db_insumo.unidad_medida_id)
+        unidad_obj = db.scalar(select(UnidadMedida).where(UnidadMedida.id == target_unidad_id))
+        if unidad_obj:
+            magnitud_nueva = (unidad_obj.tipo_magnitud or "").strip().lower()
+
+            # Si cambió la unidad a otra magnitud distinta y no enviaron explícitamente densidad/peso,
+            # limpiamos a None los campos incompatibles en lugar de arrastrar el valor anterior
+            if "unidad_medida_id" in update_data and update_data["unidad_medida_id"] != db_insumo.unidad_medida_id:
+                if magnitud_nueva != "volumen" and "densidad_g_ml" not in update_data:
+                    update_data["densidad_g_ml"] = None
+                if magnitud_nueva != "cantidad" and "peso_unitario_g" not in update_data:
+                    update_data["peso_unitario_g"] = None
+
+            densidad_efectiva = update_data.get("densidad_g_ml", db_insumo.densidad_g_ml)
+            peso_efectivo = update_data.get("peso_unitario_g", db_insumo.peso_unitario_g)
+
+            _validar_equivalencias_magnitud(
+                unidad_obj.tipo_magnitud,
+                densidad_efectiva,
+                peso_efectivo,
+            )
 
     if update_data:
         # Modifica el insumo y lo sube a la db

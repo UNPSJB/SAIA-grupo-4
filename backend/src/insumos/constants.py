@@ -9,6 +9,15 @@ class ErrorCode:
         "No se puede dar de baja el insumo '{insumo_nombre}' porque forma parte de la receta activa '{receta_nombre}'. "
         "Modificá o inhabilitá la receta antes de dar de baja el insumo."
     )
+    DENSIDAD_SOLO_VOLUMEN = (
+        "La densidad (g/ml) solo se puede configurar para insumos con unidad de medida de volumen"
+    )
+    PESO_UNITARIO_SOLO_CANTIDAD = (
+        "El peso unitario (g) solo se puede configurar para insumos con unidad de medida de cantidad"
+    )
+    EQUIVALENCIA_NO_APLICA_MASA = (
+        "Los insumos con unidad de medida de masa ya representan peso y no admiten densidad ni peso unitario"
+    )
 
 class Constantes:
     pass # Constantes para valores fijos y evitar valores hardcodeados

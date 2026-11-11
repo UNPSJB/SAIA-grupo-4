@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy import Float, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
@@ -15,5 +15,7 @@ class Insumo(ModeloBase):
     consumo: Mapped[Decimal] = mapped_column(Numeric(9, 3), default=Decimal("0"), server_default="0", nullable=False)
     descripcion: Mapped[Optional[str]] = mapped_column(nullable=True)
     disponible: Mapped[bool] = mapped_column(default=True)
+    densidad_g_ml: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    peso_unitario_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="insumos")
