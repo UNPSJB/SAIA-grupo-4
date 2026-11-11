@@ -18,6 +18,7 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
 import {
   DetalleModal,
@@ -133,7 +134,9 @@ export default function HistorialVersionesPage() {
       label: "Motivo / Observaciones",
       w: "240px",
       truncate: true,
-      render: (v) => v.observaciones_cambio || "—",
+      valorExportacion: (v) => v.observaciones_cambio || "Sin observaciones",
+      render: (v) =>
+        v.observaciones_cambio || <TextoSinValor>Sin observaciones</TextoSinValor>,
     },
     {
       key: "acciones",
@@ -206,7 +209,7 @@ export default function HistorialVersionesPage() {
                 },
                 {
                   label: "Observaciones",
-                  valor: r.observaciones || "—",
+                  valor: r.observaciones || <TextoSinValor>Sin observaciones</TextoSinValor>,
                   fullWidth: true,
                 },
                 { label: "Registrado por", valor: r.registrado_por_nombre || "—" },
