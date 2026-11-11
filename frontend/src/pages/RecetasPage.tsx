@@ -326,10 +326,7 @@ export default function RecetasPage() {
     {
       key: "rendimiento_estandar",
       label: "Rendimiento",
-      render: (r) => {
-        const unidad = r.producto?.unidad_medida?.simbolo;
-        return unidad ? `${r.rendimiento_estandar} ${unidad}` : r.rendimiento_estandar;
-      },
+      render: (r) => `${r.rendimiento_estandar} g`,
     },
     {
       key: "tiempo_estimado_total",

@@ -159,7 +159,7 @@ export const ListadoRecetasOperador = () => {
 
   const verFicha = (r: Receta) => {
     navigate(`/recetas/${r.id}`, {
-      state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+      state: { from: "/recetas", label: "Ficha Técnica" },
     });
   };
 
@@ -252,14 +252,11 @@ export const ListadoRecetasOperador = () => {
     {
       key: "rendimiento",
       label: "Rendimiento",
-      render: (r) => {
-        const unidad = r.producto?.unidad_medida?.simbolo;
-        return (
-          <Text fontSize="sm">
-            {unidad ? `${r.rendimiento_estandar} ${unidad}` : r.rendimiento_estandar}
-          </Text>
-        );
-      },
+      render: (r) => (
+        <Text fontSize="sm">
+          {r.rendimiento_estandar} g
+        </Text>
+      ),
     },
     {
       key: "tiempo_estimado",
@@ -381,10 +378,7 @@ export const ListadoRecetasOperador = () => {
             gap={3}
           >
             {itemsPagina.map((r) => {
-              const unidad = r.producto?.unidad_medida?.simbolo;
-              const rendimiento = unidad
-                ? `${r.rendimiento_estandar} ${unidad}`
-                : `${r.rendimiento_estandar}`;
+              const rendimiento = `${r.rendimiento_estandar} g`;
               const cantPasos = r.pasos?.length ?? 0;
 
               return (

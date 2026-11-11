@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash, FiPrinter } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiFileText, FiHash } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
-import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
-import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import type { PasoReceta, Receta } from "./types";
 
 interface RecetaDetalleProps {
@@ -135,6 +134,7 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
 };
 
 export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
+  const navigate = useNavigate();
   const estado = ESTADOS_RECETA[receta.estado];
   const [pasos, setPasos] = useState<PasoReceta[]>(() =>
     [...(receta.pasos ?? [])].sort((a, b) => a.numero_orden - b.numero_orden),
@@ -186,9 +186,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
         },
         {
           label: "Rendimiento estándar",
-          valor: receta.producto?.unidad_medida?.simbolo
-            ? `${receta.rendimiento_estandar} ${receta.producto.unidad_medida.simbolo}`
-            : receta.rendimiento_estandar,
+          valor: `${receta.rendimiento_estandar} g`,
         },
         {
           label: "Tiempo estimado total",
@@ -230,9 +228,12 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
                     size="xs"
                     colorPalette="blue"
                     variant="outline"
-                    onClick={() => imprimirFichaReceta({ ...receta, pasos })}
+                    onClick={() => {
+                      onCerrar();
+                      navigate(`/recetas/${receta.id}/ficha-tecnica`);
+                    }}
                   >
-                    <FiPrinter /> Imprimir / Descargar PDF
+                    <FiFileText /> Ver Ficha Técnica
                   </Button>
                 ),
               },
@@ -256,17 +257,12 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
   ];
 
   return (
-    <>
-      <DetalleModal
-        open
-        title={`Detalle de Receta: ${receta.nombre_receta}`}
-        icon={FiEye}
-        onClose={onCerrar}
-        secciones={secciones}
-      />
-      {(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA") && (
-        <FichaRecetaPrint receta={{ ...receta, pasos }} />
-      )}
-    </>
+    <DetalleModal
+      open
+      title={`Detalle de Receta: ${receta.nombre_receta}`}
+      icon={FiEye}
+      onClose={onCerrar}
+      secciones={secciones}
+    />
   );
 };

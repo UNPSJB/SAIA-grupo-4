@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FiBookOpen, FiEdit3, FiSave, FiXCircle } from "react-icons/fi";
@@ -53,7 +53,6 @@ export const RecetaForm = ({
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
     setError,
     clearErrors,
@@ -68,26 +67,7 @@ export const RecetaForm = ({
     },
   });
 
-  const productoIdSeleccionado = watch("producto_id");
 
-  const simboloUnidad = useMemo(() => {
-    if (productoIdSeleccionado) {
-      const prod = productos.find(
-        (p) => String(p.id) === String(productoIdSeleccionado),
-      );
-      if (prod?.unidad_medida) {
-        return prod.unidad_medida.simbolo || prod.unidad_medida.nombre || "";
-      }
-    }
-    if (receta?.producto?.unidad_medida) {
-      return (
-        receta.producto.unidad_medida.simbolo ||
-        receta.producto.unidad_medida.nombre ||
-        ""
-      );
-    }
-    return "";
-  }, [productoIdSeleccionado, productos, receta]);
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors("root");
@@ -169,13 +149,13 @@ export const RecetaForm = ({
             />
           )}
           <TextField
-            label={
-              simboloUnidad
-                ? `Rendimiento estándar (${simboloUnidad})`
-                : "Rendimiento estándar"
-            }
+            label="Rendimiento estándar (g)"
+            type="number"
+            step="0.01"
+            min="0.01"
+            hideSpinners
             defaultValue={receta?.rendimiento_estandar ? String(receta.rendimiento_estandar) : ""}
-            placeholder={simboloUnidad ? `Ej. 100.00 ${simboloUnidad}` : "Ej. 100.00"}
+            placeholder="Ej. 1000.00"
             error={errors.rendimiento_estandar?.message}
             {...register("rendimiento_estandar")}
           />

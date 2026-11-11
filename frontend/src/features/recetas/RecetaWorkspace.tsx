@@ -639,9 +639,7 @@ export default function RecetaWorkspace({
         <VStack align="stretch" gap={2} mb={2}>
           <Dato label="Código">{receta.codigo_receta}</Dato>
           <Dato label="Rendimiento estándar">
-            {receta.producto?.unidad_medida?.simbolo
-              ? `${receta.rendimiento_estandar} ${receta.producto.unidad_medida.simbolo}`
-              : receta.rendimiento_estandar}
+            {`${receta.rendimiento_estandar} g`}
           </Dato>
           <Dato label="Tiempo estimado total">
             {receta.tiempo_estimado_total != null
