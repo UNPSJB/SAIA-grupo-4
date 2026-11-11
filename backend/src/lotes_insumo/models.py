@@ -2,6 +2,7 @@ from datetime import date, datetime
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+from src.lotes_insumo.constants import EstadoLote
 
 
 class LoteInsumo(ModeloBase):
@@ -15,6 +16,16 @@ class LoteInsumo(ModeloBase):
     motivo_inhabilitacion: Mapped[str | None] = mapped_column(nullable=True)
     fecha_inhabilitacion: Mapped[datetime | None] = mapped_column(nullable=True)
     usuario_inhabilitacion_id: Mapped[int | None] = mapped_column(
-    ForeignKey("personal.id"), nullable=True
+        ForeignKey("personal.id"), nullable=True
     )
+
     insumo: Mapped["Insumo"] = relationship()
+    usuario_inhabilitacion: Mapped["Persona | None"] = relationship()
+
+    @property
+    def estado(self) -> EstadoLote:
+        if not self.activo:
+            return EstadoLote.INHABILITADO
+        if self.fecha_vencimiento < date.today():
+            return EstadoLote.VENCIDO
+        return EstadoLote.ACTIVO

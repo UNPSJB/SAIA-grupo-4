@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 class ErrorCode:
     LOTE_NO_EXISTE = "El lote del insumo no fue encontrado"
     LOTE_BAJA = "El lote del insumo ya esta dado de baja"
@@ -6,3 +8,9 @@ class ErrorCode:
 
 class Constantes:
     pass
+
+
+class EstadoLote(StrEnum):
+    ACTIVO = "activo"
+    INHABILITADO = "inhabilitado"
+    VENCIDO = "vencido"

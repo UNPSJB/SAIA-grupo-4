@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.lotes_insumo import schemas, services
 from src.auth.dependencies import requiere_administracion
+from typing import Literal
+from src.lotes_insumo.constants import EstadoLote
 
 
 logger = logging.getLogger(__name__)
@@ -21,10 +23,12 @@ def crear_lote_insumo(lote: schemas.LoteInsumoCreate, db: Session = Depends(get_
 @router.get("/", response_model=list[schemas.LoteInsumo])
 def listar_lotes_insumo(
     insumo_id: int | None = None,
-    activo: bool | None = None,
+    codigo_lote: str | None = None,
+    estado: EstadoLote | None = None,
+    orden: Literal["asc", "desc"] = "asc",
     db: Session = Depends(get_db),
 ):
-    return services.listar_lotes_insumo(db, insumo_id, activo)
+    return services.listar_lotes_insumo(db, insumo_id, codigo_lote, estado, orden)
 
 @router.get("/{lote_id}", response_model=schemas.LoteInsumo)
 def leer_lote_insumo(lote_id: int, db: Session = Depends(get_db)):

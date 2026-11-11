@@ -5,7 +5,8 @@ from src.insumos.models import Insumo
 from src.insumos.exceptions import InsumoNoExiste
 from src.lotes_insumo.models import LoteInsumo
 from src.lotes_insumo import schemas, exceptions
-from datetime import datetime
+from src.lotes_insumo.constants import EstadoLote
+from datetime import date, datetime
 
 
 # operaciones CRUD para LoteInsumo
@@ -42,15 +43,32 @@ def leer_lote_insumo(db: Session, lote_id: int) -> schemas.LoteInsumo:
 def listar_lotes_insumo(
     db: Session,
     insumo_id: int | None = None,
-    activo: bool | None = None,
+    codigo_lote: str | None = None,
+    estado: EstadoLote | None = None,
+    orden: str = "asc",
 ):
     consulta = select(LoteInsumo)
 
     if insumo_id is not None:
         consulta = consulta.where(LoteInsumo.insumo_id == insumo_id)
 
-    if activo is not None:
-        consulta = consulta.where(LoteInsumo.activo.is_(activo))
+    if codigo_lote and codigo_lote.strip():
+        consulta = consulta.where(LoteInsumo.codigo_lote.ilike(f"%{codigo_lote.strip()}%"))
+
+    if estado is not None:
+        hoy = date.today()
+        if estado == EstadoLote.INHABILITADO:
+            consulta = consulta.where(LoteInsumo.activo.is_(False))
+        elif estado == EstadoLote.VENCIDO:
+            consulta = consulta.where(LoteInsumo.activo.is_(True), LoteInsumo.fecha_vencimiento < hoy)
+        else:
+            consulta = consulta.where(LoteInsumo.activo.is_(True), LoteInsumo.fecha_vencimiento >= hoy)
+
+    # Orden por fecha de vencimiento; el id desempata para que el resultado sea estable
+    if orden == "desc":
+        consulta = consulta.order_by(LoteInsumo.fecha_vencimiento.desc(), LoteInsumo.id.desc())
+    else:
+        consulta = consulta.order_by(LoteInsumo.fecha_vencimiento.asc(), LoteInsumo.id.asc())
 
     return db.scalars(consulta).all()
 
