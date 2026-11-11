@@ -65,6 +65,17 @@ def obtener_receta(receta_id: int, db: Session = Depends(get_db)):
     return services.obtener_receta_por_id(db, receta_id)
 
 
+@router.get(
+    "/{receta_id}/composicion-porcentual",
+    response_model=schemas.ComposicionPorcentualOut,
+    dependencies=[Depends(requiere_administracion)],
+)
+def obtener_composicion_porcentual(receta_id: int, db: Session = Depends(get_db)):
+    """Calcula y devuelve la composición porcentual de una receta."""
+    return services.obtener_composicion_porcentual(db, receta_id)
+
+
+
 @router.post("/", response_model=schemas.Receta, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requiere_administracion)])
 def crear_receta(
     receta: schemas.RecetaCreate,

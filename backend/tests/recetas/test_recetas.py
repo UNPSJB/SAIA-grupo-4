@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from src.main import app
 from tests.database import session
 from src.recetas.constants import ErrorCode, EstadoReceta, TipoRecurso
-from src.recetas.models import PasoReceta
+from src.recetas.models import PasoReceta, PasoInsumo, Receta
 
 # Modelos para inyectar datos falsos por ORM
 from src.sectores.models import Sector
@@ -31,10 +31,17 @@ def datos_base(session):
         tipo_magnitud="masa",
         disponible=True,
     )
-    session.add_all([s, um])
+    um_volumen = UnidadMedida(
+        nombre=generar_string_unico("Litro"),
+        simbolo="L",
+        tipo_magnitud="volumen",
+        disponible=True,
+    )
+    session.add_all([s, um, um_volumen])
     session.commit()
     session.refresh(s)
     session.refresh(um)
+    session.refresh(um_volumen)
 
     eq = Equipo(
         nombre=generar_string_unico("Equipo"),
@@ -64,6 +71,26 @@ def datos_base(session):
         categoria="materia prima",
         disponible=False,
     )
+    ins_liquido = Insumo(
+        nombre=generar_string_unico("AguaMineral"),
+        unidad_medida_id=um_volumen.id,
+        categoria="materia prima",
+        densidad_g_ml=1.0,
+        disponible=True,
+    )
+    ins_aditivo = Insumo(
+        nombre=generar_string_unico("SalFina"),
+        unidad_medida_id=um.id,
+        categoria="aditivo",
+        disponible=True,
+    )
+    ins_sin_eq = Insumo(
+        nombre=generar_string_unico("AceiteSinDensidad"),
+        unidad_medida_id=um_volumen.id,
+        categoria="materia prima",
+        densidad_g_ml=None,
+        disponible=True,
+    )
 
     prod = Producto(
         nombre="Pan de Molde",
@@ -84,9 +111,15 @@ def datos_base(session):
         activo=False,
     )
 
-    session.add_all([eq, eq_inactivo, ins, ins_inactivo, prod, otro_prod, prod_inactivo])
+    session.add_all([
+        eq, eq_inactivo, ins, ins_inactivo, ins_liquido, ins_aditivo, ins_sin_eq,
+        prod, otro_prod, prod_inactivo,
+    ])
     session.commit()
-    for entidad in (eq, eq_inactivo, ins, ins_inactivo, prod, otro_prod, prod_inactivo):
+    for entidad in (
+        eq, eq_inactivo, ins, ins_inactivo, ins_liquido, ins_aditivo, ins_sin_eq,
+        prod, otro_prod, prod_inactivo,
+    ):
         session.refresh(entidad)
 
     return {
@@ -97,12 +130,19 @@ def datos_base(session):
         "otro_producto_nombre": otro_prod.nombre,
         "sector_id": s.id,
         "unidad_medida_id": um.id,
+        "unidad_medida_volumen_id": um_volumen.id,
         "equipo_id": eq.id,
         "equipo_nombre": eq.nombre,
         "equipo_inactivo_id": eq_inactivo.id,
         "insumo_id": ins.id,
         "insumo_nombre": ins.nombre,
         "insumo_inactivo_id": ins_inactivo.id,
+        "insumo_liquido_id": ins_liquido.id,
+        "insumo_liquido_nombre": ins_liquido.nombre,
+        "insumo_aditivo_id": ins_aditivo.id,
+        "insumo_aditivo_nombre": ins_aditivo.nombre,
+        "insumo_sin_equivalencia_id": ins_sin_eq.id,
+        "insumo_sin_equivalencia_nombre": ins_sin_eq.nombre,
     }
 
 
@@ -916,4 +956,155 @@ def test_no_se_puede_dar_de_baja_equipo_con_receta_activa(datos_base):
     client.post(f"/recetas/{rec_id}/inhabilitar")
     res_del_ok = client.delete(f"/equipos/{datos_base['equipo_id']}")
     assert res_del_ok.status_code == 200
+
+
+def test_composicion_porcentual_endpoint(datos_base):
+    res_receta = client.post("/recetas/", json={
+        "nombre_receta": "Receta Pan Composición",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 1520,
+    })
+    assert res_receta.status_code == 201
+    receta_id = res_receta.json()["id"]
+
+    res_paso = client.post(f"/recetas/{receta_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Mezclado",
+        "instrucciones": "Mezclar los insumos en la batea",
+        "insumos": [
+            {"insumo_id": datos_base["insumo_id"], "cantidad_consumo_estimada": 1.0},
+            {"insumo_id": datos_base["insumo_liquido_id"], "cantidad_consumo_estimada": 0.5},
+            {"insumo_id": datos_base["insumo_aditivo_id"], "cantidad_consumo_estimada": 0.02},
+        ],
+    })
+    assert res_paso.status_code == 201
+
+    res_comp = client.get(f"/recetas/{receta_id}/composicion-porcentual")
+    assert res_comp.status_code == 200, res_comp.text
+    data = res_comp.json()
+
+    assert data["es_completa"] is True
+    assert len(data["insumos_sin_equivalencia"]) == 0
+    assert data["peso_total_mezcla_g"] == 1520.0
+    assert data["verificacion_100"] is True
+
+    assert len(data["ingredientes"]) == 2
+    assert len(data["aditivos"]) == 1
+
+    assert data["ingredientes"][0]["nombre"] == datos_base["insumo_nombre"]
+    assert data["ingredientes"][0]["porcentaje_mezcla"] == 65.79
+    assert data["ingredientes"][1]["nombre"] == datos_base["insumo_liquido_nombre"]
+    assert data["ingredientes"][1]["porcentaje_mezcla"] == 32.89
+
+    assert data["aditivos"][0]["nombre"] == datos_base["insumo_aditivo_nombre"]
+    assert data["aditivos"][0]["porcentaje_mezcla"] == 1.32
+
+
+def test_composicion_porcentual_con_insumo_sin_equivalencia(datos_base):
+    res_receta = client.post("/recetas/", json={
+        "nombre_receta": "Receta Incompleta",
+        "producto_id": datos_base["producto_id"],
+        "rendimiento_estandar": 1000,
+    })
+    assert res_receta.status_code == 201
+    receta_id = res_receta.json()["id"]
+
+    client.post(f"/recetas/{receta_id}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Mezclado",
+        "instrucciones": "Mezclar con insumo sin densidad",
+        "insumos": [
+            {"insumo_id": datos_base["insumo_sin_equivalencia_id"], "cantidad_consumo_estimada": 0.5},
+            {"insumo_id": datos_base["insumo_id"], "cantidad_consumo_estimada": 1.0},
+        ],
+    })
+
+    res_comp = client.get(f"/recetas/{receta_id}/composicion-porcentual")
+    assert res_comp.status_code == 200
+    data = res_comp.json()
+
+    assert data["es_completa"] is False
+    assert len(data["insumos_sin_equivalencia"]) == 1
+    sin_eq = data["insumos_sin_equivalencia"][0]
+    assert sin_eq["insumo_id"] == datos_base["insumo_sin_equivalencia_id"]
+    assert sin_eq["equivalencia_requerida"] == "Densidad (g/ml)"
+
+
+def test_helpers_unitarios_composicion():
+    from src.recetas.services import (
+        _consolidar_insumos_receta,
+        _calcular_porcentajes_y_grupos,
+    )
+
+    insumo_harina = Insumo(id=1, nombre="Harina", categoria="materia prima")
+    insumo_envase = Insumo(id=2, nombre="Bolsa Plástica", categoria="envase")
+
+    paso1 = PasoReceta(
+        numero_orden=1,
+        titulo="Paso 1",
+        insumos=[
+            PasoInsumo(insumo_id=1, insumo=insumo_harina, cantidad_consumo_estimada=300.0),
+            PasoInsumo(insumo_id=2, insumo=insumo_envase, cantidad_consumo_estimada=1.0),
+        ],
+    )
+    paso2 = PasoReceta(
+        numero_orden=2,
+        titulo="Paso 2",
+        insumos=[
+            PasoInsumo(insumo_id=1, insumo=insumo_harina, cantidad_consumo_estimada=200.0),
+        ],
+    )
+    receta_dummy = Receta(pasos=[paso1, paso2])
+
+    mapa = _consolidar_insumos_receta(receta_dummy)
+    assert 1 in mapa
+    assert 2 not in mapa
+    assert mapa[1]["cantidad_nominal"] == 500.0
+
+    items = [
+        {
+            "insumo_id": 10,
+            "nombre": "Agua",
+            "categoria": "materia prima",
+            "cantidad_nominal": 200.0,
+            "unidad_nominal": "g",
+            "masa_equivalente_g": 200.0,
+            "porcentaje_mezcla": None,
+        },
+        {
+            "insumo_id": 11,
+            "nombre": "Harina",
+            "categoria": "materia prima",
+            "cantidad_nominal": 800.0,
+            "unidad_nominal": "g",
+            "masa_equivalente_g": 800.0,
+            "porcentaje_mezcla": None,
+        },
+        {
+            "insumo_id": 12,
+            "nombre": "Colorante",
+            "categoria": "aditivo",
+            "cantidad_nominal": 5.0,
+            "unidad_nominal": "g",
+            "masa_equivalente_g": 5.0,
+            "porcentaje_mezcla": None,
+        },
+    ]
+
+    ingredientes, aditivos, suma = _calcular_porcentajes_y_grupos(
+        items_calculados=items,
+        peso_total_mezcla_g=1005.0,
+        es_completa=True,
+    )
+
+    assert len(ingredientes) == 2
+    assert len(aditivos) == 1
+    assert ingredientes[0].nombre == "Harina"
+    assert ingredientes[1].nombre == "Agua"
+    assert aditivos[0].nombre == "Colorante"
+    assert ingredientes[0].porcentaje_mezcla == round((800.0 / 1005.0) * 100.0, 2)
+    assert ingredientes[1].porcentaje_mezcla == round((200.0 / 1005.0) * 100.0, 2)
+    assert aditivos[0].porcentaje_mezcla == round((5.0 / 1005.0) * 100.0, 2)
+    assert abs(suma - 100.0) <= 0.1
+
 

@@ -15,6 +15,7 @@ from src.recetas.models import Receta, PasoReceta, PasoEquipo, PasoInsumo
 from src.equipos.models import Equipo
 from src.insumos.models import Insumo 
 from src.productos.models import Producto
+from src.unidad_medida.services import convertir_a_gramos
 
 # --- FUNCIONES AUXILIARES ---
 
@@ -129,6 +130,104 @@ def _clonar_paso(paso_antiguo: PasoReceta) -> PasoReceta:
             ) for i in paso_antiguo.insumos
         ]
     )
+
+# FUNCIONES AUXILIARES PARA CÁLCULO DE COMPOSICIÓN PORCENTUAL
+ 
+def _consolidar_insumos_receta(receta: Receta) -> dict[int, dict]:
+    """Agrupa las cantidades nominales de todos los insumos de los pasos de la receta,
+    descartando la categoría 'envase'.
+    """
+    insumos_map: dict[int, dict] = {}
+    for paso in receta.pasos or []:
+        for pi in paso.insumos or []:
+            insumo = pi.insumo
+            if not insumo:
+                continue
+            cat = (insumo.categoria or "").strip().lower()
+            if cat == "envase":
+                continue
+
+            i_id = insumo.id
+            cant = float(pi.cantidad_consumo_estimada)
+            if i_id not in insumos_map:
+                insumos_map[i_id] = {
+                    "insumo": insumo,
+                    "cantidad_nominal": cant,
+                }
+            else:
+                insumos_map[i_id]["cantidad_nominal"] += cant
+    return insumos_map
+
+
+def _convertir_insumo_a_masa(insumo: Insumo, cant_nom: float) -> tuple[Optional[float], Optional[schemas.InsumoSinEquivalenciaOut]]:
+    """Convierte la cantidad nominal de un insumo a gramos. Si falta la equivalencia,
+    retorna (None, InsumoSinEquivalenciaOut con el diagnóstico explicativo).
+    """
+    unidad = insumo.unidad_medida
+    simbolo_u = unidad.simbolo if unidad else ""
+    magnitud_u = (unidad.tipo_magnitud if unidad else "").lower()
+
+    masa_g = convertir_a_gramos(
+        cantidad=cant_nom,
+        unidad=unidad,
+        densidad_g_ml=insumo.densidad_g_ml,
+        peso_unitario_g=insumo.peso_unitario_g,
+    ) if unidad else None
+
+    if masa_g is not None:
+        return round(masa_g, 3), None
+
+    if magnitud_u == "volumen":
+        eq_req = "Densidad (g/ml)"
+        msg = f"El insumo '{insumo.nombre}' se mide en volumen ({simbolo_u}) y requiere que se configure su densidad (g/ml) en el Maestro de Insumos."
+    elif magnitud_u == "cantidad":
+        eq_req = "Peso promedio unitario (g)"
+        msg = f"El insumo '{insumo.nombre}' se mide en cantidad ({simbolo_u}) y requiere que se configure su peso promedio unitario (g) en el Maestro de Insumos."
+    else:
+        eq_req = "Equivalencia a gramos"
+        msg = f"No se pudo convertir la unidad '{simbolo_u}' del insumo '{insumo.nombre}' a gramos."
+
+    sin_eq = schemas.InsumoSinEquivalenciaOut(
+        insumo_id=insumo.id,
+        nombre=insumo.nombre,
+        unidad_simbolo=simbolo_u,
+        tipo_magnitud=magnitud_u,
+        equivalencia_requerida=eq_req,
+        mensaje=msg,
+    )
+    return None, sin_eq
+
+
+def _calcular_porcentajes_y_grupos(
+    items_calculados: list[dict],
+    peso_total_mezcla_g: float,
+    es_completa: bool,
+) -> tuple[list[schemas.ItemComposicionPorcentualOut], list[schemas.ItemComposicionPorcentualOut], float]:
+    """Calcula el porcentaje de cada insumo sobre la mezcla y divide en ingredientes vs aditivos,
+    ordenados descendentemente por presencia.
+    """
+    ingredientes: list[schemas.ItemComposicionPorcentualOut] = []
+    aditivos: list[schemas.ItemComposicionPorcentualOut] = []
+    suma_porcentajes = 0.0
+
+    for item in items_calculados:
+        if es_completa and item["masa_equivalente_g"] is not None and peso_total_mezcla_g > 0:
+            porcentaje = round((item["masa_equivalente_g"] / peso_total_mezcla_g) * 100.0, 2)
+            item["porcentaje_mezcla"] = porcentaje
+            suma_porcentajes += porcentaje
+
+        out_item = schemas.ItemComposicionPorcentualOut(**item)
+        cat = (item["categoria"] or "").strip().lower()
+        if cat == "aditivo":
+            aditivos.append(out_item)
+        else:
+            ingredientes.append(out_item)
+
+    criterio_orden = lambda x: (x.porcentaje_mezcla if x.porcentaje_mezcla is not None else (x.masa_equivalente_g or 0))
+    ingredientes.sort(key=criterio_orden, reverse=True)
+    aditivos.sort(key=criterio_orden, reverse=True)
+
+    return ingredientes, aditivos, round(suma_porcentajes, 2)
 
 
 # --- SERVICIOS DE RECETA ---
@@ -668,3 +767,61 @@ def eliminar_paso(db: Session, paso_id: int) -> None:
     except IntegrityError:
         db.rollback()
         raise exceptions.Conflict(detail="Error de integridad al eliminar el paso.")
+    
+
+# SERVICIO DE CÁLCULO DE COMPOSICIÓN PORCENTUAL
+
+def obtener_composicion_porcentual(db: Session, receta_id: int) -> schemas.ComposicionPorcentualOut:
+    receta = obtener_receta_por_id(db, receta_id)
+
+    # 1. Consolidar insumos de todos los pasos (excluyendo envases)
+    insumos_map = _consolidar_insumos_receta(receta)
+
+    # 2. Convertir cada insumo a gramos y detectar faltantes
+    items_calculados = []
+    insumos_sin_eq = []
+    peso_total_mezcla_g = 0.0
+
+    for data in insumos_map.values():
+        insumo = data["insumo"]
+        cant_nom = data["cantidad_nominal"]
+        simbolo_u = insumo.unidad_medida.simbolo if insumo.unidad_medida else ""
+
+        masa_g, sin_eq = _convertir_insumo_a_masa(insumo, cant_nom)
+        if sin_eq:
+            insumos_sin_eq.append(sin_eq)
+        else:
+            peso_total_mezcla_g += masa_g
+
+        items_calculados.append({
+            "insumo_id": insumo.id,
+            "nombre": insumo.nombre,
+            "categoria": insumo.categoria,
+            "cantidad_nominal": cant_nom,
+            "unidad_nominal": simbolo_u,
+            "masa_equivalente_g": masa_g,
+            "porcentaje_mezcla": None,
+        })
+
+    es_completa = len(insumos_sin_eq) == 0 and len(items_calculados) > 0 and peso_total_mezcla_g > 0
+
+    # 3. Calcular porcentajes y dividir en ingredientes / aditivos
+    ingredientes, aditivos, suma_porcentajes = _calcular_porcentajes_y_grupos(
+        items_calculados, peso_total_mezcla_g, es_completa
+    )
+
+    verificacion_100 = es_completa and abs(suma_porcentajes - 100.0) <= 0.5
+
+    return schemas.ComposicionPorcentualOut(
+        receta_id=receta.id,
+        codigo_receta=receta.codigo_receta,
+        nombre_receta=receta.nombre_receta,
+        estado_receta=receta.estado,
+        ingredientes=ingredientes,
+        aditivos=aditivos,
+        peso_total_mezcla_g=round(peso_total_mezcla_g, 3),
+        suma_porcentajes=suma_porcentajes,
+        verificacion_100=verificacion_100,
+        es_completa=es_completa,
+        insumos_sin_equivalencia=insumos_sin_eq,
+    )

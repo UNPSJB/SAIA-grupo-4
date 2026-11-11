@@ -129,3 +129,39 @@ class Receta(RecetaBase):
     pasos: List[PasoRecetaOut] = []
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class ItemComposicionPorcentualOut(BaseModel):
+    insumo_id: int
+    nombre: str
+    categoria: str
+    cantidad_nominal: float
+    unidad_nominal: str
+    masa_equivalente_g: Optional[float] = None
+    porcentaje_mezcla: Optional[float] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InsumoSinEquivalenciaOut(BaseModel):
+    insumo_id: int
+    nombre: str
+    unidad_simbolo: str
+    tipo_magnitud: str
+    equivalencia_requerida: str
+    mensaje: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ComposicionPorcentualOut(BaseModel):
+    receta_id: int
+    codigo_receta: str
+    nombre_receta: str
+    estado_receta: EstadoReceta
+    ingredientes: List[ItemComposicionPorcentualOut] = []
+    aditivos: List[ItemComposicionPorcentualOut] = []
+    peso_total_mezcla_g: float = 0.0
+    suma_porcentajes: float = 0.0
+    verificacion_100: bool = False
+    es_completa: bool = True
+    insumos_sin_equivalencia: List[InsumoSinEquivalenciaOut] = []
+    model_config = ConfigDict(from_attributes=True)
