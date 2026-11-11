@@ -22,6 +22,7 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../../components/ui";
 import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
@@ -278,10 +279,14 @@ export const ListadoRecetasOperador = () => {
       key: "tiempo_estimado",
       label: "Tiempo est.",
       valorExportacion: (r) =>
-        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "",
+        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "Sin estimar",
       render: (r) => (
         <Text fontSize="sm">
-          {r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—"}
+          {r.tiempo_estimado_total != null ? (
+            `${r.tiempo_estimado_total} min`
+          ) : (
+            <TextoSinValor>Sin estimar</TextoSinValor>
+          )}
         </Text>
       ),
     },

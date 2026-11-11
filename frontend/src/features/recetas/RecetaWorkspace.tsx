@@ -647,12 +647,14 @@ export default function RecetaWorkspace({
           <Dato label="Tiempo estimado total">
             {receta.tiempo_estimado_total != null
               ? `${receta.tiempo_estimado_total} min`
-              : "—"}
+              : <TextoSinValor>Sin estimar</TextoSinValor>}
           </Dato>
           {receta.fecha_baja && (
             <Dato label="Fecha de baja">{formatFecha(receta.fecha_baja)}</Dato>
           )}
-          <Dato label="Observaciones">{receta.observaciones || "—"}</Dato>
+          <Dato label="Observaciones">
+            {receta.observaciones || <TextoSinValor>No tiene</TextoSinValor>}
+          </Dato>
         </VStack>
 
         {esInhabilitada && (

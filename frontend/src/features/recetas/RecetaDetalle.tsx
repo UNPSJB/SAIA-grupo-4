@@ -196,7 +196,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           valor:
             receta.tiempo_estimado_total != null
               ? `${receta.tiempo_estimado_total} min`
-              : "—",
+              : <TextoSinValor>Sin estimar</TextoSinValor>,
         },
         {
           label: "Estado",

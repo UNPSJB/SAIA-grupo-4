@@ -23,6 +23,7 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
 import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../components/layout";
@@ -359,8 +360,14 @@ export default function RecetasPage() {
     {
       key: "tiempo_estimado_total",
       label: "Tiempo estimado",
+      valorExportacion: (r) =>
+        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "Sin estimar",
       render: (r) =>
-        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—",
+        r.tiempo_estimado_total != null ? (
+          `${r.tiempo_estimado_total} min`
+        ) : (
+          <TextoSinValor>Sin estimar</TextoSinValor>
+        ),
     },
     {
       key: "estado",
