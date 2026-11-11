@@ -37,3 +37,4 @@ export { FiltroTexto } from "./form/filters/FiltroTexto";
 export { FiltroNumero } from "./form/filters/FiltroNumero";
 export { FiltroFechaRango } from "./form/filters/FiltroFechaRango";
 export { ExportarMenu } from "./ExportarMenu";
+export { TextoSinValor } from "./form/data-display/TextoSinValor";
