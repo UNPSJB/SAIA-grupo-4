@@ -1,10 +1,9 @@
+from datetime import date, datetime, timedelta
+import uuid
 from fastapi.testclient import TestClient
 from src.auth.dependencies import get_current_user
 from src.main import app
 from tests.database import session
-import uuid
-from datetime import datetime
-
 
 client = TestClient(app)
 
@@ -13,6 +12,10 @@ client = TestClient(app)
 
 def sufijo_unico():
     return uuid.uuid4().hex[:8]
+
+
+def en_dias(dias: int) -> str:
+    return (date.today() + timedelta(days=dias)).isoformat()
 
 
 def crear_unidad_medida(nombre: str = "Kilogramo", simbolo: str = "kg", tipo: str = "masa") -> int:
@@ -37,10 +40,14 @@ def crear_insumo(nombre: str | None = None, unidad_id: int | None = None) -> dic
     return res.json()
 
 
-def crear_lote(insumo_id: int, codigo: str = "L-001", fecha: str = "2027-01-31") -> dict:
+def crear_lote(insumo_id: int, codigo: str = "L-001", fecha: str | None = None) -> dict:
     res = client.post(
         "/lotes-insumo/",
-        json={"insumo_id": insumo_id, "codigo_lote": codigo, "fecha_vencimiento": fecha},
+        json={
+            "insumo_id": insumo_id,
+            "codigo_lote": codigo,
+            "fecha_vencimiento": fecha or en_dias(90),
+        },
     )
     assert res.status_code == 201, res.text
     return res.json()
@@ -54,6 +61,15 @@ def ids_listados(**params):
 
 def inhabilitar_lote(lote_id: int, motivo: str = "Contaminación detectada en control de calidad"):
     return client.patch(f"/lotes-insumo/{lote_id}/inhabilitar", json={"motivo": motivo})
+
+
+def crear_lotes_en_los_tres_estados(insumo_id: int):
+    activo = crear_lote(insumo_id, codigo="L-ACTIVO", fecha=en_dias(30))
+    vencido = crear_lote(insumo_id, codigo="L-VENCIDO", fecha=en_dias(-1))
+    # Vencido por fecha, pero inhabilitado: tiene que figurar como inhabilitado
+    inhabilitado = crear_lote(insumo_id, codigo="L-INHAB", fecha=en_dias(-1))
+    assert inhabilitar_lote(inhabilitado["id"]).status_code == 200
+    return activo, vencido, inhabilitado
 
 
 # --- Crear ---
@@ -160,6 +176,25 @@ def test_crear_lote_insumo_dado_de_baja():
     assert response.status_code == 400
 
 
+def test_crear_lote_ignora_campos_de_inhabilitacion():
+    insumo = crear_insumo()
+    response = client.post(
+        "/lotes-insumo/",
+        json={
+            "insumo_id": insumo["id"],
+            "codigo_lote": "L-AUD",
+            "fecha_vencimiento": "2027-03-15",
+            "motivo_inhabilitacion": "inventado",
+            "usuario_inhabilitacion_id": 1,
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["motivo_inhabilitacion"] is None
+    assert data["fecha_inhabilitacion"] is None
+    assert data["usuario_inhabilitacion_id"] is None
+
+
 def test_lote_no_gestiona_cantidades_ni_stock():
     lote = crear_lote(crear_insumo()["id"])
     for campo in ["cantidad", "stock", "saldo"]:
@@ -200,14 +235,91 @@ def test_listar_lotes_filtrando_por_insumo():
     assert ids_listados(insumo_id=insumo_b["id"]) == {lote_b["id"]}
 
 
-def test_listar_lotes_filtrando_por_activo():
+# --- Estado, filtros y orden del listado ---
+
+def test_lote_devuelve_su_estado():
     insumo = crear_insumo()
-    activo = crear_lote(insumo["id"], codigo="L-ACTIVO")
-    inactivo = crear_lote(insumo["id"], codigo="L-INACTIVO")
-    assert inhabilitar_lote(inactivo["id"]).status_code == 200
-    assert ids_listados(insumo_id=insumo["id"], activo="true") == {activo["id"]}
-    assert ids_listados(insumo_id=insumo["id"], activo="false") == {inactivo["id"]}
-    assert ids_listados(insumo_id=insumo["id"]) == {activo["id"], inactivo["id"]}
+    activo = crear_lote(insumo["id"], codigo="L-E1", fecha=en_dias(30))
+    vencido = crear_lote(insumo["id"], codigo="L-E2", fecha=en_dias(-1))
+    inhabilitado = crear_lote(insumo["id"], codigo="L-E3", fecha=en_dias(30))
+    assert inhabilitar_lote(inhabilitado["id"]).status_code == 200
+
+    assert activo["estado"] == "activo"
+    assert vencido["estado"] == "vencido"
+    assert client.get(f"/lotes-insumo/{inhabilitado['id']}").json()["estado"] == "inhabilitado"
+
+
+def test_lote_que_vence_hoy_sigue_activo():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(0))
+    assert lote["estado"] == "activo"
+
+
+def test_lote_vencido_e_inhabilitado_figura_como_inhabilitado():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(-5))
+    assert lote["estado"] == "vencido"
+
+    assert inhabilitar_lote(lote["id"]).status_code == 200
+    assert client.get(f"/lotes-insumo/{lote['id']}").json()["estado"] == "inhabilitado"
+
+
+def test_listar_lotes_filtrando_por_estado():
+    insumo = crear_insumo()
+    activo, vencido, inhabilitado = crear_lotes_en_los_tres_estados(insumo["id"])
+
+    assert ids_listados(insumo_id=insumo["id"], estado="activo") == {activo["id"]}
+    assert ids_listados(insumo_id=insumo["id"], estado="vencido") == {vencido["id"]}
+    assert ids_listados(insumo_id=insumo["id"], estado="inhabilitado") == {inhabilitado["id"]}
+    assert ids_listados(insumo_id=insumo["id"]) == {activo["id"], vencido["id"], inhabilitado["id"]}
+
+
+def test_listar_lotes_buscando_por_codigo():
+    insumo = crear_insumo()
+    a = crear_lote(insumo["id"], codigo="ABC-2026-01")
+    b = crear_lote(insumo["id"], codigo="XYZ-2026-02")
+
+    # Búsqueda parcial y sin distinguir mayúsculas
+    assert ids_listados(insumo_id=insumo["id"], codigo_lote="abc") == {a["id"]}
+    assert ids_listados(insumo_id=insumo["id"], codigo_lote="2026") == {a["id"], b["id"]}
+    assert ids_listados(insumo_id=insumo["id"], codigo_lote="no-existe") == set()
+    # Un texto en blanco no filtra
+    assert ids_listados(insumo_id=insumo["id"], codigo_lote="   ") == {a["id"], b["id"]}
+
+
+def test_listar_lotes_ordenados_por_fecha_de_vencimiento():
+    insumo = crear_insumo()
+    tarde = crear_lote(insumo["id"], codigo="L-TARDE", fecha=en_dias(60))
+    temprano = crear_lote(insumo["id"], codigo="L-TEMPRANO", fecha=en_dias(10))
+    medio = crear_lote(insumo["id"], codigo="L-MEDIO", fecha=en_dias(30))
+
+    def ids_en_orden(**params):
+        res = client.get("/lotes-insumo/", params={"insumo_id": insumo["id"], **params})
+        assert res.status_code == 200, res.text
+        return [lote["id"] for lote in res.json()]
+
+    esperado = [temprano["id"], medio["id"], tarde["id"]]
+    assert ids_en_orden() == esperado  # por defecto, ascendente
+    assert ids_en_orden(orden="asc") == esperado
+    assert ids_en_orden(orden="desc") == esperado[::-1]
+
+
+def test_listar_lotes_combinando_filtros_y_orden():
+    insumo = crear_insumo()
+    a = crear_lote(insumo["id"], codigo="LOT-A", fecha=en_dias(10))
+    b = crear_lote(insumo["id"], codigo="LOT-B", fecha=en_dias(20))
+    crear_lote(insumo["id"], codigo="OTRO-C", fecha=en_dias(30))  # no coincide el código
+    crear_lote(insumo["id"], codigo="LOT-D", fecha=en_dias(-3))   # coincide pero está vencido
+
+    res = client.get(
+        "/lotes-insumo/",
+        params={"insumo_id": insumo["id"], "codigo_lote": "lot", "estado": "activo", "orden": "desc"},
+    )
+    assert res.status_code == 200, res.text
+    assert [lote["id"] for lote in res.json()] == [b["id"], a["id"]]
+
+
+def test_listar_lotes_estado_u_orden_invalido():
+    assert client.get("/lotes-insumo/", params={"estado": "cualquiera"}).status_code == 422
+    assert client.get("/lotes-insumo/", params={"orden": "xyz"}).status_code == 422
 
 
 # --- Modificar ---
@@ -225,7 +337,7 @@ def test_modificar_lote_codigo_y_fecha():
 
 
 def test_modificar_lote_parcial_no_pisa_el_resto():
-    lote = crear_lote(crear_insumo()["id"], codigo="L-ORIGINAL", fecha="2027-01-31")
+    lote = crear_lote(crear_insumo()["id"], codigo="L-ORIGINAL", fecha=en_dias(90))
 
     response = client.put(
         f"/lotes-insumo/{lote['id']}",
@@ -248,16 +360,15 @@ def test_modificar_lote_inexistente():
     assert response.status_code == 404
 
 
-# --- Permisos ---
+def test_modificar_lote_inhabilitado():
+    lote = crear_lote(crear_insumo()["id"])
+    inhabilitar_lote(lote["id"])
 
-def test_endpoints_sin_sesion_responden_401():
-    # Quitamos el override de administrador que pone tests/database.py
-    app.dependency_overrides.pop(get_current_user, None)
+    response = client.put(f"/lotes-insumo/{lote['id']}", json={"codigo_lote": "L-NUEVO"})
+    assert response.status_code == 400
 
-    assert client.get("/lotes-insumo/").status_code == 401
-    assert client.patch(
-        "/lotes-insumo/1/inhabilitar", json={"motivo": "Contaminación detectada"}
-    ).status_code == 401
+
+# --- Inhabilitar ---
 
 def test_inhabilitar_lote():
     lote = crear_lote(crear_insumo()["id"])
@@ -266,6 +377,7 @@ def test_inhabilitar_lote():
     assert response.status_code == 200
     data = response.json()
     assert data["activo"] is False
+    assert data["estado"] == "inhabilitado"
     assert data["motivo_inhabilitacion"] == "Contaminación detectada en control de calidad"
     assert data["fecha_inhabilitacion"] is not None
     assert isinstance(data["usuario_inhabilitacion_id"], int)
@@ -327,31 +439,20 @@ def test_lote_inhabilitado_no_aparece_entre_los_activos():
     lote = crear_lote(insumo["id"])
     inhabilitar_lote(lote["id"])
 
-    assert lote["id"] not in ids_listados(insumo_id=insumo["id"], activo="true")
+    assert lote["id"] not in ids_listados(insumo_id=insumo["id"], estado="activo")
 
 
-def test_modificar_lote_inhabilitado():
-    lote = crear_lote(crear_insumo()["id"])
-    inhabilitar_lote(lote["id"])
+# --- Permisos ---
 
-    response = client.put(f"/lotes-insumo/{lote['id']}", json={"codigo_lote": "L-NUEVO"})
-    assert response.status_code == 400
+def test_endpoints_sin_sesion_responden_401():
+    # Quitamos el override de administrador que pone tests/database.py
+    app.dependency_overrides.pop(get_current_user, None)
 
-
-def test_crear_lote_ignora_campos_de_inhabilitacion():
-    insumo = crear_insumo()
-    response = client.post(
+    assert client.get("/lotes-insumo/").status_code == 401
+    assert client.post(
         "/lotes-insumo/",
-        json={
-            "insumo_id": insumo["id"],
-            "codigo_lote": "L-AUD",
-            "fecha_vencimiento": "2027-03-15",
-            "motivo_inhabilitacion": "inventado",
-            "usuario_inhabilitacion_id": 1,
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert data["motivo_inhabilitacion"] is None
-    assert data["fecha_inhabilitacion"] is None
-    assert data["usuario_inhabilitacion_id"] is None
+        json={"insumo_id": 1, "codigo_lote": "L-001", "fecha_vencimiento": "2027-03-15"},
+    ).status_code == 401
+    assert client.patch(
+        "/lotes-insumo/1/inhabilitar", json={"motivo": "Contaminación detectada"}
+    ).status_code == 401
