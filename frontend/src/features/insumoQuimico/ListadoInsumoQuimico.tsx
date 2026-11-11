@@ -20,6 +20,7 @@ import {
   RowActionButton,
   RowActions,
   TablePagination,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -198,7 +199,7 @@ export const ListadoInsumosQuimicos = ({
             </Badge>
           );
         }
-        return <span style={{ color: "gray" }}>Sin asignar</span>;
+        return <TextoSinValor>Sin asignar</TextoSinValor>;
       },
     },
     {

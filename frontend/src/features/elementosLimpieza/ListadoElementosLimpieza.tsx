@@ -23,6 +23,7 @@ import {
   SemaforoLegend,
   TablePagination,
   textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -238,9 +239,9 @@ export const ListadoElementosLimpieza = ({
             </Badge>
           );
         return (
-          <span style={{ color: "var(--chakra-colors-gray-400)" }}>
+          <TextoSinValor>
             Sin asignar
-          </span>
+          </TextoSinValor>
         );
       },
     },
@@ -254,7 +255,7 @@ export const ListadoElementosLimpieza = ({
         e.frecuencia_recambio_dias ? (
           `${e.frecuencia_recambio_dias} días`
         ) : (
-          <span style={{ color: "gray" }}>{SIN_ESTABLECER}</span>
+          <TextoSinValor>{SIN_ESTABLECER}</TextoSinValor>
         ),
     },
     {

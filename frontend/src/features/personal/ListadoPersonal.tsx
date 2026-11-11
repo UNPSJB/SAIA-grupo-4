@@ -33,6 +33,7 @@ import {
   SemaforoLegend,
   TablePagination,
   textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -187,7 +188,7 @@ export const ListadoPersonal = ({
       render: (p) => {
         const activas = (p.capacidades || []).filter((c) => c.activo);
         if (activas.length === 0)
-          return <span style={{ color: "gray" }}>Ninguna</span>;
+          return <TextoSinValor>Ninguna</TextoSinValor>;
         return (
           <Wrap gap={1}>
             {activas.map((c) => (
@@ -214,7 +215,7 @@ export const ListadoPersonal = ({
       render: (p) => {
         const vencimientos = vencimientosOrdenados(p);
         const urgente = vencimientos[0];
-        if (!urgente) return <span style={{ color: "gray" }}>Ninguno</span>;
+        if (!urgente) return <TextoSinValor>Ninguno</TextoSinValor>;
 
         const calculado = calcularSemaforo(urgente.fecha_vencimiento);
         const restantes = vencimientos.length - 1;

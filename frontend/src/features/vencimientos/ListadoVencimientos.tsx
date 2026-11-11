@@ -14,6 +14,7 @@ import {
   SemaforoLegend,
   TablePagination,
   textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
@@ -120,7 +121,7 @@ export const ListadoVencimientos = ({
       valorExportacion: (v) => v.detalle ?? "",
       render: (v) =>
         v.detalle ?? (
-          <span style={{ color: "var(--chakra-colors-gray-400)" }}>—</span>
+          <TextoSinValor>—</TextoSinValor>
         ),
     },
     {

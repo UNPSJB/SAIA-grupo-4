@@ -19,7 +19,8 @@ import {
   TablePagination,
   FiltroSelect,
   FiltrosBar,
-  FiltroTexto
+  FiltroTexto,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -131,7 +132,7 @@ export const ListadoProductos = ({
         p.dias_vida_util != null ? (
           `${p.dias_vida_util} días`
         ) : (
-          <span style={{ color: "gray" }}>{SIN_ESTABLECER}</span>
+          <TextoSinValor>{SIN_ESTABLECER}</TextoSinValor>
         ),
     },
     {

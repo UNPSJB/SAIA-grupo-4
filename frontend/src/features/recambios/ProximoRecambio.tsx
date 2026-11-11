@@ -1,4 +1,4 @@
-import { SemaforoFecha, type EstadoSemaforo } from "../../components/ui";
+import { SemaforoFecha, TextoSinValor, type EstadoSemaforo } from "../../components/ui";
 import type { AlertaRecambio, EstadoRecambio } from "./types";
 
 // Traduce el enum de recambios al estado semantico del componente compartido.
@@ -16,7 +16,7 @@ const ESTADO_COMPARTIDO: Record<EstadoRecambio, EstadoSemaforo> = {
 const SIN_CALCULAR = "Sin calcular";
 
 export const ProximoRecambio = ({ alerta }: { alerta?: AlertaRecambio }) => {
-  if (!alerta) return <span style={{ color: "gray" }}>{SIN_CALCULAR}</span>;
+  if (!alerta) return <TextoSinValor>{SIN_CALCULAR}</TextoSinValor>;
 
   return (
     <SemaforoFecha

@@ -23,6 +23,7 @@ import {
   SemaforoLegend,
   TablePagination,
   textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -36,7 +37,7 @@ import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 const SIN_VALOR = "No tiene";
 
 // En la tabla se muestra en gris, igual que "Ninguno" en Personal.
-const SinValor = () => <span style={{ color: "gray" }}>{SIN_VALOR}</span>;
+const SinValor = () => <TextoSinValor>{SIN_VALOR}</TextoSinValor>;
 
 const formatearFechaISO = (fecha: string | null | undefined) => {
   if (!fecha) return SIN_VALOR;

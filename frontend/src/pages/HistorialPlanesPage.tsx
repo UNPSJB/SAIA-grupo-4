@@ -16,6 +16,7 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
 import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import {
@@ -386,7 +387,7 @@ export default function HistorialPlanesPage() {
         const estado = derivarEstado(plan);
         if (estado === "vigente") return "Hoy";
         if (estado === "borrador") {
-          return <span style={{ color: "gray" }}>No tiene</span>;
+          return <TextoSinValor>No tiene</TextoSinValor>;
         }
         return formatFecha(plan.fecha_hasta);
       },

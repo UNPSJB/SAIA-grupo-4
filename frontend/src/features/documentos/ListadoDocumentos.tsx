@@ -12,6 +12,7 @@ import {
   SemaforoLegend,
   TablePagination,
   textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
@@ -172,9 +173,9 @@ export const ListadoDocumentos = ({
         doc.version_vigente ? (
           <Badge colorPalette="green">{doc.version_vigente.version}</Badge>
         ) : (
-          <span style={{ color: "var(--chakra-colors-gray-400)" }}>
+          <TextoSinValor>
             No tiene versión
-          </span>
+          </TextoSinValor>
         ),
     },
     {

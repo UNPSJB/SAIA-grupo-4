@@ -1,4 +1,4 @@
-import { SemaforoFecha } from "../../components/ui";
+import { SemaforoFecha, TextoSinValor } from "../../components/ui";
 import { calcularSemaforo } from "../../utils/semaforo";
 
 interface ProximaRevisionProps {
@@ -10,7 +10,7 @@ interface ProximaRevisionProps {
 // se muestra "No tiene" en gris.
 // Usa el mismo semáforo compartido que equipos, personal y vencimientos.
 export const ProximaRevision = ({ fecha }: ProximaRevisionProps) => {
-  if (!fecha) return <span style={{ color: "gray" }}>No tiene</span>;
+  if (!fecha) return <TextoSinValor>No tiene</TextoSinValor>;
 
   const { estado, diasRestantes } = calcularSemaforo(fecha);
 
