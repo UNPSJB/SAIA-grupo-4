@@ -6,6 +6,7 @@ import {
   LoadingState,
   RowActionButton,
   RowActions,
+  TextoSinValor,
   type ColumnDef,
 } from "../../components/ui";
 import type { FiltroAplicado } from "../../utils/exportacion";
@@ -21,6 +22,9 @@ interface ListadoLotesProps {
   mostrarOperador?: boolean;
   hayFiltrosActivos?: boolean;
 }
+
+// Lotes cuyo producto no tiene vida útil cargada no tienen vencimiento.
+const SIN_ESPECIFICAR = "Sin especificar";
 
 const formatearFechaSoloDia = (fechaIso: string) => {
   if (!fechaIso) return "—";
@@ -99,7 +103,14 @@ export const ListadoLotes = ({
     {
       key: "fecha_vencimiento",
       label: "Vencimiento",
-      render: (l) => formatearFechaSoloDia(l.fecha_vencimiento),
+      valorExportacion: (l) =>
+        l.fecha_vencimiento ? formatearFechaSoloDia(l.fecha_vencimiento) : SIN_ESPECIFICAR,
+      render: (l) =>
+        l.fecha_vencimiento ? (
+          formatearFechaSoloDia(l.fecha_vencimiento)
+        ) : (
+          <TextoSinValor>{SIN_ESPECIFICAR}</TextoSinValor>
+        ),
     },
   ];
 
@@ -170,7 +181,12 @@ export const ListadoLotes = ({
                   year: "numeric",
                 })}</strong>
                 {" · "}
-                Vencimiento: <strong>{formatearFechaSoloDia(l.fecha_vencimiento)}</strong>
+                Vencimiento:{" "}
+                {l.fecha_vencimiento ? (
+                  <strong>{formatearFechaSoloDia(l.fecha_vencimiento)}</strong>
+                ) : (
+                  <TextoSinValor>{SIN_ESPECIFICAR}</TextoSinValor>
+                )}
                 {mostrarOperador && l.operador_nombre && (
                   <> · Operador: <strong>{l.operador_nombre}</strong></>
                 )}
