@@ -115,3 +115,36 @@ export interface RecetaUpdatePayload {
   observaciones?: string | null;
 }
 
+export interface ItemComposicionPorcentual {
+  insumo_id: number;
+  nombre: string;
+  categoria: string;
+  cantidad_nominal: number;
+  unidad_nominal: string;
+  masa_equivalente_g?: number | null;
+  porcentaje_mezcla?: number | null;
+}
+
+export interface InsumoSinEquivalencia {
+  insumo_id: number;
+  nombre: string;
+  unidad_simbolo: string;
+  tipo_magnitud: string;
+  equivalencia_requerida: string;
+  mensaje: string;
+}
+
+export interface ComposicionPorcentualResponse {
+  receta_id: number;
+  codigo_receta: string;
+  nombre_receta: string;
+  estado_receta: EstadoReceta;
+  ingredientes: ItemComposicionPorcentual[];
+  aditivos: ItemComposicionPorcentual[];
+  peso_total_mezcla_g: number;
+  suma_porcentajes: number;
+  verificacion_100: boolean;
+  es_completa: boolean;
+  insumos_sin_equivalencia: InsumoSinEquivalencia[];
+}
+

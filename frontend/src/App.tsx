@@ -36,7 +36,7 @@ import { RenovacionProvider } from "./features/vencimientos/RenovacionProvider";
 import DocumentosPage from "./pages/DocumentosPage";
 import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
 import RecetasOperadorPage from "./pages/RecetasOperadorPage";
-import { FichaRecetaOperador } from "./features/recetas/FichaRecetaOperador";
+import { FichaTecnicaReceta } from "./features/recetas/FichaTecnicaReceta";
 import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
@@ -110,7 +110,7 @@ function AppContent() {
             path='/recetas/:id'
             element={
               <RequireAuth>
-                <FichaRecetaOperador />
+                <FichaTecnicaReceta modo='operador' />
               </RequireAuth>
             }
           />
@@ -322,6 +322,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <RecetaWorkspace />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/recetas/:id/ficha-tecnica'
+              element={
+                <RequireAuth>
+                  <FichaTecnicaReceta modo='admin' />
                 </RequireAuth>
               }
             />

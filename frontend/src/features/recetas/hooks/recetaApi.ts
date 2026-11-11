@@ -4,6 +4,7 @@ import type { Equipo } from "../../equipos/types";
 import type { Insumo } from "../../insumo/types";
 import type { Producto } from "../../productos/types";
 import type {
+  ComposicionPorcentualResponse,
   FiltrosReceta,
   PasoReceta,
   PasoRecetaCreatePayload,
@@ -95,6 +96,8 @@ export const recetasApi = {
     return request<Receta[]>(`/recetas/activas${qs ? `?${qs}` : ""}`);
   },
   obtenerRecetaActiva: (id: number) => request<Receta>(`/recetas/activas/${id}`),
+  obtenerComposicionPorcentual: (id: number) =>
+    request<ComposicionPorcentualResponse>(`/recetas/${id}/composicion-porcentual`),
   obtenerBorrador: () => request<Receta>("/recetas/borrador"),
   obtenerReceta: (id: number) => request<Receta>(`/recetas/${id}`),
   crearReceta: (payload: RecetaCreatePayload) =>

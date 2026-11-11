@@ -11,7 +11,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import type { PasoReceta, Receta } from "./types";
+import type { ComposicionPorcentualResponse, PasoReceta, Receta } from "./types";
 
 interface InsumoConsolidado {
   id: number;
@@ -30,6 +30,7 @@ interface EquipoConsolidado {
 
 export interface FichaRecetaPrintProps {
   receta: Receta;
+  composicion?: ComposicionPorcentualResponse | null;
 }
 
 export const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
@@ -98,7 +99,7 @@ export const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
  * Permanece oculto en pantalla (display: none) y se activa exclusivamente mediante
  * @media print forzando fondo blanco y texto oscuro (independiente de Dark Mode).
  */
-export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
+export const FichaRecetaPrint = ({ receta, composicion }: FichaRecetaPrintProps) => {
   const { insumos, equipos, pasosOrdenados } = useMemo(
     () => consolidarRecursosParaPrint(receta.pasos ?? []),
     [receta.pasos],
@@ -114,10 +115,7 @@ export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
     [],
   );
 
-  const unidadRendimiento = receta.producto?.unidad_medida?.simbolo || "";
-  const rendimientoStr = unidadRendimiento
-    ? `${receta.rendimiento_estandar} ${unidadRendimiento}`
-    : `${receta.rendimiento_estandar}`;
+  const rendimientoStr = `${receta.rendimiento_estandar} g`;
 
   return (
     <Box
@@ -298,6 +296,196 @@ export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
           </Box>
         )}
       </SimpleGrid>
+
+      {/* Composición Porcentual de la Receta */}
+      {composicion && (
+        <Box mb={4} css={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+          <HStack
+            justify="space-between"
+            align="center"
+            borderBottomWidth="1px"
+            borderColor="gray.300"
+            pb={1}
+            mb={2}
+          >
+            <Heading size="sm" color="green.700">
+              Composición Porcentual de la Formulación
+            </Heading>
+            <HStack gap={2}>
+              <Badge
+                colorPalette={composicion.verificacion_100 ? "teal" : "orange"}
+                variant="surface"
+                fontSize="2xs"
+                px={2}
+                py={0.5}
+                borderWidth="1px"
+              >
+                Total: {composicion.suma_porcentajes.toFixed(1)}% {composicion.verificacion_100 ? "✓" : "⚠️"}
+              </Badge>
+              <Text fontSize="2xs" color="gray.600" fontWeight="medium">
+                Peso total mezcla:{" "}
+                {Number(composicion.peso_total_mezcla_g).toLocaleString("es-AR", {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                g
+              </Text>
+            </HStack>
+          </HStack>
+
+          {/* Tabla de Ingredientes */}
+          <Box mb={2}>
+            <Text
+              fontSize="2xs"
+              fontWeight="bold"
+              textTransform="uppercase"
+              color="gray.600"
+              mb={1}
+            >
+              Ingredientes
+            </Text>
+            {composicion.ingredientes.length === 0 ? (
+              <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                No hay ingredientes registrados.
+              </Text>
+            ) : (
+              <Table.Root
+                size="sm"
+                variant="outline"
+                bg="white"
+                borderWidth="1px"
+                borderColor="gray.200"
+              >
+                <Table.Header bg="gray.100">
+                  <Table.Row>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                      Ingrediente (Denominación)
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      Cant. Nominal
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      Masa Equiv. (g)
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      % en Mezcla
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {composicion.ingredientes.map((item) => (
+                    <Table.Row key={item.insumo_id}>
+                      <Table.Cell fontSize="xs" py={1.5}>
+                        {item.nombre}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right">
+                        {Number(item.cantidad_nominal).toLocaleString("es-AR", {
+                          maximumFractionDigits: 3,
+                        })}{" "}
+                        {item.unidad_nominal}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right">
+                        {item.masa_equivalente_g != null
+                          ? `${Number(item.masa_equivalente_g).toLocaleString("es-AR", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 2,
+                            })} g`
+                          : "—"}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="bold">
+                        {item.porcentaje_mezcla != null
+                          ? `${Number(item.porcentaje_mezcla).toLocaleString("es-AR", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 2,
+                            })}%`
+                          : "—"}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+            )}
+          </Box>
+
+          {/* Tabla de Aditivos (si existen) */}
+          {composicion.aditivos.length > 0 && (
+            <Box mb={2}>
+              <Text
+                fontSize="2xs"
+                fontWeight="bold"
+                textTransform="uppercase"
+                color="gray.600"
+                mb={1}
+              >
+                Aditivos
+              </Text>
+              <Table.Root
+                size="sm"
+                variant="outline"
+                bg="white"
+                borderWidth="1px"
+                borderColor="gray.200"
+              >
+                <Table.Header bg="gray.100">
+                  <Table.Row>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                      Aditivo (Denominación)
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      Cant. Nominal
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      Masa Equiv. (g)
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      % en Mezcla
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {composicion.aditivos.map((item) => (
+                    <Table.Row key={item.insumo_id}>
+                      <Table.Cell fontSize="xs" py={1.5}>
+                        {item.nombre}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right">
+                        {Number(item.cantidad_nominal).toLocaleString("es-AR", {
+                          maximumFractionDigits: 3,
+                        })}{" "}
+                        {item.unidad_nominal}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right">
+                        {item.masa_equivalente_g != null
+                          ? `${Number(item.masa_equivalente_g).toLocaleString("es-AR", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 2,
+                            })} g`
+                          : "—"}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="bold">
+                        {item.porcentaje_mezcla != null
+                          ? `${Number(item.porcentaje_mezcla).toLocaleString("es-AR", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 2,
+                            })}%`
+                          : "—"}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+            </Box>
+          )}
+
+          {composicion.insumos_sin_equivalencia &&
+            composicion.insumos_sin_equivalencia.length > 0 && (
+              <Text fontSize="2xs" color="red.600" fontStyle="italic" mt={1}>
+                * Nota: Insumos sin conversión equivalente registrada (
+                {composicion.insumos_sin_equivalencia.map((i) => i.nombre).join(", ")}).
+              </Text>
+            )}
+        </Box>
+      )}
 
       {/* Recursos Generales Requeridos: Insumos y Equipos */}
       <SimpleGrid
