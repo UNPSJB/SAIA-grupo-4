@@ -54,13 +54,8 @@ const PieTooltip = ({ active, payload }: any) => {
   );
 };
 
-const EmptyChart = ({
-  title,
-  leyendas,
-}: {
-  title: string;
-  leyendas?: Array<{ label: string }>;
-}) => (
+// Sin datos: solo se muestra el mensaje, sin leyendas.
+const EmptyChart = ({ title }: { title: string }) => (
   <Card.Root shadow='md' h='full'>
     <Card.Header>
       <Text fontSize='md' fontWeight='semibold'>
@@ -72,24 +67,6 @@ const EmptyChart = ({
         <Text color='gray.500' fontSize='sm'>
           Sin datos para mostrar
         </Text>
-        {leyendas && leyendas.length > 0 && (
-          <VStack align='stretch' gap={2} w='full'>
-            {leyendas.map((leyenda, idx) => (
-              <Box key={idx} display='flex' alignItems='center' gap={2}>
-                <Box
-                  w={3}
-                  h={3}
-                  borderRadius='full'
-                  bg='#A0AEC0'
-                  flexShrink={0}
-                />
-                <Text fontSize='xs' color='gray.600'>
-                  {leyenda.label}
-                </Text>
-              </Box>
-            ))}
-          </VStack>
-        )}
       </VStack>
     </Card.Body>
   </Card.Root>
@@ -344,7 +321,7 @@ export function DashboardChart({
   metricKey,
 }: DashboardChartProps) {
   if (!config.datos || config.datos.length === 0) {
-    return <EmptyChart title={title} leyendas={config.leyendas} />;
+    return <EmptyChart title={title} />;
   }
 
   if (USE_BAR_CHART.has(metricKey)) {
