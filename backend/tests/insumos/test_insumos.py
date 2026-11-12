@@ -186,7 +186,7 @@ def test_obtener_insumo_por_id():
         json={
             "nombre": "Aceite",
             "unidad_medida_id": unidad_id,
-            "categoria": "aditivo",
+            "categoria": "materia prima",
         },
     )
     insumo_id = res_post.json()["id"]
@@ -438,9 +438,86 @@ def test_crear_insumo_validacion_magnitud_equivalencia():
         json={
             "nombre": f"Sal {sufijo_unico()}",
             "unidad_medida_id": u_masa,
-            "categoria": "aditivo",
+            "categoria": "materia prima",
             "densidad_g_ml": 1.2,
         },
     )
     assert res_err_masa.status_code == 400
     assert "masa" in res_err_masa.json()["detail"].lower()
+
+
+def test_crear_aditivo_validaciones_clase_e_ins():
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="gr", tipo="masa")
+
+    # 1. Aditivo sin clase_funcional debe fallar (400 o 422)
+    res_sin_clase = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Propionato {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "numero_ins": "282",
+        },
+    )
+    assert res_sin_clase.status_code in [400, 422]
+
+    # 2. Aditivo conservante sin numero_ins debe fallar
+    res_sin_ins = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Propionato {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Conservante",
+        },
+    )
+    assert res_sin_ins.status_code in [400, 422]
+
+    # 3. Aditivo con clase y número INS válido se crea exitosamente
+    res_ok = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Propionato de Calcio {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Conservante",
+            "numero_ins": "282",
+            "denominacion_rotulo": "PROPIONATO DE CALCIO",
+        },
+    )
+    assert res_ok.status_code == 201
+    body_ok = res_ok.json()
+    assert body_ok["clase_funcional"] == "Conservante"
+    assert body_ok["numero_ins"] == "282"
+    assert body_ok["denominacion_rotulo"] == "PROPIONATO DE CALCIO"
+    assert body_ok["denominacion_efectiva"] == "PROPIONATO DE CALCIO"
+
+    # 4. Caso especial: Aromatizante o Saborizante no exige INS
+    res_aroma = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Esencia Vainilla {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Aromatizante",
+        },
+    )
+    assert res_aroma.status_code == 201
+    body_aroma = res_aroma.json()
+    assert body_aroma["clase_funcional"] == "Aromatizante"
+    assert body_aroma["numero_ins"] is None
+    # Fallback al nombre original cuando denominacion_rotulo está vacío
+    assert body_aroma["denominacion_efectiva"] == body_aroma["nombre"]
+
+    # 5. Materia prima con clase_funcional o numero_ins debe fallar
+    res_err_mp = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Harina {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "clase_funcional": "Conservante",
+        },
+    )
+    assert res_err_mp.status_code in [400, 422]
+

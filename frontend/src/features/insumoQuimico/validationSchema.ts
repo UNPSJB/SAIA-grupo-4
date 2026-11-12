@@ -35,7 +35,7 @@ export const insumoQuimicoSchema = z
 
     if (tieneEquipo && tieneSector) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["equipo_id"],
         message: "Debe elegir solo un equipo o solo un sector.",
       });

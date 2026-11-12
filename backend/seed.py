@@ -229,17 +229,18 @@ EQUIPOS = (
     ("Compresor de Nitrogeno", "Atlas Copco", "CN-0001", "otro", 9, "Taller de mantenimiento", None, None),
 )
 
+# (nombre, indice_unidad, categoria, descripcion, denominacion_rotulo, clase_funcional, numero_ins, densidad_g_ml, peso_unitario_g)
 INSUMOS = (
-    ("Harina de Trigo 000", 0, "materia prima", "Harina de trigo de fuerza para panificados."),
-    ("Manteca de Primera", 0, "materia prima", "Manteca pasteurizada sin sal."),
-    ("Azucar Comun", 0, "materia prima", "Azucar blanco refinado standard."),
-    ("Levadura Prensada", 1, "aditivo", "Levadura prensada fresca para panaderia."),
-    ("Huevos Frescos", 6, "materia prima", "Huevos de granja seleccionados tamano grande."),
-    ("Cacao Amargo en Polvo", 1, "materia prima", "Cacao puro amargo desgrasado."),
-    ("Leche Entera Pasteurizada", 3, "materia prima", "Leche entera fluida pasteurizada."),
-    ("Esencia de Vainilla", 4, "aditivo", "Aromatizante de extracto de vainilla natural."),
-    ("Sal Fina Marina", 1, "aditivo", "Sal fina pura secada al vacio."),
-    ("Semillas de Sesamo", 1, "materia prima", "Semillas tostadas seleccionadas."),
+    ("Harina de Trigo 000", 0, "materia prima", "Harina de trigo de fuerza para panificados.", "Harina de trigo 000 enriquecida", None, None, None, None),
+    ("Manteca de Primera", 0, "materia prima", "Manteca pasteurizada sin sal.", "Manteca pasteurizada sin sal", None, None, None, None),
+    ("Azucar Comun", 0, "materia prima", "Azucar blanco refinado standard.", "Azucar comun tipo A", None, None, None, None),
+    ("Levadura Prensada", 1, "aditivo", "Levadura prensada fresca para panaderia.", "Levadura prensada de panaderia", "Leudante", "500ii", None, None),
+    ("Huevos Frescos", 6, "materia prima", "Huevos de granja seleccionados tamano grande.", "Huevo fresco de gallina", None, None, None, 55.0),
+    ("Cacao Amargo en Polvo", 1, "materia prima", "Cacao puro amargo desgrasado.", "Cacao puro amargo desgrasado", None, None, None, None),
+    ("Leche Entera Pasteurizada", 3, "materia prima", "Leche entera fluida pasteurizada.", "Leche entera fluida", None, None, 1.03, None),
+    ("Esencia de Vainilla", 4, "aditivo", "Aromatizante de extracto de vainilla natural.", "Aroma natural de vainilla", "Aromatizante", None, 1.05, None),
+    ("Sal Fina Marina", 1, "aditivo", "Sal fina pura secada al vacio.", "Sal fina marina", "Conservante", "282", None, None),
+    ("Semillas de Sesamo", 1, "materia prima", "Semillas tostadas seleccionadas.", "Semillas de sesamo tostadas", None, None, None, None),
 )
 
 PRODUCTOS = (
@@ -761,10 +762,25 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             unidad_medida=unidades[indice_unidad % len(unidades)],
             categoria=categoria,
             descripcion=descripcion,
+            denominacion_rotulo=denominacion_rotulo,
+            clase_funcional=clase_funcional,
+            numero_ins=numero_ins,
+            densidad_g_ml=densidad_g_ml,
+            peso_unitario_g=peso_unitario_g,
             consumo=Decimal("0"),
             disponible=True,
         )
-        for nombre, indice_unidad, categoria, descripcion in _ciclar(INSUMOS, cantidad)
+        for (
+            nombre,
+            indice_unidad,
+            categoria,
+            descripcion,
+            denominacion_rotulo,
+            clase_funcional,
+            numero_ins,
+            densidad_g_ml,
+            peso_unitario_g,
+        ) in _ciclar(INSUMOS, cantidad)
     ]
 
     productos = [

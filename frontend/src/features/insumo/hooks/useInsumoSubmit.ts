@@ -14,6 +14,9 @@ export interface InsumoPayload {
   descripcion: string;
   densidad_g_ml?: string;
   peso_unitario_g?: string;
+  denominacion_rotulo?: string;
+  clase_funcional?: string;
+  numero_ins?: string;
 }
 
 type FastApiError = {
@@ -60,6 +63,18 @@ export const useInsumoSubmit = ({
           peso_unitario_g:
             values?.peso_unitario_g && values.peso_unitario_g.trim() !== ""
               ? Number(values.peso_unitario_g)
+              : null,
+          denominacion_rotulo:
+            values?.denominacion_rotulo && values.denominacion_rotulo.trim() !== ""
+              ? values.denominacion_rotulo.trim()
+              : null,
+          clase_funcional:
+            values?.clase_funcional && values.clase_funcional.trim() !== ""
+              ? values.clase_funcional.trim()
+              : null,
+          numero_ins:
+            values?.numero_ins && values.numero_ins.trim() !== ""
+              ? values.numero_ins.trim()
               : null,
         };
 

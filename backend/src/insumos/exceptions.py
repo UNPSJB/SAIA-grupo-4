@@ -50,3 +50,15 @@ class PesoUnitarioSoloCantidad(BadRequest):
 
 class EquivalenciaNoAplicaMasa(BadRequest):
     DETAIL = ErrorCode.EQUIVALENCIA_NO_APLICA_MASA
+
+
+class ClaseFuncionalRequeridaAditivo(BadRequest):
+    DETAIL = ErrorCode.CLASE_FUNCIONAL_REQUERIDA_ADITIVO
+
+
+class NumeroInsRequeridoAditivo(BadRequest):
+    DETAIL = ErrorCode.NUMERO_INS_REQUERIDO_ADITIVO
+
+
+class AtributosAditivoNoAplican(BadRequest):
+    DETAIL = ErrorCode.ATRIBUTOS_ADITIVO_NO_APLICAN

@@ -33,6 +33,15 @@ export const InsumoDetalle = ({ insumo, onCerrar }: InsumoDetalleProps) => {
         ...(insumo.peso_unitario_g != null
           ? [{ label: "Peso unitario promedio", valor: `${insumo.peso_unitario_g} g` }]
           : []),
+        ...(insumo.denominacion_rotulo
+          ? [{ label: "Denominación rótulo (CAA)", valor: insumo.denominacion_rotulo }]
+          : []),
+        ...(insumo.clase_funcional
+          ? [{ label: "Clase funcional", valor: insumo.clase_funcional }]
+          : []),
+        ...(insumo.numero_ins
+          ? [{ label: "Número INS", valor: insumo.numero_ins }]
+          : []),
         {
           label: "Estado",
           valor: (

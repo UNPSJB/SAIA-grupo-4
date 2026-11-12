@@ -75,6 +75,9 @@ export const InsumoForm = ({
             insumo?.densidad_g_ml != null ? String(insumo.densidad_g_ml) : "",
           peso_unitario_g:
             insumo?.peso_unitario_g != null ? String(insumo.peso_unitario_g) : "",
+          denominacion_rotulo: insumo?.denominacion_rotulo || "",
+          clase_funcional: insumo?.clase_funcional || "",
+          numero_ins: insumo?.numero_ins || "",
         }
       : {
           nombre: "",
@@ -83,6 +86,9 @@ export const InsumoForm = ({
           descripcion: "",
           densidad_g_ml: "",
           peso_unitario_g: "",
+          denominacion_rotulo: "",
+          clase_funcional: "",
+          numero_ins: "",
         };
 
   const {
@@ -100,6 +106,14 @@ export const InsumoForm = ({
   });
 
   const unidadSeleccionadaId = watch("unidad_medida_id");
+  const categoriaSeleccionada = watch("categoria");
+  const claseFuncionalSeleccionada = watch("clase_funcional");
+
+  const esAditivo = (categoriaSeleccionada || "").trim().toLowerCase() === "aditivo";
+  const esAromatizante =
+    (claseFuncionalSeleccionada || "").trim().toLowerCase() === "aromatizante" ||
+    (claseFuncionalSeleccionada || "").trim().toLowerCase() === "saborizante" ||
+    (claseFuncionalSeleccionada || "").trim().toLowerCase().includes("aromatizante");
 
   const unidadSeleccionada = useMemo(() => {
     return (
@@ -164,6 +178,9 @@ export const InsumoForm = ({
       ...values,
       densidad_g_ml: tipoMagnitud === "volumen" ? values.densidad_g_ml : undefined,
       peso_unitario_g: tipoMagnitud === "cantidad" ? values.peso_unitario_g : undefined,
+      denominacion_rotulo: values.denominacion_rotulo?.trim() || undefined,
+      clase_funcional: esAditivo ? values.clase_funcional?.trim() || undefined : undefined,
+      numero_ins: esAditivo ? values.numero_ins?.trim() || undefined : undefined,
     };
     const res = await submit(cleanedValues);
     if (res.status === "error") {
@@ -262,6 +279,58 @@ export const InsumoForm = ({
             error={errors.descripcion?.message}
             {...register("descripcion")}
           />
+
+          <TextField
+            label='Denominación para Rótulo (opcional)'
+            disabled={esModoVer}
+            defaultValue={defaultValues.denominacion_rotulo}
+            placeholder='Si se deja vacío, se usará el nombre del insumo'
+            error={errors.denominacion_rotulo?.message}
+            {...register("denominacion_rotulo")}
+          />
+
+          {esAditivo && (
+            <>
+              <SelectField
+                label='Clase Funcional (aditivo)'
+                placeholder='Selecciona la clase funcional'
+                readOnly={esModoVer}
+                defaultValue={defaultValues.clase_funcional}
+                onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+                onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+                options={[
+                  { label: "Conservante", value: "Conservante" },
+                  { label: "Antioxidante", value: "Antioxidante" },
+                  { label: "Acidulante", value: "Acidulante" },
+                  { label: "Emulsionante", value: "Emulsionante" },
+                  { label: "Estabilizante", value: "Estabilizante" },
+                  { label: "Espesante", value: "Espesante" },
+                  { label: "Gelificante", value: "Gelificante" },
+                  { label: "Colorante", value: "Colorante" },
+                  { label: "Aromatizante / Saborizante", value: "Aromatizante" },
+                  { label: "Leudante químico", value: "Leudante químico" },
+                  { label: "Regulador de acidez", value: "Regulador de acidez" },
+                  { label: "Secuestrante", value: "Secuestrante" },
+                  { label: "Edulcorante", value: "Edulcorante" },
+                  { label: "Humectante", value: "Humectante" },
+                  { label: "Antihumectante", value: "Antihumectante" },
+                  { label: "Mejorador de harina", value: "Mejorador de harina" },
+                  { label: "Resaltador del sabor", value: "Resaltador del sabor" },
+                ]}
+                error={errors.clase_funcional?.message}
+                {...register("clase_funcional")}
+              />
+
+              <TextField
+                label={esAromatizante ? "Número INS (no requerido para aromatizantes)" : "Número INS"}
+                disabled={esModoVer}
+                defaultValue={defaultValues.numero_ins}
+                placeholder={esAromatizante ? "Opcional (ej: 282, 300)" : "Ej. 282, 300, 500ii"}
+                error={errors.numero_ins?.message}
+                {...register("numero_ins")}
+              />
+            </>
+          )}
 
           <FormActions>
             {esModoVer ? (

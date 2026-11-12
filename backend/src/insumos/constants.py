@@ -18,6 +18,22 @@ class ErrorCode:
     EQUIVALENCIA_NO_APLICA_MASA = (
         "Los insumos con unidad de medida de masa ya representan peso y no admiten densidad ni peso unitario"
     )
+    CLASE_FUNCIONAL_REQUERIDA_ADITIVO = (
+        "Los insumos de categoría 'aditivo' requieren especificar su clase funcional"
+    )
+    NUMERO_INS_REQUERIDO_ADITIVO = (
+        "Los aditivos requieren especificar su número INS (excepto aromatizantes o saborizantes)"
+    )
+    ATRIBUTOS_ADITIVO_NO_APLICAN = (
+        "La clase funcional y el número INS solo aplican a insumos de categoría 'aditivo'"
+    )
+
 
 class Constantes:
-    pass # Constantes para valores fijos y evitar valores hardcodeados
+    CLASES_SIN_INS_OBLIGATORIO = {
+        "aromatizante",
+        "saborizante",
+        "aromatizante / saborizante",
+        "aromatizante/saborizante",
+    }
+

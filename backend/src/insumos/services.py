@@ -139,6 +139,32 @@ def modificar_insumo(db: Session, insumo_id: int, insumo: schemas.InsumoUpdate) 
                 peso_efectivo,
             )
 
+    # Validar atributos de aditivo (clase funcional e INS)
+    categoria_efectiva = (update_data.get("categoria", db_insumo.categoria) or "").strip().lower()
+    if categoria_efectiva == schemas.Categoria.ADITIVO.value:
+        # Si sigue o pasa a ser aditivo
+        cf_efectiva = update_data.get("clase_funcional", db_insumo.clase_funcional)
+        cf_str = (cf_efectiva or "").strip()
+        if not cf_str:
+            raise exceptions.ClaseFuncionalRequeridaAditivo()
+
+        ins_efectivo = update_data.get("numero_ins", db_insumo.numero_ins)
+        ins_str = (ins_efectivo or "").strip()
+        if cf_str.lower() not in schemas.Constantes.CLASES_SIN_INS_OBLIGATORIO:
+            if not ins_str:
+                raise exceptions.NumeroInsRequeridoAditivo()
+    else:
+        # Si no es aditivo y cambió de categoría, limpiamos los campos de aditivo
+        if "categoria" in update_data and update_data["categoria"] != db_insumo.categoria:
+            update_data["clase_funcional"] = None
+            update_data["numero_ins"] = None
+        else:
+            # Si intentan mandar clase_funcional o numero_ins para un insumo no-aditivo
+            cf_val = update_data.get("clase_funcional")
+            ins_val = update_data.get("numero_ins")
+            if (cf_val and cf_val.strip()) or (ins_val and ins_val.strip()):
+                raise exceptions.AtributosAditivoNoAplican()
+
     if update_data:
         # Modifica el insumo y lo sube a la db
         db.execute(update(Insumo).where(Insumo.id == insumo_id).values(**update_data))        
