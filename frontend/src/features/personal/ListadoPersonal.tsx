@@ -32,10 +32,14 @@ import {
   SemaforoFecha,
   SemaforoLegend,
   TablePagination,
+  textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import { calcularSemaforo } from "../../utils/semaforo";
+import { formatearFecha } from "../../utils/fecha";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import type { Persona } from "./types";
 import type { ColumnDef } from "../../components/ui";
 import type { DocumentoPersonal } from "../documentosPersonal/types";
@@ -52,6 +56,31 @@ const OPCIONES_ESTADO = [
   { label: "Con próximos a vencer", value: "proximo" },
   { label: "Con vigentes", value: "vigente" },
 ];
+
+// Vencimientos ordenados del más urgente al menos urgente.
+const vencimientosOrdenados = (p: Persona) =>
+  [...(p.vencimientos || [])].sort(
+    (a, b) =>
+      a.fecha_vencimiento.localeCompare(b.fecha_vencimiento) ||
+      a.documento.nombre.localeCompare(b.documento.nombre, "es"),
+  );
+
+// "Libreta sanitaria: 20/11/2026 - Próximo a vencer (en 11 días) (+2 documentos)"
+const textoVencimientoUrgente = (p: Persona) => {
+  const vencimientos = vencimientosOrdenados(p);
+  const urgente = vencimientos[0];
+  if (!urgente) return "Ninguno";
+  const calculado = calcularSemaforo(urgente.fecha_vencimiento);
+  const restantes = vencimientos.length - 1;
+  const semaforo = textoSemaforo(
+    formatearFecha(urgente.fecha_vencimiento),
+    urgente.estado ?? calculado.estado,
+    urgente.dias_restantes ?? calculado.diasRestantes,
+  );
+  const extra =
+    restantes > 0 ? ` (+${restantes} ${restantes === 1 ? "documento" : "documentos"})` : "";
+  return `${urgente.documento.nombre}: ${semaforo}${extra}`;
+};
 
 // Arma el endpoint del listado: solo se mandan los filtros que tienen valor.
 const construirEndpoint = (filtros: FiltrosPersonal, busqueda: string) => {
@@ -128,21 +157,38 @@ export const ListadoPersonal = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    [
+      "Documento",
+      aplicados.documentoId &&
+        (documentos.find((d) => String(d.id) === aplicados.documentoId)?.nombre ??
+          aplicados.documentoId),
+    ],
+    ["Vencimientos", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+  ]);
+
   const columnas: ColumnDef<Persona>[] = [
+    { key: "legajo", label: "Legajo", render: (p) => p.legajo },
     {
       key: "nombre",
       label: "Nombre completo",
       render: (p) => `${p.nombre} ${p.apellido}`,
     },
     { key: "dni", label: "DNI", render: (p) => p.dni },
-    { key: "legajo", label: "Legajo", render: (p) => p.legajo },
     {
       key: "capacidades",
       label: "Capacidades",
+      valorExportacion: (p) => {
+        const activas = (p.capacidades || []).filter((c) => c.activo);
+        return activas.length
+          ? activas.map((c) => c.capacidad.nombre).join(", ")
+          : "Ninguna";
+      },
       render: (p) => {
         const activas = (p.capacidades || []).filter((c) => c.activo);
         if (activas.length === 0)
-          return <span style={{ color: "gray" }}>Ninguna</span>;
+          return <TextoSinValor>Ninguna</TextoSinValor>;
         return (
           <Wrap gap={1}>
             {activas.map((c) => (
@@ -165,14 +211,11 @@ export const ListadoPersonal = ({
       key: "vencimientos",
       label: "Vencimiento más urgente",
       w: "280px",
+      valorExportacion: textoVencimientoUrgente,
       render: (p) => {
-        const vencimientos = [...(p.vencimientos || [])].sort(
-          (a, b) =>
-            a.fecha_vencimiento.localeCompare(b.fecha_vencimiento) ||
-            a.documento.nombre.localeCompare(b.documento.nombre, "es"),
-        );
+        const vencimientos = vencimientosOrdenados(p);
         const urgente = vencimientos[0];
-        if (!urgente) return <span style={{ color: "gray" }}>Ninguno</span>;
+        if (!urgente) return <TextoSinValor>Ninguno</TextoSinValor>;
 
         const calculado = calcularSemaforo(urgente.fecha_vencimiento);
         const restantes = vencimientos.length - 1;
@@ -204,6 +247,7 @@ export const ListadoPersonal = ({
     {
       key: "activo",
       label: "Estado",
+      valorExportacion: (p) => (p.activo ? "Activo" : "Inactivo"),
       render: (p) => (
         <Badge colorPalette={p.activo ? "green" : "red"}>
           {p.activo ? "Activo" : "Inactivo"}
@@ -214,6 +258,7 @@ export const ListadoPersonal = ({
       key: "acciones",
       label: "Acciones",
       align: "end",
+      exportable: false,
       render: (p) => (
         <RowActions>
           <RowActionButton
@@ -333,6 +378,9 @@ export const ListadoPersonal = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={data}
+            exportarTitulo="Personal"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(p) => p.id}
             minW='1100px'

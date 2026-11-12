@@ -201,7 +201,7 @@ export const ProductoForm = ({
             label='Días de vida útil (opcional)'
             type='number'
             disabled={esModoVer}
-            defaultValue={defaultValues.dias_vida_util ?? ""}
+            defaultValue={String(defaultValues.dias_vida_util ?? "")}
             placeholder='Ej. 30'
             error={errors.dias_vida_util?.message}
             {...register("dias_vida_util", {

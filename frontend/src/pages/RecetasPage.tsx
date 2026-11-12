@@ -23,7 +23,9 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../components/layout";
 import { ITEMS_POR_PAGINA } from "../config";
 import type { Equipo } from "../features/equipos/types";
@@ -34,6 +36,12 @@ import { ESTADOS_RECETA } from "../features/recetas/constants";
 import { recetasApi } from "../features/recetas/hooks/recetaApi";
 import { useRecetaData } from "../features/recetas/hooks/useRecetaData";
 import type { FiltrosReceta, Receta } from "../features/recetas/types";
+
+const OPCIONES_ESTADO_RECETA = [
+  { label: "Borrador", value: "BORRADOR" },
+  { label: "Activa", value: "ACTIVA" },
+  { label: "Inhabilitada", value: "INHABILITADA" },
+];
 
 interface FiltrosEstado {
   busqueda: string;
@@ -202,11 +210,27 @@ export default function RecetasPage() {
     }
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", aplicados.busqueda],
+    [
+      "Insumo",
+      aplicados.insumo_id &&
+        (insumos.find((i) => String(i.id) === aplicados.insumo_id)?.nombre ?? aplicados.insumo_id),
+    ],
+    [
+      "Equipo",
+      aplicados.equipo_id &&
+        (equipos.find((e) => String(e.id) === aplicados.equipo_id)?.nombre ?? aplicados.equipo_id),
+    ],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO_RECETA, aplicados.estado)],
+  ]);
+
   const columnas: ColumnDef<Receta>[] = [
     { key: "codigo_receta", label: "Código", render: (r) => r.codigo_receta },
     {
       key: "nombre_receta",
       label: "Nombre",
+      valorExportacion: (r) => r.nombre_receta,
       render: (r) => {
         const coincidenciaInsumo = (() => {
           if (!aplicados.insumo_id) return null;
@@ -317,6 +341,8 @@ export default function RecetasPage() {
     {
       key: "producto",
       label: "Producto",
+      valorExportacion: (r) =>
+        r.producto?.nombre || (r.producto_id ? `Producto #${r.producto_id}` : ""),
       render: (r) => (
         <Badge colorPalette="purple" variant="subtle">
           {r.producto?.nombre || (r.producto_id ? `Producto #${r.producto_id}` : "—")}
@@ -334,12 +360,19 @@ export default function RecetasPage() {
     {
       key: "tiempo_estimado_total",
       label: "Tiempo estimado",
+      valorExportacion: (r) =>
+        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "Sin estimar",
       render: (r) =>
-        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—",
+        r.tiempo_estimado_total != null ? (
+          `${r.tiempo_estimado_total} min`
+        ) : (
+          <TextoSinValor>Sin estimar</TextoSinValor>
+        ),
     },
     {
       key: "estado",
       label: "Estado",
+      valorExportacion: (r) => ESTADOS_RECETA[r.estado]?.texto || r.estado,
       render: (r) => {
         const estado = ESTADOS_RECETA[r.estado];
         return (
@@ -352,6 +385,7 @@ export default function RecetasPage() {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (r) => {
         const puedeEditar =
@@ -479,11 +513,7 @@ export default function RecetasPage() {
           <FiltroSelect
             ariaLabel="Estado de la receta"
             placeholder="Todos los estados"
-            options={[
-              { label: "Borrador", value: "BORRADOR" },
-              { label: "Activa", value: "ACTIVA" },
-              { label: "Inhabilitada", value: "INHABILITADA" },
-            ]}
+            options={OPCIONES_ESTADO_RECETA}
             value={borrador.estado}
             onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
           />
@@ -513,6 +543,9 @@ export default function RecetasPage() {
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={recetas}
+            exportarTitulo="Recetas"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(r) => r.id}
           />

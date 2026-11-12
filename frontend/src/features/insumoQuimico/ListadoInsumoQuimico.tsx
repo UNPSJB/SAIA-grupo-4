@@ -20,6 +20,7 @@ import {
   RowActionButton,
   RowActions,
   TablePagination,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -27,6 +28,7 @@ import type { InsumoQuimico } from "./types";
 import type { Sector } from "../sectores/types";
 import type { Equipo } from "../equipos/types";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 
 interface ListadoInsumosQuimicosProps {
   onCrear?: () => void;
@@ -152,6 +154,21 @@ export const ListadoInsumosQuimicos = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+    [
+      "Sector",
+      aplicados.sectorId &&
+        (sectores.find((x) => String(x.id) === aplicados.sectorId)?.nombre ?? aplicados.sectorId),
+    ],
+    [
+      "Equipo",
+      aplicados.equipoId &&
+        (equipos.find((x) => String(x.id) === aplicados.equipoId)?.nombre ?? aplicados.equipoId),
+    ],
+  ]);
+
   const columnas: ColumnDef<InsumoQuimico>[] = [
     {
       key: "nombre",
@@ -161,6 +178,12 @@ export const ListadoInsumosQuimicos = ({
     {
       key: "asociacion",
       label: "Asociado a",
+      valorExportacion: (insumoQuimico) =>
+        insumoQuimico.equipo
+          ? `Equipo: ${insumoQuimico.equipo.nombre}`
+          : insumoQuimico.sector
+            ? `Sector: ${insumoQuimico.sector.nombre}`
+            : "Sin asignar",
       render: (insumoQuimico) => {
         if (insumoQuimico.equipo) {
           return (
@@ -176,7 +199,7 @@ export const ListadoInsumosQuimicos = ({
             </Badge>
           );
         }
-        return "Sin asignar";
+        return <TextoSinValor>Sin asignar</TextoSinValor>;
       },
     },
     {
@@ -187,7 +210,8 @@ export const ListadoInsumosQuimicos = ({
     },
     {
       key: "activo",
-      label: "Activo",
+      label: "Estado",
+      valorExportacion: (insumoQuimico) => (insumoQuimico.activo ? "Activo" : "Inactivo"),
       render: (insumoQuimico) => (
         <Badge colorPalette={insumoQuimico.activo ? "green" : "red"}>
           {insumoQuimico.activo ? "Activo" : "Inactivo"}
@@ -197,6 +221,7 @@ export const ListadoInsumosQuimicos = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (insumoQuimico) => (
         <RowActions>
@@ -323,6 +348,9 @@ export const ListadoInsumosQuimicos = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={data}
+            exportarTitulo="Insumos químicos"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(insumoQuimico) => insumoQuimico.id}
           />

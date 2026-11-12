@@ -26,6 +26,7 @@ import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Insumo } from "./types";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 
 interface ListadoInsumosProps {
   onCrear?: () => void;
@@ -99,6 +100,11 @@ export const ListadoInsumos = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, estadoAplicado)],
+  ]);
+
   const columnas: ColumnDef<Insumo>[] = [
     {
       key: "nombre",
@@ -120,6 +126,7 @@ export const ListadoInsumos = ({
     {
       key: "disponible",
       label: "Disponible",
+      valorExportacion: (insumo) => (insumo.disponible ? "Activo" : "Inactivo"),
       render: (insumo) => (
         <Badge colorPalette={insumo.disponible ? "green" : "red"}>
           {insumo.disponible ? "Activo" : "Inactivo"}
@@ -129,6 +136,7 @@ export const ListadoInsumos = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (insumo) => (
         <RowActions>
@@ -234,6 +242,9 @@ export const ListadoInsumos = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={data}
+            exportarTitulo="Insumos"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(insumo) => insumo.id}
           />

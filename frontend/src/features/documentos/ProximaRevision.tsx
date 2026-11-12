@@ -1,4 +1,4 @@
-import { SemaforoFecha } from "../../components/ui";
+import { SemaforoFecha, TextoSinValor } from "../../components/ui";
 import { calcularSemaforo } from "../../utils/semaforo";
 
 interface ProximaRevisionProps {
@@ -6,10 +6,11 @@ interface ProximaRevisionProps {
 }
 
 // Columna "Próxima Revisión" del listado de documentos.
-// Sin fecha (documento sin versión vigente o sin revisión programada) se muestra "—".
+// Sin fecha (documento inactivo, sin versión vigente o sin revisión programada)
+// se muestra "No tiene" en gris.
 // Usa el mismo semáforo compartido que equipos, personal y vencimientos.
 export const ProximaRevision = ({ fecha }: ProximaRevisionProps) => {
-  if (!fecha) return <>—</>;
+  if (!fecha) return <TextoSinValor>No tiene</TextoSinValor>;
 
   const { estado, diasRestantes } = calcularSemaforo(fecha);
 

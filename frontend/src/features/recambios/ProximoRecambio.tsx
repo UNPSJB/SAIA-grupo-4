@@ -1,4 +1,4 @@
-import { SemaforoFecha, type EstadoSemaforo } from "../../components/ui";
+import { SemaforoFecha, TextoSinValor, type EstadoSemaforo } from "../../components/ui";
 import type { AlertaRecambio, EstadoRecambio } from "./types";
 
 // Traduce el enum de recambios al estado semantico del componente compartido.
@@ -11,9 +11,12 @@ const ESTADO_COMPARTIDO: Record<EstadoRecambio, EstadoSemaforo> = {
 };
 
 // Columna "Próximo Recambio" del listado de elementos de limpieza.
-// Sin alerta (elemento inactivo o sin frecuencia configurada) se muestra "—".
+// Sin alerta (elemento inactivo o sin frecuencia configurada) no hay fecha que
+// calcular: se muestra "Sin calcular" en gris.
+const SIN_CALCULAR = "Sin calcular";
+
 export const ProximoRecambio = ({ alerta }: { alerta?: AlertaRecambio }) => {
-  if (!alerta) return <>"—"</>;
+  if (!alerta) return <TextoSinValor>{SIN_CALCULAR}</TextoSinValor>;
 
   return (
     <SemaforoFecha

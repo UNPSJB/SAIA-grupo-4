@@ -71,7 +71,7 @@ const legible = (segmento: string) =>
   NOMBRES_RUTA[segmento] ??
   segmento.charAt(0).toUpperCase() + segmento.slice(1).replace(/-/g, " ");
 
-export const Breadcrumbs = ({ homeLabel, homePath }: BreadcrumbsProps) => {
+export const Breadcrumbs = ({}: BreadcrumbsProps) => {
   const location = useLocation();
   const { pathname, state } = location;
   const segmentos = pathname.split("/").filter(Boolean);

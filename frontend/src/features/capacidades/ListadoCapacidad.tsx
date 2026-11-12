@@ -48,6 +48,7 @@ export const ListadoCapacidades = ({
     {
       key: "tipo",
       label: "Tipo",
+      valorExportacion: (cap) => (cap.tipo === "sistema" ? "Sistema" : "Personalizada"),
       render: (cap) => (
         <Badge colorPalette={cap.tipo === "sistema" ? "blue" : "yellow"}>
           {cap.tipo === "sistema" ? "Sistema" : "Personalizada"}
@@ -57,6 +58,7 @@ export const ListadoCapacidades = ({
     {
       key: "activo",
       label: "Estado",
+      valorExportacion: (cap) => (cap.activo ? "Activa" : "Inactiva"),
       render: (cap) => (
         <Badge colorPalette={cap.activo ? "green" : "red"}>
           {cap.activo ? "Activa" : "Inactiva"}
@@ -66,6 +68,7 @@ export const ListadoCapacidades = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (cap) => (
         <RowActions>
@@ -145,6 +148,8 @@ export const ListadoCapacidades = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={data}
+            exportarTitulo="Capacidades"
             columns={columnas}
             getRowKey={(cap) => cap.id}
           />

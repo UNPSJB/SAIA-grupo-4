@@ -23,6 +23,7 @@ import {
   TablePagination,
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import { BASE_URL } from "../../config";
@@ -109,6 +110,11 @@ export const ListadoDocumentosOperador = () => {
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    ["Tipo", etiquetaOpcion(OPCIONES_TIPO, tipoAplicado)],
+  ]);
+
   const columnas: ColumnDef<Documento>[] = [
     {
       key: "codigo",
@@ -125,6 +131,8 @@ export const ListadoDocumentosOperador = () => {
       key: "tipo_documento",
       label: "Tipo",
       w: "180px",
+      valorExportacion: (doc) =>
+        etiquetaOpcion(OPCIONES_TIPO, doc.tipo_documento) ?? formatearTipo(doc.tipo_documento),
       render: (doc) => (
         <Badge colorPalette="blue" variant="subtle">
           {formatearTipo(doc.tipo_documento)}
@@ -134,6 +142,7 @@ export const ListadoDocumentosOperador = () => {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       w: "110px",
       align: "end",
       render: (doc) => (
@@ -202,9 +211,13 @@ export const ListadoDocumentosOperador = () => {
       {!loading && !error && filtrados.length > 0 && (
         <>
           {/* Tabla: tablet y escritorio */}
-          <Box display={{ base: "none", md: "block" }}>
+          <Box>
             <DataTable
               items={itemsPagina}
+              exportarItems={filtrados}
+              exportarTitulo="Documentos"
+              exportarFiltros={filtrosExportacion}
+              hideTableOnMobile
               columns={columnas}
               getRowKey={(doc) => doc.id}
             />

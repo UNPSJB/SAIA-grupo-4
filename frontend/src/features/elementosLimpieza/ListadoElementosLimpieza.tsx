@@ -22,6 +22,8 @@ import {
   RowActions,
   SemaforoLegend,
   TablePagination,
+  textoSemaforo,
+  TextoSinValor,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -31,6 +33,11 @@ import type { Equipo } from "../equipos/types";
 import { ProximoRecambio } from "../recambios/ProximoRecambio";
 import type { AlertaRecambio } from "../recambios/types";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
+import type { EstadoSemaforo } from "../../components/ui";
+import type { EstadoRecambio } from "../recambios/types";
+// La local formatearFecha pasa por Date (UTC); para "YYYY-MM-DD" se usa la común.
+import { formatearFecha as fechaDDMMAAAA } from "../../utils/fecha";
 
 interface ListadoElementosLimpiezaProps {
   onCrear?: () => void;
@@ -42,6 +49,17 @@ interface ListadoElementosLimpiezaProps {
   onRegistrarRecambio?: (elemento: ElementoLimpieza) => void;
 }
 
+// Textos para columnas sin dato. "Sin calcular" coincide con <ProximoRecambio>.
+const SIN_ESTABLECER = "Sin establecer";
+const SIN_CALCULAR = "Sin calcular";
+
+// Recambios llama "al_dia" a lo que el semáforo compartido llama "vigente".
+const ESTADO_RECAMBIO: Record<EstadoRecambio, EstadoSemaforo> = {
+  vencido: "vencido",
+  proximo: "proximo",
+  al_dia: "vigente",
+};
+
 type FiltrosElemento = {
   estado: string;
   sectorId: string;
@@ -49,7 +67,7 @@ type FiltrosElemento = {
 };
 
 const FILTROS_INICIALES: FiltrosElemento = {
-  estado: "activos",
+  estado: "",
   sectorId: "",
   equipoId: "",
 };
@@ -57,7 +75,6 @@ const FILTROS_INICIALES: FiltrosElemento = {
 const OPCIONES_ESTADO = [
   { label: "Activos", value: "activos" },
   { label: "Inactivos", value: "inactivos" },
-  { label: "Todos", value: "todos" },
 ];
 
 const formatearFecha = (fechaStr?: string | null) => {
@@ -168,6 +185,21 @@ export const ListadoElementosLimpieza = ({
     setPage(1);
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", busquedaAplicada],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+    [
+      "Sector",
+      aplicados.sectorId &&
+        (sectores.find((x) => String(x.id) === aplicados.sectorId)?.nombre ?? aplicados.sectorId),
+    ],
+    [
+      "Equipo",
+      aplicados.equipoId &&
+        (equipos.find((x) => String(x.id) === aplicados.equipoId)?.nombre ?? aplicados.equipoId),
+    ],
+  ]);
+
   const columnas: ColumnDef<ElementoLimpieza>[] = [
     {
       key: "codigo",
@@ -187,6 +219,12 @@ export const ListadoElementosLimpieza = ({
       key: "asociado_a",
       label: "Asociado a",
       w: "160px",
+      valorExportacion: (e) =>
+        e.sector
+          ? `Sector: ${e.sector.nombre}`
+          : e.equipo
+            ? `Equipo: ${e.equipo.nombre}`
+            : "Sin asignar",
       render: (e) => {
         if (e.sector)
           return (
@@ -201,9 +239,9 @@ export const ListadoElementosLimpieza = ({
             </Badge>
           );
         return (
-          <span style={{ color: "var(--chakra-colors-gray-400)" }}>
+          <TextoSinValor>
             Sin asignar
-          </span>
+          </TextoSinValor>
         );
       },
     },
@@ -211,8 +249,14 @@ export const ListadoElementosLimpieza = ({
       key: "frecuencia",
       label: "Frecuencia (días)",
       w: "130px",
+      valorExportacion: (e) =>
+        e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : SIN_ESTABLECER,
       render: (e) =>
-        e.frecuencia_recambio_dias ? `${e.frecuencia_recambio_dias} días` : "—",
+        e.frecuencia_recambio_dias ? (
+          `${e.frecuencia_recambio_dias} días`
+        ) : (
+          <TextoSinValor>{SIN_ESTABLECER}</TextoSinValor>
+        ),
     },
     {
       key: "ultimo_recambio",
@@ -224,12 +268,23 @@ export const ListadoElementosLimpieza = ({
       key: "proximo_recambio",
       label: "Próximo Recambio",
       w: "150px",
+      valorExportacion: (e) => {
+        const alerta = alertaPorElemento.get(e.id);
+        return alerta
+          ? textoSemaforo(
+              fechaDDMMAAAA(alerta.proxima_fecha),
+              ESTADO_RECAMBIO[alerta.estado],
+              alerta.dias_restantes,
+            )
+          : SIN_CALCULAR;
+      },
       render: (e) => <ProximoRecambio alerta={alertaPorElemento.get(e.id)} />,
     },
     {
       key: "activo",
       label: "Estado",
       w: "100px",
+      valorExportacion: (e) => (e.activo ? "Activo" : "Inactivo"),
       render: (e) => (
         <Badge colorPalette={e.activo ? "green" : "red"}>
           {e.activo ? "Activo" : "Inactivo"}
@@ -239,6 +294,7 @@ export const ListadoElementosLimpieza = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       w: "200px",
       render: (e) => (
@@ -317,7 +373,7 @@ export const ListadoElementosLimpieza = ({
           />
           <FiltroSelect
             ariaLabel='Estado del elemento'
-            placeholder='Estado'
+            placeholder='Todos los estados'
             options={OPCIONES_ESTADO}
             value={borrador.estado}
             onChange={(valor) =>
@@ -369,6 +425,9 @@ export const ListadoElementosLimpieza = ({
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={data}
+            exportarTitulo="Elementos de limpieza"
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(e) => e.id}
             minW='1210px'

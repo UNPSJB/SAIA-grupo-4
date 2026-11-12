@@ -125,6 +125,7 @@ export const ListadoTareas = ({
     {
       key: "nombre",
       label: "Tarea de Limpieza",
+      valorExportacion: (tarea) => tarea.nombre,
       render: (tarea) => <Text fontWeight='semibold'>{tarea.nombre}</Text>,
     },
     {
@@ -140,6 +141,7 @@ export const ListadoTareas = ({
     {
       key: "frecuencia",
       label: "Frecuencia",
+      valorExportacion: (tarea) => formatFrecuencia(tarea),
       render: (tarea) => (
         <Badge colorPalette={colorFrecuencia[tarea.frecuencia]}>
           {formatFrecuencia(tarea)}
@@ -149,6 +151,7 @@ export const ListadoTareas = ({
     {
       key: "estado",
       label: "Estado",
+      valorExportacion: (tarea) => (tarea.activo ? "Activo" : "Inactivo"),
       render: (tarea) => (
         <Badge colorPalette={tarea.activo ? "green" : "red"}>
           {tarea.activo ? "Activo" : "Inactivo"}
@@ -158,6 +161,7 @@ export const ListadoTareas = ({
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (tarea) => (
         <RowActions>
@@ -312,6 +316,9 @@ export const ListadoTareas = ({
           <>
             <DataTable
               items={itemsPaginados}
+              exportarItems={tareas}
+              exportarTitulo={`Tareas del plan ${plan.nombre}`}
+              exportarNombreArchivo={`tareas-${plan.nombre}`}
               columns={columnas}
               getRowKey={(tarea) => tarea.id}
             />

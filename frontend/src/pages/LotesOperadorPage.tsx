@@ -14,6 +14,8 @@ import { ListadoContainer, ListadoHeader } from "../components/layout";
 import { ITEMS_POR_PAGINA } from "../config";
 import { lotesApi } from "../features/lotes/hooks/lotesApi";
 import { ListadoLotes } from "../features/lotes/ListadoLotes";
+import { armarFiltros } from "../utils/exportacion";
+import { formatearFecha } from "../utils/fecha";
 import { LoteDetalle } from "../features/lotes/LoteDetalle";
 import { RegistrarLoteForm } from "../features/lotes/RegistrarLoteForm";
 import type { Lote, ProductoDisponibleLote } from "../features/lotes/types";
@@ -292,6 +294,18 @@ export default function LotesOperadorPage() {
 
         <ListadoLotes
           lotes={itemsPaginados}
+          exportarLotes={lotes}
+          exportarFiltros={armarFiltros([
+            ["Búsqueda", filtrosAplicados.busqueda],
+            [
+              "Producto",
+              filtrosAplicados.productoId &&
+                (productos.find((p) => String(p.id) === filtrosAplicados.productoId)?.nombre ??
+                  filtrosAplicados.productoId),
+            ],
+            ["Desde", filtrosAplicados.desde && formatearFecha(filtrosAplicados.desde)],
+            ["Hasta", filtrosAplicados.hasta && formatearFecha(filtrosAplicados.hasta)],
+          ])}
           loading={loading}
           onVer={setLoteSeleccionado}
           mostrarOperador={false}
