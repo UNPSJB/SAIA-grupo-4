@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum as SQLAlchemyEnum, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum as SQLAlchemyEnum, Float, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import ModeloBase
@@ -27,6 +27,8 @@ class Receta(ModeloBase):
         default=EstadoReceta.BORRADOR,
     )
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+    es_orden_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
+    orden_manual_json: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
 
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

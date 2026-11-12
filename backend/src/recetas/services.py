@@ -552,6 +552,8 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
         tiempo_estimado_total=origen.tiempo_estimado_total,
         estado=EstadoReceta.BORRADOR,
         observaciones=origen.observaciones,
+        es_orden_manual=origen.es_orden_manual,
+        orden_manual_json=list(origen.orden_manual_json) if origen.orden_manual_json else None,
         fecha_creacion=datetime.now(),
         usuario_creador_id=usuario_id,
         pasos=[_clonar_paso(p) for p in origen.pasos]
@@ -825,3 +827,316 @@ def obtener_composicion_porcentual(db: Session, receta_id: int) -> schemas.Compo
         es_completa=es_completa,
         insumos_sin_equivalencia=insumos_sin_eq,
     )
+
+
+def _formatear_item_rotulo_caa(insumo: Insumo) -> str:
+    """Formatea la denominación de un insumo para el rótulo según CAA Cap. V:
+    - Materia prima: denominacion_rotulo (o nombre si está vacía).
+    - Aditivo (aromatizante/saborizante): función/clase funcional (ej: 'aromatizante').
+    - Aditivo general: '{Clase}: {Denominación} (INS {número})'.
+    """
+    denom = (insumo.denominacion_rotulo or "").strip() or insumo.nombre
+    cat = (insumo.categoria or "").strip().lower()
+
+    if cat != "aditivo":
+        return denom
+
+    clase = (insumo.clase_funcional or "").strip()
+    clase_lower = clase.lower()
+    ins = (insumo.numero_ins or "").strip()
+
+    from src.insumos.constants import Constantes
+    if clase_lower in Constantes.CLASES_SIN_INS_OBLIGATORIO:
+        return clase.lower() if clase else denom
+
+    clase_titulo = clase.capitalize() if clase else "Aditivo"
+    ins_str = f" (INS {ins})" if ins else ""
+    return f"{clase_titulo}: {denom}{ins_str}"
+
+
+def _agrupar_aditivos_por_clase(aditivos: list[dict]) -> list[tuple[str, list[dict]]]:
+    """Agrupa aditivos contiguos que comparten la misma clase funcional.
+    
+    Retorna una lista de tuplas: (nombre_clase, lista_de_aditivos).
+    """
+    grupos: list[tuple[str, list[dict]]] = []
+    for aditivo in aditivos:
+        clase = (aditivo.get("clase_funcional") or "").strip()
+        if grupos and grupos[-1][0].lower() == clase.lower():
+            grupos[-1][1].append(aditivo)
+        else:
+            grupos.append((clase, [aditivo]))
+    return grupos
+
+
+def _generar_texto_legal_caa(items: list[dict]) -> str:
+    """Genera la cadena legal de ingredientes según CAA Cap. V:
+    - Materias primas: denominación individual en orden decreciente/manual.
+    - Separación con punto (.) entre el último ingrediente y el primer aditivo.
+    - Aditivos: agrupados por clase funcional contigua:
+      '{Clase}: {Nombre 1} (INS {x}), {Nombre 2} (INS {y})'
+      o para aromatizantes/saborizantes: función/denominación.
+    """
+    from src.insumos.constants import Constantes
+
+    partes_mp: list[str] = [
+        it["denominacion_rotulo"] for it in items if it.get("categoria") != "aditivo"
+    ]
+
+    aditivos = [it for it in items if it.get("categoria") == "aditivo"]
+    grupos_aditivos = _agrupar_aditivos_por_clase(aditivos)
+
+    partes_aditivos: list[str] = []
+    for clase, aditivos_grupo in grupos_aditivos:
+        clase_lower = clase.lower()
+        if clase_lower in Constantes.CLASES_SIN_INS_OBLIGATORIO:
+            partes_aditivos.append(clase_lower or "aromatizante")
+        else:
+            clase_titulo = clase.capitalize() if clase else "Aditivo"
+            detalles_aditivos = []
+            for ad in aditivos_grupo:
+                denom = ad["denominacion_rotulo"]
+                ins = (ad.get("numero_ins") or "").strip()
+                ins_str = f" (INS {ins})" if ins else ""
+                detalles_aditivos.append(f"{denom}{ins_str}")
+            partes_aditivos.append(f"{clase_titulo}: {', '.join(detalles_aditivos)}")
+
+    if not partes_mp and not partes_aditivos:
+        return ""
+
+    if partes_mp and partes_aditivos:
+        texto_mp = ", ".join(partes_mp)
+        texto_ad = ", ".join(partes_aditivos)
+        return f"Ingredientes: {texto_mp}. {texto_ad}."
+    if partes_mp:
+        return f"Ingredientes: {', '.join(partes_mp)}."
+    return f"Ingredientes: {', '.join(partes_aditivos)}."
+
+
+def _criterio_orden_materia_prima(item: dict) -> tuple:
+    """Criterio CAA para materias primas: porcentaje/masa decreciente, desempate alfabético por denominación y por ID."""
+    proporcion = item["porcentaje_mezcla"] if item["porcentaje_mezcla"] is not None else (item["masa_equivalente_g"] or 0.0)
+    return (-proporcion, item["denominacion_rotulo"].lower(), item["insumo_id"])
+
+
+def _criterio_orden_aditivo(item: dict) -> tuple:
+    """Criterio CAA para aditivos: agrupados por clase funcional alfabética, luego porcentaje/masa decreciente, desempate por denominación."""
+    clase = (item.get("clase_funcional") or "").strip().lower()
+    proporcion = item["porcentaje_mezcla"] if item["porcentaje_mezcla"] is not None else (item["masa_equivalente_g"] or 0.0)
+    return (clase, -proporcion, item["denominacion_rotulo"].lower(), item["insumo_id"])
+
+
+def _criterio_orden_manual(item: dict, orden_posiciones: dict[int, int]) -> tuple:
+    """Criterio para orden manual: respeta el índice asignado en el JSON de orden manual."""
+    posicion = orden_posiciones.get(item["insumo_id"], 999999)
+    porcentaje = item["porcentaje_mezcla"] or 0.0
+    return (posicion, -porcentaje, item["denominacion_rotulo"].lower())
+
+
+def _validar_ids_orden_manual(ids_enviados: list[int], ids_esperados: set[int]) -> None:
+    """Valida que la lista de IDs coincida exactamente con los insumos presentes en la receta (sin faltantes ni duplicados)."""
+    if set(ids_enviados) != ids_esperados or len(ids_enviados) != len(ids_esperados):
+        raise exceptions.OrdenManualInsumosInvalidos()
+
+
+def _validar_frontera_caa(ids_enviados: list[int], insumo_map: dict[int, Insumo]) -> None:
+    """Valida la frontera infranqueable (CAA Cap. V): ningún aditivo puede preceder a una materia prima."""
+    aditivo_visto = False
+    for iid in ids_enviados:
+        categoria = (insumo_map[iid].categoria or "").strip().lower()
+        if categoria == "aditivo":
+            aditivo_visto = True
+        elif aditivo_visto:
+            raise exceptions.OrdenManualFronteraInvalida()
+
+
+def _validar_orden_materias_primas(
+    ids_enviados: list[int],
+    insumo_map: dict[int, Insumo],
+    pct_map: dict[int, float],
+    masa_map: dict[int, float],
+) -> None:
+    """Valida orden no creciente en materias primas (solo se permite reordenar materias primas con idéntica proporción)."""
+    mp_ids = [iid for iid in ids_enviados if (insumo_map[iid].categoria or "").strip().lower() != "aditivo"]
+    for i in range(len(mp_ids) - 1):
+        actual_id = mp_ids[i]
+        siguiente_id = mp_ids[i + 1]
+        pct_act = pct_map[actual_id]
+        pct_sig = pct_map[siguiente_id]
+        masa_act = masa_map[actual_id]
+        masa_sig = masa_map[siguiente_id]
+
+        if (pct_act < pct_sig) or (pct_act == pct_sig and masa_act < masa_sig):
+            raise exceptions.OrdenManualProporcionInvalida(
+                nombre_actual=insumo_map[actual_id].nombre,
+                pct_actual=pct_act,
+                nombre_siguiente=insumo_map[siguiente_id].nombre,
+                pct_siguiente=pct_sig,
+            )
+
+
+def _validar_agrupacion_aditivos(ids_enviados: list[int], insumo_map: dict[int, Insumo]) -> None:
+    """Valida que los aditivos permanezcan agrupados por clase funcional (rechaza fragmentaciones)."""
+    aditivo_ids = [iid for iid in ids_enviados if (insumo_map[iid].categoria or "").strip().lower() == "aditivo"]
+    clases_vistas: list[str] = []
+    clase_anterior: str | None = None
+
+    for iid in aditivo_ids:
+        clase = (insumo_map[iid].clase_funcional or "").strip().lower()
+        if clase != clase_anterior:
+            if clase in clases_vistas:
+                nombre_clase = insumo_map[iid].clase_funcional or "aditivo"
+                raise exceptions.OrdenManualClasesFragmentadas(nombre_clase=nombre_clase)
+            clases_vistas.append(clase)
+            clase_anterior = clase
+
+
+def obtener_declaracion_ingredientes(db: Session, receta_id: int) -> schemas.DeclaracionIngredientesOut:
+    receta = obtener_receta_por_id(db, receta_id)
+
+    # 1. Consolidar insumos de la receta (excluyendo envases)
+    insumos_map = _consolidar_insumos_receta(receta)
+
+    # 2. Convertir insumos a gramos y calcular masa total
+    items_calculados = []
+    insumos_sin_eq = []
+    peso_total_mezcla_g = 0.0
+
+    for data in insumos_map.values():
+        insumo = data["insumo"]
+        cant_nom = data["cantidad_nominal"]
+
+        masa_g, sin_eq = _convertir_insumo_a_masa(insumo, cant_nom)
+        if sin_eq:
+            insumos_sin_eq.append(sin_eq)
+        else:
+            peso_total_mezcla_g += masa_g
+
+        items_calculados.append({
+            "insumo": insumo,
+            "insumo_id": insumo.id,
+            "nombre_insumo": insumo.nombre,
+            "denominacion_rotulo": (insumo.denominacion_rotulo or "").strip() or insumo.nombre,
+            "categoria": (insumo.categoria or "").strip().lower(),
+            "clase_funcional": insumo.clase_funcional,
+            "numero_ins": insumo.numero_ins,
+            "masa_equivalente_g": masa_g,
+            "porcentaje_mezcla": None,
+            "texto_declaracion": _formatear_item_rotulo_caa(insumo),
+        })
+
+    es_completa = len(insumos_sin_eq) == 0 and len(items_calculados) > 0 and peso_total_mezcla_g > 0
+
+    # 3. Calcular porcentajes si la formulación está completa
+    for item in items_calculados:
+        if es_completa and item["masa_equivalente_g"] is not None and peso_total_mezcla_g > 0:
+            item["porcentaje_mezcla"] = round((item["masa_equivalente_g"] / peso_total_mezcla_g) * 100.0, 2)
+
+    # 4. Ordenamiento
+    items_finales = []
+    if receta.es_orden_manual and receta.orden_manual_json:
+        # Orden manual guardado en orden_manual_json
+        orden_dict = {iid: idx for idx, iid in enumerate(receta.orden_manual_json)}
+        items_calculados.sort(key=lambda x: _criterio_orden_manual(x, orden_dict))
+        items_finales = items_calculados
+    else:
+        # Orden automático normativo CAA:
+        materias_primas = [it for it in items_calculados if it["categoria"] != "aditivo"]
+        materias_primas.sort(key=_criterio_orden_materia_prima)
+
+        aditivos = [it for it in items_calculados if it["categoria"] == "aditivo"]
+        aditivos.sort(key=_criterio_orden_aditivo)
+
+        items_finales = materias_primas + aditivos
+
+    # 5. Asignar posiciones y estructurar salida
+    items_out = []
+    for idx, it in enumerate(items_finales, start=1):
+        items_out.append(schemas.ItemDeclaracionIngredienteOut(
+            posicion=idx,
+            insumo_id=it["insumo_id"],
+            nombre_insumo=it["nombre_insumo"],
+            denominacion_rotulo=it["denominacion_rotulo"],
+            categoria=it["categoria"],
+            clase_funcional=it["clase_funcional"],
+            numero_ins=it["numero_ins"],
+            masa_equivalente_g=it["masa_equivalente_g"],
+            porcentaje_mezcla=it["porcentaje_mezcla"],
+            texto_declaracion=it["texto_declaracion"],
+        ))
+
+    texto_legal_rotulo = _generar_texto_legal_caa(items_finales)
+
+    return schemas.DeclaracionIngredientesOut(
+        receta_id=receta.id,
+        codigo_receta=receta.codigo_receta,
+        nombre_receta=receta.nombre_receta,
+        es_orden_manual=bool(receta.es_orden_manual),
+        es_completa=es_completa,
+        insumos_sin_equivalencia=insumos_sin_eq,
+        items=items_out,
+        texto_legal_rotulo=texto_legal_rotulo,
+    )
+
+
+def guardar_orden_manual_declaracion(
+    db: Session,
+    receta_id: int,
+    payload: schemas.OrdenManualDeclaracionIn,
+) -> schemas.DeclaracionIngredientesOut:
+    receta = obtener_receta_por_id(db, receta_id)
+
+    # 1. Consolidar insumos de la receta y verificar integridad de IDs
+    insumos_receta = _consolidar_insumos_receta(receta)
+    receta_insumo_ids = set(insumos_receta.keys())
+    ids_enviados = payload.insumo_ids_ordenados
+
+    _validar_ids_orden_manual(ids_enviados, receta_insumo_ids)
+
+    # 2. Calcular mapa de masas y porcentajes
+    insumo_map = {iid: data["insumo"] for iid, data in insumos_receta.items()}
+    masa_map = {}
+    peso_total_mezcla_g = 0.0
+
+    for iid, data in insumos_receta.items():
+        masa_g, _ = _convertir_insumo_a_masa(data["insumo"], data["cantidad_nominal"])
+        valor_masa = masa_g if masa_g is not None else 0.0
+        masa_map[iid] = valor_masa
+        peso_total_mezcla_g += valor_masa
+
+    pct_map = {
+        iid: round((masa_map[iid] / peso_total_mezcla_g) * 100.0, 2) if peso_total_mezcla_g > 0 else 0.0
+        for iid in receta_insumo_ids
+    }
+
+    # 3. Validaciones normativas CAA Cap. V
+    _validar_frontera_caa(ids_enviados, insumo_map)
+    _validar_orden_materias_primas(ids_enviados, insumo_map, pct_map, masa_map)
+    _validar_agrupacion_aditivos(ids_enviados, insumo_map)
+
+    # 4. Persistir orden manual
+    receta.es_orden_manual = True
+    receta.orden_manual_json = payload.insumo_ids_ordenados
+    try:
+        db.commit()
+        db.refresh(receta)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.RecetaNoEditable()
+
+    return obtener_declaracion_ingredientes(db, receta_id)
+
+
+def restablecer_orden_automatico_declaracion(db: Session, receta_id: int) -> schemas.DeclaracionIngredientesOut:
+    receta = obtener_receta_por_id(db, receta_id)
+    receta.es_orden_manual = False
+    receta.orden_manual_json = None
+    try:
+        db.commit()
+        db.refresh(receta)
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.RecetaNoEditable()
+
+    return obtener_declaracion_ingredientes(db, receta_id)
+

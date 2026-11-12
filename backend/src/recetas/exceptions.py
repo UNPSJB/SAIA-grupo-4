@@ -60,3 +60,34 @@ class RecursoInactivo(Conflict):
 
 class NumeroOrdenPasoDuplicado(Conflict):
     DETAIL = ErrorCode.NUMERO_ORDEN_DUPLICADO
+
+
+# EXCEPCIONES DE ORDEN MANUAL DE INGREDIENTES (CAA CAP. V)
+
+class OrdenManualInsumosInvalidos(BadRequest):
+    DETAIL = ErrorCode.ORDEN_MANUAL_INSUMOS_INVALIDOS
+
+
+class OrdenManualFronteraInvalida(BadRequest):
+    DETAIL = ErrorCode.ORDEN_MANUAL_FRONTERA_INVALIDA
+
+
+class OrdenManualProporcionInvalida(BadRequest):
+    def __init__(self, nombre_actual: str, pct_actual: float, nombre_siguiente: str, pct_siguiente: float):
+        super().__init__(
+            detail=(
+                f"El orden de las materias primas debe ser estrictamente decreciente por porcentaje. "
+                f"No se puede colocar '{nombre_actual}' ({pct_actual}%) antes de '{nombre_siguiente}' ({pct_siguiente}%). "
+                f"Solo se permite reordenar materias primas con idéntica proporción."
+            )
+        )
+
+
+class OrdenManualClasesFragmentadas(BadRequest):
+    def __init__(self, nombre_clase: str):
+        super().__init__(
+            detail=(
+                f"Los aditivos deben permanecer estrictamente agrupados por su clase funcional. "
+                f"La clase '{nombre_clase}' aparece fragmentada en la lista."
+            )
+        )

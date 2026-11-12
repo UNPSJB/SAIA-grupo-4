@@ -125,6 +125,8 @@ class Receta(RecetaBase):
     usuario_creador_id: int
     usuario_creador_nombre: Optional[str] = None
     tiene_lotes: bool = False
+    es_orden_manual: bool = False
+    orden_manual_json: Optional[List[int]] = None
     
     pasos: List[PasoRecetaOut] = []
     
@@ -165,3 +167,34 @@ class ComposicionPorcentualOut(BaseModel):
     es_completa: bool = True
     insumos_sin_equivalencia: List[InsumoSinEquivalenciaOut] = []
     model_config = ConfigDict(from_attributes=True)
+
+
+class ItemDeclaracionIngredienteOut(BaseModel):
+    posicion: int
+    insumo_id: int
+    nombre_insumo: str
+    denominacion_rotulo: str
+    categoria: str
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+    masa_equivalente_g: Optional[float] = None
+    porcentaje_mezcla: Optional[float] = None
+    texto_declaracion: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DeclaracionIngredientesOut(BaseModel):
+    receta_id: int
+    codigo_receta: str
+    nombre_receta: str
+    es_orden_manual: bool
+    es_completa: bool
+    insumos_sin_equivalencia: List[InsumoSinEquivalenciaOut] = []
+    items: List[ItemDeclaracionIngredienteOut] = []
+    texto_legal_rotulo: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrdenManualDeclaracionIn(BaseModel):
+    insumo_ids_ordenados: Annotated[List[int], Field(min_length=1, description="Lista de IDs de insumos en el orden manual deseado")]
+

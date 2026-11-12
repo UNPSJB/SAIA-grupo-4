@@ -75,6 +75,41 @@ def obtener_composicion_porcentual(receta_id: int, db: Session = Depends(get_db)
     return services.obtener_composicion_porcentual(db, receta_id)
 
 
+@router.get(
+    "/{receta_id}/declaracion-ingredientes",
+    response_model=schemas.DeclaracionIngredientesOut,
+    dependencies=[Depends(requiere_administracion)],
+)
+def obtener_declaracion_ingredientes(receta_id: int, db: Session = Depends(get_db)):
+    """Obtiene la declaración de ingredientes y aditivos ordenada según CAA Cap. V."""
+    return services.obtener_declaracion_ingredientes(db, receta_id)
+
+
+@router.put(
+    "/{receta_id}/declaracion-ingredientes/orden-manual",
+    response_model=schemas.DeclaracionIngredientesOut,
+    dependencies=[Depends(requiere_administracion)],
+)
+def guardar_orden_manual_declaracion(
+    receta_id: int,
+    payload: schemas.OrdenManualDeclaracionIn,
+    db: Session = Depends(get_db),
+):
+    """Guarda un orden manual personalizado de ingredientes y aditivos."""
+    return services.guardar_orden_manual_declaracion(db, receta_id, payload)
+
+
+@router.delete(
+    "/{receta_id}/declaracion-ingredientes/orden-manual",
+    response_model=schemas.DeclaracionIngredientesOut,
+    dependencies=[Depends(requiere_administracion)],
+)
+def restablecer_orden_automatico_declaracion(receta_id: int, db: Session = Depends(get_db)):
+    """Restablece el orden de ingredientes y aditivos al cálculo automático por porcentaje."""
+    return services.restablecer_orden_automatico_declaracion(db, receta_id)
+
+
+
 
 @router.post("/", response_model=schemas.Receta, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requiere_administracion)])
 def crear_receta(

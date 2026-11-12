@@ -26,6 +26,12 @@ class ErrorCode:
     RECURSO_ASOCIADO_INACTIVO = "El recurso que intenta asociar se encuentra inactivo. Debe reactivarlo para poder asignarlo al paso."
     NUMERO_ORDEN_DUPLICADO = "Ya existe un paso con el número de orden ingresado en esta receta."
 
+    # Errores de Orden Manual (Declaración CAA)
+    ORDEN_MANUAL_INSUMOS_INVALIDOS = "La lista de IDs para orden manual no coincide exactamente con los insumos presentes en la receta."
+    ORDEN_MANUAL_FRONTERA_INVALIDA = "Un aditivo no puede preceder a una materia prima según la normativa CAA (Cap. V). No se permite cruzar la frontera entre zonas."
+    ORDEN_MANUAL_PROPORCION_INVALIDA = "El orden de las materias primas debe ser estrictamente decreciente por porcentaje. Solo se permite reordenar materias primas con idéntica proporción."
+    ORDEN_MANUAL_CLASES_FRAGMENTADAS = "Los aditivos deben permanecer estrictamente agrupados por su clase funcional. No se permite fragmentar una clase funcional."
+
 class TipoRecurso:
     EQUIPO = "Equipo"
     INSUMO = "Insumo"
