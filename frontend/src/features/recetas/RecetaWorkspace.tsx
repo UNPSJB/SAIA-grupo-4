@@ -841,7 +841,9 @@ export default function RecetaWorkspace({
         }}
       />
 
-      {(esActiva || esInhabilitada) && <FichaRecetaPrint receta={receta} />}
+      {(esActiva || esInhabilitada) && (
+        <FichaRecetaPrint receta={receta} esModoAdmin={true} />
+      )}
     </Box>
   );
 }

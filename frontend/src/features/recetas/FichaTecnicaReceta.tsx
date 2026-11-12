@@ -32,8 +32,14 @@ import { recetasApi } from "./hooks/recetaApi";
 import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
 import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import { TablaComposicionPorcentual } from "./components/TablaComposicionPorcentual";
+import { ListaDeclaracionIngredientes } from "./components/ListaDeclaracionIngredientes";
 import { ESTADOS_RECETA } from "./constants";
-import type { ComposicionPorcentualResponse, PasoReceta, Receta } from "./types";
+import type {
+  ComposicionPorcentualResponse,
+  DeclaracionIngredientesResponse,
+  PasoReceta,
+  Receta,
+} from "./types";
 
 const Chip = ({
   icon,
@@ -80,6 +86,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
   const [receta, setReceta] = useState<Receta | null>(null);
   const [composicion, setComposicion] =
     useState<ComposicionPorcentualResponse | null>(null);
+  const [declaracion, setDeclaracion] =
+    useState<DeclaracionIngredientesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -95,13 +103,15 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
 
     try {
       if (esModoAdmin) {
-        // En modo admin, cargamos la receta y su composición porcentual
-        const [dataReceta, dataComp] = await Promise.all([
+        // En modo admin, cargamos la receta, composición porcentual y declaración de ingredientes
+        const [dataReceta, dataComp, dataDecl] = await Promise.all([
           recetasApi.obtenerReceta(recetaId),
           recetasApi.obtenerComposicionPorcentual(recetaId).catch(() => null),
+          recetasApi.obtenerDeclaracionIngredientes(recetaId).catch(() => null),
         ]);
         setReceta(dataReceta);
         setComposicion(dataComp);
+        setDeclaracion(dataDecl);
       } else {
         // En modo operador, consultamos la receta activa
         const dataReceta = await recetasApi.obtenerRecetaActiva(recetaId);
@@ -337,82 +347,95 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
             </Box>
           )}
 
-          {/* Resumen General de Insumos y Equipos */}
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={6}>
-            {/* Tarjeta de Insumos Generales */}
-            <Card.Root variant="outline" bg="white" shadow="xs">
-              <Card.Header pb={2}>
-                <HStack gap={2}>
-                  <Icon as={FiPackage} color="blue.600" />
-                  <Heading size="sm" color="gray.800">
-                    Insumos Generales Requeridos
-                  </Heading>
-                </HStack>
-              </Card.Header>
-              <Card.Body pt={0} gap={2}>
-                {insumosGenerales.length === 0 ? (
-                  <Text fontSize="xs" color="gray.500">
-                    No requiere insumos específicos registrados.
-                  </Text>
-                ) : (
-                  <VStack align="stretch" gap={1.5} divideY="1px" divideColor="gray.100">
-                    {insumosGenerales.map((ins, idx) => (
-                      <HStack key={idx} justify="space-between" fontSize="sm">
-                        <VStack align="start" gap={0}>
-                          <Text fontWeight="medium" color="gray.800">
-                            {ins.nombre}
-                          </Text>
-                          <Text fontSize="2xs" color="gray.500">
-                            Paso{ins.pasos.length > 1 ? "s" : ""}: {ins.pasos.join(", ")}
-                          </Text>
-                        </VStack>
-                        <Badge colorPalette="blue" variant="subtle">
-                          {ins.total} {ins.unidad}
-                        </Badge>
-                      </HStack>
-                    ))}
-                  </VStack>
-                )}
-              </Card.Body>
-            </Card.Root>
+          {/* Declaración de Ingredientes y Aditivos (solo en modo administración) */}
+          {esModoAdmin && declaracion && (
+            <Box mt={3} mb={6}>
+              <ListaDeclaracionIngredientes
+                recetaId={recetaId}
+                declaracion={declaracion}
+                onDeclaracionChange={setDeclaracion}
+              />
+            </Box>
+          )}
 
-            {/* Tarjeta de Equipos a Utilizar */}
-            <Card.Root variant="outline" bg="white" shadow="xs">
-              <Card.Header pb={2}>
-                <HStack gap={2}>
-                  <Icon as={FiTool} color="purple.600" />
-                  <Heading size="sm" color="gray.800">
-                    Equipos a Utilizar
-                  </Heading>
-                </HStack>
-              </Card.Header>
-              <Card.Body pt={0} gap={2}>
-                {equiposGenerales.length === 0 ? (
-                  <Text fontSize="xs" color="gray.500">
-                    No requiere equipos registrados.
-                  </Text>
-                ) : (
-                  <VStack align="stretch" gap={1.5} divideY="1px" divideColor="gray.100">
-                    {equiposGenerales.map((eq, idx) => (
-                      <HStack key={idx} justify="space-between" fontSize="sm">
-                        <VStack align="start" gap={0}>
-                          <Text fontWeight="medium" color="gray.800">
-                            {eq.nombre}
-                          </Text>
-                          <Text fontSize="2xs" color="gray.500">
-                            Paso{eq.pasos.length > 1 ? "s" : ""}: {eq.pasos.join(", ")}
-                          </Text>
-                        </VStack>
-                        <Badge colorPalette="purple" variant="subtle">
-                          x{eq.cantidad}
-                        </Badge>
-                      </HStack>
-                    ))}
-                  </VStack>
-                )}
-              </Card.Body>
-            </Card.Root>
-          </SimpleGrid>
+          {/* Resumen General de Insumos y Equipos (solo en modo operador) */}
+          {!esModoAdmin && (
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={6}>
+              {/* Tarjeta de Insumos Generales */}
+              <Card.Root variant="outline" bg="white" shadow="xs">
+                <Card.Header pb={2}>
+                  <HStack gap={2}>
+                    <Icon as={FiPackage} color="blue.600" />
+                    <Heading size="sm" color="gray.800">
+                      Insumos Generales Requeridos
+                    </Heading>
+                  </HStack>
+                </Card.Header>
+                <Card.Body pt={0} gap={2}>
+                  {insumosGenerales.length === 0 ? (
+                    <Text fontSize="xs" color="gray.500">
+                      No requiere insumos específicos registrados.
+                    </Text>
+                  ) : (
+                    <VStack align="stretch" gap={1.5} divideY="1px" divideColor="gray.100">
+                      {insumosGenerales.map((ins, idx) => (
+                        <HStack key={idx} justify="space-between" fontSize="sm">
+                          <VStack align="start" gap={0}>
+                            <Text fontWeight="medium" color="gray.800">
+                              {ins.nombre}
+                            </Text>
+                            <Text fontSize="2xs" color="gray.500">
+                              Paso{ins.pasos.length > 1 ? "s" : ""}: {ins.pasos.join(", ")}
+                            </Text>
+                          </VStack>
+                          <Badge colorPalette="blue" variant="subtle">
+                            {ins.total} {ins.unidad}
+                          </Badge>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </Card.Body>
+              </Card.Root>
+
+              {/* Tarjeta de Equipos a Utilizar */}
+              <Card.Root variant="outline" bg="white" shadow="xs">
+                <Card.Header pb={2}>
+                  <HStack gap={2}>
+                    <Icon as={FiTool} color="teal.600" />
+                    <Heading size="sm" color="gray.800">
+                      Equipos a Utilizar
+                    </Heading>
+                  </HStack>
+                </Card.Header>
+                <Card.Body pt={0} gap={2}>
+                  {equiposGenerales.length === 0 ? (
+                    <Text fontSize="xs" color="gray.500">
+                      No requiere equipos registrados.
+                    </Text>
+                  ) : (
+                    <VStack align="stretch" gap={1.5} divideY="1px" divideColor="gray.100">
+                      {equiposGenerales.map((eq, idx) => (
+                        <HStack key={idx} justify="space-between" fontSize="sm">
+                          <VStack align="start" gap={0}>
+                            <Text fontWeight="medium" color="gray.800">
+                              {eq.nombre}
+                            </Text>
+                            <Text fontSize="2xs" color="gray.500">
+                              Paso{eq.pasos.length > 1 ? "s" : ""}: {eq.pasos.join(", ")}
+                            </Text>
+                          </VStack>
+                          <Badge colorPalette="teal" variant="subtle">
+                            x{eq.cantidad}
+                          </Badge>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </Card.Body>
+              </Card.Root>
+            </SimpleGrid>
+          )}
 
           {/* Secuencia Ordenada de Pasos */}
           <Box mt={8}>
@@ -552,7 +575,12 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
       </Box>
 
       {/* Componente de Impresión Exclusivo (A4, tema claro) */}
-      <FichaRecetaPrint receta={receta} composicion={composicion} />
+      <FichaRecetaPrint
+        receta={receta}
+        composicion={composicion}
+        declaracion={esModoAdmin ? declaracion : null}
+        esModoAdmin={esModoAdmin}
+      />
     </>
   );
 };

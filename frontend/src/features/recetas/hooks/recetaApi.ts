@@ -5,6 +5,7 @@ import type { Insumo } from "../../insumo/types";
 import type { Producto } from "../../productos/types";
 import type {
   ComposicionPorcentualResponse,
+  DeclaracionIngredientesResponse,
   FiltrosReceta,
   PasoReceta,
   PasoRecetaCreatePayload,
@@ -98,6 +99,17 @@ export const recetasApi = {
   obtenerRecetaActiva: (id: number) => request<Receta>(`/recetas/activas/${id}`),
   obtenerComposicionPorcentual: (id: number) =>
     request<ComposicionPorcentualResponse>(`/recetas/${id}/composicion-porcentual`),
+  obtenerDeclaracionIngredientes: (id: number) =>
+    request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes`),
+  guardarOrdenManualDeclaracion: (id: number, insumoIds: number[]) =>
+    request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes/orden-manual`, {
+      method: "PUT",
+      body: JSON.stringify({ insumo_ids_ordenados: insumoIds }),
+    }),
+  restablecerOrdenAutomaticoDeclaracion: (id: number) =>
+    request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes/orden-manual`, {
+      method: "DELETE",
+    }),
   obtenerBorrador: () => request<Receta>("/recetas/borrador"),
   obtenerReceta: (id: number) => request<Receta>(`/recetas/${id}`),
   crearReceta: (payload: RecetaCreatePayload) =>

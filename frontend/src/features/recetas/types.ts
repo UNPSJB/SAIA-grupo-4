@@ -148,3 +148,28 @@ export interface ComposicionPorcentualResponse {
   insumos_sin_equivalencia: InsumoSinEquivalencia[];
 }
 
+export interface ItemDeclaracionIngrediente {
+  posicion: number;
+  insumo_id: number;
+  nombre_insumo: string;
+  denominacion_rotulo: string;
+  categoria: string;
+  clase_funcional?: string | null;
+  numero_ins?: string | null;
+  masa_equivalente_g?: number | null;
+  porcentaje_mezcla?: number | null;
+  texto_declaracion: string;
+}
+
+export interface DeclaracionIngredientesResponse {
+  receta_id: number;
+  codigo_receta: string;
+  nombre_receta: string;
+  es_orden_manual: boolean;
+  es_completa: boolean;
+  insumos_sin_equivalencia: InsumoSinEquivalencia[];
+  items: ItemDeclaracionIngrediente[];
+  texto_legal_rotulo: string;
+}
+
+

@@ -11,7 +11,12 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import type { ComposicionPorcentualResponse, PasoReceta, Receta } from "./types";
+import type {
+  ComposicionPorcentualResponse,
+  DeclaracionIngredientesResponse,
+  PasoReceta,
+  Receta,
+} from "./types";
 
 interface InsumoConsolidado {
   id: number;
@@ -31,6 +36,8 @@ interface EquipoConsolidado {
 export interface FichaRecetaPrintProps {
   receta: Receta;
   composicion?: ComposicionPorcentualResponse | null;
+  declaracion?: DeclaracionIngredientesResponse | null;
+  esModoAdmin?: boolean;
 }
 
 export const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
@@ -99,7 +106,12 @@ export const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
  * Permanece oculto en pantalla (display: none) y se activa exclusivamente mediante
  * @media print forzando fondo blanco y texto oscuro (independiente de Dark Mode).
  */
-export const FichaRecetaPrint = ({ receta, composicion }: FichaRecetaPrintProps) => {
+export const FichaRecetaPrint = ({
+  receta,
+  composicion,
+  declaracion,
+  esModoAdmin = false,
+}: FichaRecetaPrintProps) => {
   const { insumos, equipos, pasosOrdenados } = useMemo(
     () => consolidarRecursosParaPrint(receta.pasos ?? []),
     [receta.pasos],
@@ -487,113 +499,228 @@ export const FichaRecetaPrint = ({ receta, composicion }: FichaRecetaPrintProps)
         </Box>
       )}
 
-      {/* Recursos Generales Requeridos: Insumos y Equipos */}
-      <SimpleGrid
-        columns={2}
-        gap={4}
-        mb={4}
-        css={{ pageBreakInside: "avoid", breakInside: "avoid" }}
-      >
-        {/* Tabla de Insumos */}
-        <Box>
-          <Heading
-            size="sm"
-            color="green.700"
+      {/* Declaración de Ingredientes para Rótulo (CAA Cap. V) */}
+      {declaracion && (
+        <Box mb={4} css={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+          <HStack
+            justify="space-between"
+            align="center"
             borderBottomWidth="1px"
             borderColor="gray.300"
             pb={1}
             mb={2}
           >
-            Insumos Generales Requeridos
-          </Heading>
-          {insumos.length === 0 ? (
-            <Text fontSize="xs" color="gray.500">
-              No requiere insumos específicos.
-            </Text>
-          ) : (
-            <Table.Root size="sm" variant="outline" bg="white" borderWidth="1px" borderColor="gray.200">
-              <Table.Header bg="gray.100">
-                <Table.Row>
-                  <Table.ColumnHeader fontSize="2xs" color="gray.700">
-                    Insumo
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
-                    Total
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader fontSize="2xs" color="gray.700">
-                    Pasos
-                  </Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {insumos.map((ins, idx) => (
-                  <Table.Row key={idx}>
-                    <Table.Cell fontSize="xs" py={1.5}>
-                      {ins.nombre}
-                    </Table.Cell>
-                    <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="medium">
-                      {ins.cantidadTotal} {ins.unidad}
-                    </Table.Cell>
-                    <Table.Cell fontSize="2xs" color="gray.600" py={1.5}>
-                      Paso{ins.pasos.length > 1 ? "s" : ""} {ins.pasos.join(", ")}
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          )}
-        </Box>
+            <Heading size="sm" color="green.700">
+              Declaración de Ingredientes para Rótulo (CAA Cap. V)
+            </Heading>
+            <Badge
+              colorPalette={declaracion.es_orden_manual ? "orange" : "teal"}
+              variant="surface"
+              fontSize="2xs"
+              px={2}
+              py={0.5}
+              borderWidth="1px"
+            >
+              {declaracion.es_orden_manual
+                ? "Orden Manual Personalizado"
+                : "Orden Automático (por %)"}
+            </Badge>
+          </HStack>
 
-        {/* Tabla de Equipos */}
-        <Box>
-          <Heading
-            size="sm"
-            color="green.700"
-            borderBottomWidth="1px"
-            borderColor="gray.300"
-            pb={1}
-            mb={2}
-          >
-            Equipos a Utilizar
-          </Heading>
-          {equipos.length === 0 ? (
-            <Text fontSize="xs" color="gray.500">
-              No requiere equipos registrados.
+          {declaracion.items.length === 0 ? (
+            <Text fontSize="xs" color="gray.500" fontStyle="italic">
+              No hay ingredientes para declarar.
             </Text>
           ) : (
-            <Table.Root size="sm" variant="outline" bg="white" borderWidth="1px" borderColor="gray.200">
+            <Table.Root
+              size="sm"
+              variant="outline"
+              bg="white"
+              borderWidth="1px"
+              borderColor="gray.200"
+              mb={2}
+            >
               <Table.Header bg="gray.100">
                 <Table.Row>
+                  <Table.ColumnHeader fontSize="2xs" color="gray.700" width="40px" textAlign="center">
+                    #
+                  </Table.ColumnHeader>
                   <Table.ColumnHeader fontSize="2xs" color="gray.700">
-                    Equipo
+                    Denominación Rótulo
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                    Tipo
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                    Clase / INS
                   </Table.ColumnHeader>
                   <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
-                    Cant.
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader fontSize="2xs" color="gray.700">
-                    Pasos
+                    % en Mezcla
                   </Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {equipos.map((eq, idx) => (
-                  <Table.Row key={idx}>
-                    <Table.Cell fontSize="xs" py={1.5}>
-                      {eq.nombre}
+                {declaracion.items.map((item, idx) => (
+                  <Table.Row key={item.insumo_id}>
+                    <Table.Cell fontSize="xs" py={1.5} textAlign="center" fontWeight="bold">
+                      {idx + 1}
                     </Table.Cell>
-                    <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="medium">
-                      x{eq.cantidadMax}
+                    <Table.Cell fontSize="xs" py={1.5} fontWeight="medium">
+                      {item.denominacion_rotulo}
                     </Table.Cell>
-                    <Table.Cell fontSize="2xs" color="gray.600" py={1.5}>
-                      Paso{eq.pasos.length > 1 ? "s" : ""} {eq.pasos.join(", ")}
+                    <Table.Cell fontSize="2xs" py={1.5} textTransform="capitalize">
+                      {item.categoria}
+                    </Table.Cell>
+                    <Table.Cell fontSize="2xs" py={1.5} color="gray.600">
+                      {item.clase_funcional
+                        ? item.numero_ins
+                          ? `${item.clase_funcional} (INS ${item.numero_ins})`
+                          : `${item.clase_funcional} (Sin INS)`
+                        : "—"}
+                    </Table.Cell>
+                    <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="bold">
+                      {item.porcentaje_mezcla != null
+                        ? `${Number(item.porcentaje_mezcla).toLocaleString("es-AR", {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 2,
+                          })}%`
+                        : "—"}
                     </Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>
             </Table.Root>
           )}
+
+          {declaracion.texto_legal_rotulo && (
+            <Box
+              bg="gray.50"
+              p={2}
+              borderRadius="md"
+              borderWidth="1px"
+              borderColor="gray.200"
+              mt={1}
+            >
+              <Text fontSize="2xs" fontWeight="bold" color="gray.700" mb={0.5}>
+                Texto Legal para Rótulo:
+              </Text>
+              <Text fontSize="2xs" color="gray.800" fontStyle="italic" lineHeight="1.4">
+                {declaracion.texto_legal_rotulo}
+              </Text>
+            </Box>
+          )}
         </Box>
-      </SimpleGrid>
+      )}
+
+      {/* Recursos Generales Requeridos: Insumos y Equipos (solo en modo operador) */}
+      {!esModoAdmin && (
+        <SimpleGrid
+          columns={2}
+          gap={4}
+          mb={4}
+          css={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+        >
+          {/* Tabla de Insumos */}
+          <Box>
+            <Heading
+              size="sm"
+              color="green.700"
+              borderBottomWidth="1px"
+              borderColor="gray.300"
+              pb={1}
+              mb={2}
+            >
+              Insumos Generales Requeridos
+            </Heading>
+            {insumos.length === 0 ? (
+              <Text fontSize="xs" color="gray.500">
+                No requiere insumos específicos.
+              </Text>
+            ) : (
+              <Table.Root size="sm" variant="outline" bg="white" borderWidth="1px" borderColor="gray.200">
+                <Table.Header bg="gray.100">
+                  <Table.Row>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                      Insumo
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      Total
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                      Pasos
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {insumos.map((ins, idx) => (
+                    <Table.Row key={idx}>
+                      <Table.Cell fontSize="xs" py={1.5}>
+                        {ins.nombre}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="medium">
+                        {ins.cantidadTotal} {ins.unidad}
+                      </Table.Cell>
+                      <Table.Cell fontSize="2xs" color="gray.600" py={1.5}>
+                        Paso{ins.pasos.length > 1 ? "s" : ""} {ins.pasos.join(", ")}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+            )}
+          </Box>
+
+          {/* Tabla de Equipos */}
+          <Box>
+            <Heading
+              size="sm"
+              color="green.700"
+              borderBottomWidth="1px"
+              borderColor="gray.300"
+              pb={1}
+              mb={2}
+            >
+              Equipos a Utilizar
+            </Heading>
+            {equipos.length === 0 ? (
+              <Text fontSize="xs" color="gray.500">
+                No requiere equipos registrados.
+              </Text>
+            ) : (
+              <Table.Root size="sm" variant="outline" bg="white" borderWidth="1px" borderColor="gray.200">
+                <Table.Header bg="gray.100">
+                  <Table.Row>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                      Equipo
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700" textAlign="right">
+                      Cant.
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" color="gray.700">
+                      Pasos
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {equipos.map((eq, idx) => (
+                    <Table.Row key={idx}>
+                      <Table.Cell fontSize="xs" py={1.5}>
+                        {eq.nombre}
+                      </Table.Cell>
+                      <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="medium">
+                        x{eq.cantidadMax}
+                      </Table.Cell>
+                      <Table.Cell fontSize="2xs" color="gray.600" py={1.5}>
+                        Paso{eq.pasos.length > 1 ? "s" : ""} {eq.pasos.join(", ")}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+            )}
+          </Box>
+        </SimpleGrid>
+      )}
 
       {/* Secuencia de Pasos */}
       <Box mb={2}>
