@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 # === REUTILIZACIÓN DE SERVICIOS EXISTENTES ===
-from src.dashboard import schemas
+from src.dashboard import exceptions, schemas
 from src.dashboard.metrics import (
     calcular_resumen_tareas,
     calcular_resumen_vencimientos,
@@ -300,6 +300,9 @@ def _calcular_metricas_lotes(db: Session, desde: date | None, hasta: date | None
 # === FUNCIÓN PRINCIPAL ===
 def obtener_dashboard(db: Session, desde: date | None = None, hasta: date | None = None) -> schemas.DashboardResponse:
     """Consolida todas las métricas en una única respuesta para el dashboard."""
+    if desde and hasta and desde > hasta:
+        raise exceptions.RangoFechasInvalido()
+
     hoy = date.today()
     tarjetas = []
     graficos = {}
