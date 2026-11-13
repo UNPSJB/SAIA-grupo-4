@@ -46,6 +46,8 @@ from src.vista_publica.services import inicializar_vista_publica
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
+from src.configuracion.router import router as configuracion_router
+from src.configuracion.services import obtener_o_crear_configuracion
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -58,6 +60,7 @@ async def db_creation_lifespan(app: FastAPI):
     with Session(engine) as db:
         inicializar_capacidades_sistema(db)
         inicializar_vista_publica(db)
+        obtener_o_crear_configuracion(db)
     yield
 
 
@@ -105,3 +108,4 @@ app.include_router(lotes_router)
 app.include_router(dashboard_router)  # Dashboard consolidado de métricas
 app.include_router(vista_publica_router)  # Configuración admin de la vista pública
 app.include_router(vista_publica_publico_router)  # Indicadores públicos sin auth
+app.include_router(configuracion_router)  # Configuración del sistema (admin)
