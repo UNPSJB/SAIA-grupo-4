@@ -19,6 +19,7 @@ import {
   FiExternalLink,
   FiFileText,
   FiImage,
+  FiPrinter,
 } from "react-icons/fi";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { AlertMessage } from "../../components/ui";
@@ -263,6 +264,25 @@ export function EnlacePublicoCard({ url, activo }: EnlacePublicoCardProps) {
                     </Menu.Positioner>
                   </Portal>
                 </Menu.Root>
+
+                {/* TODO: conectar con imprimirInforme() e IndicadoresPublicosPrintView */}
+                {activo && (
+                  <Button
+                    variant='outline'
+                    colorPalette='blue'
+                    bg='white'
+                    transition='all 0.15s ease'
+                    _hover={{
+                      bg: "blue.50",
+                      borderColor: "blue.500",
+                      color: "blue.700",
+                      shadow: "sm",
+                    }}
+                  >
+                    <FiPrinter />
+                    Imprimir / Descargar PDF
+                  </Button>
+                )}
               </HStack>
 
               {errorCopiado && (
