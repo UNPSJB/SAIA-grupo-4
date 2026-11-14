@@ -6,11 +6,14 @@ import { MetricCard } from "../features/dashboard/MetricCard";
 import { DashboardChart } from "../features/dashboard/DashboardChart";
 import { DashboardFilters } from "../features/dashboard/DashboardFilters";
 import { GroupedStackedBar } from "../features/dashboard/GroupedStackedBar";
+import { DashboardPrintView } from "../features/dashboard/DashboardPrintView";
+import { imprimirInforme } from "../utils/imprimirInforme";
 import { LoadingState, AlertMessage } from "../components/ui";
 import {
   getChartTitle,
   INCIDENTES_KEYS_GRAFICO,
   INCIDENTES_LABELS_GRAFICO,
+  nombreArchivoDashboard,
   prepararDashboard,
   VENCIMIENTOS_KEYS_GRAFICO,
   VENCIMIENTOS_LABELS_GRAFICO,
@@ -73,10 +76,12 @@ export default function DashboardPage() {
                 </Text>
               </Box>
 
-              {/* TODO: conectar con imprimirInforme() y DashboardPrintView */}
               {data && (
                 <Button
                   size='sm'
+                  onClick={() => imprimirInforme(nombreArchivoDashboard(data))}
+                  // Mientras se aplica un filtro, el informe todavía tiene los datos anteriores
+                  disabled={loading}
                   variant='outline'
                   colorPalette='blue'
                   bg='white'
@@ -169,6 +174,9 @@ export default function DashboardPage() {
           </VStack>
         </Container>
       </Box>
+
+      {/* Informe imprimible: oculto en pantalla, solo aparece al imprimir */}
+      {data && <DashboardPrintView data={data} />}
     </Box>
   );
 }

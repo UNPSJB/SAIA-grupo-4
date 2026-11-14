@@ -32,6 +32,11 @@ type FormatoDescarga = "png" | "pdf";
 interface EnlacePublicoCardProps {
   url: string;
   activo: boolean;
+  /**
+   * Abre la impresión de los indicadores. Si no se pasa (vista desactivada o
+   * indicadores todavía sin cargar), el botón no se muestra.
+   */
+  onImprimir?: () => void;
 }
 
 function descargarArchivo(dataUrl: string, nombre: string) {
@@ -87,7 +92,11 @@ async function descargarPdf(dataUrl: string, url: string) {
   documento.save(`${NOMBRE_BASE_QR}.pdf`);
 }
 
-export function EnlacePublicoCard({ url, activo }: EnlacePublicoCardProps) {
+export function EnlacePublicoCard({
+  url,
+  activo,
+  onImprimir,
+}: EnlacePublicoCardProps) {
   const [copiado, setCopiado] = useState(false);
   const [errorCopiado, setErrorCopiado] = useState<string | null>(null);
   const [descargando, setDescargando] = useState<FormatoDescarga | null>(null);
@@ -265,9 +274,9 @@ export function EnlacePublicoCard({ url, activo }: EnlacePublicoCardProps) {
                   </Portal>
                 </Menu.Root>
 
-                {/* TODO: conectar con imprimirInforme() e IndicadoresPublicosPrintView */}
-                {activo && (
+                {onImprimir && (
                   <Button
+                    onClick={onImprimir}
                     variant='outline'
                     colorPalette='blue'
                     bg='white'
