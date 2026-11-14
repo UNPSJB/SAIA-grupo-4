@@ -284,8 +284,8 @@ export default function DashboardPage() {
                       key='incidentes-agrupados'
                       title='Incidentes por tipo'
                       data={datosIncidentesAgrupados ?? []}
-                      keys={["Abiertos", "Cerrados"]}
-                      keyLabels={{ Abiertos: "Abiertos", Cerrados: "Cerrados" }}
+                      keys={["Cerrados", "Abiertos"]}
+                      keyLabels={{ Cerrados: "Cerrados", Abiertos: "Abiertos" }}
                     />
                   )}
                 </Grid>
