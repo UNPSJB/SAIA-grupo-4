@@ -8,10 +8,17 @@ interface GraficoCardProps {
   children: ReactNode;
   /** false para tarjetas sin datos: no hay nada que descargar. */
   descargable?: boolean;
+  /** Modo impresión: sin botón de descarga ni sombra, y sin cortarse entre hojas. */
+  impresion?: boolean;
 }
 
 // Tarjeta común de los gráficos del dashboard, con botón para descargarlo como PNG.
-export function GraficoCard({ title, children, descargable = true }: GraficoCardProps) {
+export function GraficoCard({
+  title,
+  children,
+  descargable = true,
+  impresion = false,
+}: GraficoCardProps) {
   const tarjetaRef = useRef<HTMLDivElement>(null);
   const [descargando, setDescargando] = useState(false);
   const [error, setError] = useState(false);
@@ -30,13 +37,20 @@ export function GraficoCard({ title, children, descargable = true }: GraficoCard
   };
 
   return (
-    <Card.Root ref={tarjetaRef} shadow='md' h='full'>
+    <Card.Root
+      ref={tarjetaRef}
+      h='full'
+      shadow={impresion ? "none" : "md"}
+      borderWidth={impresion ? "1px" : undefined}
+      borderColor={impresion ? "gray.200" : undefined}
+      className={impresion ? "no-cortar" : undefined}
+    >
       <Card.Header>
         <HStack justify='space-between' align='center' gap={2}>
           <Text fontSize='md' fontWeight='semibold'>
             {title}
           </Text>
-          {descargable && (
+          {descargable && !impresion && (
             <IconButton
               data-no-exportar=''
               aria-label={`Descargar gráfico ${title}`}
