@@ -1,6 +1,6 @@
-import { Box, Container, Grid, HStack, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Container, Grid, HStack, Text, VStack } from "@chakra-ui/react";
 import { useState } from "react";
-import { FiBarChart2 } from "react-icons/fi";
+import { FiBarChart2, FiPrinter } from "react-icons/fi";
 import { useDashboard } from "../features/dashboard/hooks/useDashboard";
 import { MetricCard } from "../features/dashboard/MetricCard";
 import { DashboardChart } from "../features/dashboard/DashboardChart";
@@ -170,21 +170,40 @@ export default function DashboardPage() {
       <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
         <Container maxW='container.xl' px={0}>
           <VStack align='stretch' gap={6}>
-            <Box>
-              <HStack gap={2} mb={1}>
-                <FiBarChart2 color='#2F855A' size={20} />
-                <Text
-                  fontSize={{ base: "lg", md: "xl" }}
-                  fontWeight='extrabold'
-                  color='gray.800'
-                >
-                  Dashboard Consolidado
+            <HStack
+              justify='space-between'
+              align='flex-start'
+              gap={3}
+              flexWrap='wrap'
+            >
+              <Box>
+                <HStack gap={2} mb={1}>
+                  <FiBarChart2 color='#2F855A' size={20} />
+                  <Text
+                    fontSize={{ base: "lg", md: "xl" }}
+                    fontWeight='extrabold'
+                    color='gray.800'
+                  >
+                    Dashboard Consolidado
+                  </Text>
+                </HStack>
+                <Text fontSize='xs' color='gray.500'>
+                  Métricas generales del sistema con indicadores clave de gestión
                 </Text>
-              </HStack>
-              <Text fontSize='xs' color='gray.500'>
-                Métricas generales del sistema con indicadores clave de gestión
-              </Text>
-            </Box>
+              </Box>
+
+              {/* TODO: conectar con imprimirInforme() y DashboardPrintView */}
+              {data && (
+                <Button
+                  size='sm'
+                  variant='outline'
+                  colorPalette='green'
+                  bg='white'
+                >
+                  <FiPrinter /> Imprimir / Descargar PDF
+                </Button>
+              )}
+            </HStack>
 
             <DashboardFilters
               onFilterChange={handleFilterChange}
