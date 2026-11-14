@@ -194,6 +194,51 @@ const FallbackBarChart = ({ title, config, fixedSize }: VistaGraficoProps) => {
   );
 };
 
+// En el informe impreso el gráfico de lotes ocupa media hoja: con más productos
+// que esto los nombres se pisan, así que el resto se agrupa en una barra "Otros".
+const MAX_BARRAS_IMPRESION = 10;
+const COLOR_OTROS = "#A0AEC0";
+
+interface BarraDato {
+  name: string;
+  fullName: string;
+  value: number;
+  color: string;
+}
+
+/**
+ * Deja las `max` barras de mayor valor (en su orden original) y suma el resto
+ * en una barra final "Otros (N)". Si no hay más de `max`, devuelve los datos tal cual.
+ */
+const agruparResto = (datos: BarraDato[], max: number): BarraDato[] => {
+  if (datos.length <= max) return datos;
+
+  const principales = new Set(
+    [...datos]
+      .map((dato, indice) => ({ dato, indice }))
+      .sort((a, b) => b.dato.value - a.dato.value)
+      .slice(0, max)
+      .map(({ indice }) => indice),
+  );
+  const resto = datos.filter((_, indice) => !principales.has(indice));
+
+  return [
+    // Los colores se reasignan según la posición final, así las 10 barras no repiten color
+    ...datos
+      .filter((_, indice) => principales.has(indice))
+      .map((dato, indice) => ({
+        ...dato,
+        color: getChartColor(dato.fullName, indice),
+      })),
+    {
+      name: `Otros (${resto.length})`,
+      fullName: `Otros: ${resto.map((dato) => dato.fullName).join(", ")}`,
+      value: resto.reduce((suma, dato) => suma + dato.value, 0),
+      color: COLOR_OTROS,
+    },
+  ];
+};
+
 const BarChartView = ({
   title,
   config,
@@ -201,7 +246,7 @@ const BarChartView = ({
   fixedSize,
 }: VistaGraficoProps & { metricKey?: string }) => {
   const isLotes = metricKey === "lotes";
-  const data = config.datos.map((item, index) => {
+  const data: BarraDato[] = config.datos.map((item, index) => {
     const fullLabel = item.label;
     const match = fullLabel.match(/^([^(]+)\s*\(/);
     const productName = match ? match[1].trim() : fullLabel;
@@ -215,6 +260,9 @@ const BarChartView = ({
       color: getChartColor(item.label, index),
     };
   });
+
+  // En el informe impreso, con muchos productos el resto se agrupa en "Otros"
+  const datosImpresion = agruparResto(data, MAX_BARRAS_IMPRESION);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -239,33 +287,59 @@ const BarChartView = ({
 
   return (
     <GraficoCard title={title} impresion={!!fixedSize}>
-      <ContenedorGrafico altoPantalla={280} fixedSize={fixedSize}>
-        <BarChart
-          data={data}
-          margin={{ top: 5, right: 10, left: -10, bottom: 40 }}
-        >
-          <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
-          <XAxis
-            dataKey='name'
-            tick={{ fontSize: 9 }}
-            angle={-25}
-            textAnchor='end'
-            interval={0}
-            height={60}
-          />
-          <YAxis tick={{ fontSize: 9 }} />
-          {!fixedSize && <Tooltip content={<CustomTooltip />} />}
-          <Bar
-            dataKey='value'
-            radius={[4, 4, 0, 0]}
-            isAnimationActive={!fixedSize}
+      {fixedSize ? (
+        // Impresión: barras verticales como en pantalla, con los nombres más
+        // inclinados y margen a la izquierda para que entren en media hoja A4
+        <ContenedorGrafico altoPantalla={280} fixedSize={fixedSize}>
+          <BarChart
+            data={datosImpresion}
+            margin={{ top: 5, right: 10, left: 15, bottom: 0 }}
           >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ContenedorGrafico>
+            <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
+            <XAxis
+              dataKey='name'
+              angle={-40}
+              textAnchor='end'
+              interval={0}
+              height={65}
+            />
+            <YAxis width={35} />
+            <Bar
+              dataKey='value'
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
+            >
+              {datosImpresion.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ContenedorGrafico>
+      ) : (
+        <ContenedorGrafico altoPantalla={280}>
+          <BarChart
+            data={data}
+            margin={{ top: 5, right: 10, left: -10, bottom: 40 }}
+          >
+            <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
+            <XAxis
+              dataKey='name'
+              tick={{ fontSize: 9 }}
+              angle={-25}
+              textAnchor='end'
+              interval={0}
+              height={60}
+            />
+            <YAxis tick={{ fontSize: 9 }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey='value' radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ContenedorGrafico>
+      )}
       {!isLotes && (
         <VStack align='start' gap={2} mt={2}>
           {config.leyendas.map((leyenda, idx) => {
