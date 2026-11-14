@@ -197,8 +197,15 @@ export default function DashboardPage() {
                 <Button
                   size='sm'
                   variant='outline'
-                  colorPalette='green'
+                  colorPalette='blue'
                   bg='white'
+                  transition='all 0.15s ease'
+                  _hover={{
+                    bg: "blue.50",
+                    borderColor: "blue.500",
+                    color: "blue.700",
+                    shadow: "sm",
+                  }}
                 >
                   <FiPrinter /> Imprimir / Descargar PDF
                 </Button>
