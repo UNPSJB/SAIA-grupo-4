@@ -27,9 +27,40 @@ class ErrorCode:
     ATRIBUTOS_ADITIVO_NO_APLICAN = (
         "La clase funcional y el número INS solo aplican a insumos de categoría 'aditivo'"
     )
+    ALIMENTO_REFERENCIA_NO_EXISTE = (
+        "El alimento de referencia seleccionado no existe"
+    )
+    NUTRICION_NO_APLICA_ENVASE = (
+        "Los insumos de categoría 'envase' no admiten información nutricional"
+    )
 
 
 class Constantes:
+    CAMPOS_NUTRIENTES_COMPLETOS = (
+        "valor_energetico_kcal",
+        "carbohidratos_g",
+        "azucares_totales_g",
+        "azucares_anadidos_g",
+        "proteinas_g",
+        "grasas_totales_g",
+        "grasas_saturadas_g",
+        "grasas_trans_g",
+        "fibra_g",
+        "sodio_mg",
+    )
+    MAPA_REFERENCIA_INSUMO = {
+        "energia_kcal": "valor_energetico_kcal",
+        "carbohidratos_g": "carbohidratos_g",
+        "proteinas_g": "proteinas_g",
+        "grasas_totales_g": "grasas_totales_g",
+        "grasas_saturadas_g": "grasas_saturadas_g",
+        "fibra_g": "fibra_g",
+        "sodio_mg": "sodio_mg",
+    }
+    CAMPOS_SEGUIMIENTO_NUTRICIONAL = (
+        set(CAMPOS_NUTRIENTES_COMPLETOS)
+        | {"base_calculo", "alimento_referencia_id", "fuente_nutricional"}
+    )
     CLASES_SIN_INS_OBLIGATORIO = {
         "aromatizante",
         "saborizante",

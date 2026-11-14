@@ -62,3 +62,11 @@ class NumeroInsRequeridoAditivo(BadRequest):
 
 class AtributosAditivoNoAplican(BadRequest):
     DETAIL = ErrorCode.ATRIBUTOS_ADITIVO_NO_APLICAN
+
+
+class AlimentoReferenciaNoExiste(BadRequest):
+    DETAIL = ErrorCode.ALIMENTO_REFERENCIA_NO_EXISTE
+
+
+class NutricionNoAplicaEnvase(BadRequest):
+    DETAIL = ErrorCode.NUTRICION_NO_APLICA_ENVASE

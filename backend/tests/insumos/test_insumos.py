@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from src.alimento_referencia.services import sembrar_alimentos_sara
 from src.main import app
 from tests.database import session
 import uuid
@@ -520,4 +521,165 @@ def test_crear_aditivo_validaciones_clase_e_ins():
         },
     )
     assert res_err_mp.status_code in [400, 422]
+
+
+def test_nutricion_desde_sara_y_auditoria_modificacion(session):
+    sembrar_alimentos_sara(session)
+    unidad_id = crear_unidad_medida(nombre=f"Kilogramo {sufijo_unico()}", simbolo="kg", tipo="masa")
+
+    res_sara = client.get("/alimentos-referencia/?q=A033&limit=5")
+    assert res_sara.status_code == 200
+    ref = res_sara.json()[0]
+
+    # 1. Crear materia prima exactamente con los valores de SARA 2 (azúcares y trans en 0.00)
+    res_crear = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Harina SARA {sufijo_unico()}",
+            "unidad_medida_id": unidad_id,
+            "categoria": "materia prima",
+            "base_calculo": "100g",
+            "alimento_referencia_id": ref["id"],
+            "valor_energetico_kcal": ref["energia_kcal"],
+            "carbohidratos_g": ref["carbohidratos_g"],
+            "azucares_totales_g": "0.00",
+            "azucares_anadidos_g": "0.00",
+            "proteinas_g": ref["proteinas_g"],
+            "grasas_totales_g": ref["grasas_totales_g"],
+            "grasas_saturadas_g": ref["grasas_saturadas_g"],
+            "grasas_trans_g": "0.00",
+            "fibra_g": ref["fibra_g"],
+            "sodio_mg": ref["sodio_mg"],
+        },
+    )
+    assert res_crear.status_code == 201, res_crear.text
+    insumo = res_crear.json()
+    assert insumo["nutricion_completa"] is True
+    assert insumo["es_nutricion_modificada"] is False
+    assert insumo["fecha_carga_nutricional"] is not None
+    assert insumo["modificado_por_usuario_id"] is None
+    assert "SARA 2" in insumo["fuente_nutricional"]
+
+    # 2. Completar azúcares (no vienen en SARA 2) -> NO marca la fuente como modificada
+    res_az = client.put(
+        f"/insumos/{insumo['id']}",
+        json={"azucares_totales_g": "1.50"},
+    )
+    assert res_az.status_code == 200, res_az.text
+    assert res_az.json()["es_nutricion_modificada"] is False
+
+    # 3. Modificar un nutriente precargado por SARA 2 -> dispara auditoría de modificación
+    res_mod = client.put(
+        f"/insumos/{insumo['id']}",
+        json={"proteinas_g": "99.00"},
+    )
+    assert res_mod.status_code == 200, res_mod.text
+    modificado = res_mod.json()
+    assert modificado["es_nutricion_modificada"] is True
+    assert modificado["modificado_por_usuario_id"] is not None
+    assert modificado["fecha_modificacion_nutricional"] is not None
+
+
+def test_nutricion_completa_materia_prima_vs_aditivo():
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="g", tipo="masa")
+
+    # Materia prima solo con energía y sodio queda incompleta
+    res_mp = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"MP Incompleta {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "valor_energetico_kcal": "100.00",
+            "sodio_mg": "10.00",
+            "fuente_nutricional": "Rótulo proveedor",
+        },
+    )
+    assert res_mp.status_code == 201
+    assert res_mp.json()["nutricion_completa"] is False
+
+    # Aditivo solo con energía y sodio ya está completo
+    res_ad = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Aditivo Sal {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Conservante",
+            "numero_ins": "282",
+            "valor_energetico_kcal": "0.00",
+            "sodio_mg": "1500.00",
+            "fuente_nutricional": "Rótulo proveedor",
+        },
+    )
+    assert res_ad.status_code == 201
+    assert res_ad.json()["nutricion_completa"] is True
+
+
+def test_validaciones_insumo_seguridad_y_envase():
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="g", tipo="masa")
+
+    # Nombre solo espacios rechazado
+    res_espacios = client.post(
+        "/insumos/",
+        json={
+            "nombre": "   ",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+        },
+    )
+    assert res_espacios.status_code == 422
+
+    # Consumo inicial > 0 rechazado
+    res_consumo = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Consumo trucho {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "consumo": "25.000",
+        },
+    )
+    assert res_consumo.status_code == 422
+
+    # Envase con datos nutricionales rechazado en creación
+    res_envase = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Bolsa {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "envase",
+            "valor_energetico_kcal": "100.00",
+        },
+    )
+    assert res_envase.status_code == 400
+
+    # Extra forbidden en PUT (ej. es_nutricion_modificada)
+    res_ok = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Insumo Valido {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "valor_energetico_kcal": "100.00",
+        },
+    )
+    assert res_ok.status_code == 201
+    ins_id = res_ok.json()["id"]
+
+    res_put_extra = client.put(
+        f"/insumos/{ins_id}",
+        json={"es_nutricion_modificada": True},
+    )
+    assert res_put_extra.status_code == 422
+
+    # Cambiar categoría a envase limpia los datos nutricionales previos
+    res_put_envase = client.put(
+        f"/insumos/{ins_id}",
+        json={"categoria": "envase"},
+    )
+    assert res_put_envase.status_code == 200
+    assert res_put_envase.json()["valor_energetico_kcal"] is None
+    assert res_put_envase.json()["es_nutricion_modificada"] is False
+
 
