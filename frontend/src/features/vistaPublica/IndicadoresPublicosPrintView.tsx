@@ -29,7 +29,7 @@ export function IndicadoresPublicosPrintView({
       <Text
         fontSize="2xs"
         color="gray.500"
-        mt={4}
+        mt={3}
         pt={2}
         borderTopWidth="1px"
         borderColor="gray.200"
