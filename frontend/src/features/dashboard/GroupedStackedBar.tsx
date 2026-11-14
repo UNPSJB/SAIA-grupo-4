@@ -1,6 +1,7 @@
-import { Box, Card, Flex, Text, VStack } from "@chakra-ui/react";
+import { Box, Flex, Text, VStack } from "@chakra-ui/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getChartColor } from "./utils/chartColors";
+import { GraficoCard } from "./GraficoCard";
 
 interface GroupedBarData {
   categoria: string;
@@ -39,30 +40,23 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export function GroupedStackedBar({ title, data, keys, keyLabels = {} }: GroupedStackedBarProps) {
   if (!data || data.length === 0) {
     return (
-      <Card.Root shadow="md" h="full">
-        <Card.Header>
-          <Text fontSize="md" fontWeight="semibold">{title}</Text>
-        </Card.Header>
-        <Card.Body>
-          <VStack py={8}>
-            <Text color="gray.500" fontSize="sm">Sin datos para mostrar</Text>
-          </VStack>
-        </Card.Body>
-      </Card.Root>
+      <GraficoCard title={title} descargable={false}>
+        <VStack py={8}>
+          <Text color="gray.500" fontSize="sm">Sin datos para mostrar</Text>
+        </VStack>
+      </GraficoCard>
     );
   }
 
   return (
-    <Card.Root shadow="md" h="full">
-      <Card.Header>
-        <Text fontSize="md" fontWeight="semibold">{title}</Text>
-      </Card.Header>
-      <Card.Body>
+    <GraficoCard title={title}>
+      {/* Ocupa el espacio libre de la tarjeta y centra el gráfico en vertical */}
+      <Flex flex="1" direction="column" justify="center">
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 40 }}>
+          <BarChart data={data} margin={{ top: 10, right: 5, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
             <XAxis dataKey="categoria" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" interval={0} height={60} />
-            <YAxis tick={{ fontSize: 9 }} width={30} />
+            <YAxis tick={{ fontSize: 9 }} width={36} allowDecimals={false} />
             <Tooltip content={<CustomTooltip />} />
             {keys.map((key, idx) => (
               <Bar
@@ -76,16 +70,16 @@ export function GroupedStackedBar({ title, data, keys, keyLabels = {} }: Grouped
             ))}
           </BarChart>
         </ResponsiveContainer>
-        {/* Leyenda */}
-        <Flex gap={4} wrap="wrap" mt={4} justify="center">
-          {keys.map((key, idx) => (
-            <Flex key={key} align="center" gap={2}>
-              <Box w={3} h={3} borderRadius="sm" bg={getChartColor(keyLabels[key] || key, idx)} />
-              <Text fontSize="xs" color="gray.600">{keyLabels[key] || key}</Text>
-            </Flex>
-          ))}
-        </Flex>
-      </Card.Body>
-    </Card.Root>
+      </Flex>
+      {/* Leyenda */}
+      <Flex gap={4} wrap="wrap" pt={4} justify="center">
+        {keys.map((key, idx) => (
+          <Flex key={key} align="center" gap={2}>
+            <Box w={3} h={3} borderRadius="sm" bg={getChartColor(keyLabels[key] || key, idx)} />
+            <Text fontSize="xs" color="gray.600">{keyLabels[key] || key}</Text>
+          </Flex>
+        ))}
+      </Flex>
+    </GraficoCard>
   );
 }

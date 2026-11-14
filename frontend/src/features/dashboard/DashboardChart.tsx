@@ -1,4 +1,4 @@
-import { Box, Card, Text, VStack } from "@chakra-ui/react";
+import { Box, Text, VStack } from "@chakra-ui/react";
 import {
   PieChart,
   Pie,
@@ -14,6 +14,7 @@ import {
 import type { GraficoConfig } from "./types";
 import { getChartColor } from "./utils/chartColors";
 import { SegmentedBar } from "./SegmentedBar";
+import { GraficoCard } from "./GraficoCard";
 
 interface DashboardChartProps {
   title: string;
@@ -56,20 +57,13 @@ const PieTooltip = ({ active, payload }: any) => {
 
 // Sin datos: solo se muestra el mensaje, sin leyendas.
 const EmptyChart = ({ title }: { title: string }) => (
-  <Card.Root shadow='md' h='full'>
-    <Card.Header>
-      <Text fontSize='md' fontWeight='semibold'>
-        {title}
+  <GraficoCard title={title} descargable={false}>
+    <VStack py={8} gap={4}>
+      <Text color='gray.500' fontSize='sm'>
+        Sin datos para mostrar
       </Text>
-    </Card.Header>
-    <Card.Body>
-      <VStack py={8} gap={4}>
-        <Text color='gray.500' fontSize='sm'>
-          Sin datos para mostrar
-        </Text>
-      </VStack>
-    </Card.Body>
-  </Card.Root>
+    </VStack>
+  </GraficoCard>
 );
 
 const PieChartView = ({
@@ -86,46 +80,39 @@ const PieChartView = ({
   }));
 
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
-        </Text>
-      </Card.Header>
-      <Card.Body>
-        <ResponsiveContainer width='100%' height={300}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx='50%'
-              cy='50%'
-              outerRadius={110}
-              dataKey='value'
-              labelLine={false}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip content={<PieTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-        <VStack align='start' gap={2} mt={2}>
-          {config.leyendas.map((leyenda, idx) => {
-            const dato = config.datos[idx];
-            const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
-            return (
-              <Box key={idx} display='flex' alignItems='center' gap={2}>
-                <Box w={3} h={3} borderRadius='full' bg={color} />
-                <Text fontSize='xs' color='gray.600'>
-                  {leyenda.label}
-                </Text>
-              </Box>
-            );
-          })}
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+    <GraficoCard title={title}>
+      <ResponsiveContainer width='100%' height={300}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx='50%'
+            cy='50%'
+            outerRadius={110}
+            dataKey='value'
+            labelLine={false}
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip content={<PieTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+      <VStack align='start' gap={2} mt={2}>
+        {config.leyendas.map((leyenda, idx) => {
+          const dato = config.datos[idx];
+          const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
+          return (
+            <Box key={idx} display='flex' alignItems='center' gap={2}>
+              <Box w={3} h={3} borderRadius='full' bg={color} />
+              <Text fontSize='xs' color='gray.600'>
+                {leyenda.label}
+              </Text>
+            </Box>
+          );
+        })}
+      </VStack>
+    </GraficoCard>
   );
 };
 
@@ -143,21 +130,14 @@ const SegmentedBarChart = ({
   const total = segmentos.reduce((sum, seg) => sum + seg.valor, 0);
 
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
+    <GraficoCard title={title}>
+      <VStack align='stretch' gap={4}>
+        <Text fontSize='xs' color='gray.500' fontWeight='medium'>
+          Total: {total}
         </Text>
-      </Card.Header>
-      <Card.Body>
-        <VStack align='stretch' gap={4}>
-          <Text fontSize='xs' color='gray.500' fontWeight='medium'>
-            Total: {total}
-          </Text>
-          <SegmentedBar segmentos={segmentos} mostrarLeyenda={true} />
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+        <SegmentedBar segmentos={segmentos} mostrarLeyenda={true} />
+      </VStack>
+    </GraficoCard>
   );
 };
 
@@ -170,44 +150,37 @@ const FallbackBarChart = ({
 }) => {
   const total = config.datos.reduce((sum, item) => sum + item.valor, 0);
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
+    <GraficoCard title={title}>
+      <VStack align='stretch' gap={4}>
+        <Text fontSize='xs' color='gray.500' fontWeight='medium'>
+          Total: {total}
         </Text>
-      </Card.Header>
-      <Card.Body>
-        <VStack align='stretch' gap={4}>
-          <Text fontSize='xs' color='gray.500' fontWeight='medium'>
-            Total: {total}
-          </Text>
-          {config.datos.map((dato, idx) => {
-            const porcentaje = total > 0 ? (dato.valor / total) * 100 : 0;
-            const color = getChartColor(dato.label, idx);
-            return (
-              <Box key={idx}>
-                <Box display='flex' justifyContent='space-between' mb={1}>
-                  <Text fontSize='xs' color='gray.600'>
-                    {dato.label}
-                  </Text>
-                  <Text fontSize='xs' fontWeight='medium'>
-                    {dato.valor} ({porcentaje.toFixed(1)}%)
-                  </Text>
-                </Box>
-                <Box
-                  h='8px'
-                  bg='gray.100'
-                  borderRadius='full'
-                  overflow='hidden'
-                >
-                  <Box h='full' bg={color} w={`${porcentaje}%`} />
-                </Box>
+        {config.datos.map((dato, idx) => {
+          const porcentaje = total > 0 ? (dato.valor / total) * 100 : 0;
+          const color = getChartColor(dato.label, idx);
+          return (
+            <Box key={idx}>
+              <Box display='flex' justifyContent='space-between' mb={1}>
+                <Text fontSize='xs' color='gray.600'>
+                  {dato.label}
+                </Text>
+                <Text fontSize='xs' fontWeight='medium'>
+                  {dato.valor} ({porcentaje.toFixed(1)}%)
+                </Text>
               </Box>
-            );
-          })}
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+              <Box
+                h='8px'
+                bg='gray.100'
+                borderRadius='full'
+                overflow='hidden'
+              >
+                <Box h='full' bg={color} w={`${porcentaje}%`} />
+              </Box>
+            </Box>
+          );
+        })}
+      </VStack>
+    </GraficoCard>
   );
 };
 
@@ -258,60 +231,53 @@ const BarChartView = ({
   };
 
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
-        </Text>
-      </Card.Header>
-      <Card.Body>
-        <ResponsiveContainer width='100%' height={280}>
-          <BarChart
-            data={data}
-            margin={{ top: 5, right: 10, left: -10, bottom: 40 }}
-          >
-            <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
-            <XAxis
-              dataKey='name'
-              tick={{ fontSize: 9 }}
-              angle={-25}
-              textAnchor='end'
-              interval={0}
-              height={60}
-            />
-            <YAxis tick={{ fontSize: 9 }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey='value' radius={[4, 4, 0, 0]}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-        {!isLotes && (
-          <VStack align='start' gap={2} mt={2}>
-            {config.leyendas.map((leyenda, idx) => {
-              const dato = config.datos[idx];
-              const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
-              return (
-                <Box key={idx} display='flex' alignItems='center' gap={2}>
-                  <Box
-                    w={3}
-                    h={3}
-                    borderRadius='full'
-                    bg={color}
-                    flexShrink={0}
-                  />
-                  <Text fontSize='xs' color='gray.600'>
-                    {leyenda.label}
-                  </Text>
-                </Box>
-              );
-            })}
-          </VStack>
-        )}
-      </Card.Body>
-    </Card.Root>
+    <GraficoCard title={title}>
+      <ResponsiveContainer width='100%' height={280}>
+        <BarChart
+          data={data}
+          margin={{ top: 5, right: 10, left: -10, bottom: 40 }}
+        >
+          <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
+          <XAxis
+            dataKey='name'
+            tick={{ fontSize: 9 }}
+            angle={-25}
+            textAnchor='end'
+            interval={0}
+            height={60}
+          />
+          <YAxis tick={{ fontSize: 9 }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar dataKey='value' radius={[4, 4, 0, 0]}>
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      {!isLotes && (
+        <VStack align='start' gap={2} mt={2}>
+          {config.leyendas.map((leyenda, idx) => {
+            const dato = config.datos[idx];
+            const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
+            return (
+              <Box key={idx} display='flex' alignItems='center' gap={2}>
+                <Box
+                  w={3}
+                  h={3}
+                  borderRadius='full'
+                  bg={color}
+                  flexShrink={0}
+                />
+                <Text fontSize='xs' color='gray.600'>
+                  {leyenda.label}
+                </Text>
+              </Box>
+            );
+          })}
+        </VStack>
+      )}
+    </GraficoCard>
   );
 };
 
