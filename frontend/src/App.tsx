@@ -15,6 +15,7 @@ import { RequireAuth } from "./features/auth/RequireAuth";
 import LoginPage from "./pages/LoginPage";
 import EquiposPage from "./pages/EquiposPage";
 import InsumoPage from "./pages/InsumoPage";
+import AlimentoReferenciaPage from "./pages/AlimentoReferenciaPage";
 import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
@@ -215,6 +216,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <InsumoPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/alimentos-referencia'
+              element={
+                <RequireAuth>
+                  <AlimentoReferenciaPage />
                 </RequireAuth>
               }
             />

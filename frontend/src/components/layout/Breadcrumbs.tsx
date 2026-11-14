@@ -27,6 +27,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   sectores: "Sectores",
   insumos: "Insumos",
   "insumos-quimicos": "Insumos Químicos",
+  "alimentos-referencia": "Alimentos de referencia",
   "elementos-limpieza": "Elementos de limpieza",
   productos: "Productos",
   "unidades-de-medida": "Unidades de medida",
