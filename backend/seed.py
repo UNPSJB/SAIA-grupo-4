@@ -100,6 +100,8 @@ from src.documentos.services import listar_alertas as listar_alertas_documentos
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.equipos.models import CalibracionEquipo, Equipo
 from src.incidentes.models import Incidente
+from src.alimento_referencia.models import AlimentoReferencia
+from src.alimento_referencia.services import sembrar_alimentos_sara
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.productos.models import Producto
@@ -756,8 +758,36 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             antiguedad_calibracion,
         ) in _ciclar(EQUIPOS, cantidad, campos=(0, 2))
     ]
-    insumos = [
-        Insumo(
+    sembrar_alimentos_sara(db, normalizar_ascii=True, commit=False)
+    refs_por_codigo = {
+        a.codigo: a
+        for a in db.scalars(select(AlimentoReferencia)).all()
+        if a.codigo
+    }
+
+    mapa_sara_insumos = {
+        "Harina de Trigo 000": ("A033", "100g", False),
+        "Manteca de Primera": ("G010", "100g", False),
+        "Azucar Comun": ("D003", "100g", False),
+        "Huevos Frescos": ("U001", "100g", False),
+        "Cacao Amargo en Polvo": ("D018", "100g", True),
+        "Leche Entera Pasteurizada": ("L020", "100ml", False),
+    }
+
+    ahora_carga = datetime.combine(hoy - timedelta(days=5), time(10, 0))
+    insumos = []
+    for (
+        nombre,
+        indice_unidad,
+        categoria,
+        descripcion,
+        denominacion_rotulo,
+        clase_funcional,
+        numero_ins,
+        densidad_g_ml,
+        peso_unitario_g,
+    ) in _ciclar(INSUMOS, cantidad):
+        ins = Insumo(
             nombre=nombre,
             unidad_medida=unidades[indice_unidad % len(unidades)],
             categoria=categoria,
@@ -769,19 +799,41 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             peso_unitario_g=peso_unitario_g,
             consumo=Decimal("0"),
             disponible=True,
+            base_calculo="100ml" if densidad_g_ml is not None else "100g",
         )
-        for (
-            nombre,
-            indice_unidad,
-            categoria,
-            descripcion,
-            denominacion_rotulo,
-            clase_funcional,
-            numero_ins,
-            densidad_g_ml,
-            peso_unitario_g,
-        ) in _ciclar(INSUMOS, cantidad)
-    ]
+        if nombre in mapa_sara_insumos:
+            cod_sara, base_calc, modificada = mapa_sara_insumos[nombre]
+            ref = refs_por_codigo.get(cod_sara)
+            if ref is not None:
+                ins.base_calculo = base_calc
+                ins.alimento_referencia_id = ref.id
+                ins.fuente_nutricional = f"SARA 2 - {ref.alimento}"[:200]
+                ins.fecha_carga_nutricional = ahora_carga
+                ins.valor_energetico_kcal = ref.energia_kcal
+                ins.carbohidratos_g = ref.carbohidratos_g
+                ins.azucares_totales_g = Decimal("0.00")
+                ins.azucares_anadidos_g = Decimal("0.00")
+                ins.proteinas_g = ref.proteinas_g
+                ins.grasas_totales_g = ref.grasas_totales_g
+                ins.grasas_saturadas_g = ref.grasas_saturadas_g
+                ins.grasas_trans_g = Decimal("0.00")
+                ins.fibra_g = ref.fibra_g
+                ins.sodio_mg = ref.sodio_mg
+                if modificada:
+                    ins.grasas_totales_g = Decimal("11.00")
+                    ins.es_nutricion_modificada = True
+                    ins.fecha_modificacion_nutricional = ahora_carga + timedelta(days=2)
+        elif nombre == "Sal Fina Marina":
+            ins.fuente_nutricional = "Rotulo del proveedor"
+            ins.fecha_carga_nutricional = ahora_carga
+            ins.valor_energetico_kcal = Decimal("0.00")
+            ins.sodio_mg = Decimal("38758.00")
+        elif nombre == "Levadura Prensada":
+            ins.fuente_nutricional = "Rotulo del proveedor"
+            ins.fecha_carga_nutricional = ahora_carga
+            ins.valor_energetico_kcal = Decimal("105.00")
+            ins.sodio_mg = Decimal("30.00")
+        insumos.append(ins)
 
     productos = [
         Producto(
@@ -2257,6 +2309,16 @@ def _verificar_cantidades(db, cantidad):
                 f"y se esperaban {cantidad}."
             )
 
+    total_sara = db.scalar(
+        select(func.count())
+        .select_from(AlimentoReferencia)
+        .where(AlimentoReferencia.es_oficial_sara.is_(True))
+    )
+    if total_sara != 379:
+        raise RuntimeError(
+            f"Se sembraron {total_sara} alimentos SARA 2 y se esperaban 379."
+        )
+
 
 def _verificar_vencimientos(db, cantidad):
     """La vista consolidada tiene que tener filas en los tres estados.
@@ -2706,6 +2768,10 @@ def main():
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
+            if personas:
+                for ins in catalogo["insumos"]:
+                    if ins.es_nutricion_modificada and ins.modificado_por_usuario_id is None:
+                        ins.modificado_por_usuario_id = personas[0].id
             _crear_documentos(db, personas, args.cantidad, hoy)
             documentos_personal = _crear_documentos_personal(db)
             _crear_vencimientos_personal(db, personas, documentos_personal, hoy)
