@@ -1,4 +1,4 @@
-import type { ElementType } from "react";
+import { createContext, useContext, type ElementType } from "react";
 import {
   Badge,
   Box,
@@ -27,6 +27,20 @@ import type {
   MetricasPublicas,
   VencimientosPublicos,
 } from "./types";
+
+// Modo impresión: lo activa IndicadoresPublicosPrintView. Se comparte por contexto
+// para no tener que pasar la prop a cada tarjeta interna.
+const ModoImpresionContext = createContext(false);
+const useModoImpresion = () => useContext(ModoImpresionContext);
+
+// Props de las tarjetas según el modo: en papel van sin sombra y sin cortarse entre hojas
+const useEstiloTarjeta = () => {
+  const impresion = useModoImpresion();
+  return {
+    shadow: impresion ? "none" : "sm",
+    className: impresion ? "no-cortar" : undefined,
+  } as const;
+};
 
 const TITULOS_CATEGORIA: Record<string, string> = {
   Equipos: "Equipos calibrados al día",
@@ -73,6 +87,7 @@ function BarraProgreso({
   porcentaje: number;
   sinDatos?: boolean;
 }) {
+  const impresion = useModoImpresion();
   const ancho = sinDatos ? 0 : Math.min(Math.max(porcentaje, 0), 100);
 
   return (
@@ -89,7 +104,10 @@ function BarraProgreso({
         borderRadius='full'
         style={{
           width: `${ancho}%`,
-          transition: "width 0.4s ease",
+          // En papel no hay animación y se fuerza a imprimir el color de fondo
+          transition: impresion ? undefined : "width 0.4s ease",
+          printColorAdjust: "exact",
+          WebkitPrintColorAdjust: "exact",
         }}
       />
     </Box>
@@ -105,9 +123,10 @@ function IndicadorAlDiaCard({
     TITULOS_CATEGORIA[categoria.nombre] ?? `${categoria.nombre} al día`;
   const Icono = ICONOS_CATEGORIA[categoria.nombre] ?? FiActivity;
   const sinDatos = categoria.total === 0;
+  const estiloTarjeta = useEstiloTarjeta();
 
   return (
-    <Card.Root shadow='sm' borderWidth='1px' borderColor='gray.200'>
+    <Card.Root {...estiloTarjeta} borderWidth='1px' borderColor='gray.200'>
       <Card.Body>
         <VStack align='stretch' gap={3}>
           <HStack justify='space-between' align='flex-start' gap={3}>
@@ -157,14 +176,16 @@ function CumplimientoCard({ metricas }: { metricas: MetricasPublicas }) {
   const detalleCumplimiento = sinTareas
     ? "Sin tareas cerradas en el período"
     : `${metricas.tareas_completadas} de ${metricas.tareas_totales} tareas cerradas`;
+  const impresion = useModoImpresion();
+  const estiloTarjeta = useEstiloTarjeta();
 
   return (
-    <Card.Root shadow='sm' borderWidth='1px' borderColor='gray.200'>
+    <Card.Root {...estiloTarjeta} borderWidth='1px' borderColor='gray.200'>
       <Card.Body>
         <Flex
-          direction={{ base: "column", md: "row" }}
+          direction={impresion ? "row" : { base: "column", md: "row" }}
           justify='space-between'
-          align={{ base: "stretch", md: "center" }}
+          align={impresion ? "center" : { base: "stretch", md: "center" }}
           gap={5}
         >
           <HStack gap={3} align='flex-start'>
@@ -216,7 +237,7 @@ function CumplimientoCard({ metricas }: { metricas: MetricasPublicas }) {
           <SimpleGrid
             columns={2}
             gap={3}
-            minW={{ base: "100%", md: "260px" }}
+            minW={impresion ? "220px" : { base: "100%", md: "260px" }}
           >
             <MiniStat
               label='Realizadas'
@@ -246,10 +267,11 @@ function ResumenVencimientosCard({
   const total = vencimientos.total ?? 0;
   const porcentaje = vencimientos.porcentaje_al_dia ?? 0;
   const sinVencimientos = total === 0;
+  const estiloTarjeta = useEstiloTarjeta();
 
   return (
     <Card.Root
-      shadow='sm'
+      {...estiloTarjeta}
       borderWidth='1px'
       borderColor='gray.200'
       mb={4}
@@ -296,14 +318,16 @@ function IncidentesCard({
 }) {
   const sinDatos = incidentes.total === 0;
   const cerradosOptimo = incidentes.porcentaje_cerrados >= 80;
+  const impresion = useModoImpresion();
+  const estiloTarjeta = useEstiloTarjeta();
 
   return (
-    <Card.Root shadow='sm' borderWidth='1px' borderColor='gray.200'>
+    <Card.Root {...estiloTarjeta} borderWidth='1px' borderColor='gray.200'>
       <Card.Body>
         <Flex
-          direction={{ base: "column", md: "row" }}
+          direction={impresion ? "row" : { base: "column", md: "row" }}
           justify='space-between'
-          align={{ base: "stretch", md: "center" }}
+          align={impresion ? "center" : { base: "stretch", md: "center" }}
           gap={5}
         >
           <HStack gap={3} align='flex-start'>
@@ -357,7 +381,7 @@ function IncidentesCard({
           <SimpleGrid
             columns={2}
             gap={3}
-            minW={{ base: "100%", md: "260px" }}
+            minW={impresion ? "220px" : { base: "100%", md: "260px" }}
           >
             <MiniStat label='Abiertos' valor={incidentes.abiertos} />
             <MiniStat label='Cerrados' valor={incidentes.cerrados} />
@@ -377,44 +401,52 @@ function IncidentesCard({
 
 export function IndicadoresPublicosView({
   indicadores,
+  impresion = false,
 }: {
   indicadores: IndicadoresPublicos;
+  /** Modo impresión: una sola columna, sin sombras ni animaciones. */
+  impresion?: boolean;
 }) {
   const { metricas, vencimientos, incidentes } = indicadores;
   const categorias = vencimientos?.por_categoria ?? [];
   const hayResumenVencimientos = vencimientos?.porcentaje_al_dia != null;
 
   return (
-    <VStack align='stretch' gap={6}>
-      {metricas && <CumplimientoCard metricas={metricas} />}
+    <ModoImpresionContext.Provider value={impresion}>
+      <VStack align='stretch' gap={impresion ? 4 : 6}>
+        {metricas && <CumplimientoCard metricas={metricas} />}
 
-      {vencimientos && (hayResumenVencimientos || categorias.length > 0) && (
-        <Box>
-          <HStack gap={2} mb={3}>
-            <Icon as={FiCheckCircle} color='green.600' boxSize={5} />
-            <Text as='h2' fontSize='lg' fontWeight='semibold' color='gray.800'>
-              Vencimientos al día
-            </Text>
-          </HStack>
+        {vencimientos && (hayResumenVencimientos || categorias.length > 0) && (
+          <Box>
+            <HStack gap={2} mb={3}>
+              <Icon as={FiCheckCircle} color='green.600' boxSize={5} />
+              <Text as='h2' fontSize='lg' fontWeight='semibold' color='gray.800'>
+                Vencimientos al día
+              </Text>
+            </HStack>
 
-          {hayResumenVencimientos && (
-            <ResumenVencimientosCard vencimientos={vencimientos} />
-          )}
+            {hayResumenVencimientos && (
+              <ResumenVencimientosCard vencimientos={vencimientos} />
+            )}
 
-          {categorias.length > 0 && (
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-              {categorias.map((categoria) => (
-                <IndicadorAlDiaCard
-                  key={categoria.nombre}
-                  categoria={categoria}
-                />
-              ))}
-            </SimpleGrid>
-          )}
-        </Box>
-      )}
+            {categorias.length > 0 && (
+              <SimpleGrid
+                columns={impresion ? 1 : { base: 1, md: 2 }}
+                gap={impresion ? 3 : 4}
+              >
+                {categorias.map((categoria) => (
+                  <IndicadorAlDiaCard
+                    key={categoria.nombre}
+                    categoria={categoria}
+                  />
+                ))}
+              </SimpleGrid>
+            )}
+          </Box>
+        )}
 
-      {incidentes && <IncidentesCard incidentes={incidentes} />}
-    </VStack>
+        {incidentes && <IncidentesCard incidentes={incidentes} />}
+      </VStack>
+    </ModoImpresionContext.Provider>
   );
 }
