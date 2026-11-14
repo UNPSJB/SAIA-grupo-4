@@ -16,7 +16,7 @@ import {
 } from "./utils/datosDashboard";
 
 // Tamaño de cada gráfico en la hoja A4 (dos por fila)
-const TAMANO_GRAFICO: TamanoFijo = { width: 290, height: 210 };
+const TAMANO_GRAFICO: TamanoFijo = { width: 290, height: 160 };
 
 const TituloSeccion = ({ children }: { children: ReactNode }) => (
   <Text

@@ -40,6 +40,8 @@ export function GraficoCard({
     <Card.Root
       ref={tarjetaRef}
       h='full'
+      // En papel la tarjeta es más compacta (menos relleno) para que el informe entre en una hoja
+      size={impresion ? "sm" : "md"}
       shadow={impresion ? "none" : "md"}
       borderWidth={impresion ? "1px" : undefined}
       borderColor={impresion ? "gray.200" : undefined}

@@ -75,6 +75,11 @@ export function InformePrintLayout({
               color: #718096;
             }
           }
+          /* Textos de los ejes de los gráficos: el reset de Chakra les hace heredar
+             16px e ignorar el fontSize de Recharts, y en la hoja no entran */
+          .informe-print .recharts-cartesian-axis-tick-value {
+            font-size: 10px !important;
+          }
           @media print {
             html, body {
               background-color: #ffffff !important;
@@ -85,6 +90,19 @@ export function InformePrintLayout({
             /* Ocultar todo lo que no sea el informe */
             body * {
               visibility: hidden;
+            }
+            /* Además, que el resto de la app no ocupe lugar: si no, su altura
+               (aunque esté invisible) agrega hojas en blanco al final */
+            body *:not(:has(.informe-print)):not(.informe-print):not(.informe-print *) {
+              display: none !important;
+            }
+            html,
+            body,
+            body *:has(.informe-print) {
+              min-height: 0 !important;
+              height: auto !important;
+              padding: 0 !important;
+              margin: 0 !important;
             }
             .informe-print,
             .informe-print * {

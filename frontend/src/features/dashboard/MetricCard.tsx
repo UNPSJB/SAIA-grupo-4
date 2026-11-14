@@ -48,6 +48,7 @@ export function MetricCard({
     <Card.Root
       borderLeft="4px solid"
       borderLeftColor={color}
+      size={estatica ? "sm" : "md"}
       shadow={estatica ? "none" : "md"}
       // Borde fino en los otros tres lados, sin pisar el borde izquierdo de color
       borderTopWidth={estatica ? "1px" : undefined}

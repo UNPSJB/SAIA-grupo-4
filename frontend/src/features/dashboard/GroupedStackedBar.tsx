@@ -68,7 +68,8 @@ export function GroupedStackedBar({
       {/* Ocupa el espacio libre de la tarjeta y centra el gráfico en vertical */}
       <Flex flex="1" direction="column" justify="center">
         <ContenedorGrafico altoPantalla={260} fixedSize={fixedSize}>
-          <BarChart data={data} margin={{ top: 10, right: 5, left: 0, bottom: 0 }}>
+          {/* En impresión el gráfico es más angosto: margen izquierdo para que el primer nombre inclinado no se corte */}
+          <BarChart data={data} margin={{ top: 10, right: 5, left: impresion ? 25 : 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
             <XAxis dataKey="categoria" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" interval={0} height={60} />
             <YAxis tick={{ fontSize: 9 }} width={36} allowDecimals={false} />
