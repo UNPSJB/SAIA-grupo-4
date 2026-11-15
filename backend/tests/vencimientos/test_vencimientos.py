@@ -644,15 +644,7 @@ def test_categorias_endpoint_solo_expone_las_con_provider():
     data = client.get("/vencimientos/categorias").json()
 
     # Orden alfabetico por etiqueta legible.
-<<<<<<< HEAD
     assert [c["valor"] for c in data] == ["documento", "elemento_limpieza", "equipo", "personal"]
-    
-=======
-    valores = [c["valor"] for c in data]
-    assert "documento" in valores
-    assert "elemento_limpieza" in valores
-    assert "equipo" in valores
->>>>>>> origin/dev
 
 
 def test_categorias_endpoint_usa_la_etiqueta_legible():
