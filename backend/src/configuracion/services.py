@@ -7,8 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.configuracion import exceptions, schemas
-from src.configuracion.constants import Constantes
-from src.configuracion.models import ConfiguracionSistema
+from src.configuracion.constants import Constantes, ErrorCode, EstadoVersionNormativa, NORMATIVA_INICIAL_NOMBRE, REGLAS_INICIALES_LEY_27642
+from src.configuracion.models import ConfiguracionSistema, ConfiguracionModulo, VersionParametroFrontal, ReglaUmbralFrontal
+from src.configuracion.schemas import ConfiguracionSistemaUpdate, ModuloOctogonosUpdate, ParametrosFrontalesConsolidadoResponse, VersionParametroFrontalCreate
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOAD_DIR = BASE_DIR / "uploads" / "configuracion"
@@ -92,3 +93,119 @@ def eliminar_logo(db: Session, usuario_id: int) -> ConfiguracionSistema:
     db.commit()
     db.refresh(config)
     return config
+
+
+def inicializar_parametros_frontales(db: Session) -> VersionParametroFrontal:
+    """Crea la configuración del módulo de octógonos y la Versión 1 (Ley 27.642) si no existen."""
+    modulo = db.get(ConfiguracionModulo, 1)
+    if modulo is None:
+        modulo = ConfiguracionModulo(
+            id=1,
+            octogonos_activos=True,
+            observacion="Módulo de rotulado frontal activo por defecto (Ley 27.642)",
+            fecha_modificacion=datetime.now(),
+        )
+        db.add(modulo)
+
+    version_vigente = db.scalar(
+        select(VersionParametroFrontal).where(
+            VersionParametroFrontal.estado == EstadoVersionNormativa.VIGENTE
+        )
+    )
+    if version_vigente is None:
+        ahora = datetime.now()
+        version_vigente = VersionParametroFrontal(
+            numero_version=1,
+            normativa_referencia=NORMATIVA_INICIAL_NOMBRE,
+            motivo_cambio="Carga inicial automática de parámetros normativos (ANMAT Etapa 2)",
+            estado=EstadoVersionNormativa.VIGENTE,
+            fecha_vigencia_desde=ahora,
+            fecha_vigencia_hasta=None,
+            creado_por_id=None,
+        )
+        for regla_data in REGLAS_INICIALES_LEY_27642:
+            version_vigente.reglas.append(ReglaUmbralFrontal(**regla_data))
+        db.add(version_vigente)
+
+    db.commit()
+    db.refresh(version_vigente)
+    return version_vigente
+
+
+def obtener_estado_parametros_frontales(
+    db: Session,
+) -> ParametrosFrontalesConsolidadoResponse:
+    version_vigente = inicializar_parametros_frontales(db)
+    modulo = db.get(ConfiguracionModulo, 1)
+
+    historial = list(
+        db.scalars(
+            select(VersionParametroFrontal)
+            .where(VersionParametroFrontal.estado == EstadoVersionNormativa.HISTORICA)
+            .order_by(VersionParametroFrontal.numero_version.desc())
+        ).all()
+    )
+
+    return ParametrosFrontalesConsolidadoResponse(
+        modulo=modulo,
+        version_vigente=version_vigente,
+        historial=historial,
+    )
+
+
+def crear_nueva_version_parametros(
+    db: Session,
+    datos: VersionParametroFrontalCreate,
+    usuario: Persona,
+) -> ParametrosFrontalesConsolidadoResponse:
+    """Archiva la versión vigente como HISTORICA y crea una nueva versión VIGENTE."""
+    version_actual = inicializar_parametros_frontales(db)
+    ahora = datetime.now()
+
+    version_actual.estado = EstadoVersionNormativa.HISTORICA
+    version_actual.fecha_vigencia_hasta = ahora
+
+    nueva_version = VersionParametroFrontal(
+        numero_version=version_actual.numero_version + 1,
+        normativa_referencia=datos.normativa_referencia,
+        motivo_cambio=datos.motivo_cambio.strip() if datos.motivo_cambio else None,
+        estado=EstadoVersionNormativa.VIGENTE,
+        fecha_vigencia_desde=ahora,
+        fecha_vigencia_hasta=None,
+        creado_por_id=usuario.id,
+    )
+
+    for regla in datos.reglas:
+        nueva_version.reglas.append(
+            ReglaUmbralFrontal(
+                nutriente_critico=regla.nutriente_critico,
+                leyenda_sello=regla.leyenda_sello,
+                categoria=regla.categoria,
+                valor_umbral=regla.valor_umbral,
+                unidad_umbral=regla.unidad_umbral,
+                condicion=regla.condicion,
+            )
+        )
+
+    db.add(nueva_version)
+    db.commit()
+    db.refresh(nueva_version)
+
+    return obtener_estado_parametros_frontales(db)
+
+
+def actualizar_modulo_octogonos(
+    db: Session,
+    datos: ModuloOctogonosUpdate,
+    usuario: Persona,
+) -> ConfiguracionModulo:
+    inicializar_parametros_frontales(db)
+    modulo = db.get(ConfiguracionModulo, 1)
+    modulo.octogonos_activos = datos.octogonos_activos
+    modulo.observacion = datos.observacion.strip() if datos.observacion else None
+    modulo.fecha_modificacion = datetime.now()
+    modulo.modificado_por_id = usuario.id
+
+    db.commit()
+    db.refresh(modulo)
+    return modulo

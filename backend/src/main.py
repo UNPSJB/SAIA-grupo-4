@@ -47,7 +47,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
 from src.configuracion.router import router as configuracion_router
-from src.configuracion.services import obtener_o_crear_configuracion
+from src.configuracion.services import obtener_o_crear_configuracion, inicializar_parametros_frontales
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -61,6 +61,7 @@ async def db_creation_lifespan(app: FastAPI):
         inicializar_capacidades_sistema(db)
         inicializar_vista_publica(db)
         obtener_o_crear_configuracion(db)
+        inicializar_parametros_frontales(db)
     yield
 
 
