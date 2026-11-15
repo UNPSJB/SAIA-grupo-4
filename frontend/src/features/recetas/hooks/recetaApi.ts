@@ -7,6 +7,7 @@ import type {
   ComposicionPorcentualResponse,
   DeclaracionIngredientesResponse,
   FiltrosReceta,
+  InformacionNutricionalResponse,
   PasoReceta,
   PasoRecetaCreatePayload,
   PasoRecetaUpdatePayload,
@@ -99,6 +100,8 @@ export const recetasApi = {
   obtenerRecetaActiva: (id: number) => request<Receta>(`/recetas/activas/${id}`),
   obtenerComposicionPorcentual: (id: number) =>
     request<ComposicionPorcentualResponse>(`/recetas/${id}/composicion-porcentual`),
+  obtenerInformacionNutricional: (id: number) =>
+    request<InformacionNutricionalResponse>(`/recetas/${id}/informacion-nutricional`),
   obtenerDeclaracionIngredientes: (id: number) =>
     request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes`),
   guardarOrdenManualDeclaracion: (id: number, insumoIds: number[]) =>

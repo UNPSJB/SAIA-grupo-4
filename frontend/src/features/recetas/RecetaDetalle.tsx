@@ -189,6 +189,13 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           valor: `${receta.rendimiento_estandar} g`,
         },
         {
+          label: "Tamaño de porción",
+          valor:
+            receta.tamano_porcion != null
+              ? `${receta.tamano_porcion} g`
+              : "No especificado",
+        },
+        {
           label: "Tiempo estimado total",
           valor:
             receta.tiempo_estimado_total != null

@@ -81,6 +81,7 @@ export interface Receta {
   producto_id: number;
   producto?: ProductoResumen;
   rendimiento_estandar: number;
+  tamano_porcion?: number | null;
   tiempo_estimado_total?: number;
   estado: EstadoReceta;
   observaciones?: string;
@@ -104,6 +105,7 @@ export interface RecetaCreatePayload {
   nombre_receta: string;
   producto_id: number;
   rendimiento_estandar: number;
+  tamano_porcion?: number | null;
   tiempo_estimado_total?: number;
   observaciones?: string;
 }
@@ -111,6 +113,7 @@ export interface RecetaCreatePayload {
 export interface RecetaUpdatePayload {
   nombre_receta?: string;
   rendimiento_estandar?: number;
+  tamano_porcion?: number | null;
   tiempo_estimado_total?: number | null;
   observaciones?: string | null;
 }
@@ -170,6 +173,45 @@ export interface DeclaracionIngredientesResponse {
   insumos_sin_equivalencia: InsumoSinEquivalencia[];
   items: ItemDeclaracionIngrediente[];
   texto_legal_rotulo: string;
+}
+
+export interface InsumoNutricionPendiente {
+  insumo_id: number;
+  nombre: string;
+  categoria: string;
+  campos_faltantes: string[];
+  mensaje: string;
+}
+
+export interface FilaNutrienteCalculado {
+  codigo_nutriente: string;
+  nombre_etiqueta: string;
+  unidad: string;
+  orden: number;
+  nivel_indentacion: number;
+  valor_100g?: number | null;
+  valor_100g_formateado?: string | null;
+  valor_100g_kj?: number | null;
+  valor_porcion?: number | null;
+  valor_porcion_formateado?: string | null;
+  valor_porcion_kj?: number | null;
+  porcentaje_vd?: number | null;
+  lleva_vd: boolean;
+  es_no_significativo_porcion: boolean;
+}
+
+export interface InformacionNutricionalResponse {
+  receta_id: number;
+  codigo_receta: string;
+  nombre_receta: string;
+  rendimiento_estandar_g: number;
+  tamano_porcion_g?: number | null;
+  es_calculable: boolean;
+  tiene_porcion: boolean;
+  insumos_sin_equivalencia: InsumoSinEquivalencia[];
+  insumos_nutricion_pendiente: InsumoNutricionPendiente[];
+  filas: FilaNutrienteCalculado[];
+  leyenda_vd: string;
 }
 
 

@@ -14,6 +14,7 @@ import {
 import type {
   ComposicionPorcentualResponse,
   DeclaracionIngredientesResponse,
+  InformacionNutricionalResponse,
   PasoReceta,
   Receta,
 } from "./types";
@@ -37,6 +38,7 @@ export interface FichaRecetaPrintProps {
   receta: Receta;
   composicion?: ComposicionPorcentualResponse | null;
   declaracion?: DeclaracionIngredientesResponse | null;
+  infoNutricional?: InformacionNutricionalResponse | null;
   esModoAdmin?: boolean;
 }
 
@@ -110,6 +112,7 @@ export const FichaRecetaPrint = ({
   receta,
   composicion,
   declaracion,
+  infoNutricional,
   esModoAdmin = false,
 }: FichaRecetaPrintProps) => {
   const { insumos, equipos, pasosOrdenados } = useMemo(
@@ -609,6 +612,121 @@ export const FichaRecetaPrint = ({
               </Text>
             </Box>
           )}
+        </Box>
+      )}
+
+      {/* Información Nutricional del Producto Terminado (CAA / Mercosur) */}
+      {infoNutricional && (
+        <Box mb={4} css={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+          <Heading
+            size="sm"
+            color="green.700"
+            borderBottomWidth="1px"
+            borderColor="gray.300"
+            pb={1}
+            mb={2}
+          >
+            Información Nutricional (CAA Cap. V / Mercosur)
+          </Heading>
+          <Box
+            p={3}
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.300"
+            borderRadius="md"
+          >
+            <HStack justify="space-between" align="center" mb={2} flexWrap="wrap" gap={2}>
+            <Heading size="xs" color="gray.800" textTransform="uppercase">
+              Información Nutricional
+            </Heading>
+            <HStack gap={1.5}>
+              <Badge colorPalette="blue" variant="subtle" size="xs">
+                Rendimiento: {Number(infoNutricional.rendimiento_estandar_g).toLocaleString("es-AR")} g
+              </Badge>
+              {infoNutricional.tiene_porcion && infoNutricional.tamano_porcion_g != null ? (
+                <Badge colorPalette="teal" variant="subtle" size="xs">
+                  Porción: {Number(infoNutricional.tamano_porcion_g).toLocaleString("es-AR")} g
+                </Badge>
+              ) : (
+                <Badge colorPalette="gray" variant="outline" size="xs">
+                  Sin porción configurada
+                </Badge>
+              )}
+            </HStack>
+          </HStack>
+
+          {!infoNutricional.es_calculable ? (
+            <Box bg="orange.50" p={2} borderRadius="md" borderWidth="1px" borderColor="orange.200">
+              <Text fontSize="2xs" fontWeight="bold" color="orange.900" mb={0.5}>
+                Información nutricional incompleta:
+              </Text>
+              {infoNutricional.insumos_nutricion_pendiente.map((item) => (
+                <Text key={item.insumo_id} fontSize="2xs" color="orange.800">
+                  • {item.nombre}: faltan {item.campos_faltantes.join(", ")}
+                </Text>
+              ))}
+              {infoNutricional.insumos_sin_equivalencia.map((sin) => (
+                <Text key={sin.insumo_id} fontSize="2xs" color="orange.800">
+                  • {sin.mensaje}
+                </Text>
+              ))}
+            </Box>
+          ) : (
+            <>
+              <Table.Root size="sm" variant="line" mb={1.5}>
+                <Table.Header bg="gray.100">
+                  <Table.Row>
+                    <Table.ColumnHeader fontSize="2xs" py={1} color="gray.700">
+                      Nutriente
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" py={1} textAlign="right" color="gray.700">
+                      Por 100 g
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" py={1} textAlign="right" color="gray.700">
+                      {infoNutricional.tiene_porcion && infoNutricional.tamano_porcion_g != null
+                        ? `Por porción (${Number(infoNutricional.tamano_porcion_g).toLocaleString("es-AR")} g)`
+                        : "Por porción"}
+                    </Table.ColumnHeader>
+                    <Table.ColumnHeader fontSize="2xs" py={1} textAlign="right" color="gray.700">
+                      % VD (*)
+                    </Table.ColumnHeader>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {infoNutricional.filas.map((fila) => (
+                    <Table.Row key={fila.codigo_nutriente}>
+                      <Table.Cell
+                        fontSize="2xs"
+                        py={1}
+                        pl={fila.nivel_indentacion === 0 ? 2 : fila.nivel_indentacion === 1 ? 5 : 8}
+                        fontWeight={fila.nivel_indentacion === 0 ? "semibold" : "normal"}
+                        color="gray.800"
+                      >
+                        {fila.nombre_etiqueta}
+                      </Table.Cell>
+                      <Table.Cell fontSize="2xs" py={1} textAlign="right" color="gray.800">
+                        {fila.valor_100g_formateado ?? "—"}
+                      </Table.Cell>
+                      <Table.Cell fontSize="2xs" py={1} textAlign="right" color="gray.800">
+                        {infoNutricional.tiene_porcion ? (fila.valor_porcion_formateado ?? "—") : "—"}
+                      </Table.Cell>
+                      <Table.Cell fontSize="2xs" py={1} textAlign="right" color="gray.800">
+                        {!fila.lleva_vd || !infoNutricional.tiene_porcion
+                          ? "—"
+                          : fila.porcentaje_vd != null
+                          ? `${fila.porcentaje_vd}%`
+                          : "—"}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Root>
+              <Text fontSize="2xs" color="gray.600" lineHeight="1.3">
+                {infoNutricional.leyenda_vd}
+              </Text>
+            </>
+          )}
+          </Box>
         </Box>
       )}
 

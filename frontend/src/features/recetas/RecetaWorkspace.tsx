@@ -58,7 +58,7 @@ const estadoInfo: Record<
 > = {
   BORRADOR: { texto: "Borrador", color: "orange" },
   ACTIVA: { texto: "Activa", color: "green" },
-  INHABILITADA: { texto: "Inhabilitada", color: "red" },
+  INHABILITADA: { texto: "Archivada", color: "red" },
 };
 
 const Chip = ({
@@ -655,7 +655,7 @@ export default function RecetaWorkspace({
         {esInhabilitada && (
           <AlertMessage
             type="info"
-            message="La receta está inhabilitada. Para volver a usarla, copiala desde el listado de recetas."
+            message="La receta está archivada. Para volver a usarla, copiala desde el listado de recetas."
           />
         )}
 
@@ -826,7 +826,7 @@ export default function RecetaWorkspace({
           esBorrador
             ? `¿Está seguro que desea descartar la receta "${receta.nombre_receta}"? Se eliminará definitivamente.`
             : receta.tiene_lotes
-            ? `¿Está seguro que desea dar de baja la receta "${receta.nombre_receta}"? Pasará a estado INHABILITADA ya que posee lotes de producción asociados.`
+            ? `¿Está seguro que desea dar de baja la receta "${receta.nombre_receta}"? Pasará a estado Archivada ya que posee lotes de producción asociados.`
             : `¿Está seguro que desea eliminar la receta "${receta.nombre_receta}"? Se eliminará definitivamente ya que no posee lotes asociados.`
         }
         confirmLabel={

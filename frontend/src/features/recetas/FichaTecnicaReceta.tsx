@@ -32,11 +32,13 @@ import { recetasApi } from "./hooks/recetaApi";
 import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
 import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import { TablaComposicionPorcentual } from "./components/TablaComposicionPorcentual";
+import { TablaInformacionNutricional } from "./components/TablaInformacionNutricional";
 import { ListaDeclaracionIngredientes } from "./components/ListaDeclaracionIngredientes";
 import { ESTADOS_RECETA } from "./constants";
 import type {
   ComposicionPorcentualResponse,
   DeclaracionIngredientesResponse,
+  InformacionNutricionalResponse,
   PasoReceta,
   Receta,
 } from "./types";
@@ -88,6 +90,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     useState<ComposicionPorcentualResponse | null>(null);
   const [declaracion, setDeclaracion] =
     useState<DeclaracionIngredientesResponse | null>(null);
+  const [infoNutricional, setInfoNutricional] =
+    useState<InformacionNutricionalResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -103,15 +107,17 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
 
     try {
       if (esModoAdmin) {
-        // En modo admin, cargamos la receta, composición porcentual y declaración de ingredientes
-        const [dataReceta, dataComp, dataDecl] = await Promise.all([
+        // En modo admin, cargamos la receta, composición porcentual, declaración e información nutricional
+        const [dataReceta, dataComp, dataDecl, dataNutri] = await Promise.all([
           recetasApi.obtenerReceta(recetaId),
           recetasApi.obtenerComposicionPorcentual(recetaId).catch(() => null),
           recetasApi.obtenerDeclaracionIngredientes(recetaId).catch(() => null),
+          recetasApi.obtenerInformacionNutricional(recetaId).catch(() => null),
         ]);
         setReceta(dataReceta);
         setComposicion(dataComp);
         setDeclaracion(dataDecl);
+        setInfoNutricional(dataNutri);
       } else {
         // En modo operador, consultamos la receta activa
         const dataReceta = await recetasApi.obtenerRecetaActiva(recetaId);
@@ -304,6 +310,13 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               texto={`Rendimiento: ${rendimientoTexto}`}
               colorPalette="blue"
             />
+            {receta.tamano_porcion != null && (
+              <Chip
+                icon={FiActivity}
+                texto={`Porción: ${Number(receta.tamano_porcion).toLocaleString("es-AR")} g`}
+                colorPalette="teal"
+              />
+            )}
             {receta.tiempo_estimado_total != null && (
               <Chip
                 icon={FiClock}
@@ -355,6 +368,13 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                 declaracion={declaracion}
                 onDeclaracionChange={setDeclaracion}
               />
+            </Box>
+          )}
+
+          {/* Información Nutricional del Producto Terminado (solo en modo administración) */}
+          {esModoAdmin && infoNutricional && (
+            <Box mt={3} mb={6}>
+              <TablaInformacionNutricional informacion={infoNutricional} />
             </Box>
           )}
 
@@ -579,6 +599,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
         receta={receta}
         composicion={composicion}
         declaracion={esModoAdmin ? declaracion : null}
+        infoNutricional={esModoAdmin ? infoNutricional : null}
         esModoAdmin={esModoAdmin}
       />
     </>

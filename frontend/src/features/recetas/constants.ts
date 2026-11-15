@@ -6,5 +6,5 @@ export const ESTADOS_RECETA: Record<
 > = {
   BORRADOR: { texto: "Borrador", color: "orange" },
   ACTIVA: { texto: "Activa", color: "green" },
-  INHABILITADA: { texto: "Inhabilitada", color: "red" },
+  INHABILITADA: { texto: "Archivada", color: "red" },
 };
