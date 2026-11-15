@@ -234,6 +234,91 @@ def insumos_caa(session, datos_base):
     }
 
 
+@pytest.fixture
+def setup_nutricion(session):
+    um_g = UnidadMedida(nombre=generar_string_unico("Gramo"), simbolo="g", tipo_magnitud="masa", disponible=True)
+    um_vol = UnidadMedida(nombre=generar_string_unico("Mililitro"), simbolo="ml", tipo_magnitud="volumen", disponible=True)
+    session.add_all([um_g, um_vol])
+    session.commit()
+    session.refresh(um_g)
+    session.refresh(um_vol)
+
+    prod = Producto(
+        nombre=generar_string_unico("Producto Nutricion"),
+        descripcion="Producto para prueba nutricional",
+        unidad_medida_id=um_g.id,
+        activo=True,
+    )
+    session.add(prod)
+    session.commit()
+    session.refresh(prod)
+
+    # Harina: 100g -> 360 kcal, 75g carb, 1g azuc tot, 0g azuc anad, 10g prot, 1g grasas tot, 0.2g sat, 0g trans, 3g fibra, 2mg sodio
+    harina = Insumo(
+        nombre=generar_string_unico("Harina"),
+        unidad_medida_id=um_g.id,
+        categoria="materia prima",
+        valor_energetico_kcal=360,
+        carbohidratos_g=75,
+        azucares_totales_g=1,
+        azucares_anadidos_g=0,
+        proteinas_g=10,
+        grasas_totales_g=1,
+        grasas_saturadas_g=0.2,
+        grasas_trans_g=0,
+        fibra_g=3,
+        sodio_mg=2,
+    )
+    # Aditivo completo (solo requiere kcal y sodio)
+    sal_aditivo = Insumo(
+        nombre=generar_string_unico("Aditivo Sal"),
+        unidad_medida_id=um_g.id,
+        categoria="aditivo",
+        clase_funcional="Acentuador de sabor",
+        numero_ins="621",
+        valor_energetico_kcal=0,
+        sodio_mg=39000,
+    )
+    # Insumo con datos pendientes
+    insumo_pendiente = Insumo(
+        nombre=generar_string_unico("Azucar Pendiente"),
+        unidad_medida_id=um_g.id,
+        categoria="materia prima",
+        valor_energetico_kcal=400,
+    )
+    # Insumo sin equivalencia a gramos (volumen sin densidad)
+    agua_sin_densidad = Insumo(
+        nombre=generar_string_unico("Agua Sin Densidad"),
+        unidad_medida_id=um_vol.id,
+        categoria="materia prima",
+        valor_energetico_kcal=0,
+        carbohidratos_g=0,
+        azucares_totales_g=0,
+        azucares_anadidos_g=0,
+        proteinas_g=0,
+        grasas_totales_g=0,
+        grasas_saturadas_g=0,
+        grasas_trans_g=0,
+        fibra_g=0,
+        sodio_mg=0,
+    )
+
+    session.add_all([harina, sal_aditivo, insumo_pendiente, agua_sin_densidad])
+    session.commit()
+    for obj in (harina, sal_aditivo, insumo_pendiente, agua_sin_densidad):
+        session.refresh(obj)
+
+    return {
+        "session": session,
+        "prod": prod,
+        "harina": harina,
+        "sal_aditivo": sal_aditivo,
+        "insumo_pendiente": insumo_pendiente,
+        "agua_sin_densidad": agua_sin_densidad,
+        "admin_id": 1,
+    }
+
+
 def test_crear_receta_borrador_exitoso(datos_base):
     payload = {
         "nombre_receta": "Pan de Molde Sésamo",
@@ -1326,6 +1411,23 @@ def test_orden_manual_y_restablecer(datos_base, insumos_caa):
     assert data_ok["es_orden_manual"] is True
     assert [it["insumo_id"] for it in data_ok["items"]] == orden_valido
 
+    # 3b. Si se vuelve manualmente al orden automático original, es_orden_manual pasa a False
+    orden_original = [i1.id, i2.id, i3.id, ad1.id, ad2.id]
+    res_vuelta = client.put(
+        f"/recetas/{receta_id}/declaracion-ingredientes/orden-manual",
+        json={"insumo_ids_ordenados": orden_original},
+    )
+    assert res_vuelta.status_code == 200
+    assert res_vuelta.json()["es_orden_manual"] is False
+
+    # Volver a dejarlo manual para probar el DELETE
+    res_ok2 = client.put(
+        f"/recetas/{receta_id}/declaracion-ingredientes/orden-manual",
+        json={"insumo_ids_ordenados": orden_valido},
+    )
+    assert res_ok2.status_code == 200
+    assert res_ok2.json()["es_orden_manual"] is True
+
     # 4. Restablecer orden automático con DELETE
     res_del = client.delete(f"/recetas/{receta_id}/declaracion-ingredientes/orden-manual")
     assert res_del.status_code == 200
@@ -1379,6 +1481,95 @@ def test_aditivos_agrupados_por_clase_en_texto_legal_y_rechazo_fragmentacion(dat
     )
     assert res_frag.status_code == 400
     assert "fragmentada" in res_frag.json()["detail"].lower()
+
+
+def test_calculo_informacion_nutricional_completo(setup_nutricion):
+    db = setup_nutricion["session"]
+    # Receta: 500 g harina + 1 g aditivo sal -> rendimiento_estandar 500 g, tamano_porcion 50 g
+    receta = Receta(
+        codigo_receta=generar_string_unico("REC"),
+        nombre_receta="Pan Simple",
+        producto_id=setup_nutricion["prod"].id,
+        rendimiento_estandar=500,
+        tamano_porcion=50,
+        usuario_creador_id=setup_nutricion["admin_id"],
+    )
+    db.add(receta)
+    db.flush()
+    paso = PasoReceta(receta_id=receta.id, numero_orden=1, titulo="Mezclado", instrucciones="Mezclar todo")
+    db.add(paso)
+    db.flush()
+    db.add_all([
+        PasoInsumo(paso_id=paso.id, insumo_id=setup_nutricion["harina"].id, cantidad_consumo_estimada=500),
+        PasoInsumo(paso_id=paso.id, insumo_id=setup_nutricion["sal_aditivo"].id, cantidad_consumo_estimada=1),
+    ])
+    db.commit()
+
+    res = client.get(f"/recetas/{receta.id}/informacion-nutricional")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["es_calculable"] is True
+    assert body["tiene_porcion"] is True
+    assert body["tamano_porcion_g"] == 50.0
+    assert "2.000 kcal u 8.400 kJ" in body["leyenda_vd"]
+
+    filas = {f["codigo_nutriente"]: f for f in body["filas"]}
+
+    # Energía por 100 g: (500/100)*360 = 1800 kcal total / 500 g * 100 = 360 kcal
+    assert filas["valor_energetico"]["valor_100g"] == 360.0
+    assert filas["valor_energetico"]["valor_100g_kj"] == 1506.0  # round(360 * 4.184) = 1506
+    # Energía por porción (50 g): 180 kcal -> 753 kJ; %VD = round(180 / 2000 * 100) = 9%
+    assert filas["valor_energetico"]["valor_porcion"] == 180.0
+    assert filas["valor_energetico"]["valor_porcion_kj"] == 753.0
+    assert filas["valor_energetico"]["porcentaje_vd"] == 9
+
+    # Sodio: harina (5*2=10 mg) + sal (0.01*39000=390 mg) = 400 mg total -> 80 mg / 100 g -> 40 mg / porción (2% VD)
+    assert filas["sodio"]["valor_100g"] == 80.0
+    assert filas["sodio"]["valor_porcion"] == 40.0
+    assert filas["sodio"]["porcentaje_vd"] == 2
+
+    # Grasas saturadas por porción: 0.2/100g -> 0.1g/porción <= umbral 0.2 -> No significativo ("0")
+    assert filas["grasas_saturadas"]["es_no_significativo_porcion"] is True
+    assert filas["grasas_saturadas"]["valor_porcion_formateado"] == "0 g"
+    assert filas["grasas_saturadas"]["porcentaje_vd"] == 0
+
+    # Azúcares totales y grasas trans NO llevan % VD
+    assert filas["azucares_totales"]["lleva_vd"] is False
+    assert filas["azucares_totales"]["porcentaje_vd"] is None
+    assert filas["grasas_trans"]["lleva_vd"] is False
+    assert filas["grasas_trans"]["porcentaje_vd"] is None
+
+
+def test_calculo_nutricional_guardas_estado_incompleto(setup_nutricion):
+    db = setup_nutricion["session"]
+    receta = Receta(
+        codigo_receta=generar_string_unico("REC_INC"),
+        nombre_receta="Receta Incompleta",
+        producto_id=setup_nutricion["prod"].id,
+        rendimiento_estandar=1000,
+        usuario_creador_id=setup_nutricion["admin_id"],
+    )
+    db.add(receta)
+    db.flush()
+    paso = PasoReceta(receta_id=receta.id, numero_orden=1, titulo="Mezclado", instrucciones="Mezclar todo")
+    db.add(paso)
+    db.flush()
+    db.add_all([
+        PasoInsumo(paso_id=paso.id, insumo_id=setup_nutricion["insumo_pendiente"].id, cantidad_consumo_estimada=100),
+        PasoInsumo(paso_id=paso.id, insumo_id=setup_nutricion["agua_sin_densidad"].id, cantidad_consumo_estimada=200),
+    ])
+    db.commit()
+
+    res = client.get(f"/recetas/{receta.id}/informacion-nutricional")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["es_calculable"] is False
+    assert len(body["insumos_nutricion_pendiente"]) == 1
+    assert body["insumos_nutricion_pendiente"][0]["insumo_id"] == setup_nutricion["insumo_pendiente"].id
+    assert len(body["insumos_sin_equivalencia"]) == 1
+    assert body["insumos_sin_equivalencia"][0]["insumo_id"] == setup_nutricion["agua_sin_densidad"].id
+    assert all(f["valor_100g"] is None for f in body["filas"])
+
 
 
 

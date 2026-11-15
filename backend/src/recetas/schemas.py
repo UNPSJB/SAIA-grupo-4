@@ -101,6 +101,7 @@ class ProductoResumenOut(BaseModel):
 class RecetaBase(BaseModel):
     nombre_receta: Annotated[str, Field(min_length=1, max_length=150)]
     rendimiento_estandar: Annotated[Decimal, Field(gt=0)]
+    tamano_porcion: Annotated[Optional[Decimal], Field(default=None, gt=0, description="Tamaño de la porción de referencia en gramos (g)")]
     tiempo_estimado_total: Annotated[Optional[int], Field(default=None, gt=0)]
     observaciones: Annotated[Optional[str], Field(default=None)]
 
@@ -110,6 +111,7 @@ class RecetaCreate(RecetaBase):
 class RecetaUpdate(BaseModel):
     nombre_receta: Annotated[Optional[str], Field(default=None, min_length=1, max_length=150)]
     rendimiento_estandar: Annotated[Optional[Decimal], Field(default=None, gt=0)]
+    tamano_porcion: Annotated[Optional[Decimal], Field(default=None, gt=0, description="Tamaño de la porción de referencia en gramos (g)")]
     tiempo_estimado_total: Annotated[Optional[int], Field(default=None, gt=0)]
     observaciones: Annotated[Optional[str], Field(default=None)]
 
@@ -197,4 +199,46 @@ class DeclaracionIngredientesOut(BaseModel):
 
 class OrdenManualDeclaracionIn(BaseModel):
     insumo_ids_ordenados: Annotated[List[int], Field(min_length=1, description="Lista de IDs de insumos en el orden manual deseado")]
+
+
+class InsumoNutricionPendienteOut(BaseModel):
+    insumo_id: int
+    nombre: str
+    categoria: str
+    campos_faltantes: List[str] = []
+    mensaje: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FilaNutrienteCalculadoOut(BaseModel):
+    codigo_nutriente: str
+    nombre_etiqueta: str
+    unidad: str
+    orden: int
+    nivel_indentacion: int = 0
+    valor_100g: Optional[float] = None
+    valor_100g_formateado: Optional[str] = None
+    valor_100g_kj: Optional[float] = None
+    valor_porcion: Optional[float] = None
+    valor_porcion_formateado: Optional[str] = None
+    valor_porcion_kj: Optional[float] = None
+    porcentaje_vd: Optional[int] = None
+    lleva_vd: bool = True
+    es_no_significativo_porcion: bool = False
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InformacionNutricionalOut(BaseModel):
+    receta_id: int
+    codigo_receta: str
+    nombre_receta: str
+    rendimiento_estandar_g: float
+    tamano_porcion_g: Optional[float] = None
+    es_calculable: bool = True
+    tiene_porcion: bool = False
+    insumos_sin_equivalencia: List[InsumoSinEquivalenciaOut] = []
+    insumos_nutricion_pendiente: List[InsumoNutricionPendienteOut] = []
+    filas: List[FilaNutrienteCalculadoOut] = []
+    leyenda_vd: str
+    model_config = ConfigDict(from_attributes=True)
 

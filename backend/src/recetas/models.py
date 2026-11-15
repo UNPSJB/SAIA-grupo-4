@@ -19,6 +19,7 @@ class Receta(ModeloBase):
     producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"), nullable=False, index=True)
 
     rendimiento_estandar: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    tamano_porcion: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     tiempo_estimado_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     estado: Mapped[EstadoReceta] = mapped_column(

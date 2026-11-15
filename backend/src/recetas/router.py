@@ -76,6 +76,16 @@ def obtener_composicion_porcentual(receta_id: int, db: Session = Depends(get_db)
 
 
 @router.get(
+    "/{receta_id}/informacion-nutricional",
+    response_model=schemas.InformacionNutricionalOut,
+    dependencies=[Depends(requiere_administracion)],
+)
+def obtener_informacion_nutricional(receta_id: int, db: Session = Depends(get_db)):
+    """Calcula y devuelve la información nutricional por 100 g, por porción y % VD de una receta."""
+    return services.obtener_informacion_nutricional(db, receta_id)
+
+
+@router.get(
     "/{receta_id}/declaracion-ingredientes",
     response_model=schemas.DeclaracionIngredientesOut,
     dependencies=[Depends(requiere_administracion)],

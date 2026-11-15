@@ -35,3 +35,42 @@ class ErrorCode:
 class TipoRecurso:
     EQUIPO = "Equipo"
     INSUMO = "Insumo"
+
+
+class NutricionConstantes:
+    BASE_NUTRIENTE_INSUMO_G = 100.0
+    BASE_PRODUCTO_TERMINADO_G = 100.0
+    FACTOR_CONVERSION_KJ_DEFECTO = 4.184
+    VDR_ENERGIA_ESTANDAR_KCAL = 2000
+    VDR_ENERGIA_ESTANDAR_KJ = 8400
+    TEXTO_NO_SIG_CERO = "0"
+    CODIGO_VALOR_ENERGETICO = "valor_energetico"
+    CAMPOS_MINIMOS_ADITIVO = ("valor_energetico_kcal", "sodio_mg")
+    PLANTILLA_LEYENDA_VD = (
+        "* % Valores Diarios con base a una dieta de {kcal} kcal u {kj} kJ. "
+        "Sus valores diarios pueden ser mayores o menores dependiendo de sus necesidades energéticas."
+    )
+    MAPA_PARAMETRO_A_CAMPO_INSUMO = {
+        "valor_energetico": "valor_energetico_kcal",
+        "carbohidratos": "carbohidratos_g",
+        "azucares_totales": "azucares_totales_g",
+        "azucares_anadidos": "azucares_anadidos_g",
+        "proteinas": "proteinas_g",
+        "grasas_totales": "grasas_totales_g",
+        "grasas_saturadas": "grasas_saturadas_g",
+        "grasas_trans": "grasas_trans_g",
+        "fibra": "fibra_g",
+        "sodio": "sodio_mg",
+    }
+    ETIQUETAS_CAMPOS_INSUMO = {
+        "valor_energetico_kcal": "Valor energético (kcal)",
+        "carbohidratos_g": "Carbohidratos (g)",
+        "azucares_totales_g": "Azúcares totales (g)",
+        "azucares_anadidos_g": "Azúcares añadidos (g)",
+        "proteinas_g": "Proteínas (g)",
+        "grasas_totales_g": "Grasas totales (g)",
+        "grasas_saturadas_g": "Grasas saturadas (g)",
+        "grasas_trans_g": "Grasas trans (g)",
+        "fibra_g": "Fibra alimentaria (g)",
+        "sodio_mg": "Sodio (mg)",
+    }
