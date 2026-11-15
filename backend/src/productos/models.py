@@ -11,6 +11,7 @@ class Producto(ModeloBase):
     descripcion: Mapped[str] = mapped_column(String(250), nullable=False)
     unidad_medida_id: Mapped[int] = mapped_column(ForeignKey("unidades_de_medidas.id"), nullable=False)
     dias_vida_util: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    envasado_ausencia_cliente: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False)
 
     # Estado
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

@@ -31,6 +31,16 @@ class Receta(ModeloBase):
     es_orden_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
     orden_manual_json: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
 
+    # Overrides de aplicabilidad de rotulado frontal (Ley 27.642)
+    override_azucares_agregados: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_grasas_agregadas: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_sodio_agregado: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_edulcorantes: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_cafeina: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    es_aplicabilidad_forzada_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     usuario_creador_id: Mapped[int] = mapped_column(ForeignKey("personal.id"), nullable=False)

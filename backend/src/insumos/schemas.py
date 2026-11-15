@@ -47,6 +47,13 @@ class InsumoBase(BaseModel):
     clase_funcional: Annotated[Optional[str], Field(default=None, max_length=100, description="Clase funcional del aditivo")] = None
     numero_ins: Annotated[Optional[str], Field(default=None, max_length=30, description="Número de INS del aditivo")] = None
 
+    # Atributos para rotulado frontal (Ley 27.642)
+    aporta_azucares_agregados: bool = False
+    aporta_grasas_agregadas: bool = False
+    aporta_sodio_agregado: bool = False
+    es_edulcorante: bool = False
+    contiene_cafeina: bool = False
+
     # Perfil nutricional (por 100g o 100ml)
     base_calculo: BaseCalculo = BaseCalculo.CIEN_G
     valor_energetico_kcal: NutrienteOpcional = None
@@ -127,6 +134,13 @@ class InsumoUpdate(BaseModel):
     denominacion_rotulo: Annotated[Optional[str], Field(default=None, max_length=150, description="Denominación para el rótulo según CAA")] = None
     clase_funcional: Annotated[Optional[str], Field(default=None, max_length=100, description="Clase funcional del aditivo")] = None
     numero_ins: Annotated[Optional[str], Field(default=None, max_length=30, description="Número de INS del aditivo")] = None
+
+    # Atributos para rotulado frontal (Ley 27.642)
+    aporta_azucares_agregados: Optional[bool] = None
+    aporta_grasas_agregadas: Optional[bool] = None
+    aporta_sodio_agregado: Optional[bool] = None
+    es_edulcorante: Optional[bool] = None
+    contiene_cafeina: Optional[bool] = None
 
     # Perfil nutricional (por 100g o 100ml)
     base_calculo: Optional[BaseCalculo] = None

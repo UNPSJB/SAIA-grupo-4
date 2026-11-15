@@ -559,6 +559,12 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
         observaciones=origen.observaciones,
         es_orden_manual=origen.es_orden_manual,
         orden_manual_json=list(origen.orden_manual_json) if origen.orden_manual_json else None,
+        override_azucares_agregados=origen.override_azucares_agregados,
+        override_grasas_agregadas=origen.override_grasas_agregadas,
+        override_sodio_agregado=origen.override_sodio_agregado,
+        override_edulcorantes=origen.override_edulcorantes,
+        override_cafeina=origen.override_cafeina,
+        es_aplicabilidad_forzada_manualmente=origen.es_aplicabilidad_forzada_manualmente,
         fecha_creacion=datetime.now(),
         usuario_creador_id=usuario_id,
         pasos=[_clonar_paso(p) for p in origen.pasos]

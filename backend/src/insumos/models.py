@@ -23,6 +23,23 @@ class Insumo(ModeloBase):
     clase_funcional: Mapped[Optional[str]] = mapped_column(nullable=True)
     numero_ins: Mapped[Optional[str]] = mapped_column(nullable=True)
 
+    # Atributos para rotulado frontal (Ley 27.642)
+    aporta_azucares_agregados: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    aporta_grasas_agregadas: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    aporta_sodio_agregado: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    es_edulcorante: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    contiene_cafeina: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+
     # Perfil nutricional cada 100g o 100ml
     base_calculo: Mapped[str] = mapped_column(
         String(10), default="100g", server_default="100g", nullable=False

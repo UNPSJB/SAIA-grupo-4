@@ -7,6 +7,7 @@ class ProductoBase(BaseModel):
     descripcion: Annotated[str, Field(min_length=1, max_length=250)]
     unidad_medida_id: Annotated[int, Field(gt=0)]
     dias_vida_util: Annotated[Optional[int], Field(default=None, gt=0)] = None
+    envasado_ausencia_cliente: bool = True
 
 class ProductoCreate(ProductoBase):
     pass
@@ -16,9 +17,10 @@ class ProductoUpdate(BaseModel):
     descripcion: Annotated[Optional[str], Field(default=None, min_length=1, max_length=250)]
     unidad_medida_id: Annotated[Optional[int], Field(default=None, gt=0)]
     dias_vida_util: Annotated[Optional[int], Field(default=None, gt=0)] = None
+    envasado_ausencia_cliente: Annotated[Optional[bool], Field(default=None)] = None
     activo: Annotated[Optional[bool], Field(default=None)]
 
-    @field_validator("nombre", "descripcion", "unidad_medida_id", "activo", mode="before")
+    @field_validator("nombre", "descripcion", "unidad_medida_id", "activo", "envasado_ausencia_cliente", mode="before")
     @classmethod
     def rechazar_null_explicito(cls, valor):
         if valor is None:
