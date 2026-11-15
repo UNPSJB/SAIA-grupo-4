@@ -45,6 +45,8 @@ from src.vista_publica.router import (
 from src.vista_publica.services import inicializar_vista_publica
 from src.alimento_referencia.router import router as alimento_referencia_router
 from src.alimento_referencia.services import sembrar_alimentos_sara
+from src.configuracion_nutricional.router import router as configuracion_nutricional_router
+from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -61,6 +63,7 @@ async def db_creation_lifespan(app: FastAPI):
         inicializar_capacidades_sistema(db)
         inicializar_vista_publica(db)
         sembrar_alimentos_sara(db, normalizar_ascii=True)
+        inicializar_configuracion_nutricional(db)
     yield
 
 
@@ -109,3 +112,4 @@ app.include_router(dashboard_router)  # Dashboard consolidado de métricas
 app.include_router(vista_publica_router)  # Configuración admin de la vista pública
 app.include_router(vista_publica_publico_router)  # Indicadores públicos sin auth
 app.include_router(alimento_referencia_router)
+app.include_router(configuracion_nutricional_router)
