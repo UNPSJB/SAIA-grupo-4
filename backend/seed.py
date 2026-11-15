@@ -147,6 +147,7 @@ from src.auth.utils import get_password_hash
 from src.capacidades.constants import RolesSistema
 from src.vista_publica.models import VistaPublica
 from src.vista_publica.services import inicializar_vista_publica
+from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -242,7 +243,7 @@ INSUMOS = (
     ("Leche Entera Pasteurizada", 3, "materia prima", "Leche entera fluida pasteurizada.", "Leche entera fluida", None, None, 1.03, None),
     ("Esencia de Vainilla", 4, "aditivo", "Aromatizante de extracto de vainilla natural.", "Aroma natural de vainilla", "Aromatizante", None, 1.05, None),
     ("Sal Fina Marina", 1, "aditivo", "Sal fina pura secada al vacio.", "Sal fina marina", "Conservante", "282", None, None),
-    ("Semillas de Sesamo", 1, "materia prima", "Semillas tostadas seleccionadas.", "Semillas de sesamo tostadas", None, None, None, None),
+    ("Semillas de Sesamo", 6, "materia prima", "Semillas tostadas seleccionadas.", "Semillas de sesamo tostadas", None, None, None, None),
 )
 
 PRODUCTOS = (
@@ -833,6 +834,11 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             ins.fecha_carga_nutricional = ahora_carga
             ins.valor_energetico_kcal = Decimal("105.00")
             ins.sodio_mg = Decimal("30.00")
+        elif nombre == "Esencia de Vainilla":
+            ins.fuente_nutricional = "Rotulo del proveedor"
+            ins.fecha_carga_nutricional = ahora_carga
+            ins.valor_energetico_kcal = Decimal("288.00")
+            ins.sodio_mg = Decimal("9.00")
         insumos.append(ins)
 
     productos = [
@@ -1617,7 +1623,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_pc,
                 f"REC-{pref_pc}-001",
                 EstadoReceta.INHABILITADA,
-                Decimal("45.00"),
+                Decimal("21500.00"),
                 180,
                 60,
                 "Formula previa inhabilitada tras la introduccion de la version optimizada v2.",
@@ -1666,10 +1672,10 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_pc,
                 f"REC-{pref_pc}-002",
                 EstadoReceta.ACTIVA,
-                Decimal("50.00"),
+                Decimal("29000.00"),
                 170,
                 12,
-                "Formula activa vigente con fermentacion controlada y rendimiento estandar de 50 kg.",
+                "Formula activa vigente con fermentacion controlada y rendimiento estandar de 29 kg.",
             ),
             [
                 (
@@ -1698,7 +1704,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Semillado superficial artesanal",
                     "Espolvorear semillas de sesamo tostadas sobre la corteza humedecida.",
                     [],
-                    [(ins_sesamo, Decimal("500.000"))],
+                    [(ins_sesamo, Decimal("10.000"))],
                 ),
                 (
                     5,
@@ -1715,7 +1721,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_gv,
                 f"REC-{pref_gv}-001",
                 EstadoReceta.ACTIVA,
-                Decimal("120.00"),
+                Decimal("20000.00"),
                 90,
                 20,
                 "Formula activa de galletas dulces con aroma a vainilla y horneado continuo.",
@@ -1726,21 +1732,21 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Cremado de manteca y azucar",
                     "Batir manteca a punto pomada con azucar comun hasta blanquear.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_manteca, Decimal("8.000")), (ins_azucar, Decimal("6.000"))],
+                    [(ins_manteca, Decimal("6.000")), (ins_azucar, Decimal("4.500"))],
                 ),
                 (
                     2,
                     "Aromatizacion con vainilla natural",
                     "Incorporar huevos frescos y extracto de vainilla natural de forma envolvente.",
                     [],
-                    [(ins_huevos, Decimal("30.000")), (ins_vainilla, Decimal("100.000"))],
+                    [(ins_huevos, Decimal("30.000")), (ins_vainilla, Decimal("60.000"))],
                 ),
                 (
                     3,
                     "Tamizado e integracion de harina",
                     "Unir la harina de trigo sin amasar en exceso para evitar tenacidad.",
                     [(eq_amasadora, 1)],
-                    [(ins_harina, Decimal("12.000"))],
+                    [(ins_harina, Decimal("10.000"))],
                 ),
                 (
                     4,
@@ -1764,7 +1770,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_pi,
                 f"REC-{pref_pi}-001",
                 EstadoReceta.ACTIVA,
-                Decimal("60.00"),
+                Decimal("26500.00"),
                 210,
                 15,
                 "Formula activa con harina integral y semillas activadas para hogazas de campo.",
@@ -1775,14 +1781,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de base integral y sal",
                     "Fraccionar harina y sal fina en balanza de plataforma calibrada.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_harina, Decimal("18.000")), (ins_sal, Decimal("350.000"))],
+                    [(ins_harina, Decimal("18.000")), (ins_sal, Decimal("360.000"))],
                 ),
                 (
                     2,
                     "Hidratacion y levado inicial",
                     "Mezclar con levadura fresca y agua tibia hasta conformar bollo blando.",
                     [(eq_amasadora, 1)],
-                    [(ins_levadura, Decimal("600.000"))],
+                    [(ins_levadura, Decimal("450.000"))],
                 ),
                 (
                     3,
@@ -1796,7 +1802,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Rebozado en semillas de sesamo",
                     "Hacer rodar las piezas formadas sobre cama de semillas de sesamo.",
                     [(eq_mesa, 1)],
-                    [(ins_sesamo, Decimal("800.000"))],
+                    [(ins_sesamo, Decimal("15.000"))],
                 ),
                 (
                     5,
@@ -1813,7 +1819,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_tc,
                 f"REC-{pref_tc}-001",
                 EstadoReceta.INHABILITADA,
-                Decimal("15.00"),
+                Decimal("15600.00"),
                 150,
                 75,
                 "Inhabilitada de forma temporal por sustitucion de proveedor de cacao amargo.",
@@ -1824,21 +1830,21 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de secos y cacao puro",
                     "Tamizar harina, azucar comun y cacao amargo desgrasado de alta pureza.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_harina, Decimal("4.000")), (ins_cacao, Decimal("2000.000")), (ins_azucar, Decimal("5.000"))],
+                    [(ins_harina, Decimal("4.000")), (ins_cacao, Decimal("1500.000")), (ins_azucar, Decimal("4.500"))],
                 ),
                 (
                     2,
                     "Emulsion de manteca, huevos y leche",
                     "Mezclar liquidos a temperatura templada hasta conseguir textura cremosa.",
                     [],
-                    [(ins_manteca, Decimal("3.000")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.000"))],
+                    [(ins_manteca, Decimal("2.500")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.000"))],
                 ),
                 (
                     3,
                     "Toque aromatico de vainilla",
                     "Agregar unas gotas de extracto de vainilla pura para realzar notas de chocolate.",
                     [],
-                    [(ins_vainilla, Decimal("50.000"))],
+                    [(ins_vainilla, Decimal("40.000"))],
                 ),
                 (
                     4,
@@ -1862,7 +1868,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_bs,
                 f"REC-{pref_bs}-001",
                 EstadoReceta.ACTIVA,
-                Decimal("50.00"),
+                Decimal("21000.00"),
                 90,
                 25,
                 "Formula activa tradicional de bizcochos salados horneados a alta temperatura.",
@@ -1873,14 +1879,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de secos y sal fina",
                     "Pesar la harina de trigo y sal marina segun la proporcion estandar.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_harina, Decimal("15.000")), (ins_sal, Decimal("400.000"))],
+                    [(ins_harina, Decimal("15.000")), (ins_sal, Decimal("350.000"))],
                 ),
                 (
                     2,
                     "Amasado con manteca y levadura",
                     "Integrar grasa y levadura fresca en la amasadora a velocidad media.",
                     [(eq_amasadora, 1)],
-                    [(ins_manteca, Decimal("4.000")), (ins_levadura, Decimal("300.000"))],
+                    [(ins_manteca, Decimal("4.500")), (ins_levadura, Decimal("300.000"))],
                 ),
                 (
                     3,
@@ -1904,7 +1910,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_tc,
                 f"REC-{pref_tc}-002",
                 EstadoReceta.ACTIVA,
-                Decimal("18.00"),
+                Decimal("18500.00"),
                 140,
                 15,
                 "Version optimizada con cacao amargo seleccionado y textura esponjosa.",
@@ -1915,21 +1921,21 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Tamizado de harina, cacao y azucar",
                     "Tamizar harina, azucar comun y cacao amargo desgrasado en balanza de laboratorio.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_harina, Decimal("5.000")), (ins_cacao, Decimal("2500.000")), (ins_azucar, Decimal("6.000"))],
+                    [(ins_harina, Decimal("5.000")), (ins_cacao, Decimal("1800.000")), (ins_azucar, Decimal("5.000"))],
                 ),
                 (
                     2,
                     "Emulsion con manteca, huevos y leche",
                     "Batir manteca blanda con huevos y leche fluida hasta emulsion uniforme.",
                     [(eq_amasadora, 1)],
-                    [(ins_manteca, Decimal("3.500")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.500"))],
+                    [(ins_manteca, Decimal("3.000")), (ins_huevos, Decimal("30.000")), (ins_leche, Decimal("3.500"))],
                 ),
                 (
                     3,
                     "Perfume de vainilla natural",
                     "Incorporar extracto de vainilla para equilibrar la intensidad del cacao.",
                     [],
-                    [(ins_vainilla, Decimal("60.000"))],
+                    [(ins_vainilla, Decimal("50.000"))],
                 ),
                 (
                     4,
@@ -1953,7 +1959,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_med,
                 f"REC-{pref_med}-001",
                 EstadoReceta.BORRADOR,
-                Decimal("200.00"),
+                Decimal("19700.00"),
                 240,
                 4,
                 "Borrador en desarrollo de masa hojaldrada con manteca y tres pliegues simples.",
@@ -1964,14 +1970,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Amasado del paston base con leche",
                     "Preparar masa tierna enriquecida con leche entera y levadura.",
                     [(eq_amasadora, 1)],
-                    [(ins_harina, Decimal("10.000")), (ins_leche, Decimal("4.000")), (ins_levadura, Decimal("400.000"))],
+                    [(ins_harina, Decimal("10.000")), (ins_leche, Decimal("4.000")), (ins_levadura, Decimal("350.000"))],
                 ),
                 (
                     2,
                     "Preparacion de placa de manteca",
                     "Armar empaste rectangular con manteca de primera y azucar.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_manteca, Decimal("5.000")), (ins_azucar, Decimal("2.000"))],
+                    [(ins_manteca, Decimal("4.500")), (ins_azucar, Decimal("1.800"))],
                 ),
                 (
                     3,
@@ -2002,7 +2008,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_bl,
                 f"REC-{pref_bl}-001",
                 EstadoReceta.BORRADOR,
-                Decimal("30.00"),
+                Decimal("19300.00"),
                 110,
                 1,
                 "Borrador de prueba para incorporar glaseado con jugo natural y ralladura fresca.",
@@ -2013,14 +2019,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de azucar, manteca y harina",
                     "Pesar los ingredientes fundamentales del batido cuatro cuartos.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_harina, Decimal("6.000")), (ins_azucar, Decimal("5.000")), (ins_manteca, Decimal("4.000"))],
+                    [(ins_harina, Decimal("5.000")), (ins_azucar, Decimal("5.000")), (ins_manteca, Decimal("5.000"))],
                 ),
                 (
                     2,
                     "Batido con huevos y leche fluida",
                     "Montar hasta conseguir punto cinta agregando leche y huevos de a uno.",
                     [(eq_amasadora, 1)],
-                    [(ins_huevos, Decimal("20.000")), (ins_leche, Decimal("2.000"))],
+                    [(ins_huevos, Decimal("90.000")), (ins_leche, Decimal("1.000"))],
                 ),
                 (
                     3,
@@ -2047,6 +2053,15 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
     ]
 
+    tamano_porcion_por_receta = {
+        "Pan de Campo Tradicional v1": Decimal("50.00"),
+        "Pan de Campo Tradicional v2": Decimal("50.00"),
+        "Galletas de Vainilla Clasicas": Decimal("30.00"),
+        "Bizcochos Salados Crocantes": Decimal("30.00"),
+        "Torta Humeda de Chocolate": Decimal("60.00"),
+        "Torta de Chocolate Artesanal v2": Decimal("60.00"),
+    }
+
     recetas_creadas = []
     for cabecera, pasos_info in definicion_recetas:
         (
@@ -2070,6 +2085,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
             nombre_receta=nombre,
             producto_id=prod.id,
             rendimiento_estandar=rendimiento,
+            tamano_porcion=tamano_porcion_por_receta.get(nombre),
             tiempo_estimado_total=tiempo,
             estado=estado,
             observaciones=observaciones,
@@ -2765,6 +2781,7 @@ def main():
         try:
             catalogo = _crear_prerrequisitos(db, args.cantidad, hoy)
             inicializar_vista_publica(db)
+            inicializar_configuracion_nutricional(db, normalizar_ascii=True)
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
