@@ -4,6 +4,9 @@ import type {
   ConfiguracionPublica,
   ConfiguracionSistema,
   ConfiguracionUpdatePayload,
+  ConfiguracionModuloOctogonos,
+  CrearVersionParametrosPayload,
+  ParametrosFrontalesConsolidado,
 } from "./types";
 
 const extraerDetalleError = async (res: Response, fallback: string): Promise<string> => {
@@ -78,3 +81,48 @@ export const resolverLogoUrl = (logoUrl: string | null | undefined): string | nu
   const limpio = logoUrl.startsWith("/") ? logoUrl.slice(1) : logoUrl;
   return `${API_URL}/${limpio}`;
 };
+
+export async function obtenerParametrosFrontales(): Promise<ParametrosFrontalesConsolidado> {
+  const res = await apiFetch(`${API_URL}/configuracion/parametros-frontales`, {
+    method: "GET",
+  });
+  if (!res.ok) {
+    throw new Error(
+      await extraerDetalleError(res, "Error al obtener los parámetros normativos."),
+    );
+  }
+  return res.json();
+}
+
+export async function crearVersionParametrosFrontales(
+  payload: CrearVersionParametrosPayload,
+): Promise<ParametrosFrontalesConsolidado> {
+  const res = await apiFetch(`${API_URL}/configuracion/parametros-frontales`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(
+      await extraerDetalleError(res, "Error al crear la nueva versión normativa."),
+    );
+  }
+  return res.json();
+}
+
+export async function actualizarModuloOctogonos(payload: {
+  octogonos_activos: boolean;
+  observacion?: string | null;
+}): Promise<ConfiguracionModuloOctogonos> {
+  const res = await apiFetch(`${API_URL}/configuracion/modulo-octogonos`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(
+      await extraerDetalleError(res, "Error al actualizar el módulo de octógonos."),
+    );
+  }
+  return res.json();
+}
