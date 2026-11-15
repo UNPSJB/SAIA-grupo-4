@@ -8,10 +8,12 @@ import {
   SimpleGrid,
   Stack,
   Table,
+  Image,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import type { PasoReceta, Receta } from "./types";
+import { useConfiguracion } from "../configuracion/useConfiguracion";
 
 interface InsumoConsolidado {
   id: number;
@@ -32,7 +34,7 @@ export interface FichaRecetaPrintProps {
   receta: Receta;
 }
 
-export const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
+const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
   const insumosMap = new Map<number, InsumoConsolidado>();
   const equiposMap = new Map<number, EquipoConsolidado>();
 
@@ -113,7 +115,8 @@ export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
       }),
     [],
   );
-
+  const { configuracion, logoSrc } = useConfiguracion();
+  const nombreEstablecimiento = configuracion.nombre_establecimiento || "SAIA-4";
   const unidadRendimiento = receta.producto?.unidad_medida?.simbolo || "";
   const rendimientoStr = unidadRendimiento
     ? `${receta.rendimiento_estandar} ${unidadRendimiento}`
@@ -199,20 +202,31 @@ export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
         pb={3}
         mb={3}
       >
-        <VStack align="start" gap={0.5}>
-          <Text
-            fontSize="xs"
-            fontWeight="bold"
-            textTransform="uppercase"
-            letterSpacing="wider"
-            color="gray.600"
-          >
-            SAIA · Sistema de Apoyo para la Inocuidad Alimentaria
-          </Text>
-          <Heading size="xl" color="green.800" fontWeight="extrabold">
-            {receta.nombre_receta}
-          </Heading>
-        </VStack>
+        <HStack align="center" gap={3}>
+       {logoSrc && (
+         <Image
+           src={logoSrc}
+           alt={nombreEstablecimiento}
+           maxH="42px"
+           maxW="100px"
+           objectFit="contain"
+         />
+       )}
+       <VStack align="start" gap={0.5}>
+         <Text
+           fontSize="xs"
+           fontWeight="bold"
+           textTransform="uppercase"
+           letterSpacing="wider"
+           color="gray.600"
+         >
+           {nombreEstablecimiento} · Sistema de Apoyo para la Inocuidad Alimentaria
+         </Text>
+         <Heading size="xl" color="green.800" fontWeight="extrabold">
+           {receta.nombre_receta}
+         </Heading>
+       </VStack>
+     </HStack>
         <VStack align="end" gap={1}>
           <Badge
             colorPalette={receta.estado === "INHABILITADA" ? "red" : "teal"}
@@ -501,6 +515,19 @@ export const FichaRecetaPrint = ({ receta }: FichaRecetaPrintProps) => {
               </Card.Root>
             ))}
           </Stack>
+        )}
+        {configuracion.pie_informes && (
+          <Box
+            mt={4}
+            pt={2}
+            borderTopWidth="1px"
+            borderColor="gray.300"
+            textAlign="center"
+          >
+            <Text fontSize="2xs" color="gray.600">
+              {configuracion.pie_informes}
+            </Text>
+          </Box>
         )}
       </Box>
     </Box>

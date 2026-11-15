@@ -9,6 +9,7 @@ import {
   Icon,
   IconButton,
   Portal,
+  Image,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -35,6 +36,7 @@ import { MdOutlineCleaningServices } from "react-icons/md";
 
 import { AlertConfirm } from "../ui";
 import { useAuth } from "../../features/auth/useAuth";
+import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
 import { SideBar, type NavItem as SideBarNavItem } from "./SideBar";
 
@@ -102,6 +104,8 @@ export const AdminLayout = ({
   brandIcon = FiShield,
 }: AdminLayoutProps) => {
   const { usuario, logout } = useAuth();
+  const { configuracion, logoSrc } = useConfiguracion();
+const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
   const { pathname } = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
@@ -223,10 +227,16 @@ export const AdminLayout = ({
               <Drawer.Header borderColor="whiteAlpha.300">
                 <HStack justify="space-between" w="100%">
                   <HStack gap={2}>
-                    <Icon as={brandIcon} boxSize={5} color="white" />
-                    <Drawer.Title color="white" fontSize="lg" fontWeight="bold">
-                      {title}
-                    </Drawer.Title>
+                    <HStack gap={2}>
+                      {logoSrc ? (
+                         <Image src={logoSrc} alt={nombreEstablecimiento} boxSize={6} objectFit="contain" bg="white" borderRadius="sm" p={0.5} />
+                        ) : (
+                          <Icon as={brandIcon} boxSize={5} color="white" />
+                        )}
+                       <Drawer.Title color="white" fontSize="lg" fontWeight="bold">
+                          {nombreEstablecimiento}
+                        </Drawer.Title>
+                    </HStack> 
                   </HStack>
                   <Drawer.CloseTrigger asChild>
                     <IconButton

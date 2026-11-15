@@ -8,7 +8,8 @@ import {
   Portal,
   Text,
 } from "@chakra-ui/react";
-import { FiLogOut, FiMenu } from "react-icons/fi";
+import { FiLogOut, FiMenu, FiSettings } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -29,6 +30,7 @@ export const TopNavBar = ({
   showMenuButton = false,
 }: TopNavBarProps) => {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
 
   // Determinar el rol real del usuario por sus capacidades, NO por la URL
   const esAdmin = esAdministrador(usuario);
@@ -74,7 +76,7 @@ export const TopNavBar = ({
     >
       {/* Izquierda: menú (solo operador puro) + breadcrumbs */}
       <HStack align="center" gap={4} flex="1" minW={0}>
-        {showMenuButton && onMenuClick && esSoloOperador && (
+        {showMenuButton && onMenuClick && (
           <Button
             variant="ghost"
             size="sm"
@@ -168,6 +170,25 @@ export const TopNavBar = ({
                 }}
               >
                 <Menu.ItemGroup>
+                  {esAdmin && (
+                    <Menu.Item
+                      value="configuracion"
+                      onSelect={() => navigate("/configuracion")}
+                      _focus={{ bg: "gray.50" }}
+                      _hover={{ bg: "gray.50" }}
+                      _dark={{
+                        _focus: { bg: "gray.700" },
+                        _hover: { bg: "gray.700" },
+                      }}
+                    >
+                      <HStack gap={2} align="center">
+                        <Icon as={FiSettings} boxSize={4} color="gray.700" />
+                        <Text fontSize="sm" color="gray.700">
+                          Configuración
+                        </Text>
+                      </HStack>
+                    </Menu.Item>
+                  )}
                   <Menu.Item
                     value="logout"
                     onSelect={handleLogout}

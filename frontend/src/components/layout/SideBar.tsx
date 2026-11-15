@@ -7,6 +7,7 @@ import {
   Flex,
   Icon,
   IconButton,
+  Image,
   Text,
   Tooltip,
   VStack,
@@ -39,6 +40,8 @@ import {
   lotesItems,
   checklistItems as defaultChecklistItems,
 } from "./navItems";
+
+import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 
 const isActiveRoute = (pathname: string, to: string) => {
   if (pathname === to) return true;
@@ -275,6 +278,8 @@ export const SideBar = ({
   display?: string | { base?: string; md?: string; lg?: string; xl?: string; "2xl"?: string };
 }) => {
   const { pathname } = useLocation();
+  const { configuracion, logoSrc } = useConfiguracion();
+  const nombreMostrado = configuracion.nombre_establecimiento || title;
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
@@ -367,14 +372,27 @@ export const SideBar = ({
                 minWidth: 0,
               }}
             >
-              <Icon as={brandIcon} boxSize={6} color="white" flexShrink={0} />
+              {logoSrc ? (
+                <Image
+                  src={logoSrc}
+                  alt={nombreMostrado}
+                  boxSize={7}
+                  objectFit="contain"
+                  borderRadius="sm"
+                  bg="white"
+                  p={0.5}
+                  flexShrink={0}
+                />
+              ) : (
+                <Icon as={brandIcon} boxSize={6} color="white" flexShrink={0} />
+              )}
               <Text
                 color="white"
                 fontSize="xl"
                 fontWeight="bold"
-                whiteSpace="nowrap"
+                 truncate
               >
-                {title}
+                {nombreMostrado}
               </Text>
             </NavLink>
             <NavTooltip label="Colapsar menú">

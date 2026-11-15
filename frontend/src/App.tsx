@@ -46,6 +46,8 @@ import HistorialLotesPage from "./pages/HistorialLotesPage";
 import DashboardPage from "./pages/DashboardPage";
 import VistaPublicaPage from "./pages/VistaPublicaPage";
 import VistaPublicaPublicaPage from "./pages/VistaPublicaVisitantePage";
+import { ConfiguracionProvider } from "./features/configuracion/ConfiguracionProvider";
+import { ConfiguracionPage } from "./pages/ConfiguracionPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -199,6 +201,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <VistaPublicaPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/configuracion'
+              element={
+                <RequireAuth>
+                  <ConfiguracionPage />
                 </RequireAuth>
               }
             />
@@ -490,6 +500,7 @@ function AppInterno() {
 export default function App() {
   return (
     <ChakraProvider value={defaultSystem}>
+      <ConfiguracionProvider>
       <BrowserRouter>
         <Routes>
           <Route path='/publico/:token' element={<VistaPublicaPublicaPage />} />
@@ -497,6 +508,7 @@ export default function App() {
           <Route path='*' element={<AppInterno />} />
         </Routes>
       </BrowserRouter>
+      </ConfiguracionProvider>
     </ChakraProvider>
   );
 }
