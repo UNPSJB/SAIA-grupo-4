@@ -47,6 +47,7 @@ import HistorialLotesPage from "./pages/HistorialLotesPage";
 import DashboardPage from "./pages/DashboardPage";
 import VistaPublicaPage from "./pages/VistaPublicaPage";
 import VistaPublicaPublicaPage from "./pages/VistaPublicaVisitantePage";
+import ConfiguracionNutricionalPage from "./pages/ConfiguracionNutricionalPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -200,6 +201,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <VistaPublicaPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/configuracion-nutricional'
+              element={
+                <RequireAuth>
+                  <ConfiguracionNutricionalPage />
                 </RequireAuth>
               }
             />

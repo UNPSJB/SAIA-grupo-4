@@ -38,6 +38,7 @@ import {
   documentosItem,
   lotesItems,
   checklistItems as defaultChecklistItems,
+  configuracionNutricionalItem,
 } from "./navItems";
 
 const isActiveRoute = (pathname: string, to: string) => {
@@ -565,6 +566,17 @@ export const SideBar = ({
           )}
         </>
       )}
+
+      {!isCollapsed && (
+        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
+          Configuración
+        </Text>
+      )}
+      <SingleNavLink
+        item={configuracionNutricionalItem}
+        isCollapsed={isCollapsed}
+        pathname={pathname}
+      />
 
       <Box mt="auto" pt={3} borderTop="1px solid" borderColor="whiteAlpha.300">
         <Flex

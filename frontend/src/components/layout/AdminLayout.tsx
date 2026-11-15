@@ -30,6 +30,7 @@ import {
   FiX,
   FiFileText,
   FiBarChart2,
+  FiSliders,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 
@@ -64,6 +65,7 @@ const defaultMobileItems: AdminNavItem[] = [
   { to: "/recetas", label: "Recetas", icon: FiBookOpen },
   { to: "/vencimientos", label: "Vencimientos", icon: FiAlertCircle },
   { to: "/incidentes", label: "Incidentes", icon: FiAlertTriangle },
+  { to: "/configuracion-nutricional", label: "Configuración Nutricional", icon: FiSliders },
 ];
 
 const isActiveRoute = (pathname: string, to: string) => {

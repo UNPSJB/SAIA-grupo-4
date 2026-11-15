@@ -41,6 +41,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   lotes: "Lotes",
   "historial-lotes": "Historial de Lotes",
   "vista-publica": "Vista pública",
+  "configuracion-nutricional": "Configuración nutricional",
   historial: "Historial de Checklist",
 
   // Sub-rutas
