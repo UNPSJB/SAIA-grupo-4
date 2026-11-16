@@ -1,6 +1,6 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
-import { Box, Button, HStack, Text } from "@chakra-ui/react";
+import { Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { useAuth } from "../features/auth/useAuth";
 import { esAdministrador, esOperador } from "../features/auth/roles";
 import { ListadoIncidentes } from "../features/incidentes/ListadoIncidentes";
@@ -80,7 +80,7 @@ export default function IncidentesPage() {
   };
 
   return (
-    <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
+    <VStack align="stretch" gap={{ base: 4, md: 6 }}>
       <>
         <HistorialFiltros
           fechaDesde={fechaDesde}
@@ -200,6 +200,6 @@ export default function IncidentesPage() {
           />
         </FormModal>
       )}
-    </Box>
+    </VStack>
   );
 }
