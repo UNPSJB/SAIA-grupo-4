@@ -122,7 +122,6 @@ export default function IncidentesPage() {
               bg="white"
               p={3}
               borderRadius="md"
-              mb={4}
             >
               <Text fontSize="sm">
                 Mostrando incidentes del tipo <b>{tipoSeleccionado.tipo}</b>{" "}
