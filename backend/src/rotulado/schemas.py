@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from src.rotulado.constants import DictamenAplicabilidad
 
@@ -93,3 +93,52 @@ class NormativaRotuladoUpdateIn(BaseModel):
     evalua_edulcorantes: bool
     evalua_cafeina: bool
     descripcion: Optional[str] = None
+
+
+class PasoMemoriaCalculoOut(BaseModel):
+    codigo: str
+    nutriente_etiqueta: str
+    se_evalua: bool
+    motivo_evaluacion: str
+    valor_tabla_100: Optional[float] = None
+    unidad_tabla: str
+    formula_aplicada: Optional[str] = None
+    calculo_sustituido: Optional[str] = None
+    valor_obtenido: Optional[float] = None
+    unidad_obtenida: Optional[str] = None
+    umbral_normativo: str
+    supera_umbral: bool
+    sello_resultante: Optional[str] = None
+
+
+class SelloAdvertenciaOut(BaseModel):
+    codigo: str
+    texto: str
+    tipo: Literal["OCTOGONO"] = "OCTOGONO"
+
+
+class LeyendaPrecautoriaOut(BaseModel):
+    codigo: str
+    texto: str
+    tipo: Literal["LEYENDA"] = "LEYENDA"
+
+
+class SellosAdvertenciaOut(BaseModel):
+    receta_id: int
+    codigo_receta: str
+    producto_id: int
+    producto_nombre: str
+    es_liquido: bool
+    base_calculo: str
+    dictamen_aplicabilidad: DictamenAplicabilidad
+    aplica_evaluacion_sellos: bool
+    es_calculable: bool
+    mensaje_bloqueo: Optional[str] = None
+    valor_energetico_100: Optional[float] = None
+    sellos: list[SelloAdvertenciaOut] = []
+    leyendas_precautorias: list[LeyendaPrecautoriaOut] = []
+    memoria_calculo: list[PasoMemoriaCalculoOut] = []
+    version_normativa: str
+    fecha_vigencia_normativa: datetime
+
+    model_config = ConfigDict(from_attributes=True)

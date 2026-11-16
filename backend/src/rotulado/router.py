@@ -37,3 +37,16 @@ def actualizar_aplicabilidad_frontal(
 ):
     """Permite corregir manualmente (overrides) los agregados de azúcares, grasas, sodio, edulcorantes o cafeína."""
     return services.actualizar_overrides_aplicabilidad(db, receta_id, payload)
+
+
+@router.get(
+    "/{receta_id}/sellos-advertencia",
+    response_model=schemas.SellosAdvertenciaOut,
+    summary="Calcular sellos de advertencia y leyendas precautorias (Ley 27.642)",
+)
+def obtener_sellos_advertencia(
+    receta_id: int,
+    db: Session = Depends(get_db),
+):
+    """Calcula los octógonos negros, leyendas precautorias y memoria de cálculo paso a paso para una receta."""
+    return services.calcular_sellos_advertencia(db, receta_id)
