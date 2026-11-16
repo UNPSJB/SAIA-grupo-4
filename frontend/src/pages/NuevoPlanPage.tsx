@@ -25,17 +25,17 @@ export default function NuevoPlanPage() {
 
   if (loading) {
     return (
-      <Box p={10} bg='gray.100' minH='100vh'>
+      <>
         <Box maxW='7xl' mx='auto' mt={20}>
           <LoadingState message='Cargando nuevo plan...' />
         </Box>
-      </Box>
+      </>
     );
   }
 
   if (borrador) {
     return (
-      <Box p={10} bg='gray.100' minH='100vh'>
+      <>
         <PlanWorkspace
           key={borrador.id}
           initialPlan={borrador}
@@ -54,7 +54,7 @@ export default function NuevoPlanPage() {
             enModal
           />
         </FormModal>
-      </Box>
+      </>
     );
   }
 

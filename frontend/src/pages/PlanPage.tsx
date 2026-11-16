@@ -7,7 +7,7 @@ export default function PlanPage() {
   const { loading, error, planVigente, reload } = usePlanData();
 
   return (
-    <Box p={10} bg='gray.100' minH='100vh'>
+    <>
       {loading ? (
         <Box maxW='7xl' mx='auto' mt={20}>
           <LoadingState message='Cargando plan...' />
@@ -41,6 +41,6 @@ export default function PlanPage() {
           )}
         </VStack>
       )}
-    </Box>
+    </>
   );
 }

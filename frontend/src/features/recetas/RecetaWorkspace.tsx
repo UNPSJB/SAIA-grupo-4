@@ -271,17 +271,17 @@ export default function RecetaWorkspace({
 
   if (loading) {
     return (
-      <Box p={10} bg="gray.100" minH="100vh">
+      <>
         <Box maxW="7xl" mx="auto" mt={20}>
           <LoadingState message="Cargando receta..." />
         </Box>
-      </Box>
+      </>
     );
   }
 
   if (!receta) {
     return (
-      <Box p={10} bg="gray.100" minH="100vh">
+      <>
         <ListadoContainer maxW="4xl">
           <VStack gap={4}>
             <AlertMessage
@@ -293,7 +293,7 @@ export default function RecetaWorkspace({
             </Button>
           </VStack>
         </ListadoContainer>
-      </Box>
+      </>
     );
   }
 
@@ -508,7 +508,7 @@ export default function RecetaWorkspace({
   };
 
   return (
-    <Box p={10} bg="gray.100" minH="100vh">
+    <>
       <ListadoContainer maxW="8xl">
         <HStack
           justify="space-between"
@@ -844,6 +844,6 @@ export default function RecetaWorkspace({
       />
 
       {(esActiva || esInhabilitada) && <FichaRecetaPrint receta={receta} />}
-    </Box>
+    </>
   );
 }
