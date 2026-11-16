@@ -30,6 +30,7 @@ import {
 import { AlertConfirm } from "../ui";
 import { useAuth } from "../../features/auth/useAuth";
 import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
+import { PAGE_PX, PAGE_PY } from "./espaciado";
 
 // Un ítem de la navegación del operador. Se recibe como lista para poder sumar secciones nuevas en el futuro sin tocar este componente.
 export interface OperadorNavItem {
@@ -258,7 +259,7 @@ export const OperadorLayout = ({
           showMenuButton={true}
         />
 
-        <Box bg="gray.100" flex="1" minW="0">
+        <Box bg="gray.100" flex="1" minW="0" px={PAGE_PX} py={PAGE_PY}>
           {children}
         </Box>
       </Flex>
