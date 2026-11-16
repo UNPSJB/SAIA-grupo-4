@@ -104,7 +104,7 @@ export default function VistaPublicaPage() {
   const url = construirUrlPublica(estado.token);
 
   return (
-    <Box bg='gray.50' minH='100vh' py={{ base: 4, md: 8 }}>
+    <Box bg='gray.50' minH='100vh' py={{ base: 3, md: 6 }}>
       <Container maxW='container.xl'>
         <VStack align='stretch' gap={6}>
           <Box>
