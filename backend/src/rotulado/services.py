@@ -1,8 +1,12 @@
-from sqlalchemy import select
+import unicodedata
+
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from src.insumos.models import Insumo
+from src.lotes.models import Lote
 from src.productos.models import Producto
+from src.recetas.constants import EstadoReceta
 from src.recetas.models import Receta, PasoReceta, PasoInsumo
 from src.rotulado import exceptions, schemas
 from src.rotulado.constants import (
@@ -13,16 +17,33 @@ from src.rotulado.constants import (
 from src.rotulado.models import NormativaRotulado
 
 
-def inicializar_normativa_rotulado(db: Session) -> NormativaRotulado:
+def _normalizar_ascii(texto: str) -> str:
+    return (
+        unicodedata.normalize("NFKD", texto)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+
+
+def inicializar_normativa_rotulado(
+    db: Session, normalizar_ascii: bool = False
+) -> NormativaRotulado:
     """Crea la normativa de rotulado frontal por defecto (Ley 27.642) si no existe ninguna."""
     normativa = db.scalar(
-        select(NormativaRotulado).where(NormativaRotulado.codigo_normativa == NormativaDefecto.CODIGO)
+        select(NormativaRotulado)
+        .where(NormativaRotulado.activa == True)
+        .order_by(NormativaRotulado.id.desc())
     )
     if not normativa:
+        normativa = db.scalar(select(NormativaRotulado).order_by(NormativaRotulado.id.desc()))
+    if not normativa:
+        descripcion = (
+            "Parámetros iniciales de aplicabilidad según Ley 27.642 y Decreto Reglamentario 151/2022."
+        )
         normativa = NormativaRotulado(
             codigo_normativa=NormativaDefecto.CODIGO,
-            nombre=NormativaDefecto.NOMBRE,
-            version=NormativaDefecto.VERSION,
+            nombre=_normalizar_ascii(NormativaDefecto.NOMBRE) if normalizar_ascii else NormativaDefecto.NOMBRE,
+            version=_normalizar_ascii(NormativaDefecto.VERSION) if normalizar_ascii else NormativaDefecto.VERSION,
             activa=True,
             requiere_envasado_ausencia_cliente=NormativaDefecto.REQUIERE_ENVASADO,
             evalua_azucares_agregados=NormativaDefecto.EVALUA_AZUCARES,
@@ -30,7 +51,7 @@ def inicializar_normativa_rotulado(db: Session) -> NormativaRotulado:
             evalua_sodio_agregado=NormativaDefecto.EVALUA_SODIO,
             evalua_edulcorantes=NormativaDefecto.EVALUA_EDULCORANTES,
             evalua_cafeina=NormativaDefecto.EVALUA_CAFEINA,
-            descripcion="Parámetros iniciales de aplicabilidad según Ley 27.642 y Decreto Reglamentario 151/2022.",
+            descripcion=_normalizar_ascii(descripcion) if normalizar_ascii else descripcion,
         )
         db.add(normativa)
         db.commit()
@@ -41,11 +62,189 @@ def inicializar_normativa_rotulado(db: Session) -> NormativaRotulado:
 def obtener_normativa_activa(db: Session) -> NormativaRotulado:
     """Obtiene la versión activa de parámetros normativos o la inicializa."""
     normativa = db.scalar(
-        select(NormativaRotulado).where(NormativaRotulado.activa == True)
+        select(NormativaRotulado)
+        .where(NormativaRotulado.activa == True)
+        .order_by(NormativaRotulado.id.desc())
     )
     if not normativa:
         normativa = inicializar_normativa_rotulado(db)
     return normativa
+
+
+def _reasignar_recetas_a_normativa_vigente(db: Session, nueva_normativa_id: int) -> None:
+    """Migra recetas en borrador o activas sin lotes a la nueva versión normativa vigente.
+
+    Las recetas activas con lotes asociados y las inhabilitadas conservan su normativa histórica.
+    """
+    db.execute(
+        update(Receta)
+        .where(
+            or_(
+                Receta.estado == EstadoReceta.BORRADOR,
+                (Receta.estado == EstadoReceta.ACTIVA) & (~Receta.lotes.any()),
+            )
+        )
+        .values(normativa_rotulado_id=nueva_normativa_id)
+    )
+
+
+def _crear_nueva_version_normativa(
+    db: Session,
+    *,
+    codigo_normativa: str,
+    nombre: str,
+    version: str,
+    requiere_envasado_ausencia_cliente: bool,
+    evalua_azucares_agregados: bool,
+    evalua_grasas_agregadas: bool,
+    evalua_sodio_agregado: bool,
+    evalua_edulcorantes: bool,
+    evalua_cafeina: bool,
+    descripcion: str | None,
+) -> NormativaRotulado:
+    """Desactiva la normativa vigente, crea una nueva instancia activa y migra recetas editables."""
+    db.execute(
+        update(NormativaRotulado)
+        .where(NormativaRotulado.activa == True)
+        .values(activa=False)
+    )
+
+    nueva = NormativaRotulado(
+        codigo_normativa=codigo_normativa,
+        nombre=nombre,
+        version=version,
+        activa=True,
+        requiere_envasado_ausencia_cliente=requiere_envasado_ausencia_cliente,
+        evalua_azucares_agregados=evalua_azucares_agregados,
+        evalua_grasas_agregadas=evalua_grasas_agregadas,
+        evalua_sodio_agregado=evalua_sodio_agregado,
+        evalua_edulcorantes=evalua_edulcorantes,
+        evalua_cafeina=evalua_cafeina,
+        descripcion=descripcion,
+    )
+    db.add(nueva)
+    db.flush()
+
+    _reasignar_recetas_a_normativa_vigente(db, nueva.id)
+
+    db.commit()
+    db.refresh(nueva)
+    return nueva
+
+
+def _normativa_sin_cambios(
+    actual: NormativaRotulado,
+    *,
+    nombre: str,
+    version: str,
+    requiere_envasado_ausencia_cliente: bool,
+    evalua_azucares_agregados: bool,
+    evalua_grasas_agregadas: bool,
+    evalua_sodio_agregado: bool,
+    evalua_edulcorantes: bool,
+    evalua_cafeina: bool,
+    descripcion: str | None,
+) -> bool:
+    return (
+        actual.nombre == nombre
+        and actual.version == version
+        and actual.requiere_envasado_ausencia_cliente == requiere_envasado_ausencia_cliente
+        and actual.evalua_azucares_agregados == evalua_azucares_agregados
+        and actual.evalua_grasas_agregadas == evalua_grasas_agregadas
+        and actual.evalua_sodio_agregado == evalua_sodio_agregado
+        and actual.evalua_edulcorantes == evalua_edulcorantes
+        and actual.evalua_cafeina == evalua_cafeina
+        and (actual.descripcion or None) == descripcion
+    )
+
+
+def actualizar_normativa_activa(
+    db: Session, payload: schemas.NormativaRotuladoUpdateIn
+) -> NormativaRotulado:
+    """Crea una nueva versión activa de la normativa de rotulado frontal solo si hubo cambios."""
+    anterior = obtener_normativa_activa(db)
+    nombre = payload.nombre.strip()
+    version = payload.version.strip()
+    descripcion = (
+        payload.descripcion.strip()
+        if payload.descripcion is not None and payload.descripcion.strip()
+        else None
+    )
+
+    if _normativa_sin_cambios(
+        anterior,
+        nombre=nombre,
+        version=version,
+        requiere_envasado_ausencia_cliente=payload.requiere_envasado_ausencia_cliente,
+        evalua_azucares_agregados=payload.evalua_azucares_agregados,
+        evalua_grasas_agregadas=payload.evalua_grasas_agregadas,
+        evalua_sodio_agregado=payload.evalua_sodio_agregado,
+        evalua_edulcorantes=payload.evalua_edulcorantes,
+        evalua_cafeina=payload.evalua_cafeina,
+        descripcion=descripcion,
+    ):
+        return anterior
+
+    return _crear_nueva_version_normativa(
+        db,
+        codigo_normativa=anterior.codigo_normativa,
+        nombre=nombre,
+        version=version,
+        requiere_envasado_ausencia_cliente=payload.requiere_envasado_ausencia_cliente,
+        evalua_azucares_agregados=payload.evalua_azucares_agregados,
+        evalua_grasas_agregadas=payload.evalua_grasas_agregadas,
+        evalua_sodio_agregado=payload.evalua_sodio_agregado,
+        evalua_edulcorantes=payload.evalua_edulcorantes,
+        evalua_cafeina=payload.evalua_cafeina,
+        descripcion=descripcion,
+    )
+
+
+def restaurar_normativa_defecto(db: Session) -> NormativaRotulado:
+    """Crea una nueva versión activa con los valores por defecto de la Ley 27.642 si difieren de la actual."""
+    anterior = obtener_normativa_activa(db)
+    descripcion_defecto = (
+        "Parámetros iniciales de aplicabilidad según Ley 27.642 y Decreto Reglamentario 151/2022."
+    )
+    if _normativa_sin_cambios(
+        anterior,
+        nombre=NormativaDefecto.NOMBRE,
+        version=NormativaDefecto.VERSION,
+        requiere_envasado_ausencia_cliente=NormativaDefecto.REQUIERE_ENVASADO,
+        evalua_azucares_agregados=NormativaDefecto.EVALUA_AZUCARES,
+        evalua_grasas_agregadas=NormativaDefecto.EVALUA_GRASAS,
+        evalua_sodio_agregado=NormativaDefecto.EVALUA_SODIO,
+        evalua_edulcorantes=NormativaDefecto.EVALUA_EDULCORANTES,
+        evalua_cafeina=NormativaDefecto.EVALUA_CAFEINA,
+        descripcion=descripcion_defecto,
+    ):
+        return anterior
+
+    return _crear_nueva_version_normativa(
+        db,
+        codigo_normativa=NormativaDefecto.CODIGO,
+        nombre=NormativaDefecto.NOMBRE,
+        version=NormativaDefecto.VERSION,
+        requiere_envasado_ausencia_cliente=NormativaDefecto.REQUIERE_ENVASADO,
+        evalua_azucares_agregados=NormativaDefecto.EVALUA_AZUCARES,
+        evalua_grasas_agregadas=NormativaDefecto.EVALUA_GRASAS,
+        evalua_sodio_agregado=NormativaDefecto.EVALUA_SODIO,
+        evalua_edulcorantes=NormativaDefecto.EVALUA_EDULCORANTES,
+        evalua_cafeina=NormativaDefecto.EVALUA_CAFEINA,
+        descripcion=descripcion_defecto,
+    )
+
+
+def _receta_tiene_lotes(db: Session, receta_id: int) -> bool:
+    return db.scalar(select(Lote.id).where(Lote.receta_id == receta_id).limit(1)) is not None
+
+
+def _puede_editar_overrides(db: Session, receta: Receta) -> bool:
+    if receta.estado == EstadoReceta.INHABILITADA:
+        return False
+    if receta.estado == EstadoReceta.ACTIVA and _receta_tiene_lotes(db, receta.id):
+        return False
+    return True
 
 
 def _obtener_receta_con_relaciones(db: Session, receta_id: int) -> Receta:
@@ -53,6 +252,7 @@ def _obtener_receta_con_relaciones(db: Session, receta_id: int) -> Receta:
         select(Receta)
         .options(
             joinedload(Receta.producto),
+            joinedload(Receta.normativa_rotulado),
             joinedload(Receta.pasos)
             .joinedload(PasoReceta.insumos)
             .joinedload(PasoInsumo.insumo),
@@ -113,7 +313,7 @@ def evaluar_aplicabilidad_frontal(db: Session, receta_id: int) -> schemas.Aplica
     """Evalúa la aplicabilidad de la normativa de rotulado frontal para una receta."""
     receta = _obtener_receta_con_relaciones(db, receta_id)
     producto: Producto = receta.producto
-    normativa = obtener_normativa_activa(db)
+    normativa = receta.normativa_rotulado or obtener_normativa_activa(db)
 
     # 1. Detección automática desde insumos y aditivos
     automatico = _detectar_agregados_automaticos(receta)
@@ -123,31 +323,46 @@ def evaluar_aplicabilidad_frontal(db: Session, receta_id: int) -> schemas.Aplica
     calc_edulcorantes = automatico["edulcorantes"]
     calc_cafeina = automatico["cafeina"]
 
-    # 2. Combinación con overrides manuales guardados en Receta
-    tiene_azucares = (
-        receta.override_azucares_agregados
-        if receta.override_azucares_agregados is not None
-        else calc_azucares
+    # 2. Combinación con overrides manuales guardados en Receta y reglas activas de la normativa
+    tiene_azucares = bool(
+        normativa.evalua_azucares_agregados
+        and (
+            receta.override_azucares_agregados
+            if receta.override_azucares_agregados is not None
+            else calc_azucares
+        )
     )
-    tiene_grasas = (
-        receta.override_grasas_agregadas
-        if receta.override_grasas_agregadas is not None
-        else calc_grasas
+    tiene_grasas = bool(
+        normativa.evalua_grasas_agregadas
+        and (
+            receta.override_grasas_agregadas
+            if receta.override_grasas_agregadas is not None
+            else calc_grasas
+        )
     )
-    tiene_sodio = (
-        receta.override_sodio_agregado
-        if receta.override_sodio_agregado is not None
-        else calc_sodio
+    tiene_sodio = bool(
+        normativa.evalua_sodio_agregado
+        and (
+            receta.override_sodio_agregado
+            if receta.override_sodio_agregado is not None
+            else calc_sodio
+        )
     )
-    contiene_edulcorantes = (
-        receta.override_edulcorantes
-        if receta.override_edulcorantes is not None
-        else calc_edulcorantes
+    contiene_edulcorantes = bool(
+        normativa.evalua_edulcorantes
+        and (
+            receta.override_edulcorantes
+            if receta.override_edulcorantes is not None
+            else calc_edulcorantes
+        )
     )
-    contiene_cafeina = (
-        receta.override_cafeina
-        if receta.override_cafeina is not None
-        else calc_cafeina
+    contiene_cafeina = bool(
+        normativa.evalua_cafeina
+        and (
+            receta.override_cafeina
+            if receta.override_cafeina is not None
+            else calc_cafeina
+        )
     )
 
     envasado_ausencia_cliente = bool(producto.envasado_ausencia_cliente)
@@ -160,13 +375,13 @@ def evaluar_aplicabilidad_frontal(db: Session, receta_id: int) -> schemas.Aplica
         dictamen_titulo = MensajesAplicabilidad.NO_APLICA_TITULO
         motivo = MensajesAplicabilidad.NO_APLICA_MOTIVO
     else:
-        # Criterios 2 y 3: Presencia de nutrientes críticos agregados o aditivos regulados
+        # Criterios 2 y 3: Sincronizado estrictamente con los 5 valores efectivos
         tiene_algun_agregado = (
-            (normativa.evalua_azucares_agregados and tiene_azucares)
-            or (normativa.evalua_grasas_agregadas and tiene_grasas)
-            or (normativa.evalua_sodio_agregado and tiene_sodio)
-            or (normativa.evalua_edulcorantes and contiene_edulcorantes)
-            or (normativa.evalua_cafeina and contiene_cafeina)
+            tiene_azucares
+            or tiene_grasas
+            or tiene_sodio
+            or contiene_edulcorantes
+            or contiene_cafeina
         )
 
         if tiene_algun_agregado:
@@ -209,6 +424,7 @@ def evaluar_aplicabilidad_frontal(db: Session, receta_id: int) -> schemas.Aplica
         dictamen_titulo=dictamen_titulo,
         motivo=motivo,
         version_normativa=version_normativa,
+        puede_editar_overrides=_puede_editar_overrides(db, receta),
     )
 
 
@@ -217,6 +433,11 @@ def actualizar_overrides_aplicabilidad(
 ) -> schemas.AplicabilidadFrontalOut:
     """Actualiza o restablece los overrides manuales de aplicabilidad de rotulado frontal en una receta."""
     receta = _obtener_receta_con_relaciones(db, receta_id)
+
+    if receta.estado == EstadoReceta.INHABILITADA:
+        raise exceptions.RecetaInhabilitadaNoEditableAplicabilidad()
+    if receta.estado == EstadoReceta.ACTIVA and _receta_tiene_lotes(db, receta.id):
+        raise exceptions.RecetaConLotesNoEditableAplicabilidad()
 
     if payload.restablecer_automatico:
         receta.override_azucares_agregados = None

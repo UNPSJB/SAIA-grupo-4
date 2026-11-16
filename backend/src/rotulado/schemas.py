@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 from src.rotulado.constants import DictamenAplicabilidad
@@ -59,5 +60,36 @@ class AplicabilidadFrontalOut(BaseModel):
     dictamen_titulo: str
     motivo: str
     version_normativa: str
+    puede_editar_overrides: bool = True
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class NormativaRotuladoOut(BaseModel):
+    id: int
+    codigo_normativa: str
+    nombre: str
+    version: str
+    activa: bool
+    requiere_envasado_ausencia_cliente: bool
+    evalua_azucares_agregados: bool
+    evalua_grasas_agregadas: bool
+    evalua_sodio_agregado: bool
+    evalua_edulcorantes: bool
+    evalua_cafeina: bool
+    descripcion: Optional[str] = None
+    fecha_actualizacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NormativaRotuladoUpdateIn(BaseModel):
+    nombre: str = Field(min_length=1, max_length=120)
+    version: str = Field(min_length=1, max_length=50)
+    requiere_envasado_ausencia_cliente: bool
+    evalua_azucares_agregados: bool
+    evalua_grasas_agregadas: bool
+    evalua_sodio_agregado: bool
+    evalua_edulcorantes: bool
+    evalua_cafeina: bool
+    descripcion: Optional[str] = None
