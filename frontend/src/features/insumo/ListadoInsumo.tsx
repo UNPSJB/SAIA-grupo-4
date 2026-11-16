@@ -8,9 +8,9 @@ import {
   FiCheckCircle,
   FiEye,
   FiPlus,
-  FiPackage,
+  FiPackage
 } from "react-icons/fi";
-import { FaRuler,} from "react-icons/fa";
+import { FaRuler} from "react-icons/fa";
 import {
   AlertMessage,
   DataTable,
@@ -35,7 +35,7 @@ interface ListadoInsumosProps {
   onVer?: (insumo: Insumo) => void;
   onDarAlta?: (insumo: Insumo) => void;
   onVerUnidades?: () => void;
-  onRegistrarLote?: (insumo: Insumo) => void;
+  onVerLotes?: (insumo: Insumo) => void,
 }
 
 const formatearConsumo = (consumo: number) =>
@@ -66,7 +66,7 @@ export const ListadoInsumos = ({
   onVer,
   onDarAlta,
   onVerUnidades,
-  onRegistrarLote,
+  onVerLotes
 }: ListadoInsumosProps) => {
   // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
@@ -139,7 +139,7 @@ export const ListadoInsumos = ({
       exportable: false,
       align: "end",
       render: (insumo) => (
-        <RowActions>
+                <RowActions>
           <RowActionButton
             icon={FiEdit2}
             label='Modificar'
@@ -154,18 +154,17 @@ export const ListadoInsumos = ({
             onClick={() => onVer?.(insumo)}
           />
           <RowActionButton
-            icon={FiPackage}
-            label='Registrar lote'
-            colorPalette='purple'
-            onClick={() => onRegistrarLote?.(insumo)}
-            visible={insumo.disponible}
-          />
-          <RowActionButton
             icon={FiTrash2}
             label='Eliminar'
             colorPalette='red'
             onClick={() => onEliminar?.(insumo)}
             visible={insumo.disponible}
+          />
+          <RowActionButton
+            icon={FiPackage}
+            label='Ver lotes'
+            colorPalette='purple'
+            onClick={() => onVerLotes?.(insumo)}
           />
           <RowActionButton
             icon={FiCheckCircle}

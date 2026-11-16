@@ -1,3 +1,5 @@
+export type EstadoLote = "activo" | "vencido" | "inhabilitado";
+
 export interface UnidadMedida {
   id: number;
   nombre: string;
@@ -23,4 +25,8 @@ export interface LoteInsumo {
   codigo_lote: string;
   fecha_vencimiento: string; // "YYYY-MM-DD"
   activo: boolean;
+  estado: EstadoLote;
+  motivo_inhabilitacion: string | null;
+  fecha_inhabilitacion: string | null;
+  usuario_inhabilitacion_id: number | null;
 }

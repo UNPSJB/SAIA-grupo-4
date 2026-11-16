@@ -10,8 +10,9 @@ import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
 import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
 import type { Insumo } from "../features/insumo/types";
 import { LoteInsumoForm } from "../features/insumo/LoteInsumoForm";
+import { ListadoLotesInsumo } from "../features/insumo/ListadoLotesInsumo";
 
-type Vista = "listado" | "crear" | "modificar" | "ver";
+type Vista = "listado" | "crear" | "modificar" | "ver" | "lotes";
 
 export default function InsumoPage() {
   const navigate = useNavigate();
@@ -63,42 +64,60 @@ export default function InsumoPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      <ListadoInsumos
-        key={refescar}
-        onVerUnidades={() =>
-          navigate("/unidades-de-medida", {
-            state: { from: "/insumos", label: "Insumos" },
-          })
-        }
-        onCrear={() => {
-          setError("");
-          setVista("crear");
-        }}
-        onModificar={(insumo) => {
-          setError("");
-          setInsumoSeleccionado(insumo);
-          setVista("modificar");
-        }}
-        onEliminar={(insumo) => {
-          setError("");
-          setInsumoEliminar(insumo);
-          setEliminarAbierto(true);
-        }}
-        onVer={(insumo) => {
-          setError("");
-          setInsumoSeleccionado(insumo);
-          setVista("ver");
-        }}
-        onDarAlta={(insumo) => {
-          setError("");
-          setInsumoAlta(insumo);
-          setAltaAbierto(true);
-        }}
-        onRegistrarLote={(insumo) => {
-          setError("");
-          setInsumoLote(insumo);
-        }}
-      />
+      {/* Listado de insumos: se oculta mientras se miran los lotes de uno. */}
+      {vista !== "lotes" && (
+        <ListadoInsumos
+          key={refescar}
+          onVerUnidades={() =>
+            navigate("/unidades-de-medida", {
+              state: { from: "/insumos", label: "Insumos" },
+            })
+          }
+          onCrear={() => {
+            setError("");
+            setVista("crear");
+          }}
+          onModificar={(insumo) => {
+            setError("");
+            setInsumoSeleccionado(insumo);
+            setVista("modificar");
+          }}
+          onEliminar={(insumo) => {
+            setError("");
+            setInsumoEliminar(insumo);
+            setEliminarAbierto(true);
+          }}
+          onVer={(insumo) => {
+            setError("");
+            setInsumoSeleccionado(insumo);
+            setVista("ver");
+          }}
+          onDarAlta={(insumo) => {
+            setError("");
+            setInsumoAlta(insumo);
+            setAltaAbierto(true);
+          }}
+          onVerLotes={(insumo) => {
+            setError("");
+            setInsumoSeleccionado(insumo);
+            setVista("lotes");
+          }}
+        />
+      )}
+
+      {/* Lotes del insumo seleccionado, con el botón para registrar otro lote. */}
+      {vista === "lotes" && insumoSeleccionado && (
+        <ListadoLotesInsumo
+          insumo={insumoSeleccionado}
+          refreshKey={refescar}
+          onVolver={() => setVista("listado")}
+          onNuevoLote={() => {
+            setError("");
+            setInsumoLote(insumoSeleccionado);
+          }}
+        />
+      )}
+
       {vista === "ver" && insumoSeleccionado && (
         <InsumoDetalle
           insumo={insumoSeleccionado}
@@ -140,17 +159,22 @@ export default function InsumoPage() {
           )}
         </FormModal>
       )}
-      
+
+      {/* Alta de lote: se abre encima del listado de lotes y lo recarga al guardar. */}
       {insumoLote && (
         <FormModal open onClose={() => setInsumoLote(null)}>
           <LoteInsumoForm
             insumo={insumoLote}
             onCancelar={() => setInsumoLote(null)}
-            onGuardado={() => setInsumoLote(null)}
+            onGuardado={() => {
+              setInsumoLote(null);
+              setRefrescar((r) => r + 1);
+            }}
             enModal
           />
         </FormModal>
       )}
+
       <AlertDelete
         open={eliminarAbierto}
         name={insumoEliminar?.nombre ?? null}
