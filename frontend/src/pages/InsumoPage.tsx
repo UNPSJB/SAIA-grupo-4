@@ -1,7 +1,6 @@
 import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
 import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
@@ -60,7 +59,7 @@ export default function InsumoPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoInsumos
         key={refescar}
         onVerUnidades={() =>
@@ -159,6 +158,6 @@ export default function InsumoPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

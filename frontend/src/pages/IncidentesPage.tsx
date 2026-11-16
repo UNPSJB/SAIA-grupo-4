@@ -81,7 +81,7 @@ export default function IncidentesPage() {
 
   return (
     <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
-      <Box textAlign="left" maxW="8xl" mx="auto">
+      <>
         <HistorialFiltros
           fechaDesde={fechaDesde}
           fechaHasta={fechaHasta}
@@ -102,7 +102,7 @@ export default function IncidentesPage() {
           />
         )}
         {!loading && !error && estadisticas.length > 0 && (
-          <ListadoContainer maxW="8xl">
+          <ListadoContainer>
             <GraficoIncidentesPorTipo
               datos={estadisticas}
               tipoSeleccionadoId={tipoSeleccionado?.tipo_id}
@@ -116,7 +116,7 @@ export default function IncidentesPage() {
         )}
 
         {tipoSeleccionado && (
-          <ListadoContainer maxW="8xl">
+          <ListadoContainer>
             <HStack
               justify="space-between"
               bg="white"
@@ -138,7 +138,7 @@ export default function IncidentesPage() {
             </HStack>
           </ListadoContainer>
         )}
-      </Box>
+      </>
 
       <ListadoIncidentes
         key={`${tipoSeleccionado?.tipo_id ?? "todos"}-${periodo.desde}-${periodo.hasta}`}

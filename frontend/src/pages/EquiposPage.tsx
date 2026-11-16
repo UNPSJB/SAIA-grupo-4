@@ -1,7 +1,6 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { apiFetch } from "../features/auth/apiFetch";
 import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import { EquipoForm } from "../features/equipos/EquipoForm";
@@ -111,7 +110,7 @@ export default function EquiposPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoEquipos
         key={refrescar}
         onCrear={() => setVista("crear")}
@@ -223,6 +222,6 @@ export default function EquiposPage() {
           notificarGuardado();
       }}
   />
-    </Box>
+    </>
   );
 }
