@@ -163,9 +163,8 @@ export const ListadoInsumos = ({
 
   return (
     <ListadoContainer>
-      <HStack justify="space-between" align="center">
-        <ListadoHeader title="Insumos" icon={FiBox} />
-        <HStack gap={2}>
+      <ListadoHeader title="Insumos" icon={FiBox}>
+        <HStack gap={2} wrap="wrap">
           <Button
             variant="outline"
             colorPalette="green"
@@ -177,7 +176,7 @@ export const ListadoInsumos = ({
             <FiPlus /> Nuevo insumo
           </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar

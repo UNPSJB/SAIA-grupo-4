@@ -162,21 +162,20 @@ export const ListadoProductos = ({
 
   return (
     <ListadoContainer maxW="8xl">
-      <HStack justify="space-between" align="center">
-        <ListadoHeader title="Productos" icon={FiPackage}/>
-          <HStack gap={2}>
-            <Button
-              variant="outline"
-              colorPalette="green"
-              onClick={onVerUnidades}
-            >
-              <FaRuler /> Unidades de medida
-            </Button>
-            <Button colorPalette="green" onClick={onCrear}>
-              <FiPlus /> Nuevo producto
-            </Button>
+      <ListadoHeader title="Productos" icon={FiPackage}>
+        <HStack gap={2}>
+          <Button
+            variant="outline"
+            colorPalette="green"
+            onClick={onVerUnidades}
+          >
+            <FaRuler /> Unidades de medida
+          </Button>
+          <Button colorPalette="green" onClick={onCrear}>
+            <FiPlus /> Nuevo producto
+          </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar onAplicar={aplicar} onLimpiar={limpiar} hayFiltrosActivos={hayFiltros} loading={loading}>
