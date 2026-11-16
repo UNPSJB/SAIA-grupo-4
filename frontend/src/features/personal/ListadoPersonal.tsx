@@ -257,7 +257,7 @@ export const ListadoPersonal = ({
 
   return (
     <ListadoContainer>
-      <HStack justify='space-between' mb={6} align='center'>
+      <HStack justify='space-between' align='center'>
         <ListadoHeader title='Personal' icon={FiUser} />
         <HStack gap={2}>
           <Button

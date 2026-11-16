@@ -284,7 +284,7 @@ export const ListadoElementosLimpieza = ({
 
   return (
     <ListadoContainer>
-      <HStack justify='space-between' mb={6} align='center'>
+      <HStack justify='space-between' align='center'>
         <ListadoHeader
           title='Elementos de Limpieza'
           icon={MdOutlineCleaningServices}

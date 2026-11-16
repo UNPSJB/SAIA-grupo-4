@@ -86,7 +86,7 @@ export const ListadoTiposIncidentes = ({
 
   return (
     <Box>
-      <HStack justify='space-between' mb={6} align='center'>
+      <HStack justify='space-between' align='center'>
         <ListadoHeader title='Tipos de Incidentes' icon={FiTag} />
         <Button colorPalette='green' onClick={onCrear}>
           <FiPlus /> Nuevo tipo

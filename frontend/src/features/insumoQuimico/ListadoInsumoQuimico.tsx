@@ -234,7 +234,7 @@ export const ListadoInsumosQuimicos = ({
 
   return (
     <ListadoContainer>
-      <HStack justify='space-between' mb={6} align='center'>
+      <HStack justify='space-between' align='center'>
         <ListadoHeader title='Insumos Químicos' icon={FiDroplet} />
         <HStack gap={2}>
           <Button

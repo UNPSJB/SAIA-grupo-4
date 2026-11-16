@@ -223,7 +223,7 @@ export const ListadoIncidentes = ({
 
   return (
     <ListadoContainer>
-      <HStack justify="space-between" mb={6} align="center">
+      <HStack justify="space-between" align="center">
         <ListadoHeader title={titulo} icon={FiAlertTriangle}/>
         <HStack gap={2}>
           {onGestionarTipos && (
