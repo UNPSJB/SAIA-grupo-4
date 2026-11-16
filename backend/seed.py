@@ -826,6 +826,9 @@ def _crear_prerrequisitos(db, cantidad, hoy):
                 ins.grasas_trans_g = Decimal("0.00")
                 ins.fibra_g = ref.fibra_g
                 ins.sodio_mg = ref.sodio_mg
+                if nombre == "Azucar Comun":
+                    ins.azucares_totales_g = Decimal("99.80")
+                    ins.azucares_anadidos_g = Decimal("99.80")
                 if modificada:
                     ins.grasas_totales_g = Decimal("11.00")
                     ins.es_nutricion_modificada = True
