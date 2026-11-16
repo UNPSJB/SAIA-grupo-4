@@ -171,7 +171,7 @@ export default function LotesOperadorPage() {
   };
 
   return (
-    <ListadoContainer maxW="8xl">
+    <ListadoContainer>
       <ListadoHeader
         title="Lotes de Producción"
         icon={FiBox}
