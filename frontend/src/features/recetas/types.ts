@@ -214,4 +214,50 @@ export interface InformacionNutricionalResponse {
   leyenda_vd: string;
 }
 
+export type DictamenAplicabilidad = "APLICA" | "NO_APLICA" | "EXCEPTUADO";
+
+export interface AplicabilidadFrontalOut {
+  receta_id: number;
+  codigo_receta: string;
+  producto_id: number;
+  producto_nombre: string;
+  envasado_ausencia_cliente: boolean;
+
+  calculado_azucares_agregados: boolean;
+  calculado_grasas_agregadas: boolean;
+  calculado_sodio_agregado: boolean;
+  calculado_edulcorantes: boolean;
+  calculado_cafeina: boolean;
+
+  override_azucares_agregados?: boolean | null;
+  override_grasas_agregadas?: boolean | null;
+  override_sodio_agregado?: boolean | null;
+  override_edulcorantes?: boolean | null;
+  override_cafeina?: boolean | null;
+  es_aplicabilidad_forzada_manualmente: boolean;
+
+  tiene_azucares_agregados: boolean;
+  tiene_grasas_agregadas: boolean;
+  tiene_sodio_agregado: boolean;
+  contiene_edulcorantes: boolean;
+  contiene_cafeina: boolean;
+
+  aplica_rotulado_frontal: boolean;
+  dictamen: DictamenAplicabilidad;
+  dictamen_titulo: string;
+  motivo: string;
+  version_normativa: string;
+  puede_editar_overrides: boolean;
+}
+
+export interface AplicabilidadFrontalUpdate {
+  override_azucares_agregados?: boolean | null;
+  override_grasas_agregadas?: boolean | null;
+  override_sodio_agregado?: boolean | null;
+  override_edulcorantes?: boolean | null;
+  override_cafeina?: boolean | null;
+  restablecer_automatico?: boolean;
+}
+
+
 

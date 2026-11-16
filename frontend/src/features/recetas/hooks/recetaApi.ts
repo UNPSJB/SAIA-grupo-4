@@ -4,6 +4,8 @@ import type { Equipo } from "../../equipos/types";
 import type { Insumo } from "../../insumo/types";
 import type { Producto } from "../../productos/types";
 import type {
+  AplicabilidadFrontalOut,
+  AplicabilidadFrontalUpdate,
   ComposicionPorcentualResponse,
   DeclaracionIngredientesResponse,
   FiltrosReceta,
@@ -102,6 +104,13 @@ export const recetasApi = {
     request<ComposicionPorcentualResponse>(`/recetas/${id}/composicion-porcentual`),
   obtenerInformacionNutricional: (id: number) =>
     request<InformacionNutricionalResponse>(`/recetas/${id}/informacion-nutricional`),
+  obtenerAplicabilidadFrontal: (id: number) =>
+    request<AplicabilidadFrontalOut>(`/recetas/${id}/aplicabilidad-frontal`),
+  actualizarAplicabilidadFrontal: (id: number, payload: AplicabilidadFrontalUpdate) =>
+    request<AplicabilidadFrontalOut>(`/recetas/${id}/aplicabilidad-frontal`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   obtenerDeclaracionIngredientes: (id: number) =>
     request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes`),
   guardarOrdenManualDeclaracion: (id: number, insumoIds: number[]) =>

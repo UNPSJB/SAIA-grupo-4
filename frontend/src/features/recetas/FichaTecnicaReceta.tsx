@@ -34,8 +34,10 @@ import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import { TablaComposicionPorcentual } from "./components/TablaComposicionPorcentual";
 import { TablaInformacionNutricional } from "./components/TablaInformacionNutricional";
 import { ListaDeclaracionIngredientes } from "./components/ListaDeclaracionIngredientes";
+import { EvaluacionAplicabilidadFrontal } from "./components/EvaluacionAplicabilidadFrontal";
 import { ESTADOS_RECETA } from "./constants";
 import type {
+  AplicabilidadFrontalOut,
   ComposicionPorcentualResponse,
   DeclaracionIngredientesResponse,
   InformacionNutricionalResponse,
@@ -92,6 +94,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     useState<DeclaracionIngredientesResponse | null>(null);
   const [infoNutricional, setInfoNutricional] =
     useState<InformacionNutricionalResponse | null>(null);
+  const [aplicabilidad, setAplicabilidad] =
+    useState<AplicabilidadFrontalOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -107,17 +111,19 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
 
     try {
       if (esModoAdmin) {
-        // En modo admin, cargamos la receta, composición porcentual, declaración e información nutricional
-        const [dataReceta, dataComp, dataDecl, dataNutri] = await Promise.all([
+        // En modo admin, cargamos la receta, composición porcentual, declaración, información nutricional y aplicabilidad frontal
+        const [dataReceta, dataComp, dataDecl, dataNutri, dataAplica] = await Promise.all([
           recetasApi.obtenerReceta(recetaId),
           recetasApi.obtenerComposicionPorcentual(recetaId).catch(() => null),
           recetasApi.obtenerDeclaracionIngredientes(recetaId).catch(() => null),
           recetasApi.obtenerInformacionNutricional(recetaId).catch(() => null),
+          recetasApi.obtenerAplicabilidadFrontal(recetaId).catch(() => null),
         ]);
         setReceta(dataReceta);
         setComposicion(dataComp);
         setDeclaracion(dataDecl);
         setInfoNutricional(dataNutri);
+        setAplicabilidad(dataAplica);
       } else {
         // En modo operador, consultamos la receta activa
         const dataReceta = await recetasApi.obtenerRecetaActiva(recetaId);
@@ -375,6 +381,28 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
           {esModoAdmin && infoNutricional && (
             <Box mt={3} mb={6}>
               <TablaInformacionNutricional informacion={infoNutricional} />
+            </Box>
+          )}
+
+          {/* Evaluación de Aplicabilidad de Rotulado Frontal (Ley 27.642) */}
+          {esModoAdmin && aplicabilidad && (
+            <Box mt={3} mb={6}>
+              <EvaluacionAplicabilidadFrontal
+                recetaId={recetaId}
+                aplicabilidad={aplicabilidad}
+                onActualizar={setAplicabilidad}
+                esModoAdmin={esModoAdmin}
+                puedeEditarOverrides={
+                  aplicabilidad.puede_editar_overrides &&
+                  (receta.estado === "BORRADOR" ||
+                    (receta.estado === "ACTIVA" && !receta.tiene_lotes))
+                }
+                motivoSoloLectura={
+                  receta.estado === "INHABILITADA"
+                    ? "Receta inhabilitada: solo lectura"
+                    : "Receta con lotes asociados: solo lectura"
+                }
+              />
             </Box>
           )}
 
