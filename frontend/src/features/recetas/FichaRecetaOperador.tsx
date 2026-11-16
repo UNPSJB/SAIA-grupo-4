@@ -172,15 +172,15 @@ export const FichaRecetaOperador = () => {
 
   if (loading) {
     return (
-      <Box p={{ base: 4, md: 10 }} bg="gray.100" minH="100vh">
+      <>
         <LoadingState message="Cargando ficha técnica..." />
-      </Box>
+      </>
     );
   }
 
   if (error || !receta) {
     return (
-      <Box p={{ base: 4, md: 10 }} bg="gray.100" minH="100vh">
+      <>
         <ListadoContainer maxW="4xl">
           <Button
             variant="outline"
@@ -195,7 +195,7 @@ export const FichaRecetaOperador = () => {
             message={error || "La receta solicitada no existe o no está activa."}
           />
         </ListadoContainer>
-      </Box>
+      </>
     );
   }
 
@@ -206,13 +206,7 @@ export const FichaRecetaOperador = () => {
 
   return (
     <>
-      <Box
-        p={{ base: 4, md: 10 }}
-        bg="gray.100"
-        minH="100vh"
-        className="no-print"
-        _print={{ display: "none" }}
-      >
+      <>
       {/* Contenedor Principal: Cabecera y Resumen */}
       <ListadoContainer maxW="8xl">
         <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={3}>
@@ -472,7 +466,7 @@ export const FichaRecetaOperador = () => {
           </VStack>
         )}
       </ListadoContainer>
-    </Box>
+    </>
 
     {/* Componente de Impresión Exclusivo (A4, tema claro) */}
     <FichaRecetaPrint receta={receta} />

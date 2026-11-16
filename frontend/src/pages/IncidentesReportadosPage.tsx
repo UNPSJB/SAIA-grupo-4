@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Box } from "@chakra-ui/react";
 import { BASE_URL } from "../config";
 import { IncidenteDetalle } from "../features/incidentes/IncidenteDetalle";
 import { ListadoIncidentes } from "../features/incidentes/ListadoIncidentes";
@@ -14,7 +13,7 @@ export default function IncidentesReportadosPage() {
         useState<Incidente | null>(null);
 
     return (
-        <Box p={{ base: 4, md: 10 }} bg='gray.100' minH='100vh'>
+        <>
             <ListadoIncidentes
                 key={refrescar}
                 endpoint={`${BASE_URL}/incidentes/mis-reportes`}
@@ -42,6 +41,6 @@ export default function IncidentesReportadosPage() {
                     />
                 </FormModal>
             )}
-        </Box>
+        </>
     );
 }

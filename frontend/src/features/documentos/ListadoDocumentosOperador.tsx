@@ -152,7 +152,7 @@ export const ListadoDocumentosOperador = () => {
   ];
 
   return (
-    <ListadoContainer mt={8}>
+    <ListadoContainer>
       <ListadoHeader title="Documentos" icon={FiFileText} />
 
       <Box mb={4}>
