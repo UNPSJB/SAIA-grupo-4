@@ -21,6 +21,13 @@ class Producto(ModeloBase):
     recetas: Mapped[list["Receta"]] = relationship("Receta", back_populates="producto")
     lotes: Mapped[list["Lote"]] = relationship("Lote", back_populates="producto")
 
+    @property
+    def es_liquido(self) -> bool:
+        """Indica si el producto se comercializa en base líquida (unidad de volumen)."""
+        if not self.unidad_medida or not self.unidad_medida.tipo_magnitud:
+            return False
+        return self.unidad_medida.tipo_magnitud.strip().lower() == "volumen"
+
     # Checks
     __table_args__ = (
         UniqueConstraint(
