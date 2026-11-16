@@ -1,22 +1,20 @@
-import { Box } from "@chakra-ui/react";
+import { Box, type BoxProps } from "@chakra-ui/react";
 
-interface ListadoContainerProps {
-  children: React.ReactNode;
-  maxW?: string;
-  mt?: number;
+interface ListadoContainerProps extends BoxProps {
+  maxW?: BoxProps["maxW"];
 }
 
 export const ListadoContainer = ({
   children,
   maxW = "8xl",
-  mt = 20,
   ...rest
 }: ListadoContainerProps) => (
   <Box
+    w="full"
+    minW={0}
     maxW={maxW}
-    mx="auto"
-    mt={mt}
-    p={10}
+    mx={maxW ? "auto" : undefined}
+    p={{ base: 4, md: 6 }}
     borderWidth="1px"
     borderRadius="lg"
     boxShadow="lg"
