@@ -67,6 +67,30 @@ def _normalizar_base_calculo(datos: dict) -> None:
         datos["base_calculo"] = base.value
 
 
+def _aplicar_reglas_rotulado_frontal_insumo(
+    datos: dict,
+    categoria: str,
+    clase_funcional: str | None,
+    campos_explicitos: set[str] | None = None,
+) -> None:
+    """Limpia flags de rotulado para envases y auto-detecta edulcorantes por clase funcional."""
+    cat = (categoria or "").strip().lower()
+    if cat == schemas.Categoria.ENVASE.value:
+        datos["aporta_azucares_agregados"] = False
+        datos["aporta_grasas_agregadas"] = False
+        datos["aporta_sodio_agregado"] = False
+        datos["es_edulcorante"] = False
+        datos["contiene_cafeina"] = False
+        return
+
+    if cat == schemas.Categoria.ADITIVO.value:
+        cf = (clase_funcional or "").strip().lower()
+        if "edulcorante" in cf and (
+            campos_explicitos is None or "es_edulcorante" not in campos_explicitos
+        ):
+            datos["es_edulcorante"] = True
+
+
 def _procesar_trazabilidad_creacion(
     db: Session, datos_creacion: dict, usuario_id: int | None
 ) -> None:
@@ -192,6 +216,13 @@ def crear_insumo(
 
     datos_creacion = insumo.model_dump()
     datos_creacion["disponible"] = True
+    campos_explicitos = set(insumo.model_dump(exclude_unset=True).keys())
+    _aplicar_reglas_rotulado_frontal_insumo(
+        datos_creacion,
+        datos_creacion.get("categoria", ""),
+        datos_creacion.get("clase_funcional"),
+        campos_explicitos=campos_explicitos,
+    )
     _procesar_trazabilidad_creacion(db, datos_creacion, usuario_id)
 
     db_insumo = Insumo(**datos_creacion)
@@ -350,8 +381,21 @@ def _validar_y_ajustar_atributos_categoria(
             raise exceptions.NutricionNoAplicaEnvase()
         if cambio_categoria:
             _limpiar_nutricion_para_envase(update_data)
+        _aplicar_reglas_rotulado_frontal_insumo(
+            update_data,
+            categoria_efectiva,
+            None,
+        )
     else:
         _procesar_trazabilidad_edicion(db, db_insumo, update_data, usuario_id)
+        if "categoria" in update_data or "clase_funcional" in update_data:
+            cf_efectiva = update_data.get("clase_funcional", db_insumo.clase_funcional)
+            _aplicar_reglas_rotulado_frontal_insumo(
+                update_data,
+                categoria_efectiva,
+                cf_efectiva,
+                campos_explicitos=set(update_data.keys()),
+            )
 
 
 def modificar_insumo(
