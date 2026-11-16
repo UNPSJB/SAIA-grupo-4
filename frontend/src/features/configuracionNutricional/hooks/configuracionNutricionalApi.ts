@@ -1,6 +1,8 @@
 import { BASE_URL, JSON_HEADERS } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
 import type {
+  NormativaRotulado,
+  NormativaRotuladoUpdate,
   ParametroNutricional,
   ParametroNutricionalUpdateItem,
 } from "../types";
@@ -37,4 +39,18 @@ export const configuracionNutricionalApi = {
     request<ParametroNutricional[]>("/configuracion-nutricional/restaurar-defecto", {
       method: "POST",
     }),
+  obtenerNormativaRotulado: () =>
+    request<NormativaRotulado>("/configuracion-nutricional/rotulado-frontal"),
+  actualizarNormativaRotulado: (payload: NormativaRotuladoUpdate) =>
+    request<NormativaRotulado>("/configuracion-nutricional/rotulado-frontal", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  restaurarNormativaRotuladoDefecto: () =>
+    request<NormativaRotulado>(
+      "/configuracion-nutricional/rotulado-frontal/restaurar-defecto",
+      {
+        method: "POST",
+      },
+    ),
 };

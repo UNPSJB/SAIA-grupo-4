@@ -21,3 +21,31 @@ export interface ParametroNutricionalUpdateItem {
   texto_no_significativo: string | null;
   factor_conversion_kj: number | null;
 }
+
+export interface NormativaRotulado {
+  id: number;
+  codigo_normativa: string;
+  nombre: string;
+  version: string;
+  activa: boolean;
+  requiere_envasado_ausencia_cliente: boolean;
+  evalua_azucares_agregados: boolean;
+  evalua_grasas_agregadas: boolean;
+  evalua_sodio_agregado: boolean;
+  evalua_edulcorantes: boolean;
+  evalua_cafeina: boolean;
+  descripcion: string | null;
+  fecha_actualizacion: string;
+}
+
+export interface NormativaRotuladoUpdate {
+  nombre: string;
+  version: string;
+  requiere_envasado_ausencia_cliente: boolean;
+  evalua_azucares_agregados: boolean;
+  evalua_grasas_agregadas: boolean;
+  evalua_sodio_agregado: boolean;
+  evalua_edulcorantes: boolean;
+  evalua_cafeina: boolean;
+  descripcion: string | null;
+}

@@ -25,6 +25,14 @@ export const ProductoDetalle = ({ producto, onCerrar }: DetalleProps) => {
           valor: producto.dias_vida_util != null ? `${producto.dias_vida_util} días` : "No especificada",
         },
         {
+          label: "Envasado en ausencia del cliente",
+          valor: (
+            <Badge colorPalette={producto.envasado_ausencia_cliente ? "green" : "gray"}>
+              {producto.envasado_ausencia_cliente ? "Sí" : "No"}
+            </Badge>
+          ),
+        },
+        {
           label: "Estado",
           valor: (
             <Badge colorPalette={producto.activo ? "green" : "red"}>
