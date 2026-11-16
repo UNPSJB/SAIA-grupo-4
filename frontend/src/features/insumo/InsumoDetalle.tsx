@@ -1,4 +1,4 @@
-import { Badge } from "@chakra-ui/react";
+import { Badge, HStack } from "@chakra-ui/react";
 import { FiActivity, FiBox, FiEye } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import type { Insumo } from "./types";
@@ -159,6 +159,34 @@ export const InsumoDetalle = ({ insumo, onCerrar }: InsumoDetalleProps) => {
         {
           label: "Sodio",
           valor: fmtNutriente(insumo.sodio_mg, "mg"),
+        },
+        {
+          label: "Rotulado frontal (Ley 27.642)",
+          valor: (() => {
+            const marcas = [
+              insumo.aporta_azucares_agregados && "Azúcares agregados",
+              insumo.aporta_grasas_agregadas && "Grasas agregadas",
+              insumo.aporta_sodio_agregado && "Sodio agregado",
+              insumo.es_edulcorante && "Edulcorante",
+              insumo.contiene_cafeina && "Cafeína",
+            ].filter(Boolean) as string[];
+            if (marcas.length === 0) {
+              return (
+                <Badge colorPalette='gray' variant='subtle'>
+                  Sin aportes críticos declarados
+                </Badge>
+              );
+            }
+            return (
+              <HStack gap={1.5} flexWrap='wrap'>
+                {marcas.map((m) => (
+                  <Badge key={m} colorPalette='orange' variant='subtle'>
+                    {m}
+                  </Badge>
+                ))}
+              </HStack>
+            );
+          })(),
         },
       ],
     });

@@ -61,6 +61,13 @@ export const insumoSchema = z
     grasas_trans_g: nutrienteOpcional("Las grasas trans"),
     fibra_g: nutrienteOpcional("La fibra alimentaria"),
     sodio_mg: nutrienteOpcional("El sodio"),
+
+    // Flags de rotulado frontal (Ley 27.642)
+    aporta_azucares_agregados: z.boolean().optional(),
+    aporta_grasas_agregadas: z.boolean().optional(),
+    aporta_sodio_agregado: z.boolean().optional(),
+    es_edulcorante: z.boolean().optional(),
+    contiene_cafeina: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     const cat = (data.categoria || "").trim().toLowerCase();

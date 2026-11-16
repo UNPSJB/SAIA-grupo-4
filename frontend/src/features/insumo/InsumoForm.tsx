@@ -73,6 +73,11 @@ const PASOS_INSUMO: PasoInsumo[] = [
       "grasas_trans_g",
       "fibra_g",
       "sodio_mg",
+      "aporta_azucares_agregados",
+      "aporta_grasas_agregadas",
+      "aporta_sodio_agregado",
+      "es_edulcorante",
+      "contiene_cafeina",
     ],
   },
 ];
@@ -166,6 +171,11 @@ export const InsumoForm = ({
             insumo?.grasas_trans_g != null ? String(insumo.grasas_trans_g) : "",
           fibra_g: insumo?.fibra_g != null ? String(insumo.fibra_g) : "",
           sodio_mg: insumo?.sodio_mg != null ? String(insumo.sodio_mg) : "",
+          aporta_azucares_agregados: Boolean(insumo?.aporta_azucares_agregados),
+          aporta_grasas_agregadas: Boolean(insumo?.aporta_grasas_agregadas),
+          aporta_sodio_agregado: Boolean(insumo?.aporta_sodio_agregado),
+          es_edulcorante: Boolean(insumo?.es_edulcorante),
+          contiene_cafeina: Boolean(insumo?.contiene_cafeina),
         }
       : {
           nombre: "",
@@ -190,10 +200,16 @@ export const InsumoForm = ({
           grasas_trans_g: "",
           fibra_g: "",
           sodio_mg: "",
+          aporta_azucares_agregados: false,
+          aporta_grasas_agregadas: false,
+          aporta_sodio_agregado: false,
+          es_edulcorante: false,
+          contiene_cafeina: false,
         };
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
@@ -264,6 +280,16 @@ export const InsumoForm = ({
       shouldValidate: true,
     });
   }, [esModoCrear, tipoMagnitud, dirtyFields.base_calculo, setValue]);
+
+  useEffect(() => {
+    if (esModoVer) return;
+    if (
+      esAditivo &&
+      (claseFuncionalSeleccionada || "").trim().toLowerCase().includes("edulcorante")
+    ) {
+      setValue("es_edulcorante", true, { shouldDirty: true });
+    }
+  }, [esAditivo, claseFuncionalSeleccionada, esModoVer, setValue]);
 
   const [success, setSuccess] = useState(false);
   const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
@@ -574,6 +600,7 @@ export const InsumoForm = ({
               <FormGrid>
                 <SeccionNutricionalInsumo
                   register={register}
+                  control={control}
                   setValue={setValue}
                   watch={watch}
                   errors={errors}

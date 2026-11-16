@@ -30,6 +30,11 @@ export interface InsumoPayload {
   grasas_trans_g?: string;
   fibra_g?: string;
   sodio_mg?: string;
+  aporta_azucares_agregados?: boolean;
+  aporta_grasas_agregadas?: boolean;
+  aporta_sodio_agregado?: boolean;
+  es_edulcorante?: boolean;
+  contiene_cafeina?: boolean;
 }
 
 type FastApiError = {
@@ -100,6 +105,26 @@ export const useInsumoSubmit = ({
           grasas_trans_g: parseOptionalNumber(values?.grasas_trans_g),
           fibra_g: parseOptionalNumber(values?.fibra_g),
           sodio_mg: parseOptionalNumber(values?.sodio_mg),
+          aporta_azucares_agregados:
+            values?.categoria?.trim().toLowerCase() === "envase"
+              ? false
+              : Boolean(values?.aporta_azucares_agregados),
+          aporta_grasas_agregadas:
+            values?.categoria?.trim().toLowerCase() === "envase"
+              ? false
+              : Boolean(values?.aporta_grasas_agregadas),
+          aporta_sodio_agregado:
+            values?.categoria?.trim().toLowerCase() === "envase"
+              ? false
+              : Boolean(values?.aporta_sodio_agregado),
+          es_edulcorante:
+            values?.categoria?.trim().toLowerCase() === "envase"
+              ? false
+              : Boolean(values?.es_edulcorante),
+          contiene_cafeina:
+            values?.categoria?.trim().toLowerCase() === "envase"
+              ? false
+              : Boolean(values?.contiene_cafeina),
         };
 
         const url = id ? `${endpoint}${id}` : endpoint;

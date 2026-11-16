@@ -35,6 +35,13 @@ export interface Insumo {
   fibra_g?: number | string | null;
   sodio_mg?: number | string | null;
 
+  // Flags de aportes para rotulado frontal (Ley 27.642)
+  aporta_azucares_agregados?: boolean;
+  aporta_grasas_agregadas?: boolean;
+  aporta_sodio_agregado?: boolean;
+  es_edulcorante?: boolean;
+  contiene_cafeina?: boolean;
+
   // Auditoría y trazabilidad
   alimento_referencia_id?: number | null;
   fuente_nutricional?: string | null;
