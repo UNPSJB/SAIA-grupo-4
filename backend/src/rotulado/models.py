@@ -10,7 +10,7 @@ class NormativaRotulado(ModeloBase):
     __tablename__ = "normativas_rotulado"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    codigo_normativa: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    codigo_normativa: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     version: Mapped[str] = mapped_column(String(50), nullable=False)
     activa: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False)
