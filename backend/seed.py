@@ -148,6 +148,7 @@ from src.capacidades.constants import RolesSistema
 from src.vista_publica.models import VistaPublica
 from src.vista_publica.services import inicializar_vista_publica
 from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
+from src.rotulado.services import inicializar_normativa_rotulado
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -801,6 +802,11 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             consumo=Decimal("0"),
             disponible=True,
             base_calculo="100ml" if densidad_g_ml is not None else "100g",
+            aporta_azucares_agregados=(nombre == "Azucar Comun"),
+            aporta_grasas_agregadas=(nombre == "Manteca de Primera"),
+            aporta_sodio_agregado=(nombre == "Sal Fina Marina"),
+            es_edulcorante=bool(clase_funcional and "edulcorante" in clase_funcional.lower()),
+            contiene_cafeina=False,
         )
         if nombre in mapa_sara_insumos:
             cod_sara, base_calc, modificada = mapa_sara_insumos[nombre]
@@ -847,6 +853,7 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             descripcion=descripcion,
             unidad_medida=unidades[indice_unidad % len(unidades)],
             dias_vida_util=7 + (indice_unidad % 4) * 7,
+            envasado_ausencia_cliente=(nombre != "Torta de Chocolate"),
             activo=True,
         )
         for nombre, descripcion, indice_unidad in _ciclar(PRODUCTOS, cantidad)
@@ -1568,6 +1575,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     if not reportantes:
         raise RuntimeError("Se necesita al menos una persona activa para crear recetas.")
     creador = reportantes[0]
+    normativa_activa = inicializar_normativa_rotulado(db, normalizar_ascii=True)
 
     # Insumos especificos de panaderia y reposteria
     ins_harina = insumos[0]
@@ -2092,6 +2100,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
             fecha_creacion=fecha_creacion,
             fecha_baja=fecha_baja,
             usuario_creador_id=creador.id,
+            normativa_rotulado_id=normativa_activa.id,
         )
         for num_orden, titulo, instrucciones, eqs_data, inss_data in pasos_info:
             paso = PasoReceta(
@@ -2782,6 +2791,7 @@ def main():
             catalogo = _crear_prerrequisitos(db, args.cantidad, hoy)
             inicializar_vista_publica(db)
             inicializar_configuracion_nutricional(db, normalizar_ascii=True)
+            inicializar_normativa_rotulado(db, normalizar_ascii=True)
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
