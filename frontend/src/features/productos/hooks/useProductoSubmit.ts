@@ -12,6 +12,7 @@ export interface ProductoPayload {
   descripcion: string;
   unidad_medida_id: string;
   dias_vida_util?: number | null;
+  envasado_ausencia_cliente?: boolean;
 }
 
 type FastApiError = {
@@ -46,6 +47,7 @@ export const useProductoSubmit = ({
           descripcion: values?.descripcion ?? "",
           unidad_medida_id: values ? Number(values.unidad_medida_id) : undefined,
           dias_vida_util: values?.dias_vida_util ?? null,
+          envasado_ausencia_cliente: values?.envasado_ausencia_cliente ?? true,
         };
 
         const url = id ? `${endpoint}${id}` : endpoint;

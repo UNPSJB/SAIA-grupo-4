@@ -7,6 +7,7 @@ export interface Producto {
     unidad_medida_id: number;
     unidad_medida: UnidadMedida;
     dias_vida_util?: number | null;
+    envasado_ausencia_cliente: boolean;
     activo: boolean;
 }
 
@@ -15,4 +16,5 @@ export type ProductoCreate = {
     descripcion: string;
     unidad_medida_id: number;
     dias_vida_util?: number | null;
+    envasado_ausencia_cliente?: boolean;
 };
