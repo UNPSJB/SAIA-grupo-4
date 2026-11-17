@@ -43,7 +43,7 @@ export default function VisorPdfPage() {
   return (
     <Box
       // En móvil descuenta la barra superior (TopNavBar); en escritorio ocupa toda la altura disponible.
-      h={{ base: `calc(100dvh - ${TOP_NAV_BAR_HEIGHT}) -2rm`, md: `calc(100dvh - ${TOP_NAV_BAR_HEIGHT}) -3rm` }}
+      h={{ base: `calc(100dvh - ${TOP_NAV_BAR_HEIGHT} - 2rem)`, md: `calc(100dvh - ${TOP_NAV_BAR_HEIGHT} - 3rem)` }}
       bg="gray.100"
       p={6}
       display="flex"

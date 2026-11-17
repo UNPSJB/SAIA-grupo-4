@@ -166,108 +166,106 @@ export default function DashboardPage() {
     : [];
 
   return (
-    <Box>
-      <Box>
-        <Container maxW='container.xl' px={0}>
-          <VStack align='stretch' gap={6}>
-            <Box>
-              <HStack gap={2} mb={1}>
-                <FiBarChart2 color='#2F855A' size={20} />
-                <Text
-                  fontSize={{ base: "lg", md: "xl" }}
-                  fontWeight='extrabold'
-                  color='gray.800'
-                >
-                  Dashboard Consolidado
-                </Text>
-              </HStack>
-              <Text fontSize='xs' color='gray.500'>
-                Métricas generales del sistema con indicadores clave de gestión
+    <>
+      <Container maxW='container.xl' px={0}>
+        <VStack align='stretch' gap={6}>
+          <Box>
+            <HStack gap={2} mb={1}>
+              <FiBarChart2 color='#2F855A' size={20} />
+              <Text
+                fontSize={{ base: "lg", md: "xl" }}
+                fontWeight='extrabold'
+                color='gray.800'
+              >
+                Dashboard Consolidado
               </Text>
-            </Box>
+            </HStack>
+            <Text fontSize='xs' color='gray.500'>
+              Métricas generales del sistema con indicadores clave de gestión
+            </Text>
+          </Box>
 
-            <DashboardFilters
-              onFilterChange={handleFilterChange}
-              initialDesde={filters.desde}
-              initialHasta={filters.hasta}
-            />
+          <DashboardFilters
+            onFilterChange={handleFilterChange}
+            initialDesde={filters.desde}
+            initialHasta={filters.hasta}
+          />
 
-            {data && vencimientosTotales && (
-              <>
-                <Grid
-                  templateColumns={{
-                    base: "1fr",
-                    md: "repeat(2, 1fr)",
-                    lg: "repeat(5, 1fr)",
-                  }}
-                  gap={4}
-                >
-                  <MetricCard
-                    key='vencimientos_total'
-                    metricKey='vencimientos'
-                    titulo='Vencimientos totales'
-                    valor={vencimientosTotales.pct}
-                    unidad='porcentaje'
-                    detalle={`${vencimientosTotales.requieren} de ${vencimientosTotales.totalVenc} ítems requieren atención`}
-                    link='/vencimientos'
-                  />
+          {data && vencimientosTotales && (
+            <>
+              <Grid
+                templateColumns={{
+                  base: "1fr",
+                  md: "repeat(2, 1fr)",
+                  lg: "repeat(5, 1fr)",
+                }}
+                gap={4}
+              >
+                <MetricCard
+                  key='vencimientos_total'
+                  metricKey='vencimientos'
+                  titulo='Vencimientos totales'
+                  valor={vencimientosTotales.pct}
+                  unidad='porcentaje'
+                  detalle={`${vencimientosTotales.requieren} de ${vencimientosTotales.totalVenc} ítems requieren atención`}
+                  link='/vencimientos'
+                />
 
-                  {data.tarjetas
-                    .filter((t) => !t.key.startsWith("vencimientos_"))
-                    .map((tarjeta) => (
-                      <MetricCard
-                        key={tarjeta.key}
-                        metricKey={tarjeta.key}
-                        titulo={tarjeta.titulo}
-                        valor={tarjeta.valor}
-                        unidad={tarjeta.unidad}
-                        detalle={tarjeta.detalle}
-                        link={tarjeta.link}
-                      />
-                    ))}
-                </Grid>
-
-                <Grid
-                  templateColumns={{ base: "1fr", xl: "repeat(2, 1fr)" }}
-                  gap={6}
-                >
-                  {datosVencimientosAgrupados && (
-                    <GroupedStackedBar
-                      key='vencimientos-agrupados'
-                      title='Vencimientos por tipo'
-                      data={datosVencimientosAgrupados}
-                      keys={["Vigentes", "Próximos a vencer", "Vencidos"]}
-                      keyLabels={{
-                        Vigentes: "Vigentes",
-                        "Próximos a vencer": "Próximos",
-                        Vencidos: "Vencidos",
-                      }}
-                    />
-                  )}
-                  {graficosAdicionales.map(([key, config]) => (
-                    <DashboardChart
-                      key={key}
-                      title={getChartTitle(key)}
-                      config={config}
-                      metricKey={key}
+                {data.tarjetas
+                  .filter((t) => !t.key.startsWith("vencimientos_"))
+                  .map((tarjeta) => (
+                    <MetricCard
+                      key={tarjeta.key}
+                      metricKey={tarjeta.key}
+                      titulo={tarjeta.titulo}
+                      valor={tarjeta.valor}
+                      unidad={tarjeta.unidad}
+                      detalle={tarjeta.detalle}
+                      link={tarjeta.link}
                     />
                   ))}
+              </Grid>
 
-                  {tieneGraficoIncidentes && (
-                    <GroupedStackedBar
-                      key='incidentes-agrupados'
-                      title='Incidentes por tipo'
-                      data={datosIncidentesAgrupados ?? []}
-                      keys={["Abiertos", "Cerrados"]}
-                      keyLabels={{ Abiertos: "Abiertos", Cerrados: "Cerrados" }}
-                    />
-                  )}
-                </Grid>
-              </>
-            )}
-          </VStack>
-        </Container>
-      </Box>
-    </Box>
+              <Grid
+                templateColumns={{ base: "1fr", xl: "repeat(2, 1fr)" }}
+                gap={6}
+              >
+                {datosVencimientosAgrupados && (
+                  <GroupedStackedBar
+                    key='vencimientos-agrupados'
+                    title='Vencimientos por tipo'
+                    data={datosVencimientosAgrupados}
+                    keys={["Vigentes", "Próximos a vencer", "Vencidos"]}
+                    keyLabels={{
+                      Vigentes: "Vigentes",
+                      "Próximos a vencer": "Próximos",
+                      Vencidos: "Vencidos",
+                    }}
+                  />
+                )}
+                {graficosAdicionales.map(([key, config]) => (
+                  <DashboardChart
+                    key={key}
+                    title={getChartTitle(key)}
+                    config={config}
+                    metricKey={key}
+                  />
+                ))}
+
+                {tieneGraficoIncidentes && (
+                  <GroupedStackedBar
+                    key='incidentes-agrupados'
+                    title='Incidentes por tipo'
+                    data={datosIncidentesAgrupados ?? []}
+                    keys={["Abiertos", "Cerrados"]}
+                    keyLabels={{ Abiertos: "Abiertos", Cerrados: "Cerrados" }}
+                  />
+                )}
+              </Grid>
+            </>
+          )}
+        </VStack>
+      </Container>
+    </>
   );
 }

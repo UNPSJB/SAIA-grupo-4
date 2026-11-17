@@ -90,73 +90,71 @@ export default function HistorialChecklistPage() {
   };
 
   return (
-    <Box>
+    <>
       {/* Contenido principal. Esta vista solo se alcanza desde el SideBar, que ya
           aporta la marca institucional, por eso no lleva barra propia. */}
-      <Box>
-        <Container maxW="container.lg" px={0}>
-          {/* Título de la sección */}
-          <Box mb={5}>
-            <HStack gap={2} mb={1}>
-              <FiArchive color="#2F855A" size={20} />
-              <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="extrabold" color="gray.800">
-                Historial de Checklists y Auditoría
-              </Text>
-            </HStack>
-            <Text fontSize="xs" color="gray.500">
-              Consulta de registros históricos, verificación de desvíos y métricas de cumplimiento de inocuidad.
+      <Container maxW="container.lg" px={0}>
+        {/* Título de la sección */}
+        <Box mb={5}>
+          <HStack gap={2} mb={1}>
+            <FiArchive color="#2F855A" size={20} />
+            <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="extrabold" color="gray.800">
+              Historial de Checklists y Auditoría
             </Text>
-          </Box>
+          </HStack>
+          <Text fontSize="xs" color="gray.500">
+            Consulta de registros históricos, verificación de desvíos y métricas de cumplimiento de inocuidad.
+          </Text>
+        </Box>
 
-          {/* Filtros de Rango de Fechas (CA1) */}
-          <HistorialFiltros
-            fechaDesde={fechaDesde}
-            fechaHasta={fechaHasta}
-            fechaMax={fechaAyer}
-            onCambiarFechaDesde={setFechaDesde}
-            onCambiarFechaHasta={handleCambiarFechaHasta}
-            onAplicarFiltro={handleAplicarFiltro}
-            onResetFiltro={handleResetFiltro}
-            onSeleccionarRapido={handleSeleccionarRapido}
-          />
+        {/* Filtros de Rango de Fechas (CA1) */}
+        <HistorialFiltros
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          fechaMax={fechaAyer}
+          onCambiarFechaDesde={setFechaDesde}
+          onCambiarFechaHasta={handleCambiarFechaHasta}
+          onAplicarFiltro={handleAplicarFiltro}
+          onResetFiltro={handleResetFiltro}
+          onSeleccionarRapido={handleSeleccionarRapido}
+        />
 
-          {/* Tarjeta de Métricas y Cumplimiento % (CA2) */}
-          <HistorialMetricas metricas={metricas} />
+        {/* Tarjeta de Métricas y Cumplimiento % (CA2) */}
+        <HistorialMetricas metricas={metricas} />
 
-          {/* Listado de Tareas Históricas (CA3 y CA4) */}
-          {loading && <LoadingState message="Cargando historial..." />}
+        {/* Listado de Tareas Históricas (CA3 y CA4) */}
+        {loading && <LoadingState message="Cargando historial..." />}
 
-          {!loading && error && (
-            <>
-              <AlertMessage type="error" message={error} />
-              <Center mt={4}>
-                <Button onClick={reload}>Reintentar</Button>
-              </Center>
-            </>
-          )}
-
-          {!loading && !error && ejecuciones.length === 0 && (
-            <Center py={16} flexDirection="column" color="gray.400" bg="white" borderRadius="xl" border="1px dashed" borderColor="gray.300">
-              <FiInbox size={44} />
-              <Text mt={3} fontSize="sm" fontWeight="medium" textAlign="center">
-                No se encontraron checklists registrados en el período seleccionado.
-              </Text>
+        {!loading && error && (
+          <>
+            <AlertMessage type="error" message={error} />
+            <Center mt={4}>
+              <Button onClick={reload}>Reintentar</Button>
             </Center>
-          )}
+          </>
+        )}
 
-          {!loading && !error && ejecuciones.length > 0 && (
-            <VStack align="stretch" gap={3} w="100%">
-              {ejecuciones.map((ejecucion) =>
-                ejecucion.estado === "COMPLETADA" ? (
-                  <TareaCardCompletadaHistorial key={ejecucion.id} ejecucion={ejecucion} />
-                ) : (
-                  <TareaCardIncumplida key={ejecucion.id} ejecucion={ejecucion} />
-                ),
-              )}
-            </VStack>
-          )}
-        </Container>
-      </Box>
-    </Box>
+        {!loading && !error && ejecuciones.length === 0 && (
+          <Center py={16} flexDirection="column" color="gray.400" bg="white" borderRadius="xl" border="1px dashed" borderColor="gray.300">
+            <FiInbox size={44} />
+            <Text mt={3} fontSize="sm" fontWeight="medium" textAlign="center">
+              No se encontraron checklists registrados en el período seleccionado.
+            </Text>
+          </Center>
+        )}
+
+        {!loading && !error && ejecuciones.length > 0 && (
+          <VStack align="stretch" gap={3} w="100%">
+            {ejecuciones.map((ejecucion) =>
+              ejecucion.estado === "COMPLETADA" ? (
+                <TareaCardCompletadaHistorial key={ejecucion.id} ejecucion={ejecucion} />
+              ) : (
+                <TareaCardIncumplida key={ejecucion.id} ejecucion={ejecucion} />
+              ),
+            )}
+          </VStack>
+        )}
+      </Container>
+    </>
   );
 }
