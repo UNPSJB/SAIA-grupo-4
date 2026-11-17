@@ -27,6 +27,8 @@ export const ProductoSchema = z.object({
     .positive("Debe ser un número entero mayor a 0")
     .nullable()
     .optional(),
+
+  envasado_ausencia_cliente: z.boolean(),
 });
 
 export type ProductoFormValues = z.infer<typeof ProductoSchema>;

@@ -81,6 +81,7 @@ export interface Receta {
   producto_id: number;
   producto?: ProductoResumen;
   rendimiento_estandar: number;
+  tamano_porcion?: number | null;
   tiempo_estimado_total?: number;
   estado: EstadoReceta;
   observaciones?: string;
@@ -104,6 +105,7 @@ export interface RecetaCreatePayload {
   nombre_receta: string;
   producto_id: number;
   rendimiento_estandar: number;
+  tamano_porcion?: number | null;
   tiempo_estimado_total?: number;
   observaciones?: string;
 }
@@ -111,7 +113,198 @@ export interface RecetaCreatePayload {
 export interface RecetaUpdatePayload {
   nombre_receta?: string;
   rendimiento_estandar?: number;
+  tamano_porcion?: number | null;
   tiempo_estimado_total?: number | null;
   observaciones?: string | null;
 }
+
+export interface ItemComposicionPorcentual {
+  insumo_id: number;
+  nombre: string;
+  categoria: string;
+  cantidad_nominal: number;
+  unidad_nominal: string;
+  masa_equivalente_g?: number | null;
+  porcentaje_mezcla?: number | null;
+}
+
+export interface InsumoSinEquivalencia {
+  insumo_id: number;
+  nombre: string;
+  unidad_simbolo: string;
+  tipo_magnitud: string;
+  equivalencia_requerida: string;
+  mensaje: string;
+}
+
+export interface ComposicionPorcentualResponse {
+  receta_id: number;
+  codigo_receta: string;
+  nombre_receta: string;
+  estado_receta: EstadoReceta;
+  ingredientes: ItemComposicionPorcentual[];
+  aditivos: ItemComposicionPorcentual[];
+  peso_total_mezcla_g: number;
+  suma_porcentajes: number;
+  verificacion_100: boolean;
+  es_completa: boolean;
+  insumos_sin_equivalencia: InsumoSinEquivalencia[];
+}
+
+export interface ItemDeclaracionIngrediente {
+  posicion: number;
+  insumo_id: number;
+  nombre_insumo: string;
+  denominacion_rotulo: string;
+  categoria: string;
+  clase_funcional?: string | null;
+  numero_ins?: string | null;
+  masa_equivalente_g?: number | null;
+  porcentaje_mezcla?: number | null;
+  texto_declaracion: string;
+}
+
+export interface DeclaracionIngredientesResponse {
+  receta_id: number;
+  codigo_receta: string;
+  nombre_receta: string;
+  es_orden_manual: boolean;
+  es_completa: boolean;
+  insumos_sin_equivalencia: InsumoSinEquivalencia[];
+  items: ItemDeclaracionIngrediente[];
+  texto_legal_rotulo: string;
+}
+
+export interface InsumoNutricionPendiente {
+  insumo_id: number;
+  nombre: string;
+  categoria: string;
+  campos_faltantes: string[];
+  mensaje: string;
+}
+
+export interface FilaNutrienteCalculado {
+  codigo_nutriente: string;
+  nombre_etiqueta: string;
+  unidad: string;
+  orden: number;
+  nivel_indentacion: number;
+  valor_100g?: number | null;
+  valor_100g_formateado?: string | null;
+  valor_100g_kj?: number | null;
+  valor_porcion?: number | null;
+  valor_porcion_formateado?: string | null;
+  valor_porcion_kj?: number | null;
+  porcentaje_vd?: number | null;
+  lleva_vd: boolean;
+  es_no_significativo_porcion: boolean;
+}
+
+export interface InformacionNutricionalResponse {
+  receta_id: number;
+  codigo_receta: string;
+  nombre_receta: string;
+  rendimiento_estandar_g: number;
+  tamano_porcion_g?: number | null;
+  es_calculable: boolean;
+  tiene_porcion: boolean;
+  insumos_sin_equivalencia: InsumoSinEquivalencia[];
+  insumos_nutricion_pendiente: InsumoNutricionPendiente[];
+  filas: FilaNutrienteCalculado[];
+  leyenda_vd: string;
+}
+
+export type DictamenAplicabilidad = "APLICA" | "NO_APLICA" | "EXCEPTUADO";
+
+export interface AplicabilidadFrontalOut {
+  receta_id: number;
+  codigo_receta: string;
+  producto_id: number;
+  producto_nombre: string;
+  envasado_ausencia_cliente: boolean;
+
+  calculado_azucares_agregados: boolean;
+  calculado_grasas_agregadas: boolean;
+  calculado_sodio_agregado: boolean;
+  calculado_edulcorantes: boolean;
+  calculado_cafeina: boolean;
+
+  override_azucares_agregados?: boolean | null;
+  override_grasas_agregadas?: boolean | null;
+  override_sodio_agregado?: boolean | null;
+  override_edulcorantes?: boolean | null;
+  override_cafeina?: boolean | null;
+  es_aplicabilidad_forzada_manualmente: boolean;
+
+  tiene_azucares_agregados: boolean;
+  tiene_grasas_agregadas: boolean;
+  tiene_sodio_agregado: boolean;
+  contiene_edulcorantes: boolean;
+  contiene_cafeina: boolean;
+
+  aplica_rotulado_frontal: boolean;
+  dictamen: DictamenAplicabilidad;
+  dictamen_titulo: string;
+  motivo: string;
+  version_normativa: string;
+  puede_editar_overrides: boolean;
+}
+
+export interface AplicabilidadFrontalUpdate {
+  override_azucares_agregados?: boolean | null;
+  override_grasas_agregadas?: boolean | null;
+  override_sodio_agregado?: boolean | null;
+  override_edulcorantes?: boolean | null;
+  override_cafeina?: boolean | null;
+  restablecer_automatico?: boolean;
+}
+
+export interface PasoMemoriaCalculo {
+  codigo: string;
+  nutriente_etiqueta: string;
+  se_evalua: boolean;
+  motivo_evaluacion: string;
+  valor_tabla_100?: number | null;
+  unidad_tabla: string;
+  formula_aplicada?: string | null;
+  calculo_sustituido?: string | null;
+  valor_obtenido?: number | null;
+  unidad_obtenida?: string | null;
+  umbral_normativo: string;
+  supera_umbral: boolean;
+  sello_resultante?: string | null;
+}
+
+export interface SelloAdvertencia {
+  codigo: string;
+  texto: string;
+  tipo: "OCTOGONO";
+}
+
+export interface LeyendaPrecautoria {
+  codigo: string;
+  texto: string;
+  tipo: "LEYENDA";
+}
+
+export interface SellosAdvertenciaOut {
+  receta_id: number;
+  codigo_receta: string;
+  producto_id: number;
+  producto_nombre: string;
+  es_liquido: boolean;
+  base_calculo: string;
+  dictamen_aplicabilidad: DictamenAplicabilidad;
+  aplica_evaluacion_sellos: boolean;
+  es_calculable: boolean;
+  mensaje_bloqueo?: string | null;
+  valor_energetico_100?: number | null;
+  sellos: SelloAdvertencia[];
+  leyendas_precautorias: LeyendaPrecautoria[];
+  memoria_calculo: PasoMemoriaCalculo[];
+  version_normativa: string;
+  fecha_vigencia_normativa: string;
+}
+
+
 

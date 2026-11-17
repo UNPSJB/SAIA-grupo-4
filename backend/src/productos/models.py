@@ -11,6 +11,7 @@ class Producto(ModeloBase):
     descripcion: Mapped[str] = mapped_column(String(250), nullable=False)
     unidad_medida_id: Mapped[int] = mapped_column(ForeignKey("unidades_de_medidas.id"), nullable=False)
     dias_vida_util: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    envasado_ausencia_cliente: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False)
 
     # Estado
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -19,6 +20,13 @@ class Producto(ModeloBase):
     unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="productos")
     recetas: Mapped[list["Receta"]] = relationship("Receta", back_populates="producto")
     lotes: Mapped[list["Lote"]] = relationship("Lote", back_populates="producto")
+
+    @property
+    def es_liquido(self) -> bool:
+        """Indica si el producto se comercializa en base líquida (unidad de volumen)."""
+        if not self.unidad_medida or not self.unidad_medida.tipo_magnitud:
+            return False
+        return self.unidad_medida.tipo_magnitud.strip().lower() == "volumen"
 
     # Checks
     __table_args__ = (

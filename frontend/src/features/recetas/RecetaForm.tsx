@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FiBookOpen, FiEdit3, FiSave, FiXCircle } from "react-icons/fi";
@@ -8,7 +8,6 @@ import {
   FormActions,
   FormContainer,
   FormGrid,
-  FormGridFull,
   FormHeader,
   SelectField,
   SubmitButton,
@@ -53,7 +52,6 @@ export const RecetaForm = ({
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
     setError,
     clearErrors,
@@ -63,31 +61,13 @@ export const RecetaForm = ({
       nombre_receta: receta?.nombre_receta || "",
       producto_id: receta?.producto_id || ("" as unknown as number),
       rendimiento_estandar: receta?.rendimiento_estandar || ("" as unknown as number),
+      tamano_porcion: receta?.tamano_porcion ?? ("" as unknown as number),
       tiempo_estimado_total: receta?.tiempo_estimado_total || ("" as unknown as number),
       observaciones: receta?.observaciones || "",
     },
   });
 
-  const productoIdSeleccionado = watch("producto_id");
 
-  const simboloUnidad = useMemo(() => {
-    if (productoIdSeleccionado) {
-      const prod = productos.find(
-        (p) => String(p.id) === String(productoIdSeleccionado),
-      );
-      if (prod?.unidad_medida) {
-        return prod.unidad_medida.simbolo || prod.unidad_medida.nombre || "";
-      }
-    }
-    if (receta?.producto?.unidad_medida) {
-      return (
-        receta.producto.unidad_medida.simbolo ||
-        receta.producto.unidad_medida.nombre ||
-        ""
-      );
-    }
-    return "";
-  }, [productoIdSeleccionado, productos, receta]);
 
   const onSubmit = handleSubmit(async (values) => {
     clearErrors("root");
@@ -97,6 +77,7 @@ export const RecetaForm = ({
           nombre_receta: values.nombre_receta.trim(),
           producto_id: Number(values.producto_id),
           rendimiento_estandar: Number(values.rendimiento_estandar),
+          tamano_porcion: values.tamano_porcion ? Number(values.tamano_porcion) : null,
           tiempo_estimado_total: values.tiempo_estimado_total ? Number(values.tiempo_estimado_total) : undefined,
           observaciones: values.observaciones?.trim() || undefined,
         });
@@ -107,6 +88,7 @@ export const RecetaForm = ({
         const modificada = await recetasApi.modificarReceta(receta.id, {
           nombre_receta: values.nombre_receta.trim(),
           rendimiento_estandar: Number(values.rendimiento_estandar),
+          tamano_porcion: values.tamano_porcion ? Number(values.tamano_porcion) : null,
           tiempo_estimado_total: values.tiempo_estimado_total
             ? Number(values.tiempo_estimado_total)
             : null,
@@ -169,15 +151,26 @@ export const RecetaForm = ({
             />
           )}
           <TextField
-            label={
-              simboloUnidad
-                ? `Rendimiento estándar (${simboloUnidad})`
-                : "Rendimiento estándar"
-            }
+            label="Rendimiento estándar (g)"
+            type="number"
+            step="0.01"
+            min="0.01"
+            hideSpinners
             defaultValue={receta?.rendimiento_estandar ? String(receta.rendimiento_estandar) : ""}
-            placeholder={simboloUnidad ? `Ej. 100.00 ${simboloUnidad}` : "Ej. 100.00"}
+            placeholder="Ej. 1000.00"
             error={errors.rendimiento_estandar?.message}
             {...register("rendimiento_estandar")}
+          />
+          <TextField
+            label="Tamaño de porción (g)"
+            type="number"
+            step="0.01"
+            min="0.01"
+            hideSpinners
+            defaultValue={receta?.tamano_porcion ? String(receta.tamano_porcion) : ""}
+            placeholder="Ej. 50.00 (para cálculo por porción y % VD)"
+            error={errors.tamano_porcion?.message}
+            {...register("tamano_porcion")}
           />
           <TextField
             label="Tiempo estimado total (minutos)"
@@ -201,15 +194,13 @@ export const RecetaForm = ({
             }}
             {...register("tiempo_estimado_total")}
           />
-          <FormGridFull>
-            <TextField
-              label="Observaciones (Opcional)"
-              defaultValue={receta?.observaciones || ""}
-              placeholder="Indicaciones o notas generales de preparación"
-              error={errors.observaciones?.message}
-              {...register("observaciones")}
-            />
-          </FormGridFull>
+          <TextField
+            label="Observaciones (Opcional)"
+            defaultValue={receta?.observaciones || ""}
+            placeholder="Indicaciones o notas generales de preparación"
+            error={errors.observaciones?.message}
+            {...register("observaciones")}
+          />
 
           <FormActions>
             <SubmitButton text={esModoCrear ? "Guardar" : "Guardar"} icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />

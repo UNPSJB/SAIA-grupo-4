@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from src.unidad_medida.models import UnidadMedida
 from src.insumos.models import Insumo
-from src.unidad_medida import schemas, exceptions
+from src.unidad_medida import schemas, exceptions, constants
 
 
 # operaciones CRUD para Unidad Medida
@@ -90,3 +90,50 @@ def eliminar_unidad_medida(db: Session, unidad_medida_id: int) -> schemas.Unidad
     db_unidad = modificar_unidad_medida(db, unidad_medida_id, unidad)
 
     return db_unidad
+
+
+def convertir_a_gramos(
+    cantidad: float,
+    unidad: UnidadMedida,
+    densidad_g_ml: Optional[float] = None,
+    peso_unitario_g: Optional[float] = None,
+) -> Optional[float]:
+    """Convierte una cantidad en cualquier unidad de medida a su equivalente en gramos.
+
+    Retorna None si falta una equivalencia necesaria (densidad para volumen,
+    peso unitario para cantidad, o factor de conversión desconocido).
+    """
+    if cantidad is None:
+        return None
+    cant = float(cantidad)
+    if cant <= 0:
+        return 0.0
+
+    tipo = getattr(unidad, "tipo_magnitud", "")
+    magnitud = (tipo.value if hasattr(tipo, "value") else str(tipo or "")).strip().lower()
+    simbolo = (getattr(unidad, "simbolo", "") or "").strip().lower()
+    nombre = (getattr(unidad, "nombre", "") or "").strip().lower()
+
+    if magnitud == "masa":
+        factor = constants.Factores.MASA_A_GRAMOS.get(simbolo) or constants.Factores.MASA_A_GRAMOS.get(nombre)
+        if factor is None:
+            return None
+        return cant * factor
+
+    if magnitud == "volumen":
+        if densidad_g_ml is None or float(densidad_g_ml) <= 0:
+            return None
+        factor_ml = constants.Factores.VOLUMEN_A_ML.get(simbolo) or constants.Factores.VOLUMEN_A_ML.get(nombre)
+        if factor_ml is None:
+            return None
+        return cant * factor_ml * float(densidad_g_ml)
+
+    if magnitud == "cantidad":
+        if peso_unitario_g is None or float(peso_unitario_g) <= 0:
+            return None
+        factor_u = constants.Factores.CANTIDAD_A_UNIDAD.get(simbolo) or constants.Factores.CANTIDAD_A_UNIDAD.get(nombre)
+        if factor_u is None:
+            return None
+        return cant * factor_u * float(peso_unitario_g)
+
+    return None

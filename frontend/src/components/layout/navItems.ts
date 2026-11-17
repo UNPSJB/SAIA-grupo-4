@@ -16,6 +16,8 @@ import {
   FiGlobe,
   FiCheckSquare,
   FiArchive,
+  FiDatabase,
+  FiSliders,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 
@@ -44,6 +46,11 @@ export const defaultItems: NavItem[] = [
       { to: "/insumos", label: "Insumos", icon: FiPackage },
       { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
     ],
+  },
+  {
+    to: "/alimentos-referencia",
+    label: "Alimentos de referencia",
+    icon: FiDatabase,
   },
   {
     to: "/elementos-limpieza",
@@ -103,3 +110,9 @@ export const checklistItems: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
   { to: "/historial", label: "Historial de Checklist", icon: FiArchive },
 ];
+
+export const configuracionNutricionalItem: LinkNavItem = {
+  to: "/configuracion-nutricional",
+  label: "Configuración Nutricional",
+  icon: FiSliders,
+};

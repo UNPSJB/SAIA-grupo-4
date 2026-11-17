@@ -326,10 +326,7 @@ export default function RecetasPage() {
     {
       key: "rendimiento_estandar",
       label: "Rendimiento",
-      render: (r) => {
-        const unidad = r.producto?.unidad_medida?.simbolo;
-        return unidad ? `${r.rendimiento_estandar} ${unidad}` : r.rendimiento_estandar;
-      },
+      render: (r) => `${r.rendimiento_estandar} g`,
     },
     {
       key: "tiempo_estimado_total",
@@ -482,7 +479,7 @@ export default function RecetasPage() {
             options={[
               { label: "Borrador", value: "BORRADOR" },
               { label: "Activa", value: "ACTIVA" },
-              { label: "Inhabilitada", value: "INHABILITADA" },
+              { label: "Archivada", value: "INHABILITADA" },
             ]}
             value={borrador.estado}
             onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
@@ -587,7 +584,7 @@ export default function RecetasPage() {
             ? recetaEliminar.estado === "BORRADOR"
               ? `¿Está seguro que desea eliminar el borrador "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Se eliminará definitivamente de la base de datos.`
               : recetaEliminar.tiene_lotes
-                ? `¿Está seguro que desea dar de baja la receta "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Al poseer lotes asociados, pasará a estado INHABILITADA para preservar el historial.`
+                ? `¿Está seguro que desea dar de baja la receta "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Al poseer lotes asociados, pasará a estado Archivada para preservar el historial.`
                 : `¿Está seguro que desea eliminar la receta "${recetaEliminar.nombre_receta}" (${recetaEliminar.codigo_receta})? Al no tener lotes asociados, se eliminará definitivamente de la base de datos.`
             : ""
         }

@@ -27,6 +27,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   sectores: "Sectores",
   insumos: "Insumos",
   "insumos-quimicos": "Insumos Químicos",
+  "alimentos-referencia": "Alimentos de referencia",
   "elementos-limpieza": "Elementos de limpieza",
   productos: "Productos",
   "unidades-de-medida": "Unidades de medida",
@@ -40,6 +41,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   lotes: "Lotes",
   "historial-lotes": "Historial de Lotes",
   "vista-publica": "Vista pública",
+  "configuracion-nutricional": "Configuración nutricional",
   historial: "Historial de Checklist",
 
   // Sub-rutas
@@ -50,6 +52,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   editar: "Editar",
   nuevo: "Nuevo",
   ver: "Ver",
+  "ficha-tecnica": "Ficha Técnica",
 };
 
 // Segmentos que no tienen página propia directa: se muestran pero sin navegación
@@ -113,10 +116,16 @@ export const Breadcrumbs = (_props: BreadcrumbsProps) => {
   }
 
   if (segmentos.length === 1 && dynamicFrom && dynamicLabel) {
-    const migas: MigaItem[] = [
-      { nombre: dynamicLabel, to: dynamicFrom, esLink: true },
-      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
-    ];
+    const migas: MigaItem[] = [];
+    if (origenState?.padre && origenState.padre.nombre && origenState.padre.to) {
+      migas.push({
+        nombre: origenState.padre.nombre,
+        to: origenState.padre.to,
+        esLink: true,
+      });
+    }
+    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({ nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false });
     return renderBreadcrumb(migas);
   }
 
@@ -151,8 +160,12 @@ export const Breadcrumbs = (_props: BreadcrumbsProps) => {
     if (esId(seg)) {
       // Si es un id al final de la ruta (ej: /recetas/12), agregamos la entidad
       if (i === segmentos.length - 1 && segmentos[0] === "recetas") {
+        const nombreItem =
+          origenState?.label && origenState.label !== "Recetas"
+            ? origenState.label
+            : "Ficha Técnica";
         migas.push({
-          nombre: origenState?.label || "Receta Activa",
+          nombre: nombreItem,
           to: pathAcumulado,
           esLink: false,
         });

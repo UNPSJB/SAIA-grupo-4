@@ -15,6 +15,7 @@ import { RequireAuth } from "./features/auth/RequireAuth";
 import LoginPage from "./pages/LoginPage";
 import EquiposPage from "./pages/EquiposPage";
 import InsumoPage from "./pages/InsumoPage";
+import AlimentoReferenciaPage from "./pages/AlimentoReferenciaPage";
 import SectorPage from "./pages/SectorPage";
 import UnidadMedidaPage from "./pages/UnidadMedidaPage";
 import PersonalPage from "./pages/PersonalPage";
@@ -36,7 +37,7 @@ import { RenovacionProvider } from "./features/vencimientos/RenovacionProvider";
 import DocumentosPage from "./pages/DocumentosPage";
 import DocumentosOperadorPage from "./pages/DocumentosOperadorPage";
 import RecetasOperadorPage from "./pages/RecetasOperadorPage";
-import { FichaRecetaOperador } from "./features/recetas/FichaRecetaOperador";
+import { FichaTecnicaReceta } from "./features/recetas/FichaTecnicaReceta";
 import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
@@ -48,6 +49,7 @@ import VistaPublicaPage from "./pages/VistaPublicaPage";
 import VistaPublicaPublicaPage from "./pages/VistaPublicaVisitantePage";
 import { ConfiguracionProvider } from "./features/configuracion/ConfiguracionProvider";
 import { ConfiguracionPage } from "./pages/ConfiguracionPage";
+import ConfiguracionNutricionalPage from "./pages/ConfiguracionNutricionalPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -112,7 +114,7 @@ function AppContent() {
             path='/recetas/:id'
             element={
               <RequireAuth>
-                <FichaRecetaOperador />
+                <FichaTecnicaReceta modo='operador' />
               </RequireAuth>
             }
           />
@@ -213,6 +215,14 @@ function AppContent() {
               }
             />
             <Route
+              path='/configuracion-nutricional'
+              element={
+                <RequireAuth>
+                  <ConfiguracionNutricionalPage />
+                </RequireAuth>
+              }
+            />
+            <Route
               path='/equipos'
               element={
                 <RequireAuth>
@@ -225,6 +235,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <InsumoPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/alimentos-referencia'
+              element={
+                <RequireAuth>
+                  <AlimentoReferenciaPage />
                 </RequireAuth>
               }
             />
@@ -332,6 +350,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <RecetaWorkspace />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/recetas/:id/ficha-tecnica'
+              element={
+                <RequireAuth>
+                  <FichaTecnicaReceta modo='admin' />
                 </RequireAuth>
               }
             />

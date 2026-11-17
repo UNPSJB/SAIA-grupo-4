@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum as SQLAlchemyEnum, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum as SQLAlchemyEnum, Float, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import ModeloBase
@@ -19,6 +19,7 @@ class Receta(ModeloBase):
     producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"), nullable=False, index=True)
 
     rendimiento_estandar: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    tamano_porcion: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     tiempo_estimado_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     estado: Mapped[EstadoReceta] = mapped_column(
@@ -27,6 +28,21 @@ class Receta(ModeloBase):
         default=EstadoReceta.BORRADOR,
     )
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+    es_orden_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
+    orden_manual_json: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+
+    # Overrides de aplicabilidad de rotulado frontal (Ley 27.642)
+    override_azucares_agregados: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_grasas_agregadas: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_sodio_agregado: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_edulcorantes: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_cafeina: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    es_aplicabilidad_forzada_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    normativa_rotulado_id: Mapped[int | None] = mapped_column(
+        ForeignKey("normativas_rotulado.id"), nullable=True, index=True
+    )
 
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -35,6 +51,7 @@ class Receta(ModeloBase):
     # Relaciones
     usuario_creador: Mapped["Persona"] = relationship()
     producto: Mapped["Producto"] = relationship("Producto", back_populates="recetas")
+    normativa_rotulado: Mapped["NormativaRotulado | None"] = relationship("NormativaRotulado")
     
     # Relación hacia los pasos, con borrado en cascada
     pasos: Mapped[list["PasoReceta"]] = relationship(

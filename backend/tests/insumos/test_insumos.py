@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from src.alimento_referencia.services import sembrar_alimentos_sara
 from src.main import app
 from tests.database import session
 import uuid
@@ -186,19 +187,19 @@ def test_obtener_insumo_por_id():
         json={
             "nombre": "Aceite",
             "unidad_medida_id": unidad_id,
-            "categoria": "aditivo",
+            "categoria": "materia prima",
         },
     )
     insumo_id = res_post.json()["id"]
 
-    res_get = client.post(f"/insumos/{insumo_id}")
+    res_get = client.get(f"/insumos/{insumo_id}")
     assert res_get.status_code == 200
     assert res_get.json()["nombre"] == "Aceite"
     assert res_get.json()["unidad_medida"]["nombre"] == "Litro"
 
 
 def test_obtener_insumo_inexistente():
-    response = client.post("/insumos/9999")
+    response = client.get("/insumos/9999")
     assert response.status_code == 404
 
 
@@ -359,3 +360,326 @@ def test_filtrar_por_disponibilidad():
 
     assert ids_buscados(busqueda=sufijo, disponible="true") == {disponible["id"]}
     assert ids_buscados(busqueda=sufijo, disponible="false") == {no_disponible["id"]}
+
+
+# --- Validaciones de campo disponible y equivalencias según tipo de magnitud ---
+
+def test_crear_insumo_no_admite_campo_disponible():
+    unidad_id = crear_unidad_medida(nombre=f"Unidad Disp {sufijo_unico()}", simbolo="ud", tipo="masa")
+    res = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Insumo No Disponible {sufijo_unico()}",
+            "unidad_medida_id": unidad_id,
+            "categoria": "materia prima",
+            "disponible": False,
+        },
+    )
+    # Extra inputs are forbidden in InsumoCreate
+    assert res.status_code == 422
+
+
+def test_crear_insumo_validacion_magnitud_equivalencia():
+    # 1. Magnitud CANTIDAD: solo admite peso_unitario_g, no densidad_g_ml
+    u_cant = crear_unidad_medida(nombre=f"Piezas {sufijo_unico()}", simbolo="pz", tipo="cantidad")
+    res_err_dens = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Huevos {sufijo_unico()}",
+            "unidad_medida_id": u_cant,
+            "categoria": "materia prima",
+            "densidad_g_ml": 0.95,
+        },
+    )
+    assert res_err_dens.status_code == 400
+    assert "densidad" in res_err_dens.json()["detail"].lower()
+
+    res_ok_cant = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Huevos OK {sufijo_unico()}",
+            "unidad_medida_id": u_cant,
+            "categoria": "materia prima",
+            "peso_unitario_g": 50.0,
+        },
+    )
+    assert res_ok_cant.status_code == 201
+    assert res_ok_cant.json()["peso_unitario_g"] == 50.0
+
+    # 2. Magnitud VOLUMEN: solo admite densidad_g_ml, no peso_unitario_g
+    u_vol = crear_unidad_medida(nombre=f"Centilitro {sufijo_unico()}", simbolo="cl", tipo="volumen")
+    res_err_peso = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Aceite {sufijo_unico()}",
+            "unidad_medida_id": u_vol,
+            "categoria": "materia prima",
+            "peso_unitario_g": 10.0,
+        },
+    )
+    assert res_err_peso.status_code == 400
+    assert "peso unitario" in res_err_peso.json()["detail"].lower()
+
+    res_ok_vol = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Aceite OK {sufijo_unico()}",
+            "unidad_medida_id": u_vol,
+            "categoria": "materia prima",
+            "densidad_g_ml": 0.92,
+        },
+    )
+    assert res_ok_vol.status_code == 201
+    assert res_ok_vol.json()["densidad_g_ml"] == 0.92
+
+    # 3. Magnitud MASA: no admite densidad ni peso unitario
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="gr", tipo="masa")
+    res_err_masa = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Sal {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "densidad_g_ml": 1.2,
+        },
+    )
+    assert res_err_masa.status_code == 400
+    assert "masa" in res_err_masa.json()["detail"].lower()
+
+
+def test_crear_aditivo_validaciones_clase_e_ins():
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="gr", tipo="masa")
+
+    # 1. Aditivo sin clase_funcional debe fallar (400 o 422)
+    res_sin_clase = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Propionato {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "numero_ins": "282",
+        },
+    )
+    assert res_sin_clase.status_code in [400, 422]
+
+    # 2. Aditivo conservante sin numero_ins debe fallar
+    res_sin_ins = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Propionato {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Conservante",
+        },
+    )
+    assert res_sin_ins.status_code in [400, 422]
+
+    # 3. Aditivo con clase y número INS válido se crea exitosamente
+    res_ok = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Propionato de Calcio {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Conservante",
+            "numero_ins": "282",
+            "denominacion_rotulo": "PROPIONATO DE CALCIO",
+        },
+    )
+    assert res_ok.status_code == 201
+    body_ok = res_ok.json()
+    assert body_ok["clase_funcional"] == "Conservante"
+    assert body_ok["numero_ins"] == "282"
+    assert body_ok["denominacion_rotulo"] == "PROPIONATO DE CALCIO"
+    assert body_ok["denominacion_efectiva"] == "PROPIONATO DE CALCIO"
+
+    # 4. Caso especial: Aromatizante o Saborizante no exige INS
+    res_aroma = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Esencia Vainilla {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Aromatizante",
+        },
+    )
+    assert res_aroma.status_code == 201
+    body_aroma = res_aroma.json()
+    assert body_aroma["clase_funcional"] == "Aromatizante"
+    assert body_aroma["numero_ins"] is None
+    # Fallback al nombre original cuando denominacion_rotulo está vacío
+    assert body_aroma["denominacion_efectiva"] == body_aroma["nombre"]
+
+    # 5. Materia prima con clase_funcional o numero_ins debe fallar
+    res_err_mp = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Harina {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "clase_funcional": "Conservante",
+        },
+    )
+    assert res_err_mp.status_code in [400, 422]
+
+
+def test_nutricion_desde_sara_y_auditoria_modificacion(session):
+    sembrar_alimentos_sara(session)
+    unidad_id = crear_unidad_medida(nombre=f"Kilogramo {sufijo_unico()}", simbolo="kg", tipo="masa")
+
+    res_sara = client.get("/alimentos-referencia/?q=A033&limit=5")
+    assert res_sara.status_code == 200
+    ref = res_sara.json()[0]
+
+    # 1. Crear materia prima exactamente con los valores de SARA 2 (azúcares y trans en 0.00)
+    res_crear = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Harina SARA {sufijo_unico()}",
+            "unidad_medida_id": unidad_id,
+            "categoria": "materia prima",
+            "base_calculo": "100g",
+            "alimento_referencia_id": ref["id"],
+            "valor_energetico_kcal": ref["energia_kcal"],
+            "carbohidratos_g": ref["carbohidratos_g"],
+            "azucares_totales_g": "0.00",
+            "azucares_anadidos_g": "0.00",
+            "proteinas_g": ref["proteinas_g"],
+            "grasas_totales_g": ref["grasas_totales_g"],
+            "grasas_saturadas_g": ref["grasas_saturadas_g"],
+            "grasas_trans_g": "0.00",
+            "fibra_g": ref["fibra_g"],
+            "sodio_mg": ref["sodio_mg"],
+        },
+    )
+    assert res_crear.status_code == 201, res_crear.text
+    insumo = res_crear.json()
+    assert insumo["nutricion_completa"] is True
+    assert insumo["es_nutricion_modificada"] is False
+    assert insumo["fecha_carga_nutricional"] is not None
+    assert insumo["modificado_por_usuario_id"] is None
+    assert "SARA 2" in insumo["fuente_nutricional"]
+
+    # 2. Completar azúcares (no vienen en SARA 2) -> NO marca la fuente como modificada
+    res_az = client.put(
+        f"/insumos/{insumo['id']}",
+        json={"azucares_totales_g": "1.50"},
+    )
+    assert res_az.status_code == 200, res_az.text
+    assert res_az.json()["es_nutricion_modificada"] is False
+
+    # 3. Modificar un nutriente precargado por SARA 2 -> dispara auditoría de modificación
+    res_mod = client.put(
+        f"/insumos/{insumo['id']}",
+        json={"proteinas_g": "99.00"},
+    )
+    assert res_mod.status_code == 200, res_mod.text
+    modificado = res_mod.json()
+    assert modificado["es_nutricion_modificada"] is True
+    assert modificado["modificado_por_usuario_id"] is not None
+    assert modificado["fecha_modificacion_nutricional"] is not None
+
+
+def test_nutricion_completa_materia_prima_vs_aditivo():
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="g", tipo="masa")
+
+    # Materia prima solo con energía y sodio queda incompleta
+    res_mp = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"MP Incompleta {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "valor_energetico_kcal": "100.00",
+            "sodio_mg": "10.00",
+            "fuente_nutricional": "Rótulo proveedor",
+        },
+    )
+    assert res_mp.status_code == 201
+    assert res_mp.json()["nutricion_completa"] is False
+
+    # Aditivo solo con energía y sodio ya está completo
+    res_ad = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Aditivo Sal {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "aditivo",
+            "clase_funcional": "Conservante",
+            "numero_ins": "282",
+            "valor_energetico_kcal": "0.00",
+            "sodio_mg": "1500.00",
+            "fuente_nutricional": "Rótulo proveedor",
+        },
+    )
+    assert res_ad.status_code == 201
+    assert res_ad.json()["nutricion_completa"] is True
+
+
+def test_validaciones_insumo_seguridad_y_envase():
+    u_masa = crear_unidad_medida(nombre=f"Gramo {sufijo_unico()}", simbolo="g", tipo="masa")
+
+    # Nombre solo espacios rechazado
+    res_espacios = client.post(
+        "/insumos/",
+        json={
+            "nombre": "   ",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+        },
+    )
+    assert res_espacios.status_code == 422
+
+    # Consumo inicial > 0 rechazado
+    res_consumo = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Consumo trucho {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "consumo": "25.000",
+        },
+    )
+    assert res_consumo.status_code == 422
+
+    # Envase con datos nutricionales rechazado en creación
+    res_envase = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Bolsa {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "envase",
+            "valor_energetico_kcal": "100.00",
+        },
+    )
+    assert res_envase.status_code == 400
+
+    # Extra forbidden en PUT (ej. es_nutricion_modificada)
+    res_ok = client.post(
+        "/insumos/",
+        json={
+            "nombre": f"Insumo Valido {sufijo_unico()}",
+            "unidad_medida_id": u_masa,
+            "categoria": "materia prima",
+            "valor_energetico_kcal": "100.00",
+        },
+    )
+    assert res_ok.status_code == 201
+    ins_id = res_ok.json()["id"]
+
+    res_put_extra = client.put(
+        f"/insumos/{ins_id}",
+        json={"es_nutricion_modificada": True},
+    )
+    assert res_put_extra.status_code == 422
+
+    # Cambiar categoría a envase limpia los datos nutricionales previos
+    res_put_envase = client.put(
+        f"/insumos/{ins_id}",
+        json={"categoria": "envase"},
+    )
+    assert res_put_envase.status_code == 200
+    assert res_put_envase.json()["valor_energetico_kcal"] is None
+    assert res_put_envase.json()["es_nutricion_modificada"] is False
+
+

@@ -4,13 +4,19 @@ import type { Equipo } from "../../equipos/types";
 import type { Insumo } from "../../insumo/types";
 import type { Producto } from "../../productos/types";
 import type {
+  AplicabilidadFrontalOut,
+  AplicabilidadFrontalUpdate,
+  ComposicionPorcentualResponse,
+  DeclaracionIngredientesResponse,
   FiltrosReceta,
+  InformacionNutricionalResponse,
   PasoReceta,
   PasoRecetaCreatePayload,
   PasoRecetaUpdatePayload,
   Receta,
   RecetaCreatePayload,
   RecetaUpdatePayload,
+  SellosAdvertenciaOut,
 } from "../types";
 
 export class ApiError extends Error {
@@ -95,6 +101,30 @@ export const recetasApi = {
     return request<Receta[]>(`/recetas/activas${qs ? `?${qs}` : ""}`);
   },
   obtenerRecetaActiva: (id: number) => request<Receta>(`/recetas/activas/${id}`),
+  obtenerComposicionPorcentual: (id: number) =>
+    request<ComposicionPorcentualResponse>(`/recetas/${id}/composicion-porcentual`),
+  obtenerInformacionNutricional: (id: number) =>
+    request<InformacionNutricionalResponse>(`/recetas/${id}/informacion-nutricional`),
+  obtenerAplicabilidadFrontal: (id: number) =>
+    request<AplicabilidadFrontalOut>(`/recetas/${id}/aplicabilidad-frontal`),
+  actualizarAplicabilidadFrontal: (id: number, payload: AplicabilidadFrontalUpdate) =>
+    request<AplicabilidadFrontalOut>(`/recetas/${id}/aplicabilidad-frontal`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  obtenerSellosAdvertencia: (id: number) =>
+    request<SellosAdvertenciaOut>(`/recetas/${id}/sellos-advertencia`),
+  obtenerDeclaracionIngredientes: (id: number) =>
+    request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes`),
+  guardarOrdenManualDeclaracion: (id: number, insumoIds: number[]) =>
+    request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes/orden-manual`, {
+      method: "PUT",
+      body: JSON.stringify({ insumo_ids_ordenados: insumoIds }),
+    }),
+  restablecerOrdenAutomaticoDeclaracion: (id: number) =>
+    request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes/orden-manual`, {
+      method: "DELETE",
+    }),
   obtenerBorrador: () => request<Receta>("/recetas/borrador"),
   obtenerReceta: (id: number) => request<Receta>(`/recetas/${id}`),
   crearReceta: (payload: RecetaCreatePayload) =>

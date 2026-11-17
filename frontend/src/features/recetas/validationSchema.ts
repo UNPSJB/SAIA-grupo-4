@@ -13,6 +13,17 @@ export const recetaSchema = z.object({
     .union([z.string().min(1, "El rendimiento es obligatorio"), z.number()])
     .transform((val) => Number(val))
     .refine((val) => !Number.isNaN(val) && val > 0, "El rendimiento debe ser mayor a 0"),
+  tamano_porcion: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((val) => {
+      if (val === "" || val === undefined || val === null) return undefined;
+      return Number(val);
+    })
+    .refine(
+      (val) => val === undefined || (!Number.isNaN(val) && val > 0),
+      "El tamaño de porción debe ser mayor a 0",
+    ),
   tiempo_estimado_total: z
     .union([z.string(), z.number()])
     .optional()

@@ -10,3 +10,14 @@ export const formatearFecha = (fecha: string | null | undefined): string => {
 
   return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${anio}`;
 };
+
+export const formatearFechaISO = (iso: string | null | undefined): string => {
+  if (!iso) return "—";
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return iso;
+  return fecha.toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
