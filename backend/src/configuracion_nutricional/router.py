@@ -32,10 +32,10 @@ def listar_parametros_nutricionales(
 def actualizar_parametros_nutricionales(
     payload: schemas.ConfiguracionNutricionalUpdateIn,
     db: Session = Depends(get_db),
-    _: Persona = Depends(requiere_administracion),
+    admin: Persona = Depends(requiere_administracion),
 ):
     """Actualiza los parámetros nutricionales normativos (VDR, decimales, umbrales y factor kJ)."""
-    return services.actualizar_parametros_nutricionales(db, payload)
+    return services.actualizar_parametros_nutricionales(db, payload, usuario_id=admin.id)
 
 
 @router.post(
@@ -44,10 +44,10 @@ def actualizar_parametros_nutricionales(
 )
 def restaurar_parametros_defecto(
     db: Session = Depends(get_db),
-    _: Persona = Depends(requiere_administracion),
+    admin: Persona = Depends(requiere_administracion),
 ):
     """Restaura los parámetros nutricionales a los valores CAA / Mercosur por defecto."""
-    return services.restaurar_parametros_defecto(db)
+    return services.restaurar_parametros_defecto(db, usuario_id=admin.id)
 
 
 @router.get(

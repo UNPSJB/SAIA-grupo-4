@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, List, Optional
 
@@ -17,6 +18,9 @@ class ParametroNutricionalOut(BaseModel):
     umbral_no_significativo: Optional[Decimal] = None
     texto_no_significativo: Optional[str] = None
     factor_conversion_kj: Optional[Decimal] = None
+    fecha_modificacion: Optional[datetime] = None
+    modificado_por_id: Optional[int] = None
+    modificado_por_nombre: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

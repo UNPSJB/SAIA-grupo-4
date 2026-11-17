@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 import unicodedata
 
@@ -75,13 +76,16 @@ def listar_parametros_nutricionales(db: Session) -> list[ParametroNutricional]:
 
 
 def actualizar_parametros_nutricionales(
-    db: Session, payload: schemas.ConfiguracionNutricionalUpdateIn
+    db: Session,
+    payload: schemas.ConfiguracionNutricionalUpdateIn,
+    usuario_id: int | None = None,
 ) -> list[ParametroNutricional]:
     """Actualiza VDR, decimales, umbrales y factor de conversión kJ de los parámetros nutricionales."""
     existentes = {
         p.codigo_nutriente: p
         for p in listar_parametros_nutricionales(db)
     }
+    ahora = datetime.now()
 
     for item in payload.parametros:
         param = existentes.get(item.codigo_nutriente)
@@ -104,22 +108,31 @@ def actualizar_parametros_nutricionales(
         )
         if item.codigo_nutriente == "valor_energetico":
             param.factor_conversion_kj = item.factor_conversion_kj
+        param.fecha_modificacion = ahora
+        param.modificado_por_id = usuario_id
 
     db.commit()
     return listar_parametros_nutricionales(db)
 
 
-def restaurar_parametros_defecto(db: Session) -> list[ParametroNutricional]:
+def restaurar_parametros_defecto(
+    db: Session,
+    usuario_id: int | None = None,
+) -> list[ParametroNutricional]:
     """Restaura todos los parámetros nutricionales a los valores CAA / Mercosur por defecto."""
     existentes = {
         p.codigo_nutriente: p
         for p in db.scalars(select(ParametroNutricional)).all()
     }
+    ahora = datetime.now()
     for data in PARAMETROS_NUTRICIONALES_DEFECTO:
         codigo = data["codigo_nutriente"]
         param = existentes.get(codigo)
         if not param:
-            db.add(_construir_parametro_desde_defecto(data))
+            nuevo = _construir_parametro_desde_defecto(data)
+            nuevo.fecha_modificacion = ahora
+            nuevo.modificado_por_id = usuario_id
+            db.add(nuevo)
             continue
 
         param.nombre_etiqueta = data["nombre_etiqueta"]
@@ -140,6 +153,8 @@ def restaurar_parametros_defecto(db: Session) -> list[ParametroNutricional]:
             if data["factor_conversion_kj"] is not None
             else None
         )
+        param.fecha_modificacion = ahora
+        param.modificado_por_id = usuario_id
 
     db.commit()
     return listar_parametros_nutricionales(db)
