@@ -9,7 +9,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { FiLogOut, FiMenu, FiSettings } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CampanaNotificaciones } from "./CampanaNotificaciones";
@@ -31,6 +31,7 @@ export const TopNavBar = ({
 }: TopNavBarProps) => {
   const { usuario } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Determinar el rol real del usuario por sus capacidades, NO por la URL
   const esAdmin = esAdministrador(usuario);
@@ -173,7 +174,15 @@ export const TopNavBar = ({
                   {esAdmin && (
                     <Menu.Item
                       value="configuracion"
-                      onSelect={() => navigate("/configuracion")}
+                      onSelect={() => {
+                        if (location.pathname === "/configuracion") return;
+                        navigate("/configuracion", {
+                          state: {
+                            fromPathname: location.pathname,
+                            fromState: location.state,
+                          },
+                        });
+                      }}
                       _focus={{ bg: "gray.50" }}
                       _hover={{ bg: "gray.50" }}
                       _dark={{

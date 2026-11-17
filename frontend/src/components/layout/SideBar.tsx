@@ -39,7 +39,6 @@ import {
   documentosItem,
   lotesItems,
   checklistItems as defaultChecklistItems,
-  configuracionNutricionalItem,
 } from "./navItems";
 
 import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
@@ -584,17 +583,6 @@ export const SideBar = ({
           )}
         </>
       )}
-
-      {!isCollapsed && (
-        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
-          Configuración
-        </Text>
-      )}
-      <SingleNavLink
-        item={configuracionNutricionalItem}
-        isCollapsed={isCollapsed}
-        pathname={pathname}
-      />
 
       <Box mt="auto" pt={3} borderTop="1px solid" borderColor="whiteAlpha.300">
         <Flex

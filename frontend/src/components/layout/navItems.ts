@@ -17,7 +17,6 @@ import {
   FiCheckSquare,
   FiArchive,
   FiDatabase,
-  FiSliders,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 
@@ -110,9 +109,3 @@ export const checklistItems: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
   { to: "/historial", label: "Historial de Checklist", icon: FiArchive },
 ];
-
-export const configuracionNutricionalItem: LinkNavItem = {
-  to: "/configuracion-nutricional",
-  label: "Configuración Nutricional",
-  icon: FiSliders,
-};
