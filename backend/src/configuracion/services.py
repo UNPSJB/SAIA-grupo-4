@@ -10,6 +10,7 @@ from src.configuracion import exceptions, schemas
 from src.configuracion.constants import Constantes, ErrorCode, EstadoVersionNormativa, NORMATIVA_INICIAL_NOMBRE, REGLAS_INICIALES_LEY_27642
 from src.configuracion.models import ConfiguracionSistema, ConfiguracionModulo, VersionParametroFrontal, ReglaUmbralFrontal
 from src.configuracion.schemas import ConfiguracionSistemaUpdate, ModuloOctogonosUpdate, ParametrosFrontalesConsolidadoResponse, VersionParametroFrontalCreate
+from src.personal.models import Persona
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOAD_DIR = BASE_DIR / "uploads" / "configuracion"
