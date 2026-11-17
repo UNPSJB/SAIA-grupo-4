@@ -259,5 +259,52 @@ export interface AplicabilidadFrontalUpdate {
   restablecer_automatico?: boolean;
 }
 
+export interface PasoMemoriaCalculo {
+  codigo: string;
+  nutriente_etiqueta: string;
+  se_evalua: boolean;
+  motivo_evaluacion: string;
+  valor_tabla_100?: number | null;
+  unidad_tabla: string;
+  formula_aplicada?: string | null;
+  calculo_sustituido?: string | null;
+  valor_obtenido?: number | null;
+  unidad_obtenida?: string | null;
+  umbral_normativo: string;
+  supera_umbral: boolean;
+  sello_resultante?: string | null;
+}
+
+export interface SelloAdvertencia {
+  codigo: string;
+  texto: string;
+  tipo: "OCTOGONO";
+}
+
+export interface LeyendaPrecautoria {
+  codigo: string;
+  texto: string;
+  tipo: "LEYENDA";
+}
+
+export interface SellosAdvertenciaOut {
+  receta_id: number;
+  codigo_receta: string;
+  producto_id: number;
+  producto_nombre: string;
+  es_liquido: boolean;
+  base_calculo: string;
+  dictamen_aplicabilidad: DictamenAplicabilidad;
+  aplica_evaluacion_sellos: boolean;
+  es_calculable: boolean;
+  mensaje_bloqueo?: string | null;
+  valor_energetico_100?: number | null;
+  sellos: SelloAdvertencia[];
+  leyendas_precautorias: LeyendaPrecautoria[];
+  memoria_calculo: PasoMemoriaCalculo[];
+  version_normativa: string;
+  fecha_vigencia_normativa: string;
+}
+
 
 

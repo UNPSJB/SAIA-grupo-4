@@ -16,6 +16,7 @@ import type {
   Receta,
   RecetaCreatePayload,
   RecetaUpdatePayload,
+  SellosAdvertenciaOut,
 } from "../types";
 
 export class ApiError extends Error {
@@ -111,6 +112,8 @@ export const recetasApi = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+  obtenerSellosAdvertencia: (id: number) =>
+    request<SellosAdvertenciaOut>(`/recetas/${id}/sellos-advertencia`),
   obtenerDeclaracionIngredientes: (id: number) =>
     request<DeclaracionIngredientesResponse>(`/recetas/${id}/declaracion-ingredientes`),
   guardarOrdenManualDeclaracion: (id: number, insumoIds: number[]) =>
