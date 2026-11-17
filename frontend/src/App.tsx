@@ -49,7 +49,6 @@ import VistaPublicaPage from "./pages/VistaPublicaPage";
 import VistaPublicaPublicaPage from "./pages/VistaPublicaVisitantePage";
 import { ConfiguracionProvider } from "./features/configuracion/ConfiguracionProvider";
 import { ConfiguracionPage } from "./pages/ConfiguracionPage";
-import ConfiguracionNutricionalPage from "./pages/ConfiguracionNutricionalPage";
 
 const CHECKLIST_ITEMS: NavItem[] = [
   { to: "/checklist", label: "Checklist Diario", icon: FiCheckSquare },
@@ -218,7 +217,7 @@ function AppContent() {
               path='/configuracion-nutricional'
               element={
                 <RequireAuth>
-                  <ConfiguracionNutricionalPage />
+                  <ConfiguracionPage seccionInicial='nutricional' />
                 </RequireAuth>
               }
             />

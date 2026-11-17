@@ -11,6 +11,9 @@ export interface ParametroNutricional {
   umbral_no_significativo: number | string | null;
   texto_no_significativo: string | null;
   factor_conversion_kj: number | string | null;
+  fecha_modificacion?: string | null;
+  modificado_por_id?: number | null;
+  modificado_por_nombre?: string | null;
 }
 
 export interface ParametroNutricionalUpdateItem {
