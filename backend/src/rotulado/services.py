@@ -474,7 +474,7 @@ def _evaluar_proporcion_energetica(
                 "100,00% (guarda división por cero)"
             )
     else:
-        pct = round((gramos * factor_kcal * 100.0) / kcal_totales, 2)
+        pct = min(100.0, round((gramos * factor_kcal * 100.0) / kcal_totales, 2))
         calculo_str = (
             f"{gramos:.2f} g × {int(factor_kcal)} × 100 ÷ {kcal_totales:.2f} kcal = {pct:.2f}%"
         )
@@ -539,7 +539,7 @@ def _evaluar_sodio(
             f"Absoluto: {sodio_mg:.2f} mg / {base_calculo}"
         )
         valor_obtenido = round(sodio_mg, 2)
-        unidad_obtenida = "mg"
+        unidad_obtenida = f"mg / {base_calculo}"
     else:
         ratio = round(sodio_mg / kcal_totales, 2)
         supera_ratio = ratio >= umbral_mg_kcal
@@ -547,8 +547,12 @@ def _evaluar_sodio(
             f"Relación: {sodio_mg:.2f} mg ÷ {kcal_totales:.2f} kcal = {ratio:.2f} mg/kcal  |  "
             f"Absoluto: {sodio_mg:.2f} mg / {base_calculo}"
         )
-        valor_obtenido = ratio if supera_ratio and not supera_abs else round(sodio_mg, 2)
-        unidad_obtenida = "mg/kcal" if supera_ratio and not supera_abs else "mg"
+        if supera_ratio and not supera_abs:
+            valor_obtenido = ratio
+            unidad_obtenida = "mg/kcal"
+        else:
+            valor_obtenido = round(sodio_mg, 2)
+            unidad_obtenida = f"mg / {base_calculo}"
 
     supera = supera_ratio or supera_abs
     sello = (
@@ -604,7 +608,7 @@ def _evaluar_calorias(
             umbral_normativo=umbral_str,
         )
 
-    supera = kcal_totales >= umbral_kcal
+    supera = se_evalua and (kcal_totales >= umbral_kcal)
     sello = (
         schemas.SelloAdvertenciaOut(
             codigo=CodigoSelloAdvertencia.EXCESO_CALORIAS.value, texto=texto_sello
@@ -621,7 +625,10 @@ def _evaluar_calorias(
             valor_tabla_100=round(kcal_totales, 2),
             unidad_tabla="kcal",
             formula_aplicada=formula,
-            calculo_sustituido=f"{kcal_totales:.2f} kcal / {base_calculo}",
+            calculo_sustituido=(
+                f"{kcal_totales:.2f} kcal / {base_calculo} "
+                f"({'≥' if supera else '<'} {umbral_kcal:g} kcal)"
+            ),
             valor_obtenido=round(kcal_totales, 2),
             unidad_obtenida="kcal",
             umbral_normativo=umbral_str,
@@ -679,7 +686,6 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
         fila.codigo_nutriente: float(fila.valor_100g or 0.0)
         for fila in info_nutricional.filas
     }
-    kcal_totales = valores_100.get("valor_energetico", 0.0)
     azucares_anadidos = valores_100.get("azucares_anadidos", 0.0)
     azucares_totales = valores_100.get("azucares_totales", 0.0)
     azucares_g = (
@@ -687,9 +693,22 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
         if azucares_anadidos > 0 or not aplicabilidad.tiene_azucares_agregados
         else azucares_totales
     )
+    carbohidratos_g = valores_100.get("carbohidratos", 0.0)
+    proteinas_g = valores_100.get("proteinas", 0.0)
     grasas_totales_g = valores_100.get("grasas_totales", 0.0)
     grasas_saturadas_g = valores_100.get("grasas_saturadas", 0.0)
     sodio_mg = valores_100.get("sodio", 0.0)
+
+    # Energía consolidada: toma el valor energético de la tabla y garantiza consistencia física
+    # frente a los macronutrientes (Atwater 4/4/9) para evitar porcentajes > 100%.
+    kcal_tabla = valores_100.get("valor_energetico", 0.0)
+    kcal_atwater = (
+        (carbohidratos_g * UmbralesEtapa2.FACTOR_KCAL_AZUCARES)
+        + (proteinas_g * UmbralesEtapa2.FACTOR_KCAL_AZUCARES)
+        + (grasas_totales_g * UmbralesEtapa2.FACTOR_KCAL_GRASAS)
+    )
+    kcal_azucares_min = azucares_g * UmbralesEtapa2.FACTOR_KCAL_AZUCARES
+    kcal_totales = max(kcal_tabla, kcal_atwater, kcal_azucares_min)
 
     evaluaciones = [
         _evaluar_proporcion_energetica(
