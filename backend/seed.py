@@ -148,6 +148,7 @@ from src.capacidades.constants import RolesSistema
 from src.vista_publica.models import VistaPublica
 from src.vista_publica.services import inicializar_vista_publica
 from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
+from src.configuracion.services import inicializar_parametros_frontales
 from src.rotulado.services import inicializar_normativa_rotulado
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
@@ -1579,6 +1580,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         raise RuntimeError("Se necesita al menos una persona activa para crear recetas.")
     creador = reportantes[0]
     normativa_activa = inicializar_normativa_rotulado(db, normalizar_ascii=True)
+    version_frontal_vigente = inicializar_parametros_frontales(db, normalizar_ascii=True)
 
     # Insumos especificos de panaderia y reposteria
     ins_harina = insumos[0]
@@ -2104,6 +2106,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
             fecha_baja=fecha_baja,
             usuario_creador_id=creador.id,
             normativa_rotulado_id=normativa_activa.id,
+            version_parametro_frontal_id=version_frontal_vigente.id,
         )
         for num_orden, titulo, instrucciones, eqs_data, inss_data in pasos_info:
             paso = PasoReceta(
