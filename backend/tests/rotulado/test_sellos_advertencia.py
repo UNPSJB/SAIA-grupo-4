@@ -1,8 +1,11 @@
+from datetime import date, datetime
 from decimal import Decimal
 import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from src.configuracion.models import VersionParametroFrontal
+from src.lotes.models import Lote
 from src.main import app
 from tests.database import session
 from src.insumos.models import Insumo
@@ -384,3 +387,126 @@ def test_consistencia_energia_no_supera_100_porciento_ni_dispara_calorias_bajo_u
     paso_sodio = next(p for p in data["memoria_calculo"] if p["codigo"] == "sodio")
     assert paso_sodio["unidad_obtenida"] == "mg/kcal"
     assert "%" not in paso_sodio["umbral_normativo"]
+
+
+def test_inhabilitacion_global_modulo_octogonos_impacta_en_aplicabilidad_y_sellos(session, setup_sellos):
+    """Si ConfiguracionModulo.octogonos_activos es False, la receta pasa a NO_APLICA y no calcula sellos."""
+    um = setup_sellos["um_masa"].id
+    azucar = _crear_insumo(
+        session,
+        um,
+        "Azucar",
+        kcal=400,
+        carbohidratos=100,
+        azucares_totales=100,
+        azucares_anadidos=100,
+        aporta_azucares=True,
+    )
+    receta = _crear_receta(session, setup_sellos["prod_solido"].id, 100.0, [(azucar, 100)])
+
+    # Activo por defecto -> APLICA y calcula sellos
+    assert client.get(f"/recetas/{receta.id}/aplicabilidad-frontal").json()["dictamen"] == DictamenAplicabilidad.APLICA.value
+    assert client.get(f"/recetas/{receta.id}/sellos-advertencia").json()["aplica_evaluacion_sellos"] is True
+
+    # Desactivar módulo global desde /configuracion/modulo-octogonos
+    res_off = client.patch(
+        "/configuracion/modulo-octogonos",
+        json={"octogonos_activos": False, "observacion": "Solo productos B2B"},
+    )
+    assert res_off.status_code == 200
+
+    try:
+        aplica_off = client.get(f"/recetas/{receta.id}/aplicabilidad-frontal").json()
+        assert aplica_off["dictamen"] == DictamenAplicabilidad.NO_APLICA.value
+        assert aplica_off["modulo_octogonos_activo"] is False
+        assert "desactivada en configuración del sistema" in aplica_off["motivo"].lower()
+
+        sellos_off = client.get(f"/recetas/{receta.id}/sellos-advertencia").json()
+        assert sellos_off["aplica_evaluacion_sellos"] is False
+        assert sellos_off["sellos"] == []
+    finally:
+        # Reactivar para no afectar otros tests
+        client.patch("/configuracion/modulo-octogonos", json={"octogonos_activos": True})
+
+
+def test_nueva_version_parametros_frontales_impacta_en_calculo_y_respeta_lotes(session, setup_sellos):
+    """Al publicar una nueva versión de umbrales en /configuracion/parametros-frontales, las recetas sin lotes migran y las con lotes conservan la versión anterior."""
+    um = setup_sellos["um_masa"].id
+    # 100 g: 100 kcal totales y 2 g de azucar anadido => 8 kcal / 100 kcal = 8% (menor al 10% inicial)
+    base = _crear_insumo(
+        session,
+        um,
+        "Base Moderada",
+        kcal=100,
+        carbohidratos=25,
+        azucares_totales=2,
+        azucares_anadidos=2,
+        aporta_azucares=True,
+    )
+
+    param_inicial = client.get("/configuracion/parametros-frontales").json()
+    v1_id = param_inicial["version_vigente"]["id"]
+    reglas_v1 = param_inicial["version_vigente"]["reglas"]
+
+    receta_sin_lotes = _crear_receta(session, setup_sellos["prod_solido"].id, 100.0, [(base, 100)])
+    receta_sin_lotes.version_parametro_frontal_id = v1_id
+
+    receta_con_lotes = _crear_receta(session, setup_sellos["prod_solido"].id, 100.0, [(base, 100)])
+    receta_con_lotes.version_parametro_frontal_id = v1_id
+    session.add(
+        Lote(
+            codigo_lote=generar_str("LOT"),
+            producto_id=setup_sellos["prod_solido"].id,
+            receta_id=receta_con_lotes.id,
+            operador_id=1,
+            fecha_elaboracion=datetime.now(),
+            fecha_vencimiento=date.today(),
+            cantidad_producida=Decimal("10.00"),
+        )
+    )
+    session.commit()
+
+    # Con v1 (umbral azucares 10%): ninguna lleva EXCESO EN AZUCARES (8% < 10%)
+    assert CodigoSelloAdvertencia.EXCESO_AZUCARES.value not in {
+        s["codigo"] for s in client.get(f"/recetas/{receta_sin_lotes.id}/sellos-advertencia").json()["sellos"]
+    }
+
+    # Publicar v2 bajando el umbral de AZUCARES_ANADIDOS en ALIMENTO a 5%
+    nuevas_reglas = [
+        {
+            "nutriente_critico": r["nutriente_critico"],
+            "leyenda_sello": r["leyenda_sello"],
+            "categoria": r["categoria"],
+            "valor_umbral": 5.0
+            if r["nutriente_critico"] == "AZUCARES_ANADIDOS" and r["categoria"] == "ALIMENTO"
+            else r["valor_umbral"],
+            "unidad_umbral": r["unidad_umbral"],
+            "condicion": r["condicion"],
+        }
+        for r in reglas_v1
+    ]
+    res_v2 = client.post(
+        "/configuracion/parametros-frontales",
+        json={
+            "normativa_referencia": "Disposicion ANMAT E3",
+            "motivo_cambio": "Reduccion de umbral de azucares a 5%",
+            "reglas": nuevas_reglas,
+        },
+    )
+    assert res_v2.status_code == 200
+    v2_id = res_v2.json()["version_vigente"]["id"]
+    assert v2_id != v1_id
+
+    session.expire_all()
+    assert session.get(Receta, receta_sin_lotes.id).version_parametro_frontal_id == v2_id
+    assert session.get(Receta, receta_con_lotes.id).version_parametro_frontal_id == v1_id
+
+    # Sin lotes -> ahora supera el 5% (8% >= 5%) y lleva EXCESO EN AZUCARES
+    sellos_sin_lotes = client.get(f"/recetas/{receta_sin_lotes.id}/sellos-advertencia").json()
+    assert CodigoSelloAdvertencia.EXCESO_AZUCARES.value in {s["codigo"] for s in sellos_sin_lotes["sellos"]}
+    assert "Versión #2" in sellos_sin_lotes["version_normativa"]
+
+    # Con lotes -> conserva v1 (10%) y sigue sin llevar EXCESO EN AZUCARES
+    sellos_con_lotes = client.get(f"/recetas/{receta_con_lotes.id}/sellos-advertencia").json()
+    assert CodigoSelloAdvertencia.EXCESO_AZUCARES.value not in {s["codigo"] for s in sellos_con_lotes["sellos"]}
+    assert "Versión #1" in sellos_con_lotes["version_normativa"]
