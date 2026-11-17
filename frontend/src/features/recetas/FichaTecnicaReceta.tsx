@@ -35,6 +35,7 @@ import { TablaComposicionPorcentual } from "./components/TablaComposicionPorcent
 import { TablaInformacionNutricional } from "./components/TablaInformacionNutricional";
 import { ListaDeclaracionIngredientes } from "./components/ListaDeclaracionIngredientes";
 import { EvaluacionAplicabilidadFrontal } from "./components/EvaluacionAplicabilidadFrontal";
+import { CalculadoraOctogonos } from "./components/CalculadoraOctogonos";
 import { ESTADOS_RECETA } from "./constants";
 import type {
   AplicabilidadFrontalOut,
@@ -43,6 +44,7 @@ import type {
   InformacionNutricionalResponse,
   PasoReceta,
   Receta,
+  SellosAdvertenciaOut,
 } from "./types";
 
 const Chip = ({
@@ -96,6 +98,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     useState<InformacionNutricionalResponse | null>(null);
   const [aplicabilidad, setAplicabilidad] =
     useState<AplicabilidadFrontalOut | null>(null);
+  const [sellos, setSellos] = useState<SellosAdvertenciaOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -111,19 +114,21 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
 
     try {
       if (esModoAdmin) {
-        // En modo admin, cargamos la receta, composición porcentual, declaración, información nutricional y aplicabilidad frontal
-        const [dataReceta, dataComp, dataDecl, dataNutri, dataAplica] = await Promise.all([
+        // En modo admin, cargamos la receta, composición porcentual, declaración, información nutricional, aplicabilidad y sellos
+        const [dataReceta, dataComp, dataDecl, dataNutri, dataAplica, dataSellos] = await Promise.all([
           recetasApi.obtenerReceta(recetaId),
           recetasApi.obtenerComposicionPorcentual(recetaId).catch(() => null),
           recetasApi.obtenerDeclaracionIngredientes(recetaId).catch(() => null),
           recetasApi.obtenerInformacionNutricional(recetaId).catch(() => null),
           recetasApi.obtenerAplicabilidadFrontal(recetaId).catch(() => null),
+          recetasApi.obtenerSellosAdvertencia(recetaId).catch(() => null),
         ]);
         setReceta(dataReceta);
         setComposicion(dataComp);
         setDeclaracion(dataDecl);
         setInfoNutricional(dataNutri);
         setAplicabilidad(dataAplica);
+        setSellos(dataSellos);
       } else {
         // En modo operador, consultamos la receta activa
         const dataReceta = await recetasApi.obtenerRecetaActiva(recetaId);
@@ -390,7 +395,17 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               <EvaluacionAplicabilidadFrontal
                 recetaId={recetaId}
                 aplicabilidad={aplicabilidad}
-                onActualizar={setAplicabilidad}
+                onActualizar={(nueva) => {
+                  setAplicabilidad(nueva);
+                  if (nueva.dictamen === "APLICA") {
+                    void recetasApi
+                      .obtenerSellosAdvertencia(recetaId)
+                      .then(setSellos)
+                      .catch(() => setSellos(null));
+                  } else {
+                    setSellos(null);
+                  }
+                }}
                 esModoAdmin={esModoAdmin}
                 puedeEditarOverrides={
                   aplicabilidad.puede_editar_overrides &&
@@ -403,6 +418,13 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                     : "Receta con lotes asociados: solo lectura"
                 }
               />
+            </Box>
+          )}
+
+          {/* Cálculo de Sellos de Advertencia (solo si la aplicabilidad dictamina APLICA) */}
+          {esModoAdmin && aplicabilidad?.dictamen === "APLICA" && sellos && (
+            <Box mt={3} mb={6}>
+              <CalculadoraOctogonos sellosData={sellos} />
             </Box>
           )}
 
