@@ -43,6 +43,9 @@ class Receta(ModeloBase):
     normativa_rotulado_id: Mapped[int | None] = mapped_column(
         ForeignKey("normativas_rotulado.id"), nullable=True, index=True
     )
+    version_parametro_frontal_id: Mapped[int | None] = mapped_column(
+        ForeignKey("versiones_parametros_frontales.id"), nullable=True, index=True
+    )
 
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -52,6 +55,9 @@ class Receta(ModeloBase):
     usuario_creador: Mapped["Persona"] = relationship()
     producto: Mapped["Producto"] = relationship("Producto", back_populates="recetas")
     normativa_rotulado: Mapped["NormativaRotulado | None"] = relationship("NormativaRotulado")
+    version_parametro_frontal: Mapped["VersionParametroFrontal | None"] = relationship(
+        "VersionParametroFrontal"
+    )
     
     # Relación hacia los pasos, con borrado en cascada
     pasos: Mapped[list["PasoReceta"]] = relationship(

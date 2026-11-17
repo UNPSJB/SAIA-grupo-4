@@ -1,15 +1,19 @@
 import os
+import unicodedata
 import uuid
 from datetime import datetime
 from pathlib import Path
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from src.configuracion import exceptions, schemas
 from src.configuracion.constants import Constantes, ErrorCode, EstadoVersionNormativa, NORMATIVA_INICIAL_NOMBRE, REGLAS_INICIALES_LEY_27642
 from src.configuracion.models import ConfiguracionSistema, ConfiguracionModulo, VersionParametroFrontal, ReglaUmbralFrontal
 from src.configuracion.schemas import ConfiguracionSistemaUpdate, ModuloOctogonosUpdate, ParametrosFrontalesConsolidadoResponse, VersionParametroFrontalCreate
+from src.personal.models import Persona
+from src.recetas.constants import EstadoReceta
+from src.recetas.models import Receta
 from src.personal.models import Persona
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -96,14 +100,39 @@ def eliminar_logo(db: Session, usuario_id: int) -> ConfiguracionSistema:
     return config
 
 
-def inicializar_parametros_frontales(db: Session) -> VersionParametroFrontal:
+def _normalizar_ascii(texto: str) -> str:
+    return (
+        unicodedata.normalize("NFKD", texto)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+
+
+def _reasignar_recetas_a_version_parametro(db: Session, nueva_version_id: int) -> None:
+    """Migra recetas en borrador o activas sin lotes a la nueva versión de parámetros frontales."""
+    db.execute(
+        update(Receta)
+        .where(
+            or_(
+                Receta.estado == EstadoReceta.BORRADOR,
+                (Receta.estado == EstadoReceta.ACTIVA) & (~Receta.lotes.any()),
+            )
+        )
+        .values(version_parametro_frontal_id=nueva_version_id)
+    )
+
+
+def inicializar_parametros_frontales(
+    db: Session, normalizar_ascii: bool = False
+) -> VersionParametroFrontal:
     """Crea la configuración del módulo de octógonos y la Versión 1 (Ley 27.642) si no existen."""
     modulo = db.get(ConfiguracionModulo, 1)
     if modulo is None:
+        obs = "Módulo de rotulado frontal activo por defecto (Ley 27.642)"
         modulo = ConfiguracionModulo(
             id=1,
             octogonos_activos=True,
-            observacion="Módulo de rotulado frontal activo por defecto (Ley 27.642)",
+            observacion=_normalizar_ascii(obs) if normalizar_ascii else obs,
             fecha_modificacion=datetime.now(),
         )
         db.add(modulo)
@@ -115,17 +144,28 @@ def inicializar_parametros_frontales(db: Session) -> VersionParametroFrontal:
     )
     if version_vigente is None:
         ahora = datetime.now()
+        motivo = "Carga inicial automática de parámetros normativos (ANMAT Etapa 2)"
         version_vigente = VersionParametroFrontal(
             numero_version=1,
-            normativa_referencia=NORMATIVA_INICIAL_NOMBRE,
-            motivo_cambio="Carga inicial automática de parámetros normativos (ANMAT Etapa 2)",
+            normativa_referencia=(
+                _normalizar_ascii(NORMATIVA_INICIAL_NOMBRE)
+                if normalizar_ascii
+                else NORMATIVA_INICIAL_NOMBRE
+            ),
+            motivo_cambio=_normalizar_ascii(motivo) if normalizar_ascii else motivo,
             estado=EstadoVersionNormativa.VIGENTE,
             fecha_vigencia_desde=ahora,
             fecha_vigencia_hasta=None,
             creado_por_id=None,
         )
         for regla_data in REGLAS_INICIALES_LEY_27642:
-            version_vigente.reglas.append(ReglaUmbralFrontal(**regla_data))
+            datos_regla = dict(regla_data)
+            if normalizar_ascii:
+                datos_regla["leyenda_sello"] = _normalizar_ascii(datos_regla["leyenda_sello"])
+                datos_regla["unidad_umbral"] = _normalizar_ascii(datos_regla["unidad_umbral"])
+                if datos_regla.get("condicion"):
+                    datos_regla["condicion"] = _normalizar_ascii(datos_regla["condicion"])
+            version_vigente.reglas.append(ReglaUmbralFrontal(**datos_regla))
         db.add(version_vigente)
 
     db.commit()
@@ -189,6 +229,8 @@ def crear_nueva_version_parametros(
         )
 
     db.add(nueva_version)
+    db.flush()
+    _reasignar_recetas_a_version_parametro(db, nueva_version.id)
     db.commit()
     db.refresh(nueva_version)
 

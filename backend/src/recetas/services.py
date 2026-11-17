@@ -380,9 +380,11 @@ def crear_receta_borrador(db: Session, receta: schemas.RecetaCreate, usuario_id:
         raise exceptions.ProductoInvalido()
 
     codigo_receta = _generar_codigo_receta(db, producto)
+    from src.configuracion.services import inicializar_parametros_frontales
     from src.rotulado.services import obtener_normativa_activa
 
     normativa_activa = obtener_normativa_activa(db)
+    version_frontal_vigente = inicializar_parametros_frontales(db)
 
     nueva_receta = Receta(
         codigo_receta=codigo_receta,
@@ -394,6 +396,7 @@ def crear_receta_borrador(db: Session, receta: schemas.RecetaCreate, usuario_id:
         estado=EstadoReceta.BORRADOR,
         observaciones=receta.observaciones,
         normativa_rotulado_id=normativa_activa.id,
+        version_parametro_frontal_id=version_frontal_vigente.id,
         fecha_creacion=datetime.now(),
         usuario_creador_id=usuario_id,
     )
@@ -552,9 +555,11 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
     if not producto or not producto.activo:
         raise exceptions.ProductoInvalido()
 
+    from src.configuracion.services import inicializar_parametros_frontales
     from src.rotulado.services import obtener_normativa_activa
 
     normativa_activa = obtener_normativa_activa(db)
+    version_frontal_vigente = inicializar_parametros_frontales(db)
 
     nueva_receta = Receta(
         codigo_receta=_generar_codigo_receta(db, producto),
@@ -574,6 +579,7 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
         override_cafeina=origen.override_cafeina,
         es_aplicabilidad_forzada_manualmente=origen.es_aplicabilidad_forzada_manualmente,
         normativa_rotulado_id=normativa_activa.id,
+        version_parametro_frontal_id=version_frontal_vigente.id,
         fecha_creacion=datetime.now(),
         usuario_creador_id=usuario_id,
         pasos=[_clonar_paso(p) for p in origen.pasos]
