@@ -6,7 +6,7 @@ interface ListadoContainerProps extends BoxProps {
 
 export const ListadoContainer = ({
   children,
-  maxW = "8xl",
+  maxW,
   ...rest
 }: ListadoContainerProps) => (
   <Box

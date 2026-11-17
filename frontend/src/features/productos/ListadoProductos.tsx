@@ -161,7 +161,7 @@ export const ListadoProductos = ({
   ];
 
   return (
-    <ListadoContainer maxW="8xl">
+    <ListadoContainer>
       <ListadoHeader title="Productos" icon={FiPackage}>
         <HStack gap={2}>
           <Button

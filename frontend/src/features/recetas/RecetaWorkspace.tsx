@@ -272,7 +272,7 @@ export default function RecetaWorkspace({
   if (loading) {
     return (
       <>
-        <Box maxW="7xl" mx="auto" mt={20}>
+        <Box maxW="7xl" mx="auto">
           <LoadingState message="Cargando receta..." />
         </Box>
       </>
@@ -509,7 +509,7 @@ export default function RecetaWorkspace({
 
   return (
     <>
-      <ListadoContainer maxW="8xl">
+      <ListadoContainer>
         <HStack
           justify="space-between"
           align="center"
@@ -699,7 +699,7 @@ export default function RecetaWorkspace({
         {success && <AlertMessage type="success" message={success} />}
       </ListadoContainer>
 
-      <ListadoContainer maxW="8xl" mt={4}>
+      <ListadoContainer mt={4}>
         <HStack
           justify="space-between"
           align="center"

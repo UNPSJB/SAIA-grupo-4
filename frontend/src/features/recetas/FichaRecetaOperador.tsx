@@ -208,7 +208,7 @@ export const FichaRecetaOperador = () => {
     <>
       <>
       {/* Contenedor Principal: Cabecera y Resumen */}
-      <ListadoContainer maxW="8xl">
+      <ListadoContainer>
         <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={3}>
           <Button
             variant="outline"
@@ -360,7 +360,7 @@ export const FichaRecetaOperador = () => {
       </ListadoContainer>
 
       {/* Secuencia Ordenada de Pasos */}
-      <ListadoContainer maxW="8xl" mt={6}>
+      <ListadoContainer mt={6}>
         <HStack gap={2} mb={4}>
           <Icon as={FiFileText} color="green.700" />
           <Heading size="lg" color="green.700">

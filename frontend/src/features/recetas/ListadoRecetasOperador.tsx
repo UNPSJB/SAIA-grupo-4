@@ -297,7 +297,7 @@ export const ListadoRecetasOperador = () => {
   ];
 
   return (
-    <ListadoContainer maxW="8xl">
+    <ListadoContainer>
       <ListadoHeader title="Catálogo de Recetas" icon={FiBookOpen} />
 
       <Box

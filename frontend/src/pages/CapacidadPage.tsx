@@ -65,7 +65,7 @@ export default function CapacidadPage() {
 
   return (
     <>
-      <Box maxW='8xl' mx='auto' mb={4} textAlign='left'>
+      <Box mb={4} textAlign='left'>
         <Button
           variant='ghost'
           colorPalette='green'

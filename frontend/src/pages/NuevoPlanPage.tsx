@@ -26,7 +26,7 @@ export default function NuevoPlanPage() {
   if (loading) {
     return (
       <>
-        <Box maxW='7xl' mx='auto' mt={20}>
+        <Box maxW='7xl' mx='auto'>
           <LoadingState message='Cargando nuevo plan...' />
         </Box>
       </>

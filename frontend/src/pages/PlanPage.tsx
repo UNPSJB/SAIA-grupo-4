@@ -9,7 +9,7 @@ export default function PlanPage() {
   return (
     <>
       {loading ? (
-        <Box maxW='7xl' mx='auto' mt={20}>
+        <Box maxW='7xl' mx='auto'>
           <LoadingState message='Cargando plan...' />
         </Box>
       ) : planVigente ? (
@@ -23,8 +23,7 @@ export default function PlanPage() {
         <VStack
           maxW='4xl'
           mx='auto'
-          mt={20}
-          p={10}
+          p={{ base: 4, md: 6 }}
           borderWidth='1px'
           borderRadius='lg'
           boxShadow='lg'
