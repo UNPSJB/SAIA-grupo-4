@@ -20,6 +20,12 @@ class LoteInsumoUpdate(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
+class PersonalResumen(BaseModel):
+    id: int
+    nombre: str
+    apellido: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 class LoteInsumo(LoteInsumoBase):
     id: int
@@ -28,10 +34,10 @@ class LoteInsumo(LoteInsumoBase):
     motivo_inhabilitacion: Optional[str] = None
     fecha_inhabilitacion: Optional[datetime] = None
     usuario_inhabilitacion_id: Optional[int] = None
+    usuario_inhabilitacion: Optional[PersonalResumen] = None
     estado: EstadoLote
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
-
 
 class LoteInsumoInhabilitar(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)

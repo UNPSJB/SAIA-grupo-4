@@ -441,6 +441,22 @@ def test_lote_inhabilitado_no_aparece_entre_los_activos():
 
     assert lote["id"] not in ids_listados(insumo_id=insumo["id"], estado="activo")
 
+def test_inhabilitar_lote_devuelve_quien_lo_inhabilito():
+    lote = crear_lote(crear_insumo()["id"])
+
+    data = inhabilitar_lote(lote["id"]).json()
+    persona = data["usuario_inhabilitacion"]
+    assert persona["id"] == data["usuario_inhabilitacion_id"]
+    assert persona["nombre"]
+    assert persona["apellido"]
+    # Solo se exponen los datos necesarios
+    assert set(persona) == {"id", "nombre", "apellido"}
+
+
+def test_lote_activo_no_tiene_usuario_de_inhabilitacion():
+    lote = crear_lote(crear_insumo()["id"])
+    assert lote["usuario_inhabilitacion"] is None
+
 
 # --- Permisos ---
 
