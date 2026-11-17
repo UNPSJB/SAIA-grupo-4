@@ -52,8 +52,10 @@ export const EvaluacionAplicabilidadFrontal = ({
 }: EvaluacionAplicabilidadFrontalProps) => {
   const [loadingAccion, setLoadingAccion] = useState(false);
   const [errorAccion, setErrorAccion] = useState("");
+  const moduloDesactivado = aplicabilidad.modulo_octogonos_activo === false;
   const puedeEditar =
     esModoAdmin &&
+    !moduloDesactivado &&
     (puedeEditarOverrides ?? aplicabilidad.puede_editar_overrides ?? true);
 
   // Estado para el modal de confirmación de edición manual
@@ -277,10 +279,18 @@ export const EvaluacionAplicabilidadFrontal = ({
                   gap={1}
                   color="gray.500"
                   fontSize="2xs"
-                  title="Para modificar overrides, cloná la receta para generar un nuevo borrador."
+                  title={
+                    moduloDesactivado
+                      ? "El módulo de rotulado frontal está desactivado en Configuración del Sistema."
+                      : "Para modificar overrides, cloná la receta para generar un nuevo borrador."
+                  }
                 >
                   <Icon as={FiLock} boxSize={3} />
-                  <Text>{motivoSoloLectura}</Text>
+                  <Text>
+                    {moduloDesactivado
+                      ? "Módulo de rotulado desactivado en Configuración"
+                      : motivoSoloLectura}
+                  </Text>
                 </HStack>
               )
             )}

@@ -20,7 +20,9 @@ interface CalculadoraOctogonosProps {
   sellosData: SellosAdvertenciaOut;
 }
 
-export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) => {
+export const CalculadoraOctogonos = ({
+  sellosData,
+}: CalculadoraOctogonosProps) => {
   if (!sellosData.aplica_evaluacion_sellos) {
     return null;
   }
@@ -29,17 +31,18 @@ export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) 
     sellosData.sellos.length + sellosData.leyendas_precautorias.length;
 
   return (
-    <Card.Root variant="outline" bg="white" shadow="xs" overflow="hidden">
+    <Card.Root variant='outline' bg='white' shadow='xs' overflow='hidden'>
       <Card.Header pb={3}>
-        <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
+        <HStack justify='space-between' align='center' flexWrap='wrap' gap={3}>
           <HStack gap={2.5}>
-            <Icon as={FiOctagon} boxSize={5} color="gray.900" />
-            <VStack align="start" gap={0}>
-              <Heading size="md" color="gray.800">
+            <Icon as={FiOctagon} boxSize={5} color='gray.900' />
+            <VStack align='start' gap={0}>
+              <Heading size='md' color='gray.800'>
                 Sellos de Advertencia y Leyendas Precautorias
               </Heading>
-              <Text fontSize="xs" color="gray.500">
-                Perfil de nutrientes (Ley 27.642) • Base: {sellosData.base_calculo} (
+              <Text fontSize='xs' color='gray.500'>
+                Perfil de nutrientes (Ley 27.642) • Base:{" "}
+                {sellosData.base_calculo} (
                 {sellosData.es_liquido ? "Líquido" : "Sólido"})
                 {sellosData.valor_energetico_100 != null &&
                   ` • Energía total: ${sellosData.valor_energetico_100.toLocaleString("es-AR")} kcal / ${sellosData.base_calculo}`}
@@ -47,20 +50,9 @@ export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) 
             </VStack>
           </HStack>
 
-          <HStack gap={2} flexWrap="wrap">
-            {sellosData.es_calculable ? (
-              <Badge
-                colorPalette={totalAdvertencias > 0 ? "red" : "green"}
-                variant="subtle"
-                size="sm"
-              >
-                {sellosData.sellos.length} octógono
-                {sellosData.sellos.length === 1 ? "" : "s"} •{" "}
-                {sellosData.leyendas_precautorias.length} leyenda
-                {sellosData.leyendas_precautorias.length === 1 ? "" : "s"}
-              </Badge>
-            ) : (
-              <Badge colorPalette="orange" variant="subtle" size="sm">
+          <HStack gap={2} flexWrap='wrap'>
+            {!sellosData.es_calculable && (
+              <Badge colorPalette='orange' variant='subtle' size='sm'>
                 Cálculo pendiente
               </Badge>
             )}
@@ -71,7 +63,7 @@ export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) 
       <Card.Body pt={0} gap={4}>
         {!sellosData.es_calculable ? (
           <AlertMessage
-            type="warning"
+            type='warning'
             message={
               sellosData.mensaje_bloqueo ||
               "Completá los datos nutricionales y equivalencias de los insumos para calcular los sellos."
@@ -81,33 +73,36 @@ export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) 
           <>
             {totalAdvertencias === 0 ? (
               <AlertMessage
-                type="success"
-                message="El producto fue evaluado y no supera ninguno de los umbrales críticos (no corresponde declarar sellos ni leyendas precautorias)."
+                type='success'
+                message='El producto fue evaluado y no supera ninguno de los umbrales críticos (no corresponde declarar sellos ni leyendas precautorias).'
               />
             ) : (
               <VStack
-                align="stretch"
+                align='stretch'
                 gap={4}
                 p={4}
-                bg="gray.50"
-                borderWidth="1px"
-                borderColor="gray.200"
-                borderRadius="md"
+                bg='gray.50'
+                borderWidth='1px'
+                borderColor='gray.200'
+                borderRadius='md'
               >
                 {sellosData.sellos.length > 0 && (
                   <Box>
                     <Text
-                      fontSize="xs"
-                      fontWeight="bold"
-                      color="gray.600"
-                      textTransform="uppercase"
+                      fontSize='xs'
+                      fontWeight='bold'
+                      color='gray.600'
+                      textTransform='uppercase'
                       mb={3}
                     >
                       Octógonos de advertencia en cara principal
                     </Text>
-                    <Flex gap={4} flexWrap="wrap" align="center">
+                    <Flex gap={4} flexWrap='wrap' align='center'>
                       {sellosData.sellos.map((sello) => (
-                        <OctogonoReglamentario key={sello.codigo} texto={sello.texto} />
+                        <OctogonoReglamentario
+                          key={sello.codigo}
+                          texto={sello.texto}
+                        />
                       ))}
                     </Flex>
                   </Box>
@@ -116,17 +111,20 @@ export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) 
                 {sellosData.leyendas_precautorias.length > 0 && (
                   <Box>
                     <Text
-                      fontSize="xs"
-                      fontWeight="bold"
-                      color="gray.600"
-                      textTransform="uppercase"
+                      fontSize='xs'
+                      fontWeight='bold'
+                      color='gray.600'
+                      textTransform='uppercase'
                       mb={2.5}
                     >
                       Leyendas precautorias
                     </Text>
-                    <Flex gap={3} flexWrap="wrap" align="center">
+                    <Flex gap={3} flexWrap='wrap' align='center'>
                       {sellosData.leyendas_precautorias.map((leyenda) => (
-                        <LeyendaRectangular key={leyenda.codigo} texto={leyenda.texto} />
+                        <LeyendaRectangular
+                          key={leyenda.codigo}
+                          texto={leyenda.texto}
+                        />
                       ))}
                     </Flex>
                   </Box>
@@ -139,19 +137,20 @@ export const CalculadoraOctogonos = ({ sellosData }: CalculadoraOctogonosProps) 
         )}
 
         <HStack
-          justify="space-between"
-          align="center"
-          flexWrap="wrap"
+          justify='space-between'
+          align='center'
+          flexWrap='wrap'
           gap={2}
           pt={2}
-          borderTopWidth="1px"
-          borderColor="gray.100"
+          borderTopWidth='1px'
+          borderColor='gray.100'
         >
-          <Badge colorPalette="teal" variant="subtle" size="xs">
+          <Badge colorPalette='teal' variant='subtle' size='xs'>
             Normativa: {sellosData.version_normativa}
           </Badge>
-          <Text fontSize="2xs" color="gray.500">
-            Vigencia desde: {formatearFechaISO(sellosData.fecha_vigencia_normativa)}
+          <Text fontSize='2xs' color='gray.500'>
+            Vigencia desde:{" "}
+            {formatearFechaISO(sellosData.fecha_vigencia_normativa)}
           </Text>
         </HStack>
       </Card.Body>

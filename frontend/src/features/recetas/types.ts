@@ -248,6 +248,7 @@ export interface AplicabilidadFrontalOut {
   motivo: string;
   version_normativa: string;
   puede_editar_overrides: boolean;
+  modulo_octogonos_activo?: boolean;
 }
 
 export interface AplicabilidadFrontalUpdate {

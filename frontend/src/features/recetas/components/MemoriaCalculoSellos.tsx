@@ -21,10 +21,10 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
   return (
     <Box>
       <Button
-        type="button"
-        size="xs"
-        variant="outline"
-        colorPalette="gray"
+        type='button'
+        size='xs'
+        variant='outline'
+        colorPalette='gray'
         onClick={() => setMostrarMemoria((prev) => !prev)}
       >
         {mostrarMemoria ? <FiChevronUp /> : <FiChevronDown />}
@@ -37,16 +37,18 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
         <Collapsible.Content>
           <Box
             mt={3}
-            overflowX="auto"
-            borderWidth="1px"
-            borderColor="gray.200"
-            borderRadius="md"
+            overflowX='auto'
+            borderWidth='1px'
+            borderColor='gray.200'
+            borderRadius='md'
           >
-            <Table.Root size="sm" variant="line">
-              <Table.Header bg="gray.50">
+            <Table.Root size='sm' variant='line'>
+              <Table.Header bg='gray.50'>
                 <Table.Row>
                   <Table.ColumnHeader>Nutriente / Criterio</Table.ColumnHeader>
-                  <Table.ColumnHeader>Fórmula y Cálculo Paso a Paso</Table.ColumnHeader>
+                  <Table.ColumnHeader>
+                    Fórmula y Cálculo Paso a Paso
+                  </Table.ColumnHeader>
                   <Table.ColumnHeader>Umbral Legal</Table.ColumnHeader>
                   <Table.ColumnHeader>Veredicto</Table.ColumnHeader>
                 </Table.Row>
@@ -55,47 +57,55 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
                 {pasos.map((paso) => (
                   <Table.Row key={paso.codigo}>
                     <Table.Cell>
-                      <Text fontSize="xs" fontWeight="semibold" color="gray.800">
+                      <Text
+                        fontSize='xs'
+                        fontWeight='semibold'
+                        color='gray.800'
+                      >
                         {paso.nutriente_etiqueta}
                       </Text>
-                      <Text fontSize="2xs" color="gray.500">
+                      <Text fontSize='2xs' color='gray.500'>
                         {paso.motivo_evaluacion}
                       </Text>
                     </Table.Cell>
                     <Table.Cell>
                       {paso.se_evalua ? (
-                        <VStack align="start" gap={0.5}>
+                        <VStack align='start' gap={0.5}>
                           {paso.formula_aplicada && (
-                            <Text fontSize="2xs" color="gray.500">
+                            <Text fontSize='2xs' color='gray.500'>
                               Fórmula: {paso.formula_aplicada}
                             </Text>
                           )}
                           {paso.calculo_sustituido && (
-                            <Text fontSize="xs" fontWeight="medium" color="gray.800">
+                            <Text
+                              fontSize='xs'
+                              fontWeight='medium'
+                              color='gray.800'
+                            >
                               {paso.calculo_sustituido}
                             </Text>
                           )}
                         </VStack>
                       ) : (
-                        <Text fontSize="xs" color="gray.400">
+                        <Text fontSize='xs' color='gray.400'>
                           No corresponde evaluar
                         </Text>
                       )}
                     </Table.Cell>
-                    <Table.Cell fontSize="xs" color="gray.700">
+                    <Table.Cell fontSize='xs' color='gray.700'>
                       {paso.umbral_normativo}
                     </Table.Cell>
                     <Table.Cell>
                       {!paso.se_evalua ? (
-                        <Badge colorPalette="gray" variant="subtle" size="xs">
+                        <Badge colorPalette='gray' variant='subtle' size='xs'>
                           Omitido
                         </Badge>
                       ) : paso.supera_umbral ? (
-                        <Badge colorPalette="red" variant="solid" size="xs">
+                        <Badge colorPalette='red' variant='subtle' size='sm'>
                           {paso.sello_resultante}
                         </Badge>
                       ) : (
-                        <Badge colorPalette="green" variant="subtle" size="xs">
+                        <Badge colorPalette='green' variant='subtle' size='xs'>
                           Dentro del límite
                         </Badge>
                       )}
