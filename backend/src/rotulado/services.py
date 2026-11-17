@@ -3,6 +3,17 @@ import unicodedata
 from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
+from src.configuracion.constants import (
+    CategoriaAlimentoNormativa,
+    EstadoVersionNormativa,
+    NutrienteCritico,
+)
+from src.configuracion.models import (
+    ConfiguracionModulo,
+    ReglaUmbralFrontal,
+    VersionParametroFrontal,
+)
+from src.configuracion.services import inicializar_parametros_frontales
 from src.insumos.models import Insumo
 from src.lotes.models import Lote
 from src.productos.models import Producto
@@ -219,6 +230,9 @@ def _obtener_receta_con_relaciones(db: Session, receta_id: int) -> Receta:
         .options(
             joinedload(Receta.producto).joinedload(Producto.unidad_medida),
             joinedload(Receta.normativa_rotulado),
+            joinedload(Receta.version_parametro_frontal).joinedload(
+                VersionParametroFrontal.reglas
+            ),
             joinedload(Receta.pasos)
             .joinedload(PasoReceta.insumos)
             .joinedload(PasoInsumo.insumo),
@@ -270,12 +284,50 @@ def _resolver_valor_efectivo(
     return bool(regla_activa and (override if override is not None else calculado))
 
 
+def _obtener_version_parametro_para_receta(
+    db: Session, receta: Receta
+) -> VersionParametroFrontal:
+    if receta.version_parametro_frontal is not None:
+        return receta.version_parametro_frontal
+    vigente = db.scalar(
+        select(VersionParametroFrontal).where(
+            VersionParametroFrontal.estado == EstadoVersionNormativa.VIGENTE
+        )
+    )
+    if vigente is not None:
+        return vigente
+    return inicializar_parametros_frontales(db)
+
+
+def _obtener_estado_modulo_octogonos(db: Session) -> tuple[bool, str | None]:
+    modulo = db.get(ConfiguracionModulo, 1)
+    if modulo is not None and not modulo.octogonos_activos:
+        return False, modulo.observacion
+    return True, None
+
+
+def _buscar_regla_umbral(
+    version_param: VersionParametroFrontal,
+    nutriente_critico: str,
+    categoria: str,
+) -> ReglaUmbralFrontal | None:
+    for regla in version_param.reglas or []:
+        if (
+            regla.nutriente_critico == nutriente_critico
+            and (regla.categoria or "").upper() == categoria.upper()
+        ):
+            return regla
+    return None
+
+
 def _evaluar_aplicabilidad_sobre_receta(
     db: Session, receta: Receta
 ) -> schemas.AplicabilidadFrontalOut:
     """Evalúa la aplicabilidad de rotulado frontal usando una instancia de Receta ya cargada."""
     producto: Producto = receta.producto
     normativa = receta.normativa_rotulado or obtener_normativa_activa(db)
+    version_param = _obtener_version_parametro_para_receta(db, receta)
+    modulo_activo, obs_modulo = _obtener_estado_modulo_octogonos(db)
     auto = _detectar_agregados_automaticos(receta)
 
     tiene_azucares = _resolver_valor_efectivo(
@@ -306,7 +358,15 @@ def _evaluar_aplicabilidad_sobre_receta(
 
     envasado_ausencia_cliente = bool(producto.envasado_ausencia_cliente)
 
-    if normativa.requiere_envasado_ausencia_cliente and not envasado_ausencia_cliente:
+    if not modulo_activo:
+        dictamen = DictamenAplicabilidad.NO_APLICA
+        aplica_rotulado = False
+        dictamen_titulo = "No corresponde rotulado frontal (Módulo desactivado)"
+        motivo = (
+            "La evaluación de rotulado frontal se encuentra desactivada en Configuración del Sistema."
+            + (f" Motivo: {obs_modulo}" if obs_modulo else "")
+        )
+    elif normativa.requiere_envasado_ausencia_cliente and not envasado_ausencia_cliente:
         dictamen = DictamenAplicabilidad.NO_APLICA
         aplica_rotulado = False
         dictamen_titulo = MensajesAplicabilidad.NO_APLICA_TITULO
@@ -327,6 +387,12 @@ def _evaluar_aplicabilidad_sobre_receta(
         aplica_rotulado = False
         dictamen_titulo = MensajesAplicabilidad.EXCEPTUADO_TITULO
         motivo = MensajesAplicabilidad.EXCEPTUADO_MOTIVO
+
+    version_etiqueta = (
+        f"Versión #{version_param.numero_version} — {version_param.normativa_referencia}"
+        if receta.normativa_rotulado is None
+        else f"{normativa.nombre} ({normativa.version})"
+    )
 
     return schemas.AplicabilidadFrontalOut(
         receta_id=receta.id,
@@ -354,8 +420,9 @@ def _evaluar_aplicabilidad_sobre_receta(
         dictamen=dictamen,
         dictamen_titulo=dictamen_titulo,
         motivo=motivo,
-        version_normativa=f"{normativa.nombre} ({normativa.version})",
-        puede_editar_overrides=_puede_editar_overrides(db, receta),
+        version_normativa=version_etiqueta,
+        puede_editar_overrides=modulo_activo and _puede_editar_overrides(db, receta),
+        modulo_octogonos_activo=modulo_activo,
     )
 
 
@@ -646,10 +713,16 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
     receta = _obtener_receta_con_relaciones(db, receta_id)
     producto: Producto = receta.producto
     normativa = receta.normativa_rotulado or obtener_normativa_activa(db)
+    version_param = _obtener_version_parametro_para_receta(db, receta)
     aplicabilidad = _evaluar_aplicabilidad_sobre_receta(db, receta)
 
     es_liquido = producto.es_liquido
     base_calculo = "100 ml" if es_liquido else "100 g"
+    categoria_normativa = (
+        CategoriaAlimentoNormativa.BEBIDA
+        if es_liquido
+        else CategoriaAlimentoNormativa.ALIMENTO
+    )
     base_out = {
         "receta_id": receta.id,
         "codigo_receta": receta.codigo_receta,
@@ -658,8 +731,8 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
         "es_liquido": es_liquido,
         "base_calculo": base_calculo,
         "dictamen_aplicabilidad": aplicabilidad.dictamen,
-        "version_normativa": f"{normativa.nombre} ({normativa.version})",
-        "fecha_vigencia_normativa": normativa.fecha_actualizacion,
+        "version_normativa": f"Versión #{version_param.numero_version} — {version_param.normativa_referencia}",
+        "fecha_vigencia_normativa": version_param.fecha_vigencia_desde,
     }
 
     if aplicabilidad.dictamen != DictamenAplicabilidad.APLICA:
@@ -710,6 +783,56 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
     kcal_azucares_min = azucares_g * UmbralesEtapa2.FACTOR_KCAL_AZUCARES
     kcal_totales = max(kcal_tabla, kcal_atwater, kcal_azucares_min)
 
+    regla_azucares = _buscar_regla_umbral(
+        version_param, NutrienteCritico.AZUCARES_ANADIDOS, categoria_normativa
+    )
+    regla_grasas_tot = _buscar_regla_umbral(
+        version_param, NutrienteCritico.GRASAS_TOTALES, categoria_normativa
+    )
+    regla_grasas_sat = _buscar_regla_umbral(
+        version_param, NutrienteCritico.GRASAS_SATURADAS, categoria_normativa
+    )
+    regla_sodio = _buscar_regla_umbral(
+        version_param, NutrienteCritico.SODIO, categoria_normativa
+    )
+    regla_calorias = _buscar_regla_umbral(
+        version_param, NutrienteCritico.CALORIAS, categoria_normativa
+    )
+
+    umbral_azucares = (
+        float(regla_azucares.valor_umbral)
+        if regla_azucares
+        else float(normativa.umbral_pct_azucares)
+    )
+    umbral_grasas_tot = (
+        float(regla_grasas_tot.valor_umbral)
+        if regla_grasas_tot
+        else float(normativa.umbral_pct_grasas_totales)
+    )
+    umbral_grasas_sat = (
+        float(regla_grasas_sat.valor_umbral)
+        if regla_grasas_sat
+        else float(normativa.umbral_pct_grasas_saturadas)
+    )
+    umbral_sodio_abs = (
+        float(regla_sodio.valor_umbral)
+        if regla_sodio
+        else float(
+            normativa.umbral_sodio_liquido_mg
+            if es_liquido
+            else normativa.umbral_sodio_solido_mg
+        )
+    )
+    umbral_calorias = (
+        float(regla_calorias.valor_umbral)
+        if regla_calorias
+        else float(
+            normativa.umbral_calorias_liquido_kcal
+            if es_liquido
+            else normativa.umbral_calorias_solido_kcal
+        )
+    )
+
     evaluaciones = [
         _evaluar_proporcion_energetica(
             codigo="azucares",
@@ -720,7 +843,7 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
             gramos=azucares_g,
             factor_kcal=UmbralesEtapa2.FACTOR_KCAL_AZUCARES,
             kcal_totales=kcal_totales,
-            umbral_pct=float(normativa.umbral_pct_azucares),
+            umbral_pct=umbral_azucares,
             codigo_sello=CodigoSelloAdvertencia.EXCESO_AZUCARES,
         ),
         _evaluar_proporcion_energetica(
@@ -732,7 +855,7 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
             gramos=grasas_totales_g,
             factor_kcal=UmbralesEtapa2.FACTOR_KCAL_GRASAS,
             kcal_totales=kcal_totales,
-            umbral_pct=float(normativa.umbral_pct_grasas_totales),
+            umbral_pct=umbral_grasas_tot,
             codigo_sello=CodigoSelloAdvertencia.EXCESO_GRASAS_TOTALES,
         ),
         _evaluar_proporcion_energetica(
@@ -744,7 +867,7 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
             gramos=grasas_saturadas_g,
             factor_kcal=UmbralesEtapa2.FACTOR_KCAL_GRASAS,
             kcal_totales=kcal_totales,
-            umbral_pct=float(normativa.umbral_pct_grasas_saturadas),
+            umbral_pct=umbral_grasas_sat,
             codigo_sello=CodigoSelloAdvertencia.EXCESO_GRASAS_SATURADAS,
         ),
         _evaluar_sodio(
@@ -752,22 +875,14 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
             sodio_mg=sodio_mg,
             kcal_totales=kcal_totales,
             umbral_mg_kcal=float(normativa.umbral_sodio_mg_kcal),
-            umbral_abs_mg=float(
-                normativa.umbral_sodio_liquido_mg
-                if es_liquido
-                else normativa.umbral_sodio_solido_mg
-            ),
+            umbral_abs_mg=umbral_sodio_abs,
             base_calculo=base_calculo,
         ),
         _evaluar_calorias(
             tiene_azucares_agregados=aplicabilidad.tiene_azucares_agregados,
             tiene_grasas_agregadas=aplicabilidad.tiene_grasas_agregadas,
             kcal_totales=kcal_totales,
-            umbral_kcal=float(
-                normativa.umbral_calorias_liquido_kcal
-                if es_liquido
-                else normativa.umbral_calorias_solido_kcal
-            ),
+            umbral_kcal=umbral_calorias,
             base_calculo=base_calculo,
         ),
     ]

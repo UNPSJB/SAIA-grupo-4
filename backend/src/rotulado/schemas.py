@@ -61,6 +61,7 @@ class AplicabilidadFrontalOut(BaseModel):
     motivo: str
     version_normativa: str
     puede_editar_overrides: bool = True
+    modulo_octogonos_activo: bool = True
 
     model_config = ConfigDict(from_attributes=True)
 
