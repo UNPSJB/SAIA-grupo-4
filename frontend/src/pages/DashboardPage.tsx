@@ -166,8 +166,8 @@ export default function DashboardPage() {
     : [];
 
   return (
-    <Box bg='gray.50' minH='100vh'>
-      <Box py={{ base: 2, md: 4 }} px={{ base: 2, md: 4 }}>
+    <Box>
+      <Box>
         <Container maxW='container.xl' px={0}>
           <VStack align='stretch' gap={6}>
             <Box>

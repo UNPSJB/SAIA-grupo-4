@@ -206,7 +206,6 @@ export const FichaRecetaOperador = () => {
 
   return (
     <>
-      <>
       {/* Contenedor Principal: Cabecera y Resumen */}
       <ListadoContainer>
         <HStack justify="space-between" align="center" flexWrap="wrap" gap={3} mb={3}>
@@ -466,7 +465,6 @@ export const FichaRecetaOperador = () => {
           </VStack>
         )}
       </ListadoContainer>
-    </>
 
     {/* Componente de Impresión Exclusivo (A4, tema claro) */}
     <FichaRecetaPrint receta={receta} />
