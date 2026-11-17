@@ -8,9 +8,11 @@ import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
 import { handleDelete } from "../features/insumo/hooks/useInsumoDelete";
 import { useInsumoSubmit } from "../features/insumo/hooks/useInsumoSubmit";
-import type { Insumo } from "../features/insumo/types";
+import type { Insumo, LoteInsumo } from "../features/insumo/types";
 import { LoteInsumoForm } from "../features/insumo/LoteInsumoForm";
 import { ListadoLotesInsumo } from "../features/insumo/ListadoLotesInsumo";
+import { LoteInsumoDetalle } from "../features/insumo/LoteInsumoDetalle";
+import { InhabilitarLoteModal } from "../features/insumo/InhabilitarLoteModal";
 
 type Vista = "listado" | "crear" | "modificar" | "ver" | "lotes";
 
@@ -28,6 +30,10 @@ export default function InsumoPage() {
   const [altaAbierto, setAltaAbierto] = useState(false);
   const [refescar, setRefrescar] = useState(0);
   const [insumoLote, setInsumoLote] = useState<Insumo | null>(null);
+  const [loteVer, setLoteVer] = useState<LoteInsumo | null>(null);
+  const [loteInhabilitar, setLoteInhabilitar] = useState<LoteInsumo | null>(
+    null,
+  );
   const confirmarEliminar = () => {
     handleDelete({
       insumo: insumoEliminar,
@@ -115,6 +121,8 @@ export default function InsumoPage() {
             setError("");
             setInsumoLote(insumoSeleccionado);
           }}
+          onVerLote={(lote) => setLoteVer(lote)}
+          onInhabilitarLote={(lote) => setLoteInhabilitar(lote)}
         />
       )}
 
@@ -173,6 +181,28 @@ export default function InsumoPage() {
             enModal
           />
         </FormModal>
+      )}
+
+      {/* Detalle de un lote, con la sección de inhabilitación si corresponde. */}
+      {loteVer && insumoSeleccionado && (
+        <LoteInsumoDetalle
+          lote={loteVer}
+          insumo={insumoSeleccionado}
+          onCerrar={() => setLoteVer(null)}
+        />
+      )}
+
+      {/* Inhabilitar un lote: pide el motivo y recarga el listado al confirmar. */}
+      {loteInhabilitar && insumoSeleccionado && (
+        <InhabilitarLoteModal
+          lote={loteInhabilitar}
+          insumo={insumoSeleccionado}
+          onCancelar={() => setLoteInhabilitar(null)}
+          onInhabilitado={() => {
+            setLoteInhabilitar(null);
+            setRefrescar((r) => r + 1);
+          }}
+        />
       )}
 
       <AlertDelete

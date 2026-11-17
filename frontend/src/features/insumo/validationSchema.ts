@@ -31,3 +31,13 @@ export const loteInsumoSchema = z.object({
 });
 
 export type LoteInsumoFormValues = z.infer<typeof loteInsumoSchema>;
+
+export const inhabilitarLoteSchema = z.object({
+  motivo: z
+    .string()
+    .trim()
+    .min(10, "El motivo debe tener al menos 10 caracteres")
+    .max(500, "El motivo no puede superar los 500 caracteres"),
+});
+
+export type InhabilitarLoteFormValues = z.infer<typeof inhabilitarLoteSchema>;

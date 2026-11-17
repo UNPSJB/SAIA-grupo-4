@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, Button, HStack, Box } from "@chakra-ui/react";
-import { FiArrowLeft, FiPackage, FiPlus } from "react-icons/fi";
+import { FiArrowLeft, FiEye, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -8,6 +8,8 @@ import {
   FiltroSelect,
   FiltroTexto,
   LoadingState,
+  RowActionButton,
+  RowActions,
   SemaforoFecha,
   SemaforoLegend,
   TablePagination,
@@ -20,6 +22,7 @@ import { useListadoData } from "../../hooks/useListadoData";
 import { formatearFecha } from "../../utils/fecha";
 import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import type { EstadoLote, Insumo, LoteInsumo } from "./types";
+import { COLOR_ESTADO_LOTE, ETIQUETA_ESTADO_LOTE } from "./estadoLote";
 
 interface ListadoLotesInsumoProps {
   /** Insumo cuyos lotes se listan. */
@@ -28,6 +31,10 @@ interface ListadoLotesInsumoProps {
   onVolver: () => void;
   /** Abre el alta de un lote para este insumo. */
   onNuevoLote: () => void;
+  /** Abre el detalle de un lote. */
+  onVerLote: (lote: LoteInsumo) => void;
+  /** Abre el modal para inhabilitar un lote que no está inhabilitado. */
+  onInhabilitarLote: (lote: LoteInsumo) => void;
   /** Se incrementa al registrar o inhabilitar un lote, para forzar la recarga. */
   refreshKey?: number;
 }
@@ -57,19 +64,6 @@ const OPCIONES_ORDEN = [
   { label: "Vencimiento: más próximo primero", value: "asc" },
   { label: "Vencimiento: más lejano primero", value: "desc" },
 ];
-
-// Estado del lote tal como lo calcula el backend (inhabilitado > vencido > activo).
-const ETIQUETA_ESTADO_LOTE: Record<EstadoLote, string> = {
-  activo: "Activo",
-  vencido: "Vencido",
-  inhabilitado: "Inhabilitado",
-};
-
-const COLOR_ESTADO_LOTE: Record<EstadoLote, string> = {
-  activo: "green",
-  vencido: "red",
-  inhabilitado: "gray",
-};
 
 // Días de anticipación desde los que el semáforo marca "próximo a vencer".
 const DIAS_PROXIMO_A_VENCER = 30;
@@ -108,6 +102,8 @@ export const ListadoLotesInsumo = ({
   insumo,
   onVolver,
   onNuevoLote,
+  onVerLote,
+  onInhabilitarLote,
   refreshKey = 0,
 }: ListadoLotesInsumoProps) => {
   const [borrador, setBorrador] = useState<FiltrosLotes>(FILTROS_INICIALES);
@@ -174,6 +170,30 @@ export const ListadoLotesInsumo = ({
         <Badge colorPalette={COLOR_ESTADO_LOTE[l.estado]}>
           {ETIQUETA_ESTADO_LOTE[l.estado]}
         </Badge>
+      ),
+    },
+    {
+      key: "acciones",
+      label: "Acciones",
+      exportable: false,
+      align: "end",
+      w: "120px",
+      render: (l) => (
+        <RowActions>
+          <RowActionButton
+            icon={FiEye}
+            label='Ver'
+            colorPalette='yellow'
+            onClick={() => onVerLote(l)}
+          />
+          <RowActionButton
+            icon={FiTrash2}
+            label='Inhabilitar'
+            colorPalette='red'
+            onClick={() => onInhabilitarLote(l)}
+            visible={l.activo}
+          />
+        </RowActions>
       ),
     },
   ];

@@ -28,5 +28,12 @@ export interface LoteInsumo {
   estado: EstadoLote;
   motivo_inhabilitacion: string | null;
   fecha_inhabilitacion: string | null;
-  usuario_inhabilitacion_id: number | null;
+  usuario_inhabilitacion: PersonalResumen | null;
 }
+
+export interface PersonalResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+}
+
