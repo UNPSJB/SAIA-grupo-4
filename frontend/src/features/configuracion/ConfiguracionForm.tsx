@@ -12,7 +12,6 @@ import {
 import { FiSave, FiTrash2, FiUpload, FiRotateCcw, FiSettings } from "react-icons/fi";
 import {
   AlertMessage,
-  CancelButton,
   LoadingState,
   SubmitButton,
   TextAreaField,
@@ -78,6 +77,16 @@ export const ConfiguracionForm = () => {
   const [guardando, setGuardando] = useState<boolean>(false);
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+
+  const valoresIniciales = servidor ? valoresDesdeServidor(servidor) : null;
+  const hayCambios = Boolean(
+    valoresIniciales &&
+      (logoPendiente !== null ||
+        (quitarLogoActual && Boolean(servidor?.logo_url)) ||
+        (Object.keys(valoresIniciales) as (keyof ConfiguracionFormValues)[]).some(
+          (k) => (valores[k] ?? "").trim() !== (valoresIniciales[k] ?? "").trim(),
+        )),
+  );
 
   const cargarDatos = async () => {
     setCargando(true);
@@ -247,9 +256,30 @@ export const ConfiguracionForm = () => {
 
         {/* SECCIÓN 1: DATOS DEL ESTABLECIMIENTO */}
         <Box p={6} bg="white" borderWidth="1px" borderRadius="lg" boxShadow="sm">
-          <Heading size="md" mb={4} color="gray.700">
-            Datos institucionales
-          </Heading>
+          <HStack justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
+            <Heading size="md" color="gray.700">
+              Datos institucionales
+            </Heading>
+            <HStack gap={2}>
+              <Button
+                type="button"
+                variant="outline"
+                colorPalette="gray"
+                onClick={handleCancelar}
+                disabled={guardando || !hayCambios}
+              >
+                <FiRotateCcw />
+                Restaurar
+              </Button>
+              <SubmitButton
+                type="submit"
+                text="Guardar configuración"
+                icon={FiSave}
+                loading={guardando}
+                disabled={!hayCambios}
+              />
+            </HStack>
+          </HStack>
           <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
             <TextField
               label="Nombre del establecimiento *"
@@ -431,21 +461,6 @@ export const ConfiguracionForm = () => {
             rows={3}
           />
         </Box>
-
-        {/* ACCIONES */}
-        <HStack justify="flex-end" gap={3}>
-          <CancelButton
-            text="Cancelar"
-            icon={FiRotateCcw}
-            onClick={handleCancelar}
-          />
-          <SubmitButton
-            type="submit"
-            text="Guardar configuración"
-            icon={FiSave}
-            loading={guardando}
-          />
-        </HStack>
       </VStack>
     </Box>
   );

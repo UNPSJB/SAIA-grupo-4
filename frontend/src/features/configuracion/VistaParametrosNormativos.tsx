@@ -58,6 +58,7 @@ export const VistaParametrosNormativos = () => {
   const [guardandoVersion, setGuardandoVersion] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [confirmarDesactivarOpen, setConfirmarDesactivarOpen] = useState(false);
+  const [confirmarPublicarOpen, setConfirmarPublicarOpen] = useState(false);
 
   const [reglasEditables, setReglasEditables] = useState<ReglaUmbralFrontal[]>([]);
   const [normativaReferencia, setNormativaReferencia] = useState("");
@@ -158,6 +159,7 @@ export const VistaParametrosNormativos = () => {
   };
 
   const handleGuardarNuevaVersion = async () => {
+    setConfirmarPublicarOpen(false);
     setMensajeError(null);
     setMensajeExito(null);
 
@@ -232,6 +234,12 @@ export const VistaParametrosNormativos = () => {
   }
 
   const { modulo, version_vigente: vigente, historial } = datos;
+
+  const hayCambiosVersion =
+    normativaReferencia.trim() !== vigente.normativa_referencia ||
+    reglasEditables.some(
+      (r, idx) => Number(r.valor_umbral) !== vigente.reglas[idx]?.valor_umbral,
+    );
 
   return (
     <VStack align="stretch" gap={6}>
@@ -338,7 +346,8 @@ export const VistaParametrosNormativos = () => {
                   colorPalette="green"
                   size="sm"
                   loading={guardandoVersion}
-                  onClick={() => void handleGuardarNuevaVersion()}
+                  disabled={!hayCambiosVersion}
+                  onClick={() => setConfirmarPublicarOpen(true)}
                 >
                   <Icon as={FiPlusCircle} />
                   Publicar Versión #{vigente.numero_version + 1}
@@ -581,6 +590,16 @@ export const VistaParametrosNormativos = () => {
           )}
         </Card.Body>
       </Card.Root>
+
+      <AlertConfirm
+        open={confirmarPublicarOpen}
+        title={`Publicar Versión #${vigente.numero_version + 1}`}
+        message={`¿Confirmás publicar la nueva versión normativa? La Versión #${vigente.numero_version} quedará archivada en el historial. Las recetas en borrador y activas sin lotes adoptarán los nuevos umbrales, mientras que las recetas con lotes asociados o inhabilitadas conservarán la versión anterior.`}
+        confirmLabel={`Publicar Versión #${vigente.numero_version + 1}`}
+        loading={guardandoVersion}
+        onConfirm={() => void handleGuardarNuevaVersion()}
+        onCancel={() => setConfirmarPublicarOpen(false)}
+      />
 
       <AlertConfirm
         open={confirmarDesactivarOpen}
