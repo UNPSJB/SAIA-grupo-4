@@ -650,6 +650,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
         composicion={composicion}
         declaracion={esModoAdmin ? declaracion : null}
         infoNutricional={esModoAdmin ? infoNutricional : null}
+        aplicabilidad={esModoAdmin ? aplicabilidad : null}
+        sellos={esModoAdmin && aplicabilidad?.dictamen === "APLICA" ? sellos : null}
         esModoAdmin={esModoAdmin}
       />
     </>

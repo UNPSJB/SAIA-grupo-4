@@ -23,26 +23,29 @@ const IMAGENES_LEYENDAS: Record<string, string> = {
 interface SelloGraficoProps {
   codigo: string;
   texto: string;
+  compact?: boolean;
 }
 
-export const OctogonoReglamentario = ({ codigo, texto }: SelloGraficoProps) => {
+export const OctogonoReglamentario = ({ codigo, texto, compact = false }: SelloGraficoProps) => {
   const imagen = IMAGENES_OCTOGONOS[codigo];
   if (!imagen) return null;
+
+  const size = compact ? "82px" : "118px";
 
   return (
     <Image
       src={imagen}
       alt={texto}
       title={texto}
-      w="118px"
-      h="118px"
+      w={size}
+      h={size}
       objectFit="contain"
       flexShrink={0}
     />
   );
 };
 
-export const LeyendaRectangular = ({ codigo, texto }: SelloGraficoProps) => {
+export const LeyendaRectangular = ({ codigo, texto, compact = false }: SelloGraficoProps) => {
   const imagen = IMAGENES_LEYENDAS[codigo];
   if (!imagen) return null;
 
@@ -51,8 +54,8 @@ export const LeyendaRectangular = ({ codigo, texto }: SelloGraficoProps) => {
       src={imagen}
       alt={texto}
       title={texto}
-      maxW="260px"
-      maxH="72px"
+      maxW={compact ? "190px" : "260px"}
+      maxH={compact ? "54px" : "72px"}
       objectFit="contain"
       flexShrink={0}
     />

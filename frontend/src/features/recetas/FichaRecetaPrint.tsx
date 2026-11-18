@@ -3,6 +3,7 @@ import {
   Badge,
   Box,
   Card,
+  Flex,
   Heading,
   HStack,
   SimpleGrid,
@@ -13,13 +14,18 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import type {
+  AplicabilidadFrontalOut,
   ComposicionPorcentualResponse,
   DeclaracionIngredientesResponse,
   InformacionNutricionalResponse,
   PasoReceta,
   Receta,
+  SellosAdvertenciaOut,
 } from "./types";
 import { useConfiguracion } from "../configuracion/useConfiguracion";
+import { formatearFechaISO } from "../../utils/fecha";
+import { LeyendaRectangular, OctogonoReglamentario } from "./components/SellosGraficos";
+import { resolverVeredictoSello } from "./components/MemoriaCalculoSellos";
 
 interface InsumoConsolidado {
   id: number;
@@ -41,6 +47,8 @@ export interface FichaRecetaPrintProps {
   composicion?: ComposicionPorcentualResponse | null;
   declaracion?: DeclaracionIngredientesResponse | null;
   infoNutricional?: InformacionNutricionalResponse | null;
+  aplicabilidad?: AplicabilidadFrontalOut | null;
+  sellos?: SellosAdvertenciaOut | null;
   esModoAdmin?: boolean;
 }
 
@@ -115,6 +123,8 @@ export const FichaRecetaPrint = ({
   composicion,
   declaracion,
   infoNutricional,
+  aplicabilidad,
+  sellos,
   esModoAdmin = false,
 }: FichaRecetaPrintProps) => {
   const { insumos, equipos, pasosOrdenados } = useMemo(
@@ -743,6 +753,222 @@ export const FichaRecetaPrint = ({
               </Text>
             </>
           )}
+          </Box>
+        </Box>
+      )}
+
+      {/* Evaluación de Aplicabilidad (Ley 27.642) */}
+      {aplicabilidad && (
+        <Box mb={4} css={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+          <Heading
+            size="sm"
+            color="green.700"
+            borderBottomWidth="1px"
+            borderColor="gray.300"
+            pb={1}
+            mb={2}
+          >
+            Evaluación de Aplicabilidad (Ley 27.642)
+          </Heading>
+          <Box
+            p={3}
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.300"
+            borderRadius="md"
+          >
+            <HStack justify="space-between" align="center" mb={1.5} flexWrap="wrap" gap={2}>
+              <Text fontSize="xs" fontWeight="bold" color="gray.800">
+                {aplicabilidad.dictamen_titulo}
+              </Text>
+              <Badge
+                colorPalette={aplicabilidad.dictamen === "APLICA" ? "green" : "gray"}
+                variant="subtle"
+                size="xs"
+              >
+                {aplicabilidad.dictamen.replace(/_/g, " ")}
+              </Badge>
+            </HStack>
+            <Text fontSize="2xs" color="gray.700" mb={2} lineHeight="1.35">
+              {aplicabilidad.motivo}
+            </Text>
+
+            <Table.Root size="sm" variant="line" mb={2}>
+              <Table.Header bg="gray.100">
+                <Table.Row>
+                  <Table.ColumnHeader fontSize="2xs" py={1} color="gray.700">
+                    Criterio evaluado
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize="2xs" py={1} textAlign="right" color="gray.700">
+                    Resultado
+                  </Table.ColumnHeader>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {[
+                  { label: "Azúcares agregados", presente: aplicabilidad.tiene_azucares_agregados, esSustancia: false },
+                  { label: "Grasas agregadas", presente: aplicabilidad.tiene_grasas_agregadas, esSustancia: false },
+                  { label: "Sodio agregado", presente: aplicabilidad.tiene_sodio_agregado, esSustancia: false },
+                  { label: "Edulcorantes", presente: aplicabilidad.contiene_edulcorantes, esSustancia: true },
+                  { label: "Cafeína", presente: aplicabilidad.contiene_cafeina, esSustancia: true },
+                ].map((criterio) => (
+                  <Table.Row key={criterio.label}>
+                    <Table.Cell fontSize="2xs" py={1} color="gray.800">
+                      {criterio.label}
+                    </Table.Cell>
+                    <Table.Cell fontSize="2xs" py={1} textAlign="right" fontWeight="medium" color="gray.800">
+                      {criterio.esSustancia
+                        ? criterio.presente
+                          ? "Presente"
+                          : "Ausente"
+                        : criterio.presente
+                          ? "Sí"
+                          : "No"}
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table.Root>
+
+            <Text fontSize="2xs" color="gray.600">
+              Marco normativo: {aplicabilidad.version_normativa}
+            </Text>
+          </Box>
+        </Box>
+      )}
+
+      {/* Sellos de Advertencia y Leyendas Precautorias */}
+      {sellos && sellos.aplica_evaluacion_sellos && (
+        <Box mb={4} css={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+          <Heading
+            size="sm"
+            color="green.700"
+            borderBottomWidth="1px"
+            borderColor="gray.300"
+            pb={1}
+            mb={2}
+          >
+            Sellos de Advertencia y Leyendas Precautorias
+          </Heading>
+          <Box
+            p={3}
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.300"
+            borderRadius="md"
+          >
+            <Text fontSize="2xs" color="gray.600" mb={2}>
+              Base de cálculo: {sellos.base_calculo} ({sellos.es_liquido ? "Líquido" : "Sólido"})
+              {sellos.valor_energetico_100 != null &&
+                ` • Energía total: ${sellos.valor_energetico_100.toLocaleString("es-AR")} kcal / ${sellos.base_calculo}`}
+            </Text>
+
+            {!sellos.es_calculable ? (
+              <Box bg="orange.50" p={2} borderRadius="md" borderWidth="1px" borderColor="orange.200" mb={2}>
+                <Text fontSize="2xs" color="orange.900">
+                  {sellos.mensaje_bloqueo ||
+                    "No se pueden calcular los sellos porque la información nutricional está incompleta."}
+                </Text>
+              </Box>
+            ) : (
+              <>
+                {sellos.sellos.length === 0 && sellos.leyendas_precautorias.length === 0 ? (
+                  <Box bg="gray.50" p={2} borderRadius="md" borderWidth="1px" borderColor="gray.200" mb={2}>
+                    <Text fontSize="xs" fontWeight="medium" color="gray.700">
+                      Sin sellos de advertencia aplicables
+                    </Text>
+                  </Box>
+                ) : (
+                  <VStack align="stretch" gap={2.5} mb={3}>
+                    {sellos.sellos.length > 0 && (
+                      <Flex gap={3} flexWrap="wrap" align="center">
+                        {sellos.sellos.map((sello) => (
+                          <OctogonoReglamentario
+                            key={sello.codigo}
+                            codigo={sello.codigo}
+                            texto={sello.texto}
+                            compact
+                          />
+                        ))}
+                      </Flex>
+                    )}
+                    {sellos.leyendas_precautorias.length > 0 && (
+                      <Flex gap={2.5} flexWrap="wrap" align="center">
+                        {sellos.leyendas_precautorias.map((leyenda) => (
+                          <LeyendaRectangular
+                            key={leyenda.codigo}
+                            codigo={leyenda.codigo}
+                            texto={leyenda.texto}
+                            compact
+                          />
+                        ))}
+                      </Flex>
+                    )}
+                  </VStack>
+                )}
+
+                {sellos.memoria_calculo.length > 0 && (
+                  <Table.Root size="sm" variant="line" mb={2}>
+                    <Table.Header bg="gray.100">
+                      <Table.Row>
+                        <Table.ColumnHeader fontSize="2xs" py={1} color="gray.700">
+                          Nutriente / Criterio
+                        </Table.ColumnHeader>
+                        <Table.ColumnHeader fontSize="2xs" py={1} color="gray.700">
+                          Valor obtenido
+                        </Table.ColumnHeader>
+                        <Table.ColumnHeader fontSize="2xs" py={1} color="gray.700">
+                          Umbral legal
+                        </Table.ColumnHeader>
+                        <Table.ColumnHeader fontSize="2xs" py={1} textAlign="right" color="gray.700">
+                          Veredicto
+                        </Table.ColumnHeader>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {sellos.memoria_calculo.map((paso) => (
+                        <Table.Row key={paso.codigo}>
+                          <Table.Cell fontSize="2xs" py={1} fontWeight="medium" color="gray.800">
+                            {paso.nutriente_etiqueta}
+                          </Table.Cell>
+                          <Table.Cell fontSize="2xs" py={1} color="gray.700">
+                            {!paso.se_evalua
+                              ? "No corresponde evaluar"
+                              : paso.calculo_sustituido ||
+                                (paso.valor_obtenido != null
+                                  ? `${paso.valor_obtenido} ${paso.unidad_obtenida || ""}`
+                                  : "—")}
+                          </Table.Cell>
+                          <Table.Cell fontSize="2xs" py={1} color="gray.700">
+                            {paso.umbral_normativo}
+                          </Table.Cell>
+                          <Table.Cell fontSize="2xs" py={1} textAlign="right">
+                            {(() => {
+                              const veredicto = resolverVeredictoSello(paso);
+                              return (
+                                <Text
+                                  as="span"
+                                  fontSize="2xs"
+                                  fontWeight={veredicto.printWeight}
+                                  color={veredicto.printColor}
+                                >
+                                  {veredicto.label}
+                                </Text>
+                              );
+                            })()}
+                          </Table.Cell>
+                        </Table.Row>
+                      ))}
+                    </Table.Body>
+                  </Table.Root>
+                )}
+              </>
+            )}
+
+            <Text fontSize="2xs" color="gray.600">
+              Parámetros de cálculo: {sellos.version_normativa} (Vigente desde:{" "}
+              {formatearFechaISO(sellos.fecha_vigencia_normativa)})
+            </Text>
           </Box>
         </Box>
       )}
