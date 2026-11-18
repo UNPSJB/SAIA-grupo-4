@@ -41,8 +41,7 @@ export const CalculadoraOctogonos = ({
                 Sellos de Advertencia y Leyendas Precautorias
               </Heading>
               <Text fontSize='sm' color='gray.500'>
-                Perfil de nutrientes (Ley 27.642) • Base:{" "}
-                {sellosData.base_calculo} (
+                Base de cálculo: {sellosData.base_calculo} (
                 {sellosData.es_liquido ? "Líquido" : "Sólido"})
                 {sellosData.valor_energetico_100 != null &&
                   ` • Energía total: ${sellosData.valor_energetico_100.toLocaleString("es-AR")} kcal / ${sellosData.base_calculo}`}
@@ -138,21 +137,10 @@ export const CalculadoraOctogonos = ({
           </>
         )}
 
-        <HStack
-          justify='space-between'
-          align='center'
-          flexWrap='wrap'
-          gap={2}
-          pt={2}
-          borderTopWidth='1px'
-          borderColor='gray.100'
-        >
-          <Badge colorPalette='teal' variant='subtle' size='xs'>
-            Normativa: {sellosData.version_normativa}
-          </Badge>
+        <HStack gap={2} flexWrap='wrap' align='center'>
           <Text fontSize='xs' color='gray.500'>
-            Vigencia desde:{" "}
-            {formatearFechaISO(sellosData.fecha_vigencia_normativa)}
+            Parámetros de cálculo: {sellosData.version_normativa} (Vigente desde:{" "}
+            {formatearFechaISO(sellosData.fecha_vigencia_normativa)})
           </Text>
         </HStack>
       </Card.Body>

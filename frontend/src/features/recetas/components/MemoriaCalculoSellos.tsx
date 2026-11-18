@@ -11,6 +11,31 @@ import {
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import type { PasoMemoriaCalculo } from "../types";
 
+export const resolverVeredictoSello = (paso: PasoMemoriaCalculo) => {
+  if (!paso.se_evalua) {
+    return {
+      label: "No aplica",
+      colorPalette: "gray",
+      printColor: "gray.500",
+      printWeight: "medium",
+    } as const;
+  }
+  if (paso.supera_umbral) {
+    return {
+      label: "Exceso",
+      colorPalette: "red",
+      printColor: "red.800",
+      printWeight: "bold",
+    } as const;
+  }
+  return {
+    label: "Cumple",
+    colorPalette: "green",
+    printColor: "green.800",
+    printWeight: "semibold",
+  } as const;
+};
+
 interface MemoriaCalculoSellosProps {
   pasos: PasoMemoriaCalculo[];
 }
@@ -102,19 +127,19 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
                       {paso.umbral_normativo}
                     </Table.Cell>
                     <Table.Cell>
-                      {!paso.se_evalua ? (
-                        <Badge colorPalette='gray' variant='subtle' size='xs'>
-                          Omitido
-                        </Badge>
-                      ) : paso.supera_umbral ? (
-                        <Badge colorPalette='red' variant='subtle' size='sm'>
-                          {paso.sello_resultante}
-                        </Badge>
-                      ) : (
-                        <Badge colorPalette='green' variant='subtle' size='xs'>
-                          Dentro del límite
-                        </Badge>
-                      )}
+                      {(() => {
+                        const veredicto = resolverVeredictoSello(paso);
+                        return (
+                          <Badge
+                            colorPalette={veredicto.colorPalette}
+                            variant='subtle'
+                            size='sm'
+                            textTransform='uppercase'
+                          >
+                            {veredicto.label}
+                          </Badge>
+                        );
+                      })()}
                     </Table.Cell>
                   </Table.Row>
                 ))}

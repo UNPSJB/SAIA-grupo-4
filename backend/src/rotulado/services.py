@@ -388,11 +388,7 @@ def _evaluar_aplicabilidad_sobre_receta(
         dictamen_titulo = MensajesAplicabilidad.EXCEPTUADO_TITULO
         motivo = MensajesAplicabilidad.EXCEPTUADO_MOTIVO
 
-    version_etiqueta = (
-        f"Versión #{version_param.numero_version} — {version_param.normativa_referencia}"
-        if receta.normativa_rotulado is None
-        else f"{normativa.nombre} ({normativa.version})"
-    )
+    version_etiqueta = f"{normativa.nombre} ({normativa.version})"
 
     return schemas.AplicabilidadFrontalOut(
         receta_id=receta.id,
@@ -730,7 +726,7 @@ def calcular_sellos_advertencia(db: Session, receta_id: int) -> schemas.SellosAd
         "es_liquido": es_liquido,
         "base_calculo": base_calculo,
         "dictamen_aplicabilidad": aplicabilidad.dictamen,
-        "version_normativa": f"Versión #{version_param.numero_version} — {version_param.normativa_referencia}",
+        "version_normativa": f"Versión #{version_param.numero_version}",
         "fecha_vigencia_normativa": version_param.fecha_vigencia_desde,
     }
 
