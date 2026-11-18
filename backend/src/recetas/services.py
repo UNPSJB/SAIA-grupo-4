@@ -1104,6 +1104,14 @@ def obtener_declaracion_ingredientes(db: Session, receta_id: int) -> schemas.Dec
 
     texto_legal_rotulo = _generar_texto_legal_caa(items_finales)
 
+    from src.rotulado_producto.services import (
+        _consolidar_alergenos_receta,
+        generar_leyenda_alergenos_caa,
+    )
+
+    alergenos_receta, _ = _consolidar_alergenos_receta(receta)
+    leyenda_alergenos_caa = generar_leyenda_alergenos_caa(alergenos_receta, [])
+
     return schemas.DeclaracionIngredientesOut(
         receta_id=receta.id,
         codigo_receta=receta.codigo_receta,
@@ -1113,6 +1121,7 @@ def obtener_declaracion_ingredientes(db: Session, receta_id: int) -> schemas.Dec
         insumos_sin_equivalencia=insumos_sin_eq,
         items=items_out,
         texto_legal_rotulo=texto_legal_rotulo,
+        leyenda_alergenos_caa=leyenda_alergenos_caa,
     )
 
 

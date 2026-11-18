@@ -194,6 +194,7 @@ class DeclaracionIngredientesOut(BaseModel):
     insumos_sin_equivalencia: List[InsumoSinEquivalenciaOut] = []
     items: List[ItemDeclaracionIngredienteOut] = []
     texto_legal_rotulo: str
+    leyenda_alergenos_caa: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
