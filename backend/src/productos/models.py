@@ -20,6 +20,9 @@ class Producto(ModeloBase):
     unidad_medida: Mapped["UnidadMedida"] = relationship(back_populates="productos")
     recetas: Mapped[list["Receta"]] = relationship("Receta", back_populates="producto")
     lotes: Mapped[list["Lote"]] = relationship("Lote", back_populates="producto")
+    rotulo: Mapped["RotuloProducto | None"] = relationship(
+        "RotuloProducto", back_populates="producto", uselist=False, cascade="all, delete-orphan"
+    )
 
     @property
     def es_liquido(self) -> bool:

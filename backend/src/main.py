@@ -48,6 +48,7 @@ from src.alimento_referencia.services import sembrar_alimentos_sara
 from src.configuracion_nutricional.router import router as configuracion_nutricional_router
 from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
 from src.rotulado.router import router as rotulado_router
+from src.rotulado_producto.router import router as rotulado_producto_router
 from src.rotulado.services import inicializar_normativa_rotulado
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -122,3 +123,4 @@ app.include_router(configuracion_router)  # Configuración del sistema (admin)
 app.include_router(alimento_referencia_router)
 app.include_router(configuracion_nutricional_router)
 app.include_router(rotulado_router)
+app.include_router(rotulado_producto_router)
