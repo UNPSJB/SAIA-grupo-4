@@ -306,6 +306,3 @@ export interface SellosAdvertenciaOut {
   version_normativa: string;
   fecha_vigencia_normativa: string;
 }
-
-
-

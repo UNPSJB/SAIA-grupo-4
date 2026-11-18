@@ -45,12 +45,18 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
             <Table.Root size='sm' variant='line'>
               <Table.Header bg='gray.50'>
                 <Table.Row>
-                  <Table.ColumnHeader>Nutriente / Criterio</Table.ColumnHeader>
-                  <Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize='sm' fontWeight='bold' color='gray.700'>
+                    Nutriente / Criterio
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize='sm' fontWeight='bold' color='gray.700'>
                     Fórmula y Cálculo Paso a Paso
                   </Table.ColumnHeader>
-                  <Table.ColumnHeader>Umbral Legal</Table.ColumnHeader>
-                  <Table.ColumnHeader>Veredicto</Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize='sm' fontWeight='bold' color='gray.700'>
+                    Umbral Legal
+                  </Table.ColumnHeader>
+                  <Table.ColumnHeader fontSize='sm' fontWeight='bold' color='gray.700'>
+                    Veredicto
+                  </Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -58,13 +64,13 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
                   <Table.Row key={paso.codigo}>
                     <Table.Cell>
                       <Text
-                        fontSize='xs'
+                        fontSize='sm'
                         fontWeight='semibold'
                         color='gray.800'
                       >
                         {paso.nutriente_etiqueta}
                       </Text>
-                      <Text fontSize='2xs' color='gray.500'>
+                      <Text fontSize='xs' color='gray.500'>
                         {paso.motivo_evaluacion}
                       </Text>
                     </Table.Cell>
@@ -72,13 +78,13 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
                       {paso.se_evalua ? (
                         <VStack align='start' gap={0.5}>
                           {paso.formula_aplicada && (
-                            <Text fontSize='2xs' color='gray.500'>
+                            <Text fontSize='xs' color='gray.500'>
                               Fórmula: {paso.formula_aplicada}
                             </Text>
                           )}
                           {paso.calculo_sustituido && (
                             <Text
-                              fontSize='xs'
+                              fontSize='sm'
                               fontWeight='medium'
                               color='gray.800'
                             >
@@ -87,12 +93,12 @@ export const MemoriaCalculoSellos = ({ pasos }: MemoriaCalculoSellosProps) => {
                           )}
                         </VStack>
                       ) : (
-                        <Text fontSize='xs' color='gray.400'>
+                        <Text fontSize='sm' color='gray.400'>
                           No corresponde evaluar
                         </Text>
                       )}
                     </Table.Cell>
-                    <Table.Cell fontSize='xs' color='gray.700'>
+                    <Table.Cell fontSize='sm' color='gray.700'>
                       {paso.umbral_normativo}
                     </Table.Cell>
                     <Table.Cell>
