@@ -37,11 +37,11 @@ const CATALOGO_SELLOS: SelloRotuloItem[] = [
 
 const CATALOGO_LEYENDAS: SelloRotuloItem[] = [
   {
-    codigo: "LEYENDA_EDULCORANTES",
+    codigo: "CONTIENE_EDULCORANTES",
     texto: "CONTIENE EDULCORANTES, NO RECOMENDABLE EN NIÑOS/AS",
   },
   {
-    codigo: "LEYENDA_CAFEINA",
+    codigo: "CONTIENE_CAFEINA",
     texto: "CONTIENE CAFEÍNA. EVITAR EN NIÑOS/AS",
   },
 ];
@@ -351,10 +351,18 @@ export const SeccionNutricionSellosRotulo = ({
                 </Text>
                 <Flex gap={3} flexWrap="wrap" align="center">
                   {(form.sellos_advertencia_json ?? []).map((s) => (
-                    <OctogonoReglamentario key={s.codigo} texto={s.texto} />
+                    <OctogonoReglamentario
+                      key={s.codigo}
+                      codigo={s.codigo}
+                      texto={s.texto}
+                    />
                   ))}
                   {(form.leyendas_precautorias_json ?? []).map((l) => (
-                    <LeyendaRectangular key={l.codigo} texto={l.texto} />
+                    <LeyendaRectangular
+                      key={l.codigo}
+                      codigo={l.codigo}
+                      texto={l.texto}
+                    />
                   ))}
                 </Flex>
               </Box>
