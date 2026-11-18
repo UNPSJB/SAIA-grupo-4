@@ -419,7 +419,7 @@ export const EvaluacionAplicabilidadFrontal = ({
         </VStack>
         <HStack gap={2} flexWrap='wrap' align='center'>
           <Text fontSize='xs' color='gray.500'>
-            {aplicabilidad.version_normativa}
+            Marco normativo: {aplicabilidad.version_normativa}
           </Text>
         </HStack>
       </Card.Body>
