@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Badge, Box, Button, Heading, HStack, Text, VStack } from "@chakra-ui/react";
 import { FiArrowLeft, FiTag } from "react-icons/fi";
-import { ListadoContainer } from "../components/layout";
 import { AlertMessage, LoadingState } from "../components/ui";
 import { RotuloProductoForm } from "../features/productos/components/RotuloProductoForm";
 import { rotuloProductoApi } from "../features/productos/hooks/rotuloProductoApi";
@@ -91,9 +90,8 @@ export default function RotuloProductoPage() {
   };
 
   return (
-    <Box p={{ base: 4, md: 10 }} bg="gray.100" minH="100vh">
-      <ListadoContainer maxW="8xl">
-        <VStack align="stretch" gap={5}>
+    <Box p={{ base: 4, md: 6 }} bg="gray.100" minH="100vh" w="100%">
+      <VStack align="stretch" gap={5} w="100%">
           <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
             <Button
               variant="outline"
@@ -147,7 +145,6 @@ export default function RotuloProductoPage() {
             </>
           )}
         </VStack>
-      </ListadoContainer>
     </Box>
   );
 }
