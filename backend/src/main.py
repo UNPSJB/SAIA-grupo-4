@@ -50,6 +50,7 @@ from src.configuracion_nutricional.services import inicializar_configuracion_nut
 from src.rotulado.router import router as rotulado_router
 from src.rotulado_producto.router import router as rotulado_producto_router
 from src.rotulado.services import inicializar_normativa_rotulado
+from src.rotulado_producto.services import asegurar_columnas_alergenos_y_conservacion
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.capacidades.services import inicializar_capacidades_sistema
@@ -65,6 +66,7 @@ setup_logging()
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
     with Session(engine) as db:
+        asegurar_columnas_alergenos_y_conservacion(db)
         inicializar_capacidades_sistema(db)
         inicializar_vista_publica(db)
         obtener_o_crear_configuracion(db)

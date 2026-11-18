@@ -1,6 +1,27 @@
 from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
+from src.rotulado_producto.constants import CodigoAlergenoCAA, EstadoValidacionAlergenos
+
+
+class AlergenoRotuloItem(BaseModel):
+    codigo: CodigoAlergenoCAA
+    es_derivado: bool = False
+
+
+class OrigenAlergenoOut(BaseModel):
+    codigo: CodigoAlergenoCAA
+    etiqueta: str
+    es_derivado: bool
+    insumos_fuente: list[str] = []
+
+
+class ConservacionSugeridaOut(BaseModel):
+    temp_conservacion_min_c: Optional[float] = None
+    temp_conservacion_max_c: Optional[float] = None
+    durabilidad_antes_abrir: Optional[str] = None
+    durabilidad_despues_abrir: Optional[str] = None
+    condiciones_conservacion: Optional[str] = None
 
 
 class FilaNutricionalRotuloItem(BaseModel):
@@ -61,6 +82,10 @@ class DatosAutocompletadosRecetaOut(BaseModel):
     lotes_disponibles: list[LoteResumenRotuloOut] = []
     razon_social_establecimiento: Optional[str] = None
     domicilio_establecimiento: Optional[str] = None
+    alergenos_presentes_calculados: list[AlergenoRotuloItem] = []
+    detalle_origen_alergenos: list[OrigenAlergenoOut] = []
+    leyenda_alergenos_calculada: Optional[str] = None
+    conservacion_sugerida: Optional[ConservacionSugeridaOut] = None
 
 
 class RotuloProductoUpdateIn(BaseModel):
@@ -95,11 +120,23 @@ class RotuloProductoUpdateIn(BaseModel):
     sellos_advertencia_json: Optional[list[SelloRotuloItem]] = None
     leyendas_precautorias_json: Optional[list[SelloRotuloItem]] = None
 
+    # Alérgenos, Contaminación Cruzada y Conservación Estructurada (Art. 235 séptimo CAA)
+    alergenos_presentes_json: Optional[list[AlergenoRotuloItem]] = None
+    alergenos_contaminacion_cruzada_json: Optional[list[AlergenoRotuloItem]] = None
+    leyenda_alergenos_declarada: Optional[str] = None
+    temp_conservacion_min_c: Optional[float] = None
+    temp_conservacion_max_c: Optional[float] = None
+    durabilidad_antes_abrir: Optional[str] = None
+    durabilidad_despues_abrir: Optional[str] = None
+    confirmar_alergenos_conservacion: bool = False
+
     # Acciones opcionales para restaurar un bloque puntual al cálculo automático
     restaurar_ingredientes_automatico: bool = False
     restaurar_nutricion_automatico: bool = False
     restaurar_sellos_automatico: bool = False
     restaurar_lote_automatico: bool = False
+    restaurar_alergenos_automatico: bool = False
+    restaurar_conservacion_automatico: bool = False
 
 
 class RotuloProductoConsolidadoOut(BaseModel):
@@ -140,15 +177,32 @@ class RotuloProductoConsolidadoOut(BaseModel):
     sellos_advertencia_json: list[SelloRotuloItem] = []
     leyendas_precautorias_json: list[SelloRotuloItem] = []
 
+    alergenos_presentes_json: list[AlergenoRotuloItem] = []
+    alergenos_contaminacion_cruzada_json: list[AlergenoRotuloItem] = []
+    leyenda_alergenos_declarada: Optional[str] = None
+    temp_conservacion_min_c: Optional[float] = None
+    temp_conservacion_max_c: Optional[float] = None
+    durabilidad_antes_abrir: Optional[str] = None
+    durabilidad_despues_abrir: Optional[str] = None
+
     ingredientes_modificado_manualmente: bool = False
     nutricion_modificada_manualmente: bool = False
     sellos_modificados_manualmente: bool = False
     lote_modificado_manualmente: bool = False
+    alergenos_modificados_manualmente: bool = False
+    conservacion_modificada_manualmente: bool = False
 
     ingredientes_difiere_de_receta: bool = False
     nutricion_difiere_de_receta: bool = False
     sellos_difieren_de_receta: bool = False
     lote_difiere_de_ultimo_lote: bool = False
+    alergenos_difieren_de_receta: bool = False
+    conservacion_difiere_de_sugerida: bool = False
+
+    estado_validacion_alergenos: EstadoValidacionAlergenos = EstadoValidacionAlergenos.SUGERIDO
+    confirmacion_invalidada_por_cambio_receta: bool = False
+    fecha_confirmacion_alergenos: Optional[datetime] = None
+    confirmado_alergenos_por_nombre: Optional[str] = None
 
     fecha_actualizacion: Optional[datetime] = None
     actualizado_por_nombre: Optional[str] = None

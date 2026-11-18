@@ -1,7 +1,9 @@
 from datetime import datetime
+import hashlib
+import json
 from typing import Optional
 import unicodedata
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, joinedload
 
 from src.configuracion.services import obtener_o_crear_configuracion
@@ -12,7 +14,47 @@ from src.recetas.constants import EstadoReceta
 from src.recetas.models import Receta
 from src.rotulado import services as rotulado_services
 from src.rotulado_producto import exceptions, schemas
+from src.rotulado_producto.constants import (
+    CodigoAlergenoCAA,
+    ETIQUETAS_ALERGENOS_CAA,
+    EstadoValidacionAlergenos,
+)
 from src.rotulado_producto.models import RotuloProducto
+
+
+def asegurar_columnas_alergenos_y_conservacion(db: Session) -> None:
+    """Agrega columnas nuevas de alérgenos y conservación en SQLite si la tabla ya existía."""
+    columnas_por_tabla = {
+        "insumos": {
+            "alergenos_declarados_json": "TEXT",
+        },
+        "rotulos_producto": {
+            "alergenos_presentes_json": "TEXT",
+            "alergenos_contaminacion_cruzada_json": "TEXT",
+            "leyenda_alergenos_declarada": "TEXT",
+            "temp_conservacion_min_c": "FLOAT",
+            "temp_conservacion_max_c": "FLOAT",
+            "durabilidad_antes_abrir": "VARCHAR(200)",
+            "durabilidad_despues_abrir": "VARCHAR(200)",
+            "alergenos_modificados_manualmente": "BOOLEAN NOT NULL DEFAULT 0",
+            "conservacion_modificada_manualmente": "BOOLEAN NOT NULL DEFAULT 0",
+            "estado_validacion_alergenos": "VARCHAR(20) NOT NULL DEFAULT 'SUGERIDO'",
+            "hash_firma_receta_alergenos": "VARCHAR(64)",
+            "confirmado_alergenos_por_id": "INTEGER",
+            "fecha_confirmacion_alergenos": "DATETIME",
+        },
+    }
+    for tabla, columnas in columnas_por_tabla.items():
+        existentes = {
+            row[1]
+            for row in db.execute(text(f"PRAGMA table_info({tabla})")).fetchall()
+        }
+        if not existentes:
+            continue
+        for col, tipo in columnas.items():
+            if col not in existentes:
+                db.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {tipo}"))
+    db.commit()
 
 
 def _normalizar_texto(valor: Optional[str]) -> Optional[str]:
@@ -83,10 +125,174 @@ def _construir_tabla_nutricional_rotulo(
     return filas, porcion_str, info_nutri.leyenda_vd
 
 
+def _unir_con_y(etiquetas: list[str]) -> str:
+    if not etiquetas:
+        return ""
+    if len(etiquetas) == 1:
+        return etiquetas[0]
+    ultima = etiquetas[-1]
+    conjuncion = " E " if ultima.startswith(("I", "HI", "Í")) else " Y "
+    if len(etiquetas) == 2:
+        return f"{etiquetas[0]}{conjuncion}{ultima}"
+    return f"{', '.join(etiquetas[:-1])}{conjuncion}{ultima}"
+
+
+def _redactar_clausula_alergenos(
+    prefijo: str,
+    items: list[schemas.AlergenoRotuloItem],
+) -> Optional[str]:
+    if not items:
+        return None
+    directos: list[str] = []
+    derivados: list[str] = []
+    vistos_directos: set[CodigoAlergenoCAA] = set()
+    vistos_derivados: set[CodigoAlergenoCAA] = set()
+
+    for it in items:
+        etiqueta = ETIQUETAS_ALERGENOS_CAA.get(it.codigo, it.codigo.value)
+        if not it.es_derivado:
+            if it.codigo not in vistos_directos:
+                vistos_directos.add(it.codigo)
+                directos.append(etiqueta)
+        else:
+            if it.codigo not in vistos_derivados and it.codigo not in vistos_directos:
+                vistos_derivados.add(it.codigo)
+                derivados.append(etiqueta)
+
+    if directos and derivados:
+        return f"{prefijo} {_unir_con_y(directos)} Y DERIVADOS DE {_unir_con_y(derivados)}."
+    if directos:
+        return f"{prefijo} {_unir_con_y(directos)}."
+    if derivados:
+        return f"{prefijo} DERIVADOS DE {_unir_con_y(derivados)}."
+    return None
+
+
+def generar_leyenda_alergenos_caa(
+    presentes: list[schemas.AlergenoRotuloItem],
+    cruzada: list[schemas.AlergenoRotuloItem],
+) -> Optional[str]:
+    """Redacta la leyenda formal en MAYÚSCULAS según Art. 235 séptimo del CAA (sin 'CONTIENE GLUTEN')."""
+    codigos_presentes = {it.codigo for it in presentes}
+    cruzada_filtrada = [it for it in cruzada if it.codigo not in codigos_presentes]
+
+    partes = [
+        p
+        for p in (
+            _redactar_clausula_alergenos("CONTIENE", presentes),
+            _redactar_clausula_alergenos("PUEDE CONTENER", cruzada_filtrada),
+        )
+        if p
+    ]
+    return " ".join(partes) if partes else None
+
+
+def _consolidar_alergenos_receta(
+    receta: Receta,
+) -> tuple[list[schemas.AlergenoRotuloItem], list[schemas.OrigenAlergenoOut]]:
+    """Consolida alérgenos y derivados desde los insumos (no envases) de una receta."""
+    insumos_map = recetas_services._consolidar_insumos_receta(receta)
+    agregados: dict[CodigoAlergenoCAA, dict] = {}
+
+    for data in insumos_map.values():
+        insumo = data["insumo"]
+        raw_alergenos = getattr(insumo, "alergenos_declarados_json", None) or []
+        for entry in raw_alergenos:
+            cod_raw = entry.get("codigo")
+            if not cod_raw:
+                continue
+            try:
+                codigo = CodigoAlergenoCAA(cod_raw)
+            except ValueError:
+                continue
+            es_derivado = bool(entry.get("es_derivado", False))
+            if codigo not in agregados:
+                agregados[codigo] = {
+                    "codigo": codigo,
+                    "es_derivado": es_derivado,
+                    "insumos": [insumo.nombre],
+                }
+            else:
+                # Si al menos un insumo lo aporta directo, prevalece sustancia directa (es_derivado=False)
+                if not es_derivado:
+                    agregados[codigo]["es_derivado"] = False
+                if insumo.nombre not in agregados[codigo]["insumos"]:
+                    agregados[codigo]["insumos"].append(insumo.nombre)
+
+    orden_catalogo = list(CodigoAlergenoCAA)
+    items_ordenados = sorted(
+        agregados.values(),
+        key=lambda x: orden_catalogo.index(x["codigo"]),
+    )
+
+    items = [
+        schemas.AlergenoRotuloItem(codigo=x["codigo"], es_derivado=x["es_derivado"])
+        for x in items_ordenados
+    ]
+    detalle = [
+        schemas.OrigenAlergenoOut(
+            codigo=x["codigo"],
+            etiqueta=ETIQUETAS_ALERGENOS_CAA[x["codigo"]],
+            es_derivado=x["es_derivado"],
+            insumos_fuente=x["insumos"],
+        )
+        for x in items_ordenados
+    ]
+    return items, detalle
+
+
+def _sugerir_conservacion(
+    producto: Producto,
+    receta: Optional[Receta],
+) -> schemas.ConservacionSugeridaOut:
+    """Propone condiciones de conservación y durabilidad según producto y receta activa."""
+    durabilidad_antes = (
+        f"{producto.dias_vida_util} días en su envase original cerrado"
+        if producto.dias_vida_util is not None and producto.dias_vida_util > 0
+        else None
+    )
+
+    if producto.es_liquido:
+        return schemas.ConservacionSugeridaOut(
+            temp_conservacion_min_c=2.0,
+            temp_conservacion_max_c=8.0,
+            durabilidad_antes_abrir=durabilidad_antes,
+            durabilidad_despues_abrir="Mantener refrigerado y consumir dentro de las 48 horas",
+            condiciones_conservacion="Conservar refrigerado entre 2 °C y 8 °C. Agitar antes de usar.",
+        )
+
+    return schemas.ConservacionSugeridaOut(
+        temp_conservacion_min_c=15.0,
+        temp_conservacion_max_c=25.0,
+        durabilidad_antes_abrir=durabilidad_antes,
+        durabilidad_despues_abrir="Conservar en recipiente hermético y consumir dentro de los 5 días",
+        condiciones_conservacion="Conservar en lugar fresco y seco (15 °C a 25 °C), al abrigo de la luz solar.",
+    )
+
+
+def _calcular_firma_receta_alergenos(
+    receta: Optional[Receta],
+    alergenos_calc: list[schemas.AlergenoRotuloItem],
+    producto: Producto,
+) -> Optional[str]:
+    if receta is None:
+        return None
+    payload = {
+        "receta_id": receta.id,
+        "alergenos": [
+            {"codigo": it.codigo.value, "es_derivado": it.es_derivado}
+            for it in alergenos_calc
+        ],
+        "dias_vida_util": producto.dias_vida_util,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
 def _calcular_datos_autocompletados(
     db: Session,
     producto: Producto,
-) -> schemas.DatosAutocompletadosRecetaOut:
+) -> tuple[schemas.DatosAutocompletadosRecetaOut, Optional[str]]:
     """Precarga datos desde la receta ACTIVA (sin fallback a borradores), lotes y establecimiento."""
     receta_activa = db.scalar(
         select(Receta)
@@ -104,6 +310,9 @@ def _calcular_datos_autocompletados(
     sellos_calc: list[schemas.SelloRotuloItem] = []
     leyendas_calc: list[schemas.SelloRotuloItem] = []
     dictamen_str: Optional[str] = None
+    alergenos_calc: list[schemas.AlergenoRotuloItem] = []
+    detalle_origen_alergenos: list[schemas.OrigenAlergenoOut] = []
+    leyenda_alergenos_calc: Optional[str] = None
 
     if receta_activa is not None:
         declaracion = recetas_services.obtener_declaracion_ingredientes(db, receta_activa.id)
@@ -123,6 +332,12 @@ def _calcular_datos_autocompletados(
             schemas.SelloRotuloItem(codigo=l.codigo, texto=l.texto)
             for l in sellos_out.leyendas_precautorias
         ]
+
+        alergenos_calc, detalle_origen_alergenos = _consolidar_alergenos_receta(receta_activa)
+        leyenda_alergenos_calc = generar_leyenda_alergenos_caa(alergenos_calc, [])
+
+    conservacion_sugerida = _sugerir_conservacion(producto, receta_activa)
+    firma_actual = _calcular_firma_receta_alergenos(receta_activa, alergenos_calc, producto)
 
     lotes_db = db.scalars(
         select(Lote)
@@ -158,7 +373,7 @@ def _calcular_datos_autocompletados(
     ]
     domicilio = ", ".join(partes_domicilio) if partes_domicilio else None
 
-    return schemas.DatosAutocompletadosRecetaOut(
+    auto = schemas.DatosAutocompletadosRecetaOut(
         tiene_receta_activa=receta_activa is not None,
         receta_id=receta_activa.id if receta_activa else None,
         receta_codigo=receta_activa.codigo_receta if receta_activa else None,
@@ -174,7 +389,12 @@ def _calcular_datos_autocompletados(
         lotes_disponibles=lotes_disponibles,
         razon_social_establecimiento=razon_social,
         domicilio_establecimiento=domicilio,
+        alergenos_presentes_calculados=alergenos_calc,
+        detalle_origen_alergenos=detalle_origen_alergenos,
+        leyenda_alergenos_calculada=leyenda_alergenos_calc,
+        conservacion_sugerida=conservacion_sugerida,
     )
+    return auto, firma_actual
 
 
 def _serializar_tabla(items: list[schemas.FilaNutricionalRotuloItem]) -> list[dict]:
@@ -195,6 +415,10 @@ def _serializar_tabla(items: list[schemas.FilaNutricionalRotuloItem]) -> list[di
 
 def _serializar_sellos(items: list[schemas.SelloRotuloItem]) -> list[tuple[str, str]]:
     return sorted((it.codigo.strip(), _clave_comparacion(it.texto)) for it in items)
+
+
+def _serializar_alergenos(items: list[schemas.AlergenoRotuloItem]) -> list[tuple[str, bool]]:
+    return sorted((it.codigo.value, bool(it.es_derivado)) for it in items)
 
 
 def _difiere_ingredientes(
@@ -249,6 +473,43 @@ def _difiere_lote(
     )
 
 
+def _difiere_alergenos(
+    presentes: list[schemas.AlergenoRotuloItem],
+    cruzada: list[schemas.AlergenoRotuloItem],
+    leyenda_actual: Optional[str],
+    auto: schemas.DatosAutocompletadosRecetaOut,
+) -> bool:
+    esperada = generar_leyenda_alergenos_caa(
+        auto.alergenos_presentes_calculados if auto.tiene_receta_activa else presentes,
+        cruzada,
+    )
+    if auto.tiene_receta_activa and _serializar_alergenos(presentes) != _serializar_alergenos(
+        auto.alergenos_presentes_calculados
+    ):
+        return True
+    return _clave_comparacion(leyenda_actual) != _clave_comparacion(esperada)
+
+
+def _difiere_conservacion(
+    temp_min: Optional[float],
+    temp_max: Optional[float],
+    dur_antes: Optional[str],
+    dur_despues: Optional[str],
+    condiciones: Optional[str],
+    auto: schemas.DatosAutocompletadosRecetaOut,
+) -> bool:
+    sug = auto.conservacion_sugerida
+    if sug is None:
+        return False
+    return (
+        temp_min != sug.temp_conservacion_min_c
+        or temp_max != sug.temp_conservacion_max_c
+        or _clave_comparacion(dur_antes) != _clave_comparacion(sug.durabilidad_antes_abrir)
+        or _clave_comparacion(dur_despues) != _clave_comparacion(sug.durabilidad_despues_abrir)
+        or _clave_comparacion(condiciones) != _clave_comparacion(sug.condiciones_conservacion)
+    )
+
+
 def verificar_completitud_caa(
     *,
     denominacion_venta: Optional[str],
@@ -272,6 +533,7 @@ def verificar_completitud_caa(
     lista_ingredientes_texto: Optional[str],
     tamano_porcion_declarado: Optional[str],
     tabla_nutricional_json: list[schemas.FilaNutricionalRotuloItem],
+    estado_validacion_alergenos: EstadoValidacionAlergenos = EstadoValidacionAlergenos.SUGERIDO,
 ) -> schemas.CompletitudCAAOut:
     """Evalúa qué requisitos obligatorios del Cap. V del CAA están completos sin bloquear el guardado."""
     nutricion_completa = bool(
@@ -292,6 +554,7 @@ def verificar_completitud_caa(
         ("codigo_lote_declarado", "Identificación del lote", "Trazabilidad y Conservación", bool(_normalizar_texto(codigo_lote_declarado)), "Falta la identificación del lote."),
         ("fecha_duracion_minima", "Fecha de duración mínima", "Trazabilidad y Conservación", bool(_normalizar_texto(fecha_duracion_minima)), "Falta la fecha de duración mínima o vencimiento."),
         ("condiciones_conservacion", "Condiciones de conservación", "Trazabilidad y Conservación", bool(_normalizar_texto(condiciones_conservacion)), "Faltan las condiciones de conservación."),
+        ("alergenos_validados", "Declaración de alérgenos y conservación confirmada", "Alérgenos y Conservación", estado_validacion_alergenos == EstadoValidacionAlergenos.CONFIRMADO, "Falta confirmar la declaración de alérgenos y conservación."),
         ("informacion_nutricional", "Información nutricional y porción", "Nutrición", nutricion_completa, "Falta la tabla nutricional o el tamaño de porción."),
     ]
 
@@ -363,9 +626,21 @@ def _parsear_sellos(raw: Optional[list[dict]]) -> list[schemas.SelloRotuloItem]:
     return [schemas.SelloRotuloItem(**item) for item in raw]
 
 
+def _parsear_alergenos(raw: Optional[list[dict]]) -> list[schemas.AlergenoRotuloItem]:
+    if not raw:
+        return []
+    items: list[schemas.AlergenoRotuloItem] = []
+    for item in raw:
+        try:
+            items.append(schemas.AlergenoRotuloItem(**item))
+        except Exception:
+            continue
+    return items
+
+
 def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProductoConsolidadoOut:
     producto = _obtener_producto(db, producto_id)
-    auto = _calcular_datos_autocompletados(db, producto)
+    auto, firma_actual = _calcular_datos_autocompletados(db, producto)
     rotulo = db.scalar(select(RotuloProducto).where(RotuloProducto.producto_id == producto.id))
 
     if rotulo is None:
@@ -377,6 +652,9 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
         ingredientes = auto.lista_ingredientes_calculada if auto.tiene_receta_activa else None
         porcion = auto.tamano_porcion_calculado if auto.tiene_receta_activa else None
         leyenda_vd = auto.leyenda_vd_calculada if auto.tiene_receta_activa else None
+        alergenos_pres = auto.alergenos_presentes_calculados if auto.tiene_receta_activa else []
+        leyenda_alergenos = auto.leyenda_alergenos_calculada if auto.tiene_receta_activa else None
+        sug_cons = auto.conservacion_sugerida
 
         completitud = verificar_completitud_caa(
             denominacion_venta=producto.nombre,
@@ -394,12 +672,13 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
             rne_importador=None,
             codigo_lote_declarado=codigo_lote,
             fecha_duracion_minima=fecha_duracion,
-            condiciones_conservacion=None,
+            condiciones_conservacion=sug_cons.condiciones_conservacion if sug_cons else None,
             aplica_instrucciones_uso=False,
             instrucciones_uso=None,
             lista_ingredientes_texto=ingredientes,
             tamano_porcion_declarado=porcion,
             tabla_nutricional_json=tabla,
+            estado_validacion_alergenos=EstadoValidacionAlergenos.SUGERIDO,
         )
 
         return schemas.RotuloProductoConsolidadoOut(
@@ -416,12 +695,21 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
             lote_origen_id=auto.ultimo_lote.id if auto.ultimo_lote else None,
             codigo_lote_declarado=codigo_lote,
             fecha_duracion_minima=fecha_duracion,
+            condiciones_conservacion=sug_cons.condiciones_conservacion if sug_cons else None,
+            temp_conservacion_min_c=sug_cons.temp_conservacion_min_c if sug_cons else None,
+            temp_conservacion_max_c=sug_cons.temp_conservacion_max_c if sug_cons else None,
+            durabilidad_antes_abrir=sug_cons.durabilidad_antes_abrir if sug_cons else None,
+            durabilidad_despues_abrir=sug_cons.durabilidad_despues_abrir if sug_cons else None,
             lista_ingredientes_texto=ingredientes,
             tamano_porcion_declarado=porcion,
             leyenda_vd_declarada=leyenda_vd,
             tabla_nutricional_json=tabla,
             sellos_advertencia_json=sellos,
             leyendas_precautorias_json=leyendas,
+            alergenos_presentes_json=alergenos_pres,
+            alergenos_contaminacion_cruzada_json=[],
+            leyenda_alergenos_declarada=leyenda_alergenos,
+            estado_validacion_alergenos=EstadoValidacionAlergenos.SUGERIDO,
             autocompletado=auto,
             completitud_caa=completitud,
         )
@@ -429,6 +717,26 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
     tabla = _parsear_tabla(rotulo.tabla_nutricional_json)
     sellos = _parsear_sellos(rotulo.sellos_advertencia_json)
     leyendas = _parsear_sellos(rotulo.leyendas_precautorias_json)
+    alergenos_pres = _parsear_alergenos(rotulo.alergenos_presentes_json)
+    alergenos_cruz = _parsear_alergenos(rotulo.alergenos_contaminacion_cruzada_json)
+    leyenda_alergenos = rotulo.leyenda_alergenos_declarada
+
+    # Detección de invalidación de confirmación cuando cambia la receta activa o sus insumos
+    confirmacion_invalidada = (
+        rotulo.estado_validacion_alergenos == EstadoValidacionAlergenos.CONFIRMADO.value
+        and rotulo.hash_firma_receta_alergenos != firma_actual
+    )
+    estado_efectivo = (
+        EstadoValidacionAlergenos.SUGERIDO
+        if confirmacion_invalidada or rotulo.estado_validacion_alergenos != EstadoValidacionAlergenos.CONFIRMADO.value
+        else EstadoValidacionAlergenos.CONFIRMADO
+    )
+
+    if confirmacion_invalidada and auto.tiene_receta_activa and not rotulo.alergenos_modificados_manualmente:
+        alergenos_pres = auto.alergenos_presentes_calculados
+        cods_pres = {it.codigo for it in alergenos_pres}
+        alergenos_cruz = [it for it in alergenos_cruz if it.codigo not in cods_pres]
+        leyenda_alergenos = generar_leyenda_alergenos_caa(alergenos_pres, alergenos_cruz)
 
     lote_ref = next(
         (l for l in auto.lotes_disponibles if l.id == rotulo.lote_origen_id),
@@ -457,6 +765,7 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
         lista_ingredientes_texto=rotulo.lista_ingredientes_texto,
         tamano_porcion_declarado=rotulo.tamano_porcion_declarado,
         tabla_nutricional_json=tabla,
+        estado_validacion_alergenos=estado_efectivo,
     )
 
     return schemas.RotuloProductoConsolidadoOut(
@@ -491,10 +800,19 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
         tabla_nutricional_json=tabla,
         sellos_advertencia_json=sellos,
         leyendas_precautorias_json=leyendas,
+        alergenos_presentes_json=alergenos_pres,
+        alergenos_contaminacion_cruzada_json=alergenos_cruz,
+        leyenda_alergenos_declarada=leyenda_alergenos,
+        temp_conservacion_min_c=rotulo.temp_conservacion_min_c,
+        temp_conservacion_max_c=rotulo.temp_conservacion_max_c,
+        durabilidad_antes_abrir=rotulo.durabilidad_antes_abrir,
+        durabilidad_despues_abrir=rotulo.durabilidad_despues_abrir,
         ingredientes_modificado_manualmente=rotulo.ingredientes_modificado_manualmente,
         nutricion_modificada_manualmente=rotulo.nutricion_modificada_manualmente,
         sellos_modificados_manualmente=rotulo.sellos_modificados_manualmente,
         lote_modificado_manualmente=rotulo.lote_modificado_manualmente,
+        alergenos_modificados_manualmente=rotulo.alergenos_modificados_manualmente,
+        conservacion_modificada_manualmente=rotulo.conservacion_modificada_manualmente,
         ingredientes_difiere_de_receta=_difiere_ingredientes(rotulo.lista_ingredientes_texto, auto),
         nutricion_difiere_de_receta=_difiere_nutricion(
             tabla, rotulo.tamano_porcion_declarado, rotulo.leyenda_vd_declarada, auto
@@ -503,6 +821,21 @@ def obtener_rotulo_producto(db: Session, producto_id: int) -> schemas.RotuloProd
         lote_difiere_de_ultimo_lote=_difiere_lote(
             rotulo.codigo_lote_declarado, rotulo.fecha_duracion_minima, lote_ref
         ),
+        alergenos_difieren_de_receta=_difiere_alergenos(
+            alergenos_pres, alergenos_cruz, leyenda_alergenos, auto
+        ),
+        conservacion_difiere_de_sugerida=_difiere_conservacion(
+            rotulo.temp_conservacion_min_c,
+            rotulo.temp_conservacion_max_c,
+            rotulo.durabilidad_antes_abrir,
+            rotulo.durabilidad_despues_abrir,
+            rotulo.condiciones_conservacion,
+            auto,
+        ),
+        estado_validacion_alergenos=estado_efectivo,
+        confirmacion_invalidada_por_cambio_receta=confirmacion_invalidada,
+        fecha_confirmacion_alergenos=rotulo.fecha_confirmacion_alergenos,
+        confirmado_alergenos_por_nombre=rotulo.confirmado_alergenos_por_nombre,
         fecha_actualizacion=rotulo.fecha_actualizacion,
         actualizado_por_nombre=rotulo.actualizado_por_nombre,
         autocompletado=auto,
@@ -518,7 +851,7 @@ def guardar_rotulo_producto(
 ) -> schemas.RotuloProductoConsolidadoOut:
     """Crea o actualiza el rótulo de un producto aceptando borradores parciales sin bloqueo."""
     producto = _obtener_producto(db, producto_id)
-    auto = _calcular_datos_autocompletados(db, producto)
+    auto, firma_actual = _calcular_datos_autocompletados(db, producto)
 
     rotulo = db.scalar(select(RotuloProducto).where(RotuloProducto.producto_id == producto.id))
     if rotulo is None:
@@ -549,7 +882,30 @@ def guardar_rotulo_producto(
         rotulo.domicilio_importador = None
         rotulo.rne_importador = None
 
-    rotulo.condiciones_conservacion = _normalizar_texto(payload.condiciones_conservacion)
+    # Conservación e instrucciones
+    if payload.restaurar_conservacion_automatico and auto.conservacion_sugerida is not None:
+        sug = auto.conservacion_sugerida
+        rotulo.temp_conservacion_min_c = sug.temp_conservacion_min_c
+        rotulo.temp_conservacion_max_c = sug.temp_conservacion_max_c
+        rotulo.durabilidad_antes_abrir = sug.durabilidad_antes_abrir
+        rotulo.durabilidad_despues_abrir = sug.durabilidad_despues_abrir
+        rotulo.condiciones_conservacion = sug.condiciones_conservacion
+        rotulo.conservacion_modificada_manualmente = False
+    else:
+        rotulo.temp_conservacion_min_c = payload.temp_conservacion_min_c
+        rotulo.temp_conservacion_max_c = payload.temp_conservacion_max_c
+        rotulo.durabilidad_antes_abrir = _normalizar_texto(payload.durabilidad_antes_abrir)
+        rotulo.durabilidad_despues_abrir = _normalizar_texto(payload.durabilidad_despues_abrir)
+        rotulo.condiciones_conservacion = _normalizar_texto(payload.condiciones_conservacion)
+        rotulo.conservacion_modificada_manualmente = _difiere_conservacion(
+            rotulo.temp_conservacion_min_c,
+            rotulo.temp_conservacion_max_c,
+            rotulo.durabilidad_antes_abrir,
+            rotulo.durabilidad_despues_abrir,
+            rotulo.condiciones_conservacion,
+            auto,
+        )
+
     rotulo.aplica_instrucciones_uso = payload.aplica_instrucciones_uso
     rotulo.instrucciones_uso = (
         _normalizar_texto(payload.instrucciones_uso) if payload.aplica_instrucciones_uso else None
@@ -616,6 +972,54 @@ def guardar_rotulo_producto(
         rotulo.lote_modificado_manualmente = _difiere_lote(
             rotulo.codigo_lote_declarado, rotulo.fecha_duracion_minima, lote_ref
         )
+
+    # Bloque 5: Alérgenos y Contaminación Cruzada (Art. 235 séptimo CAA)
+    cruzada_raw = payload.alergenos_contaminacion_cruzada_json or []
+    if payload.restaurar_alergenos_automatico:
+        presentes_items = list(auto.alergenos_presentes_calculados)
+        codigos_presentes = {it.codigo for it in presentes_items}
+        cruzada_items = [it for it in cruzada_raw if it.codigo not in codigos_presentes]
+        leyenda_final = generar_leyenda_alergenos_caa(presentes_items, cruzada_items)
+        rotulo.alergenos_modificados_manualmente = False
+    else:
+        presentes_items = (
+            payload.alergenos_presentes_json
+            if payload.alergenos_presentes_json is not None
+            else list(auto.alergenos_presentes_calculados)
+        )
+        codigos_presentes = {it.codigo for it in presentes_items}
+        cruzada_items = [it for it in cruzada_raw if it.codigo not in codigos_presentes]
+        leyenda_manual = _normalizar_texto(payload.leyenda_alergenos_declarada)
+        leyenda_final = (
+            leyenda_manual
+            if leyenda_manual is not None
+            else generar_leyenda_alergenos_caa(presentes_items, cruzada_items)
+        )
+        rotulo.alergenos_modificados_manualmente = _difiere_alergenos(
+            presentes_items, cruzada_items, leyenda_final, auto
+        )
+
+    rotulo.alergenos_presentes_json = [
+        {"codigo": it.codigo.value, "es_derivado": it.es_derivado}
+        for it in presentes_items
+    ]
+    rotulo.alergenos_contaminacion_cruzada_json = [
+        {"codigo": it.codigo.value, "es_derivado": it.es_derivado}
+        for it in cruzada_items
+    ]
+    rotulo.leyenda_alergenos_declarada = leyenda_final
+
+    # Estado de validación y auditoría de confirmación
+    if payload.confirmar_alergenos_conservacion:
+        rotulo.estado_validacion_alergenos = EstadoValidacionAlergenos.CONFIRMADO.value
+        rotulo.hash_firma_receta_alergenos = firma_actual
+        rotulo.confirmado_alergenos_por_id = usuario_id
+        rotulo.fecha_confirmacion_alergenos = datetime.now()
+    elif (
+        rotulo.estado_validacion_alergenos == EstadoValidacionAlergenos.CONFIRMADO.value
+        and rotulo.hash_firma_receta_alergenos != firma_actual
+    ):
+        rotulo.estado_validacion_alergenos = EstadoValidacionAlergenos.SUGERIDO.value
 
     rotulo.actualizado_por_id = usuario_id
     rotulo.fecha_actualizacion = datetime.now()
