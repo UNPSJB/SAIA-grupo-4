@@ -81,7 +81,17 @@ def _aplicar_reglas_rotulado_frontal_insumo(
         datos["aporta_sodio_agregado"] = False
         datos["es_edulcorante"] = False
         datos["contiene_cafeina"] = False
+        datos["alergenos_declarados_json"] = []
         return
+
+    if "alergenos_declarados_json" in datos and datos["alergenos_declarados_json"] is not None:
+        datos["alergenos_declarados_json"] = [
+            {
+                "codigo": item["codigo"].value if hasattr(item["codigo"], "value") else str(item["codigo"]),
+                "es_derivado": bool(item.get("es_derivado", False)),
+            }
+            for item in datos["alergenos_declarados_json"]
+        ]
 
     if cat == schemas.Categoria.ADITIVO.value:
         cf = (clase_funcional or "").strip().lower()

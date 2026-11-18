@@ -5,6 +5,12 @@ from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 from src.insumos.constants import Constantes
 from src.insumos import exceptions
+from src.rotulado_producto.constants import CodigoAlergenoCAA
+
+
+class AlergenoInsumoItem(BaseModel):
+    codigo: CodigoAlergenoCAA
+    es_derivado: bool = False
 
 
 class Categoria(str, Enum):
@@ -53,6 +59,14 @@ class InsumoBase(BaseModel):
     aporta_sodio_agregado: bool = False
     es_edulcorante: bool = False
     contiene_cafeina: bool = False
+
+    # Alérgenos CAA (Art. 235 séptimo)
+    alergenos_declarados_json: list[AlergenoInsumoItem] = []
+
+    @field_validator("alergenos_declarados_json", mode="before")
+    @classmethod
+    def normalizar_alergenos_none(cls, v):
+        return v or []
 
     # Perfil nutricional (por 100g o 100ml)
     base_calculo: BaseCalculo = BaseCalculo.CIEN_G
@@ -141,6 +155,7 @@ class InsumoUpdate(BaseModel):
     aporta_sodio_agregado: Optional[bool] = None
     es_edulcorante: Optional[bool] = None
     contiene_cafeina: Optional[bool] = None
+    alergenos_declarados_json: Optional[list[AlergenoInsumoItem]] = None
 
     # Perfil nutricional (por 100g o 100ml)
     base_calculo: Optional[BaseCalculo] = None
@@ -189,10 +204,14 @@ class Insumo(InsumoBase):
     modificado_por_usuario_id: Optional[int] = None
     fecha_modificacion_nutricional: Optional[datetime] = None
 
+    alergenos_declarados_json: list[AlergenoInsumoItem] = []
+
     @computed_field
     @property
     def denominacion_efectiva(self) -> str:
         return (self.denominacion_rotulo or "").strip() or self.nombre
+
+    alergenos_declarados_json: list[AlergenoInsumoItem] = []
 
     @computed_field
     @property

@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, JSON, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.insumos.constants import Constantes
 from src.models import ModeloBase
@@ -38,6 +38,11 @@ class Insumo(ModeloBase):
     )
     contiene_cafeina: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="0", nullable=False
+    )
+
+    # Alérgenos declarados según Art. 235 séptimo CAA: [{"codigo": "TRIGO", "es_derivado": True}]
+    alergenos_declarados_json: Mapped[Optional[list[dict]]] = mapped_column(
+        JSON, default=list, nullable=True
     )
 
     # Perfil nutricional cada 100g o 100ml
