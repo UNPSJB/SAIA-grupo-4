@@ -193,7 +193,7 @@ export const EvaluacionAplicabilidadFrontal = ({
   const esAplica = dictamen === "APLICA";
   const esNoAplica = dictamen === "NO_APLICA";
 
-  const bannerColor = esAplica ? "blue" : "gray";
+  const bannerColor = esAplica ? "green" : "gray";
 
   const BannerIcon = esAplica
     ? FiAlertTriangle
@@ -216,7 +216,7 @@ export const EvaluacionAplicabilidadFrontal = ({
             <Button
               size='xs'
               variant='ghost'
-              colorPalette={bannerColor}
+              colorPalette='black'
               onClick={() => setMostrarDictamen((prev) => !prev)}
               title={`${aplicabilidad.dictamen_titulo}\n${aplicabilidad.motivo}`}
             >
@@ -260,23 +260,19 @@ export const EvaluacionAplicabilidadFrontal = ({
             p={3.5}
             borderRadius='md'
             borderWidth='1px'
-            borderColor={`${bannerColor}.200`}
-            bg={`${bannerColor}.50`}
+            borderColor={esAplica ? "blue.200" : "gray.200"} //200
+            bg={esAplica ? "blue.50" : "gray.50"}
           >
             <HStack align='start' gap={3}>
               <Icon
                 as={BannerIcon}
                 boxSize={5}
-                color={`${bannerColor}.600`}
+                color={esAplica ? "blue.600" : "gray.600"}
                 mt={0.5}
               />
               <VStack align='start' gap={1} flex='1'>
                 <HStack gap={2} flexWrap='wrap'>
-                  <Text
-                    fontWeight='bold'
-                    fontSize='sm'
-                    color={`${bannerColor}.800`}
-                  >
+                  <Text fontWeight='bold' fontSize='sm' color='black'>
                     {aplicabilidad.dictamen_titulo}
                   </Text>
                 </HStack>
