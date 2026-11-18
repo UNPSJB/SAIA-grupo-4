@@ -150,6 +150,9 @@ from src.vista_publica.services import inicializar_vista_publica
 from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
 from src.configuracion.services import inicializar_parametros_frontales
 from src.rotulado.services import inicializar_normativa_rotulado
+from src.rotulado_producto.models import RotuloProducto
+from src.rotulado_producto.schemas import RotuloProductoUpdateIn
+from src.rotulado_producto.services import guardar_rotulo_producto, obtener_rotulo_producto
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -1625,6 +1628,12 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     prod_bl = productos[7]   # Budin de Limon
     pref_bl = _extraer_prefijo_producto(prod_bl.nombre)
 
+    prod_pm = productos[8]   # Pepas de Membrillo (solo receta INHABILITADA)
+    pref_pm = _extraer_prefijo_producto(prod_pm.nombre)
+
+    prod_pmo = productos[9]  # Pan de Molde (receta ACTIVA sin lotes)
+    pref_pmo = _extraer_prefijo_producto(prod_pmo.nombre)
+
     # 7 recetas:
     # 2 del mismo producto (prod_pc: una inhabilitada v1 y una activa v2)
     # 5 de otros productos (2 activas, 1 inhabilitada, 2 borradores)
@@ -2064,6 +2073,69 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 ),
             ],
         ),
+        (
+            (
+                "Pepas de Membrillo Clasicas v1",
+                prod_pm,
+                f"REC-{pref_pm}-001",
+                EstadoReceta.INHABILITADA,
+                Decimal("12000.00"),
+                95,
+                40,
+                "Receta historica inhabilitada para pruebas de rotulo sin receta activa vigente.",
+            ),
+            [
+                (
+                    1,
+                    "Amasado de masa quebrada",
+                    "Integrar harina, manteca y azucar hasta formar masa lisa.",
+                    [(eq_amasadora, 1)],
+                    [(ins_harina, Decimal("6.000")), (ins_manteca, Decimal("3.000")), (ins_azucar, Decimal("2.500"))],
+                ),
+                (
+                    2,
+                    "Horneado de pepas",
+                    "Hornear a 180C durante 18 minutos.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Pan de Molde Lacteado",
+                prod_pmo,
+                "REC-PMO-001",
+                EstadoReceta.ACTIVA,
+                Decimal("18000.00"),
+                150,
+                5,
+                "Receta activa vigente sin lotes asociados para probar rotulo con sugerencia por vida util.",
+            ),
+            [
+                (
+                    1,
+                    "Mezcla de secos y levadura",
+                    "Pesar harina, sal y azucar junto con la levadura fresca.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_harina, Decimal("12.000")), (ins_sal, Decimal("220.000")), (ins_azucar, Decimal("400.000")), (ins_levadura, Decimal("300.000"))],
+                ),
+                (
+                    2,
+                    "Amasado con leche y manteca",
+                    "Incorporar leche fluida y manteca pomada hasta lograr masa elastica.",
+                    [(eq_amasadora, 1)],
+                    [(ins_leche, Decimal("5.000")), (ins_manteca, Decimal("800.000"))],
+                ),
+                (
+                    3,
+                    "Horneado en moldes",
+                    "Hornear en moldes de pan lactal a 195C durante 40 minutos.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
     ]
 
     tamano_porcion_por_receta = {
@@ -2073,6 +2145,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         "Bizcochos Salados Crocantes": Decimal("30.00"),
         "Torta Humeda de Chocolate": Decimal("60.00"),
         "Torta de Chocolate Artesanal v2": Decimal("60.00"),
+        "Pan de Molde Lacteado": Decimal("50.00"),
     }
 
     recetas_creadas = []
@@ -2221,6 +2294,129 @@ def _crear_lotes(db, personas, recetas, hoy):
 
     db.flush()
     return lotes_creados
+
+
+def _ascii_rotulo(texto):
+    if texto is None:
+        return None
+    import unicodedata
+    texto = texto.replace("\u2014", "-").replace("\u2013", "-")
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+
+
+def _crear_rotulos_producto(db, personas, productos):
+    """Siembra ejemplos de rotulos de producto en distintos estados (completo, borrador editado manualmente, importado)."""
+    activos = [p for p in personas if p.activo]
+    if not activos:
+        return
+    usuario_id = activos[0].id
+
+    def _tabla_ascii(filas):
+        res = []
+        for f in filas:
+            d = f.model_dump()
+            d["nombre_etiqueta"] = _ascii_rotulo(d.get("nombre_etiqueta"))
+            d["valor_100g"] = _ascii_rotulo(d.get("valor_100g"))
+            d["valor_porcion"] = _ascii_rotulo(d.get("valor_porcion"))
+            d["porcentaje_vd"] = _ascii_rotulo(d.get("porcentaje_vd"))
+            res.append(d)
+        return res
+
+    def _sellos_ascii(items):
+        res = []
+        for it in items:
+            d = it.model_dump()
+            d["texto"] = _ascii_rotulo(d.get("texto"))
+            res.append(d)
+        return res
+
+    # 1. Galletas de Vainilla (productos[1]): Rotulo nacional 100% completo sincronizado con receta activa y lote
+    if len(productos) > 1:
+        prod_gv = productos[1]
+        base_gv = obtener_rotulo_producto(db, prod_gv.id)
+        guardar_rotulo_producto(
+            db,
+            prod_gv.id,
+            RotuloProductoUpdateIn(
+                denominacion_venta="Galletas dulces sabor vainilla",
+                contenido_neto="250 g",
+                razon_social_elaborador=base_gv.razon_social_elaborador or "Panificadora SAIA S.A.",
+                domicilio_elaborador=base_gv.domicilio_elaborador or "Av. Colon 1250, Cordoba",
+                pais_origen="Argentina",
+                rne_elaborador="04-000185",
+                rnpa_rppa="04-042910",
+                es_importado=False,
+                lote_origen_id=base_gv.lote_origen_id,
+                codigo_lote_declarado=base_gv.codigo_lote_declarado,
+                fecha_duracion_minima=base_gv.fecha_duracion_minima,
+                condiciones_conservacion="Conservar en lugar fresco y seco, al abrigo de la luz.",
+                lista_ingredientes_texto=_ascii_rotulo(base_gv.lista_ingredientes_texto),
+                tamano_porcion_declarado=base_gv.tamano_porcion_declarado or "30 g",
+                leyenda_vd_declarada=_ascii_rotulo(base_gv.leyenda_vd_declarada),
+                tabla_nutricional_json=_tabla_ascii(base_gv.tabla_nutricional_json),
+                sellos_advertencia_json=_sellos_ascii(base_gv.sellos_advertencia_json),
+                leyendas_precautorias_json=_sellos_ascii(base_gv.leyendas_precautorias_json),
+            ),
+            usuario_id,
+        )
+
+    # 2. Pan de Campo (productos[0]): Borrador incompleto con edicion manual en ingredientes
+    if len(productos) > 0:
+        prod_pc = productos[0]
+        base_pc = obtener_rotulo_producto(db, prod_pc.id)
+        guardar_rotulo_producto(
+            db,
+            prod_pc.id,
+            RotuloProductoUpdateIn(
+                denominacion_venta="Pan de campo artesanal",
+                contenido_neto="500 g",
+                razon_social_elaborador=base_pc.razon_social_elaborador or "Panificadora SAIA S.A.",
+                pais_origen="Argentina",
+                lote_origen_id=base_pc.lote_origen_id,
+                codigo_lote_declarado=base_pc.codigo_lote_declarado,
+                fecha_duracion_minima=base_pc.fecha_duracion_minima,
+                lista_ingredientes_texto="Ingredientes: Harina de trigo enriquecida Ley 25.630, agua, sal marina, levadura, semillas de sesamo tostadas (texto ajustado manualmente para rotulo).",
+                tamano_porcion_declarado=base_pc.tamano_porcion_declarado or "50 g",
+                leyenda_vd_declarada=_ascii_rotulo(base_pc.leyenda_vd_declarada),
+                tabla_nutricional_json=_tabla_ascii(base_pc.tabla_nutricional_json),
+                sellos_advertencia_json=_sellos_ascii(base_pc.sellos_advertencia_json),
+                leyendas_precautorias_json=_sellos_ascii(base_pc.leyendas_precautorias_json),
+            ),
+            usuario_id,
+        )
+
+    # 3. Bizcochos Salados (productos[3]): Producto importado con campos condicionales completos
+    if len(productos) > 3:
+        prod_bs = productos[3]
+        base_bs = obtener_rotulo_producto(db, prod_bs.id)
+        guardar_rotulo_producto(
+            db,
+            prod_bs.id,
+            RotuloProductoUpdateIn(
+                denominacion_venta="Bizcochos salados horneados",
+                contenido_neto="200 g",
+                razon_social_elaborador="Panificados del Plata S.R.L.",
+                domicilio_elaborador="Ruta 5 Km 12, Canelones",
+                pais_origen="Uruguay",
+                rne_elaborador="UY-10422",
+                rnpa_rppa="00-318845",
+                es_importado=True,
+                nombre_importador="Importadora Alimentos del Sur S.A.",
+                domicilio_importador="Av. Alicia Moreau de Justo 1120, CABA",
+                rne_importador="00-008741",
+                lote_origen_id=base_bs.lote_origen_id,
+                codigo_lote_declarado=base_bs.codigo_lote_declarado,
+                fecha_duracion_minima=base_bs.fecha_duracion_minima,
+                condiciones_conservacion="Mantener en envase cerrado en lugar seco.",
+                lista_ingredientes_texto=_ascii_rotulo(base_bs.lista_ingredientes_texto),
+                tamano_porcion_declarado=base_bs.tamano_porcion_declarado or "30 g",
+                leyenda_vd_declarada=_ascii_rotulo(base_bs.leyenda_vd_declarada),
+                tabla_nutricional_json=_tabla_ascii(base_bs.tabla_nutricional_json),
+                sellos_advertencia_json=_sellos_ascii(base_bs.sellos_advertencia_json),
+                leyendas_precautorias_json=_sellos_ascii(base_bs.leyendas_precautorias_json),
+            ),
+            usuario_id,
+        )
 
 # --------------------------------------------------------------------------
 # Verificacion
@@ -2818,6 +3014,7 @@ def main():
                 hoy,
             )
             _crear_lotes(db, personas, recetas, hoy)
+            _crear_rotulos_producto(db, personas, catalogo["productos"])
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,
