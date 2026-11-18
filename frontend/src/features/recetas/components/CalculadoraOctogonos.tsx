@@ -101,6 +101,7 @@ export const CalculadoraOctogonos = ({
                       {sellosData.sellos.map((sello) => (
                         <OctogonoReglamentario
                           key={sello.codigo}
+                          codigo={sello.codigo}
                           texto={sello.texto}
                         />
                       ))}
@@ -123,6 +124,7 @@ export const CalculadoraOctogonos = ({
                       {sellosData.leyendas_precautorias.map((leyenda) => (
                         <LeyendaRectangular
                           key={leyenda.codigo}
+                          codigo={leyenda.codigo}
                           texto={leyenda.texto}
                         />
                       ))}

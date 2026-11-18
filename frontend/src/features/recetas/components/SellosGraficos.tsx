@@ -1,76 +1,60 @@
-import { Box, Flex, Text } from "@chakra-ui/react";
+import { Image } from "@chakra-ui/react";
+import contieneCafeinaImg from "../../../assets/sellos/contiene-cafeina.png";
+import contieneEdulcorantesImg from "../../../assets/sellos/contiene-edulcorantes.png";
+import excesoAzucaresImg from "../../../assets/sellos/exceso-azucares.png";
+import excesoCaloriasImg from "../../../assets/sellos/exceso-calorias.png";
+import excesoGrasasSaturadasImg from "../../../assets/sellos/exceso-grasas-saturadas.png";
+import excesoGrasasTotalesImg from "../../../assets/sellos/exceso-grasas-totales.png";
+import excesoSodioImg from "../../../assets/sellos/exceso-sodio.png";
 
-const OCTAGONO_CLIP_PATH =
-  "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)";
+const IMAGENES_OCTOGONOS: Record<string, string> = {
+  EXCESO_AZUCARES: excesoAzucaresImg,
+  EXCESO_GRASAS_TOTALES: excesoGrasasTotalesImg,
+  EXCESO_GRASAS_SATURADAS: excesoGrasasSaturadasImg,
+  EXCESO_SODIO: excesoSodioImg,
+  EXCESO_CALORIAS: excesoCaloriasImg,
+};
 
-export const OctogonoReglamentario = ({ texto }: { texto: string }) => (
-  <Box
-    w="118px"
-    h="118px"
-    bg="white"
-    p="3px"
-    clipPath={OCTAGONO_CLIP_PATH}
-    filter="drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25))"
-    flexShrink={0}
-  >
-    <Flex
-      w="100%"
-      h="100%"
-      bg="gray.950"
-      color="white"
-      clipPath={OCTAGONO_CLIP_PATH}
-      direction="column"
-      align="center"
-      justify="center"
-      px={2.5}
-      py={2}
-      textAlign="center"
-      gap={1.5}
-    >
-      <Text
-        fontSize="11px"
-        fontWeight="extrabold"
-        lineHeight="1.15"
-        letterSpacing="0.02em"
-        textTransform="uppercase"
-      >
-        {texto}
-      </Text>
-      <Text
-        fontSize="7px"
-        fontWeight="semibold"
-        letterSpacing="0.06em"
-        textTransform="uppercase"
-        color="gray.300"
-      >
-        MINISTERIO DE SALUD
-      </Text>
-    </Flex>
-  </Box>
-);
+const IMAGENES_LEYENDAS: Record<string, string> = {
+  CONTIENE_EDULCORANTES: contieneEdulcorantesImg,
+  CONTIENE_CAFEINA: contieneCafeinaImg,
+};
 
-export const LeyendaRectangular = ({ texto }: { texto: string }) => (
-  <Box
-    bg="gray.950"
-    color="white"
-    borderWidth="2px"
-    borderColor="white"
-    outline="2px solid"
-    outlineColor="gray.950"
-    px={4}
-    py={2}
-    maxW="260px"
-    textAlign="center"
-    boxShadow="sm"
-  >
-    <Text
-      fontSize="10px"
-      fontWeight="bold"
-      lineHeight="1.25"
-      letterSpacing="0.03em"
-      textTransform="uppercase"
-    >
-      {texto}
-    </Text>
-  </Box>
-);
+interface SelloGraficoProps {
+  codigo: string;
+  texto: string;
+}
+
+export const OctogonoReglamentario = ({ codigo, texto }: SelloGraficoProps) => {
+  const imagen = IMAGENES_OCTOGONOS[codigo];
+  if (!imagen) return null;
+
+  return (
+    <Image
+      src={imagen}
+      alt={texto}
+      title={texto}
+      w="118px"
+      h="118px"
+      objectFit="contain"
+      flexShrink={0}
+    />
+  );
+};
+
+export const LeyendaRectangular = ({ codigo, texto }: SelloGraficoProps) => {
+  const imagen = IMAGENES_LEYENDAS[codigo];
+  if (!imagen) return null;
+
+  return (
+    <Image
+      src={imagen}
+      alt={texto}
+      title={texto}
+      maxW="260px"
+      maxH="72px"
+      objectFit="contain"
+      flexShrink={0}
+    />
+  );
+};
