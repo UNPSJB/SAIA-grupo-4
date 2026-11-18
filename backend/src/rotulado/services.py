@@ -449,9 +449,8 @@ def actualizar_overrides_aplicabilidad(
         receta.es_aplicabilidad_forzada_manualmente = False
     else:
         for campo in CAMPOS_OVERRIDES_RECETA:
-            valor = getattr(payload, campo)
-            if valor is not None:
-                setattr(receta, campo, valor)
+            if campo in payload.model_fields_set:
+                setattr(receta, campo, getattr(payload, campo))
 
         receta.es_aplicabilidad_forzada_manualmente = any(
             getattr(receta, campo) is not None for campo in CAMPOS_OVERRIDES_RECETA

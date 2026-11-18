@@ -40,7 +40,7 @@ export const CalculadoraOctogonos = ({
               <Heading size='md' color='gray.800'>
                 Sellos de Advertencia y Leyendas Precautorias
               </Heading>
-              <Text fontSize='xs' color='gray.500'>
+              <Text fontSize='sm' color='gray.500'>
                 Perfil de nutrientes (Ley 27.642) • Base:{" "}
                 {sellosData.base_calculo} (
                 {sellosData.es_liquido ? "Líquido" : "Sólido"})
@@ -150,7 +150,7 @@ export const CalculadoraOctogonos = ({
           <Badge colorPalette='teal' variant='subtle' size='xs'>
             Normativa: {sellosData.version_normativa}
           </Badge>
-          <Text fontSize='2xs' color='gray.500'>
+          <Text fontSize='xs' color='gray.500'>
             Vigencia desde:{" "}
             {formatearFechaISO(sellosData.fecha_vigencia_normativa)}
           </Text>
