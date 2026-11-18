@@ -87,6 +87,11 @@ export default function ProductosPage() {
           setProductoSeleccionado(p);
           setVista("ver");
         }}
+        onRotulo={(p) =>
+          navigate(`/productos/${p.id}/rotulo`, {
+            state: { from: "/productos", label: "Productos" },
+          })
+        }
         onDarAlta={(p) => {
           setError("");
           setProductoAlta(p);

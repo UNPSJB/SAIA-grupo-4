@@ -54,6 +54,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   nuevo: "Nuevo",
   ver: "Ver",
   "ficha-tecnica": "Ficha Técnica",
+  rotulo: "Rótulo CAA",
 };
 
 // Segmentos que no tienen página propia directa: se muestran pero sin navegación

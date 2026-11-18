@@ -22,6 +22,7 @@ import {
   FiHash,
   FiPackage,
   FiPrinter,
+  FiTag,
   FiTool,
 } from "react-icons/fi";
 
@@ -285,13 +286,31 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               <FiArrowLeft /> {esModoAdmin ? "Volver a Recetas" : "Volver al catálogo"}
             </Button>
 
-            <Button
-              colorPalette="blue"
-              variant="solid"
-              onClick={() => imprimirFichaReceta(receta)}
-            >
-              <FiPrinter /> Imprimir / Descargar PDF
-            </Button>
+            <HStack gap={2} flexWrap="wrap">
+              {esModoAdmin && (
+                <Button
+                  colorPalette="teal"
+                  variant="outline"
+                  onClick={() =>
+                    navigate(`/productos/${receta.producto_id}/rotulo`, {
+                      state: {
+                        from: `/recetas/${receta.id}/ficha-tecnica`,
+                        label: "Ficha Técnica",
+                      },
+                    })
+                  }
+                >
+                  <FiTag /> Completar Rótulo CAA
+                </Button>
+              )}
+              <Button
+                colorPalette="blue"
+                variant="solid"
+                onClick={() => imprimirFichaReceta(receta)}
+              >
+                <FiPrinter /> Imprimir / Descargar PDF
+              </Button>
+            </HStack>
           </HStack>
 
           {/* Título de la Receta */}

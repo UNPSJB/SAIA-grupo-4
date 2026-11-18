@@ -42,6 +42,7 @@ import HistorialVersionesPage from "./pages/HistorialVersionesPage";
 import VisorPdfPage from "./pages/VisorPdfPage";
 import IncidentesReportadosPage from "./pages/IncidentesReportadosPage";
 import ProductosPage from "./pages/ProductosPage";
+import RotuloProductoPage from "./pages/RotuloProductoPage";
 import LotesOperadorPage from "./pages/LotesOperadorPage";
 import HistorialLotesPage from "./pages/HistorialLotesPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -250,6 +251,14 @@ function AppContent() {
               element={
                 <RequireAuth>
                   <ProductosPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path='/productos/:productoId/rotulo'
+              element={
+                <RequireAuth>
+                  <RotuloProductoPage />
                 </RequireAuth>
               }
             />
