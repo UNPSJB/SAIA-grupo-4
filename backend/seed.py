@@ -152,7 +152,11 @@ from src.configuracion.services import inicializar_parametros_frontales
 from src.rotulado.services import inicializar_normativa_rotulado
 from src.rotulado_producto.models import RotuloProducto
 from src.rotulado_producto.schemas import RotuloProductoUpdateIn
-from src.rotulado_producto.services import guardar_rotulo_producto, obtener_rotulo_producto
+from src.rotulado_producto.services import (
+    asegurar_columnas_alergenos_y_conservacion,
+    guardar_rotulo_producto,
+    obtener_rotulo_producto,
+)
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -811,6 +815,17 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             aporta_sodio_agregado=(nombre == "Sal Fina Marina"),
             es_edulcorante=bool(clase_funcional and "edulcorante" in clase_funcional.lower()),
             contiene_cafeina=False,
+            alergenos_declarados_json=(
+                [{"codigo": "TRIGO", "es_derivado": True}]
+                if "Harina" in nombre
+                else [{"codigo": "LECHE", "es_derivado": True}]
+                if nombre == "Manteca de Primera"
+                else [{"codigo": "HUEVO", "es_derivado": False}]
+                if "Huevo" in nombre
+                else [{"codigo": "LECHE", "es_derivado": False}]
+                if "Leche" in nombre
+                else []
+            ),
         )
         if nombre in mapa_sara_insumos:
             cod_sara, base_calc, modificada = mapa_sara_insumos[nombre]
@@ -2350,6 +2365,14 @@ def _crear_rotulos_producto(db, personas, productos):
                 codigo_lote_declarado=base_gv.codigo_lote_declarado,
                 fecha_duracion_minima=base_gv.fecha_duracion_minima,
                 condiciones_conservacion="Conservar en lugar fresco y seco, al abrigo de la luz.",
+                temp_conservacion_min_c=15.0,
+                temp_conservacion_max_c=25.0,
+                durabilidad_antes_abrir=_ascii_rotulo(base_gv.durabilidad_antes_abrir),
+                durabilidad_despues_abrir=_ascii_rotulo(base_gv.durabilidad_despues_abrir),
+                alergenos_presentes_json=base_gv.alergenos_presentes_json,
+                alergenos_contaminacion_cruzada_json=[],
+                leyenda_alergenos_declarada=_ascii_rotulo(base_gv.leyenda_alergenos_declarada),
+                confirmar_alergenos_conservacion=True,
                 lista_ingredientes_texto=_ascii_rotulo(base_gv.lista_ingredientes_texto),
                 tamano_porcion_declarado=base_gv.tamano_porcion_declarado or "30 g",
                 leyenda_vd_declarada=_ascii_rotulo(base_gv.leyenda_vd_declarada),
@@ -2408,6 +2431,13 @@ def _crear_rotulos_producto(db, personas, productos):
                 codigo_lote_declarado=base_bs.codigo_lote_declarado,
                 fecha_duracion_minima=base_bs.fecha_duracion_minima,
                 condiciones_conservacion="Mantener en envase cerrado en lugar seco.",
+                temp_conservacion_min_c=15.0,
+                temp_conservacion_max_c=25.0,
+                durabilidad_antes_abrir=_ascii_rotulo(base_bs.durabilidad_antes_abrir),
+                durabilidad_despues_abrir=_ascii_rotulo(base_bs.durabilidad_despues_abrir),
+                alergenos_presentes_json=base_bs.alergenos_presentes_json,
+                alergenos_contaminacion_cruzada_json=[{"codigo": "SOJA", "es_derivado": True}],
+                confirmar_alergenos_conservacion=True,
                 lista_ingredientes_texto=_ascii_rotulo(base_bs.lista_ingredientes_texto),
                 tamano_porcion_declarado=base_bs.tamano_porcion_declarado or "30 g",
                 leyenda_vd_declarada=_ascii_rotulo(base_bs.leyenda_vd_declarada),
@@ -2977,6 +3007,7 @@ def main():
     with SessionLocal() as db:
         db.execute(text("PRAGMA foreign_keys = ON"))
         ModeloBase.metadata.create_all(bind=engine)
+        asegurar_columnas_alergenos_y_conservacion(db)
 
         if args.reset:
             _resetear(db)

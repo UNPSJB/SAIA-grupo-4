@@ -305,6 +305,7 @@ def test_campos_condicionales_importador_y_completitud_100(setup_rotulo_producto
         "tabla_nutricional_json": inicial["tabla_nutricional_json"],
         "sellos_advertencia_json": inicial["sellos_advertencia_json"],
         "leyendas_precautorias_json": inicial["leyendas_precautorias_json"],
+        "confirmar_alergenos_conservacion": True,
     }
     res_nac = client.put(f"/productos/{prod.id}/rotulo", json=payload_nacional)
     assert res_nac.status_code == 200
