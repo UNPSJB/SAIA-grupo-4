@@ -35,6 +35,7 @@ export interface InsumoPayload {
   aporta_sodio_agregado?: boolean;
   es_edulcorante?: boolean;
   contiene_cafeina?: boolean;
+  alergenos_declarados_json?: Array<{ codigo: string; es_derivado: boolean }>;
 }
 
 type FastApiError = {
@@ -125,6 +126,10 @@ export const useInsumoSubmit = ({
             values?.categoria?.trim().toLowerCase() === "envase"
               ? false
               : Boolean(values?.contiene_cafeina),
+          alergenos_declarados_json:
+            values?.categoria?.trim().toLowerCase() === "envase"
+              ? []
+              : (values?.alergenos_declarados_json ?? []),
         };
 
         const url = id ? `${endpoint}${id}` : endpoint;

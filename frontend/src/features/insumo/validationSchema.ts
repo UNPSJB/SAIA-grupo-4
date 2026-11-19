@@ -68,6 +68,14 @@ export const insumoSchema = z
     aporta_sodio_agregado: z.boolean().optional(),
     es_edulcorante: z.boolean().optional(),
     contiene_cafeina: z.boolean().optional(),
+    alergenos_declarados_json: z
+      .array(
+        z.object({
+          codigo: z.string(),
+          es_derivado: z.boolean(),
+        }),
+      )
+      .optional(),
   })
   .superRefine((data, ctx) => {
     const cat = (data.categoria || "").trim().toLowerCase();

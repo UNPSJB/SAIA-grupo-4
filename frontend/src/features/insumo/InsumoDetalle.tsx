@@ -1,7 +1,7 @@
 import { Badge, HStack } from "@chakra-ui/react";
 import { FiActivity, FiBox, FiEye } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
-import type { Insumo } from "./types";
+import { CATALOGO_ALERGENOS_CAA, type Insumo } from "./types";
 
 interface InsumoDetalleProps {
   insumo: Insumo;
@@ -55,10 +55,20 @@ export const InsumoDetalle = ({ insumo, onCerrar }: InsumoDetalleProps) => {
           ? [{ label: "Densidad", valor: `${insumo.densidad_g_ml} g/ml` }]
           : []),
         ...(insumo.peso_unitario_g != null
-          ? [{ label: "Peso unitario promedio", valor: `${insumo.peso_unitario_g} g` }]
+          ? [
+              {
+                label: "Peso unitario promedio",
+                valor: `${insumo.peso_unitario_g} g`,
+              },
+            ]
           : []),
         ...(insumo.denominacion_rotulo
-          ? [{ label: "Denominación rótulo (CAA)", valor: insumo.denominacion_rotulo }]
+          ? [
+              {
+                label: "Denominación rótulo (CAA)",
+                valor: insumo.denominacion_rotulo,
+              },
+            ]
           : []),
         ...(insumo.clase_funcional
           ? [{ label: "Clase funcional", valor: insumo.clase_funcional }]
@@ -184,6 +194,33 @@ export const InsumoDetalle = ({ insumo, onCerrar }: InsumoDetalleProps) => {
                     {m}
                   </Badge>
                 ))}
+              </HStack>
+            );
+          })(),
+        },
+        {
+          label: "Alérgenos CAA (Art. 235 séptimo)",
+          valor: (() => {
+            const lista = insumo.alergenos_declarados_json ?? [];
+            if (lista.length === 0) {
+              return (
+                <Badge colorPalette='gray' variant='subtle'>
+                  Sin alérgenos declarados
+                </Badge>
+              );
+            }
+            return (
+              <HStack gap={1.5} flexWrap='wrap'>
+                {lista.map((a) => {
+                  const label =
+                    CATALOGO_ALERGENOS_CAA.find((c) => c.codigo === a.codigo)
+                      ?.label ?? a.codigo;
+                  return (
+                    <Badge key={a.codigo} colorPalette='blue' variant='subtle'>
+                      {a.es_derivado ? `DERIVADO DE ${label}` : label}
+                    </Badge>
+                  );
+                })}
               </HStack>
             );
           })(),

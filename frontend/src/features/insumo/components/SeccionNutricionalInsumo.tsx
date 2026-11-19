@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Controller,
-  type Control,
   type FieldErrors,
   type UseFormRegister,
   type UseFormSetValue,
@@ -12,7 +10,6 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Collapsible,
   Flex,
   GridItem,
@@ -41,7 +38,6 @@ import type { Insumo } from "../types";
 
 interface SeccionNutricionalInsumoProps {
   register: UseFormRegister<InsumoFormValues>;
-  control: Control<InsumoFormValues>;
   setValue: UseFormSetValue<InsumoFormValues>;
   watch: UseFormWatch<InsumoFormValues>;
   errors: FieldErrors<InsumoFormValues>;
@@ -67,7 +63,6 @@ const MAPA_CAMPO_REF: Record<string, keyof AlimentoReferencia> = {
 
 export const SeccionNutricionalInsumo = ({
   register,
-  control,
   setValue,
   watch,
   errors,
@@ -647,67 +642,6 @@ export const SeccionNutricionalInsumo = ({
             </Collapsible.Root>
           </Box>
         )}
-
-        <Box
-          mt={5}
-          pt={4}
-          borderTopWidth='1px'
-          borderColor='gray.200'
-        >
-          <Text fontWeight='semibold' fontSize='sm' color='gray.800' mb={1}>
-            Aportes para Rotulado Frontal (Ley 27.642)
-          </Text>
-          <Text fontSize='xs' color='gray.600' mb={3}>
-            Indicá si este insumo aporta nutrientes críticos agregados o sustancias reguladas para la detección automática en recetas.
-          </Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap={2.5}>
-            {(
-              [
-                {
-                  name: "aporta_azucares_agregados",
-                  label: "Aporta azúcares agregados",
-                },
-                {
-                  name: "aporta_grasas_agregadas",
-                  label: "Aporta grasas agregadas",
-                },
-                {
-                  name: "aporta_sodio_agregado",
-                  label: "Aporta sodio agregado",
-                },
-                {
-                  name: "es_edulcorante",
-                  label: "Es edulcorante",
-                },
-                {
-                  name: "contiene_cafeina",
-                  label: "Contiene cafeína",
-                },
-              ] as const
-            ).map((flag) => (
-              <Controller
-                key={flag.name}
-                control={control}
-                name={flag.name}
-                render={({ field }) => (
-                  <Checkbox.Root
-                    checked={Boolean(field.value)}
-                    onCheckedChange={(details) =>
-                      field.onChange(Boolean(details.checked))
-                    }
-                    disabled={esModoVer}
-                    colorPalette='green'
-                    size='sm'
-                  >
-                    <Checkbox.HiddenInput />
-                    <Checkbox.Control />
-                    <Checkbox.Label fontSize='sm'>{flag.label}</Checkbox.Label>
-                  </Checkbox.Root>
-                )}
-              />
-            ))}
-          </SimpleGrid>
-        </Box>
       </Box>
     </GridItem>
   );

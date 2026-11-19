@@ -6,6 +6,7 @@ import { Box, Button, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 
 import { useInsumoSubmit, type InsumoPayload } from "./hooks/useInsumoSubmit";
 import { SeccionNutricionalInsumo } from "./components/SeccionNutricionalInsumo";
+import { SeccionRotuladoAlergenosInsumo } from "./components/SeccionRotuladoAlergenosInsumo";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoSchema, type InsumoFormValues } from "./validationSchema";
 import type { Insumo, UnidadMedida } from "./types";
@@ -32,7 +33,7 @@ import {
 } from "react-icons/fi";
 
 type PasoInsumo = {
-  id: "generales" | "nutricion";
+  id: "generales" | "nutricion" | "rotulado";
   titulo: string;
   descripcion: string;
   campos: (keyof InsumoFormValues)[];
@@ -73,11 +74,19 @@ const PASOS_INSUMO: PasoInsumo[] = [
       "grasas_trans_g",
       "fibra_g",
       "sodio_mg",
+    ],
+  },
+  {
+    id: "rotulado",
+    titulo: "Rotulado frontal, alérgenos y cereales",
+    descripcion: "Aportes Ley 27.642 y alérgenos Art. 235 séptimo CAA",
+    campos: [
       "aporta_azucares_agregados",
       "aporta_grasas_agregadas",
       "aporta_sodio_agregado",
       "es_edulcorante",
       "contiene_cafeina",
+      "alergenos_declarados_json",
     ],
   },
 ];
@@ -176,6 +185,7 @@ export const InsumoForm = ({
           aporta_sodio_agregado: Boolean(insumo?.aporta_sodio_agregado),
           es_edulcorante: Boolean(insumo?.es_edulcorante),
           contiene_cafeina: Boolean(insumo?.contiene_cafeina),
+          alergenos_declarados_json: insumo?.alergenos_declarados_json ?? [],
         }
       : {
           nombre: "",
@@ -205,6 +215,7 @@ export const InsumoForm = ({
           aporta_sodio_agregado: false,
           es_edulcorante: false,
           contiene_cafeina: false,
+          alergenos_declarados_json: [],
         };
 
   const {
@@ -592,24 +603,38 @@ export const InsumoForm = ({
           </Box>
 
           {!esEnvase && (
-            <Box
-              display={
-                esModoVer || pasoActualMeta?.id === "nutricion" ? "block" : "none"
-              }
-            >
-              <FormGrid>
-                <SeccionNutricionalInsumo
-                  register={register}
-                  control={control}
-                  setValue={setValue}
-                  watch={watch}
-                  errors={errors}
-                  esModoVer={esModoVer}
-                  esAditivo={esAditivo}
-                  insumo={insumo}
-                />
-              </FormGrid>
-            </Box>
+            <>
+              <Box
+                display={
+                  esModoVer || pasoActualMeta?.id === "nutricion" ? "block" : "none"
+                }
+              >
+                <FormGrid>
+                  <SeccionNutricionalInsumo
+                    register={register}
+                    setValue={setValue}
+                    watch={watch}
+                    errors={errors}
+                    esModoVer={esModoVer}
+                    esAditivo={esAditivo}
+                    insumo={insumo}
+                  />
+                </FormGrid>
+              </Box>
+
+              <Box
+                display={
+                  esModoVer || pasoActualMeta?.id === "rotulado" ? "block" : "none"
+                }
+              >
+                <FormGrid>
+                  <SeccionRotuladoAlergenosInsumo
+                    control={control}
+                    esModoVer={esModoVer}
+                  />
+                </FormGrid>
+              </Box>
+            </>
           )}
 
           <FormActions justify='end'>

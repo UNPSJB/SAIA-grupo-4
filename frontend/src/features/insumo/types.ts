@@ -1,3 +1,48 @@
+export type CodigoAlergenoCAA =
+  | "TRIGO"
+  | "AVENA"
+  | "CEBADA"
+  | "CENTENO"
+  | "CRUSTACEOS"
+  | "HUEVO"
+  | "PESCADO"
+  | "MANI"
+  | "SOJA"
+  | "LECHE"
+  | "ALMENDRAS"
+  | "AVELLANAS"
+  | "CASTANAS"
+  | "NUECES"
+  | "PISTACHOS"
+  | "DIOXIDO_AZUFRE_SULFITOS";
+
+export interface AlergenoInsumoItem {
+  codigo: CodigoAlergenoCAA;
+  es_derivado: boolean;
+}
+
+export const CATALOGO_ALERGENOS_CAA: Array<{
+  codigo: CodigoAlergenoCAA;
+  label: string;
+}> = [
+  { codigo: "TRIGO", label: "TRIGO" },
+  { codigo: "AVENA", label: "AVENA" },
+  { codigo: "CEBADA", label: "CEBADA" },
+  { codigo: "CENTENO", label: "CENTENO" },
+  { codigo: "CRUSTACEOS", label: "CRUSTÁCEOS" },
+  { codigo: "HUEVO", label: "HUEVO" },
+  { codigo: "PESCADO", label: "PESCADO" },
+  { codigo: "MANI", label: "MANÍ" },
+  { codigo: "SOJA", label: "SOJA" },
+  { codigo: "LECHE", label: "LECHE" },
+  { codigo: "ALMENDRAS", label: "ALMENDRAS" },
+  { codigo: "AVELLANAS", label: "AVELLANAS" },
+  { codigo: "CASTANAS", label: "CASTAÑAS" },
+  { codigo: "NUECES", label: "NUECES" },
+  { codigo: "PISTACHOS", label: "PISTACHOS" },
+  { codigo: "DIOXIDO_AZUFRE_SULFITOS", label: "SULFITOS (≥ 10 ppm)" },
+];
+
 export interface UnidadMedida {
   id: number;
   nombre: string;
@@ -41,6 +86,9 @@ export interface Insumo {
   aporta_sodio_agregado?: boolean;
   es_edulcorante?: boolean;
   contiene_cafeina?: boolean;
+
+  // Alérgenos CAA (Art. 235 séptimo)
+  alergenos_declarados_json?: AlergenoInsumoItem[];
 
   // Auditoría y trazabilidad
   alimento_referencia_id?: number | null;
