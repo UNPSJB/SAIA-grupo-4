@@ -1036,21 +1036,29 @@ def _construir_aviso_sin_sellos(
     dictamen_aplicabilidad: Optional[str],
     dictamen_titulo: Optional[str],
     motivo_aplicabilidad: Optional[str],
+    sellos_calculables_receta: bool,
+    mensaje_bloqueo_sellos: Optional[str],
     sellos: list[schemas.SelloRotuloItem],
     leyendas: list[schemas.SelloRotuloItem],
-) -> Optional[str]:
-    """Genera un aviso informativo para la Cara Principal cuando no corresponden sellos ni leyendas."""
+) -> tuple[Optional[str], bool]:
+    """Determina si el bloque de sellos es calculable y qué aviso mostrar cuando está vacío."""
     if sellos or leyendas:
-        return None
+        return None, True
     if not tiene_receta_activa:
-        return "Sin receta activa para evaluar rotulado frontal (Ley 27.642)."
+        return "Sin receta activa para evaluar rotulado frontal (Ley 27.642).", False
     if not modulo_octogonos_activo:
-        return "Módulo de octógonos desactivado en la configuración del sistema."
+        return "Módulo de octógonos desactivado en la configuración del sistema.", True
     if dictamen_aplicabilidad in ("NO_APLICA", "EXCEPTUADO"):
         if dictamen_titulo and motivo_aplicabilidad:
-            return f"{dictamen_titulo}: {motivo_aplicabilidad}"
-        return motivo_aplicabilidad or dictamen_titulo or "No corresponde rotulado frontal."
-    return "No corresponden sellos de advertencia ni leyendas precautorias según Ley 27.642."
+            return f"{dictamen_titulo}: {motivo_aplicabilidad}", True
+        return motivo_aplicabilidad or dictamen_titulo or "No corresponde rotulado frontal.", True
+    if not sellos_calculables_receta:
+        return (
+            mensaje_bloqueo_sellos
+            or "Hay datos nutricionales o equivalencias incompletas para calcular los sellos de advertencia y leyendas precautorias.",
+            False,
+        )
+    return "No corresponden sellos de advertencia ni leyendas precautorias según Ley 27.642.", True
 
 
 def _construir_nutricion_preview(
@@ -1143,6 +1151,8 @@ def obtener_vista_previa_rotulo(db: Session, producto_id: int) -> schemas.VistaP
     dictamen_aplicabilidad = auto.dictamen_aplicabilidad
     dictamen_titulo: Optional[str] = None
     motivo_aplicabilidad: Optional[str] = None
+    sellos_calculables_receta = False
+    mensaje_bloqueo_sellos: Optional[str] = None
 
     if auto.tiene_receta_activa and auto.receta_id is not None:
         aplicabilidad = rotulado_services.evaluar_aplicabilidad_frontal(db, auto.receta_id)
@@ -1151,12 +1161,18 @@ def obtener_vista_previa_rotulo(db: Session, producto_id: int) -> schemas.VistaP
         dictamen_titulo = aplicabilidad.dictamen_titulo
         motivo_aplicabilidad = aplicabilidad.motivo
 
-    aviso_sin_sellos = _construir_aviso_sin_sellos(
+        sellos_calc = rotulado_services.calcular_sellos_advertencia(db, auto.receta_id)
+        sellos_calculables_receta = sellos_calc.es_calculable
+        mensaje_bloqueo_sellos = _normalizar_texto(sellos_calc.mensaje_bloqueo)
+
+    aviso_sin_sellos, sellos_calculables = _construir_aviso_sin_sellos(
         tiene_receta_activa=auto.tiene_receta_activa,
         modulo_octogonos_activo=modulo_octogonos_activo,
         dictamen_aplicabilidad=dictamen_aplicabilidad,
         dictamen_titulo=dictamen_titulo,
         motivo_aplicabilidad=motivo_aplicabilidad,
+        sellos_calculables_receta=sellos_calculables_receta,
+        mensaje_bloqueo_sellos=mensaje_bloqueo_sellos,
         sellos=rotulo.sellos_advertencia_json,
         leyendas=rotulo.leyendas_precautorias_json,
     )
@@ -1170,6 +1186,7 @@ def obtener_vista_previa_rotulo(db: Session, producto_id: int) -> schemas.VistaP
         dictamen_aplicabilidad=dictamen_aplicabilidad,
         dictamen_titulo=dictamen_titulo,
         motivo_aplicabilidad=motivo_aplicabilidad,
+        sellos_calculables=sellos_calculables,
         sellos_advertencia=rotulo.sellos_advertencia_json,
         leyendas_precautorias=rotulo.leyendas_precautorias_json,
         aviso_sin_sellos=aviso_sin_sellos,
@@ -1228,4 +1245,163 @@ def obtener_vista_previa_rotulo(db: Session, producto_id: int) -> schemas.VistaP
         tabla_nutricional_incompleta=tabla_nutricional_incompleta,
         advertencias=advertencias,
         fecha_generacion=datetime.now(),
+    )
+
+
+def _construir_anexo_receta(
+    receta: Receta,
+    unidad_rendimiento: str,
+    version_parametro_frontal: Optional[str],
+) -> schemas.AnexoRecetaActivaOut:
+    """Construye el Anexo I: desglose de ingredientes y aditivos de la receta activa."""
+    insumos_map = recetas_services._consolidar_insumos_receta(receta)
+    ingredientes: list[schemas.InsumoAnexoRecetaOut] = []
+    aditivos: list[schemas.InsumoAnexoRecetaOut] = []
+
+    for data in insumos_map.values():
+        insumo = data["insumo"]
+        categoria_norm = (insumo.categoria or "").strip().lower()
+        es_aditivo = categoria_norm == "aditivo"
+        item = schemas.InsumoAnexoRecetaOut(
+            insumo_id=insumo.id,
+            nombre=insumo.nombre,
+            denominacion_rotulo=getattr(insumo, "denominacion_rotulo", None),
+            categoria=insumo.categoria,
+            es_aditivo=es_aditivo,
+            clase_funcional=getattr(insumo, "clase_funcional", None),
+            numero_ins=getattr(insumo, "numero_ins", None),
+            cantidad_nominal=round(float(data["cantidad_nominal"]), 4),
+            unidad_simbolo=insumo.unidad_medida.simbolo if insumo.unidad_medida else "",
+        )
+        if es_aditivo:
+            aditivos.append(item)
+        else:
+            ingredientes.append(item)
+
+    ingredientes.sort(key=lambda it: it.nombre.lower())
+    aditivos.sort(key=lambda it: it.nombre.lower())
+
+    return schemas.AnexoRecetaActivaOut(
+        receta_id=receta.id,
+        codigo_receta=receta.codigo_receta,
+        nombre_receta=receta.nombre_receta,
+        estado_receta=receta.estado.value if hasattr(receta.estado, "value") else str(receta.estado),
+        fecha_creacion=receta.fecha_creacion,
+        rendimiento_estandar=float(receta.rendimiento_estandar),
+        unidad_rendimiento=unidad_rendimiento or "g",
+        tamano_porcion=float(receta.tamano_porcion) if receta.tamano_porcion is not None else None,
+        version_parametro_frontal=version_parametro_frontal,
+        ingredientes=ingredientes,
+        aditivos=aditivos,
+    )
+
+
+def _construir_fuentes_nutricionales(
+    receta: Receta,
+) -> list[schemas.FuenteNutricionalInsumoOut]:
+    """Construye el listado de fuentes de datos nutricionales por insumo para el Anexo III."""
+    insumos_map = recetas_services._consolidar_insumos_receta(receta)
+    fuentes: list[schemas.FuenteNutricionalInsumoOut] = []
+
+    for data in insumos_map.values():
+        insumo = data["insumo"]
+        completa = bool(insumo.nutricion_completa)
+        faltantes = (
+            [] if completa else recetas_services._obtener_campos_faltantes_insumo(insumo)
+        )
+        fuentes.append(
+            schemas.FuenteNutricionalInsumoOut(
+                insumo_id=insumo.id,
+                nombre=insumo.nombre,
+                categoria=insumo.categoria,
+                nutricion_completa=completa,
+                fuente_nutricional=_normalizar_texto(
+                    getattr(insumo, "fuente_nutricional", None)
+                ),
+                es_nutricion_modificada=bool(
+                    getattr(insumo, "es_nutricion_modificada", False)
+                ),
+                fecha_carga_nutricional=getattr(insumo, "fecha_carga_nutricional", None),
+                fecha_modificacion_nutricional=getattr(
+                    insumo, "fecha_modificacion_nutricional", None
+                ),
+                campos_faltantes=faltantes,
+            )
+        )
+
+    fuentes.sort(key=lambda f: f.nombre.lower())
+    return fuentes
+
+
+def obtener_respaldo_calculo_rotulo(
+    db: Session,
+    producto_id: int,
+) -> schemas.RespaldoCalculoRotuloOut:
+    """Consolida la vista previa del borrador junto con los Anexos I a IV de respaldo de cálculo."""
+    producto = _obtener_producto(db, producto_id)
+    vista_previa = obtener_vista_previa_rotulo(db, producto_id)
+
+    receta_activa = db.scalar(
+        select(Receta)
+        .where(
+            Receta.producto_id == producto.id,
+            Receta.estado == EstadoReceta.ACTIVA,
+        )
+        .order_by(Receta.id.desc())
+    )
+
+    if receta_activa is None:
+        return schemas.RespaldoCalculoRotuloOut(
+            producto_id=producto.id,
+            producto_nombre=producto.nombre,
+            fecha_emision=datetime.now(),
+            leyenda_borrador_obligatoria=LEYENDA_BORRADOR_ROTULO,
+            codigo_receta_empleada=None,
+            version_parametros_aplicada=None,
+            tiene_receta_activa=False,
+            vista_previa=vista_previa,
+            anexo_receta=None,
+            anexo_composicion=None,
+            es_orden_ingredientes_manual=False,
+            anexo_nutricion=None,
+            anexo_memoria_sellos=None,
+        )
+
+    receta_completa = recetas_services.obtener_receta_por_id(db, receta_activa.id)
+    composicion = recetas_services.obtener_composicion_porcentual(db, receta_activa.id)
+    declaracion = recetas_services.obtener_declaracion_ingredientes(db, receta_activa.id)
+    info_nutricional = recetas_services.obtener_informacion_nutricional(db, receta_activa.id)
+    aplicabilidad = rotulado_services.evaluar_aplicabilidad_frontal(db, receta_activa.id)
+    sellos = rotulado_services.calcular_sellos_advertencia(db, receta_activa.id)
+
+    unidad_rendimiento = producto.unidad_medida.simbolo if producto.unidad_medida else "g"
+    version_parametros = sellos.version_normativa or aplicabilidad.version_normativa
+
+    anexo_receta = _construir_anexo_receta(
+        receta=receta_completa,
+        unidad_rendimiento=unidad_rendimiento,
+        version_parametro_frontal=version_parametros,
+    )
+    fuentes_nutricionales = _construir_fuentes_nutricionales(receta_completa)
+
+    return schemas.RespaldoCalculoRotuloOut(
+        producto_id=producto.id,
+        producto_nombre=producto.nombre,
+        fecha_emision=datetime.now(),
+        leyenda_borrador_obligatoria=LEYENDA_BORRADOR_ROTULO,
+        codigo_receta_empleada=receta_completa.codigo_receta,
+        version_parametros_aplicada=version_parametros,
+        tiene_receta_activa=True,
+        vista_previa=vista_previa,
+        anexo_receta=anexo_receta,
+        anexo_composicion=composicion,
+        es_orden_ingredientes_manual=declaracion.es_orden_manual,
+        anexo_nutricion=schemas.AnexoNutricionDetalladaOut(
+            informacion_nutricional=info_nutricional,
+            fuentes_datos_insumos=fuentes_nutricionales,
+        ),
+        anexo_memoria_sellos=schemas.AnexoMemoriaSellosOut(
+            aplicabilidad=aplicabilidad,
+            sellos=sellos,
+        ),
     )

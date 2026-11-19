@@ -39,6 +39,19 @@ def obtener_vista_previa_rotulo(
     return services.obtener_vista_previa_rotulo(db, producto_id)
 
 
+@router.get(
+    "/{producto_id}/rotulo/respaldo-calculo",
+    response_model=schemas.RespaldoCalculoRotuloOut,
+    summary="Obtener expediente de borrador del rótulo con anexos de respaldo de cálculo",
+)
+def obtener_respaldo_calculo_rotulo(
+    producto_id: int,
+    db: Session = Depends(get_db),
+):
+    """Consolida la vista previa del borrador junto con los Anexos I a IV de respaldo técnico."""
+    return services.obtener_respaldo_calculo_rotulo(db, producto_id)
+
+
 @router.put(
     "/{producto_id}/rotulo",
     response_model=schemas.RotuloProductoConsolidadoOut,

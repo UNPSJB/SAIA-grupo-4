@@ -53,7 +53,6 @@ def setup_vista_previa(session):
         config.direccion = "Av. Siempre Viva 742"
         config.localidad = "Córdoba"
         config.provincia = "Córdoba"
-        config.modulo_octogonos_activo = True
     session.commit()
 
     usuario = session.query(Persona).first()
@@ -265,6 +264,7 @@ def test_vista_previa_producto_no_aplica_muestra_aviso_informativo(setup_vista_p
 
     assert data["leyenda_borrador_obligatoria"] == LEYENDA_BORRADOR_ROTULO
     assert data["cara_principal"]["dictamen_aplicabilidad"] == "NO_APLICA"
+    assert data["cara_principal"]["sellos_calculables"] is True
     assert data["cara_principal"]["sellos_advertencia"] == []
     assert data["cara_principal"]["aviso_sin_sellos"] is not None
     assert len(data["cara_principal"]["aviso_sin_sellos"]) > 0
@@ -279,8 +279,64 @@ def test_vista_previa_producto_sin_receta_advierte_incompletitud(setup_vista_pre
 
     assert data["leyenda_borrador_obligatoria"] == LEYENDA_BORRADOR_ROTULO
     assert data["tiene_receta_activa"] is False
+    assert data["cara_principal"]["sellos_calculables"] is False
     assert data["tabla_nutricional_incompleta"] is True
     assert data["nutricion"]["es_completa"] is False
     assert data["nutricion"]["motivo_incompleta"] is not None
     assert data["completitud_caa"]["esta_completo"] is False
     assert len(data["advertencias"]) >= 3
+
+
+def test_vista_previa_aplica_con_nutricion_incompleta_advierte_en_cara_principal(session, setup_vista_previa):
+    um_masa = session.query(UnidadMedida).first()
+    usuario = session.query(Persona).first()
+    insumo_pend = Insumo(
+        nombre=generar_str("SesamoPend"),
+        denominacion_rotulo="Semillas de sésamo",
+        categoria="materia prima",
+        unidad_medida_id=um_masa.id,
+        disponible=True,
+    )
+    prod_pend = Producto(
+        nombre=generar_str("Pan Pendiente"),
+        descripcion="Aplica rotulado frontal pero sin nutrición completa",
+        unidad_medida_id=um_masa.id,
+        dias_vida_util=5,
+        envasado_ausencia_cliente=True,
+        activo=True,
+    )
+    session.add_all([insumo_pend, prod_pend])
+    session.commit()
+    session.refresh(insumo_pend)
+    session.refresh(prod_pend)
+
+    receta = Receta(
+        codigo_receta=generar_str("REC-INC"),
+        nombre_receta="Receta Pan Pendiente",
+        producto_id=prod_pend.id,
+        rendimiento_estandar=Decimal("500"),
+        tamano_porcion=Decimal("50"),
+        estado=EstadoReceta.ACTIVA,
+        usuario_creador_id=usuario.id,
+    )
+    session.add(receta)
+    session.flush()
+    paso = PasoReceta(
+        receta_id=receta.id,
+        numero_orden=1,
+        titulo="Mezcla",
+        instrucciones="Mezclar",
+    )
+    session.add(paso)
+    session.flush()
+    session.add(PasoInsumo(paso_id=paso.id, insumo_id=insumo_pend.id, cantidad_consumo_estimada=100))
+    session.commit()
+
+    res = client.get(f"/productos/{prod_pend.id}/rotulo/vista-previa")
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["cara_principal"]["dictamen_aplicabilidad"] == "APLICA"
+    assert data["cara_principal"]["sellos_calculables"] is False
+    assert data["cara_principal"]["sellos_advertencia"] == []
+    assert "No corresponden" not in (data["cara_principal"]["aviso_sin_sellos"] or "")

@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
+from src.recetas.schemas import ComposicionPorcentualOut, InformacionNutricionalOut
+from src.rotulado.schemas import AplicabilidadFrontalOut, SellosAdvertenciaOut
 from src.rotulado_producto.constants import CodigoAlergenoCAA, EstadoValidacionAlergenos
 
 
@@ -223,6 +225,7 @@ class CaraPrincipalRotuloOut(BaseModel):
     dictamen_aplicabilidad: Optional[str] = None
     dictamen_titulo: Optional[str] = None
     motivo_aplicabilidad: Optional[str] = None
+    sellos_calculables: bool = True
     sellos_advertencia: list[SelloRotuloItem] = []
     leyendas_precautorias: list[SelloRotuloItem] = []
     aviso_sin_sellos: Optional[str] = None
@@ -283,5 +286,73 @@ class VistaPreviaRotuloOut(BaseModel):
     tabla_nutricional_incompleta: bool
     advertencias: list[str] = []
     fecha_generacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InsumoAnexoRecetaOut(BaseModel):
+    insumo_id: int
+    nombre: str
+    denominacion_rotulo: Optional[str] = None
+    categoria: str
+    es_aditivo: bool = False
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+    cantidad_nominal: float
+    unidad_simbolo: str
+
+
+class AnexoRecetaActivaOut(BaseModel):
+    receta_id: int
+    codigo_receta: str
+    nombre_receta: str
+    estado_receta: str
+    fecha_creacion: datetime
+    rendimiento_estandar: float
+    unidad_rendimiento: str
+    tamano_porcion: Optional[float] = None
+    version_parametro_frontal: Optional[str] = None
+    ingredientes: list[InsumoAnexoRecetaOut] = []
+    aditivos: list[InsumoAnexoRecetaOut] = []
+
+
+class FuenteNutricionalInsumoOut(BaseModel):
+    insumo_id: int
+    nombre: str
+    categoria: str
+    nutricion_completa: bool
+    fuente_nutricional: Optional[str] = None
+    es_nutricion_modificada: bool = False
+    fecha_carga_nutricional: Optional[datetime] = None
+    fecha_modificacion_nutricional: Optional[datetime] = None
+    campos_faltantes: list[str] = []
+
+
+class AnexoNutricionDetalladaOut(BaseModel):
+    informacion_nutricional: InformacionNutricionalOut
+    fuentes_datos_insumos: list[FuenteNutricionalInsumoOut] = []
+
+
+class AnexoMemoriaSellosOut(BaseModel):
+    aplicabilidad: AplicabilidadFrontalOut
+    sellos: SellosAdvertenciaOut
+
+
+class RespaldoCalculoRotuloOut(BaseModel):
+    producto_id: int
+    producto_nombre: str
+    fecha_emision: datetime
+    leyenda_borrador_obligatoria: str
+    codigo_receta_empleada: Optional[str] = None
+    version_parametros_aplicada: Optional[str] = None
+    tiene_receta_activa: bool
+
+    vista_previa: VistaPreviaRotuloOut
+
+    anexo_receta: Optional[AnexoRecetaActivaOut] = None
+    anexo_composicion: Optional[ComposicionPorcentualOut] = None
+    es_orden_ingredientes_manual: bool = False
+    anexo_nutricion: Optional[AnexoNutricionDetalladaOut] = None
+    anexo_memoria_sellos: Optional[AnexoMemoriaSellosOut] = None
 
     model_config = ConfigDict(from_attributes=True)
