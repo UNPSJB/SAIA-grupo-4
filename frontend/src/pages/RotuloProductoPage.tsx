@@ -1,13 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Badge, Box, Button, Heading, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiArrowLeft, FiEdit3, FiEye, FiPrinter, FiTag } from "react-icons/fi";
+import {
+  Badge,
+  Box,
+  Button,
+  Heading,
+  HStack,
+  Menu,
+  Portal,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import {
+  FiArrowLeft,
+  FiChevronDown,
+  FiEdit3,
+  FiEye,
+  FiFileText,
+  FiPrinter,
+  FiTag,
+} from "react-icons/fi";
 import { AlertMessage, LoadingState } from "../components/ui";
 import { RotuloProductoForm } from "../features/productos/components/RotuloProductoForm";
 import { DocumentoRotuloBorrador } from "../features/productos/components/rotulo/DocumentoRotuloBorrador";
 import { RotuloBorradorPrint } from "../features/productos/components/rotulo/RotuloBorradorPrint";
+import { RotuloRespaldoPrint } from "../features/productos/components/rotulo/RotuloRespaldoPrint";
 import { rotuloProductoApi } from "../features/productos/hooks/rotuloProductoApi";
 import type {
+  RespaldoCalculoRotulo,
   RotuloProductoConsolidado,
   RotuloProductoUpdate,
   VistaPreviaRotulo,
@@ -15,6 +35,7 @@ import type {
 import { imprimirInforme } from "../utils/imprimirInforme";
 
 type ModoVistaRotulo = "editar" | "previa";
+type ModoImpresionRotulo = "borrador" | "respaldo";
 
 export default function RotuloProductoPage() {
   const { productoId } = useParams<{ productoId: string }>();
@@ -42,6 +63,12 @@ export default function RotuloProductoPage() {
   const [vistaPrevia, setVistaPrevia] = useState<VistaPreviaRotulo | null>(null);
   const [cargandoPreview, setCargandoPreview] = useState(false);
   const [errorPreview, setErrorPreview] = useState("");
+
+  const [respaldoCalculo, setRespaldoCalculo] =
+    useState<RespaldoCalculoRotulo | null>(null);
+  const [cargandoRespaldo, setCargandoRespaldo] = useState(false);
+  const [modoImpresion, setModoImpresion] =
+    useState<ModoImpresionRotulo>("borrador");
 
   useEffect(() => {
     if (!idNumerico || Number.isNaN(idNumerico)) {
@@ -124,6 +151,7 @@ export default function RotuloProductoPage() {
       );
       setRotulo(actualizado);
       setVistaPrevia(null);
+      setRespaldoCalculo(null);
       setMensajeExito(
         actualizado.completitud_caa.esta_completo
           ? "Datos del rótulo guardados con completitud normativa del 100%."
@@ -140,9 +168,45 @@ export default function RotuloProductoPage() {
     }
   };
 
-  const handleImprimir = () => {
+  const dispararImpresionTrasRender = (nombreArchivo: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        imprimirInforme(nombreArchivo);
+      });
+    });
+  };
+
+  const handleImprimirBorrador = () => {
     if (!vistaPrevia) return;
-    imprimirInforme(`Borrador Rotulo - ${vistaPrevia.producto_nombre}`);
+    setModoImpresion("borrador");
+    dispararImpresionTrasRender(
+      `Borrador Rotulo - ${vistaPrevia.producto_nombre}`,
+    );
+  };
+
+  const handleExportarConRespaldo = async () => {
+    if (!idNumerico || Number.isNaN(idNumerico)) return;
+    setCargandoRespaldo(true);
+    setErrorPreview("");
+    try {
+      const data = await rotuloProductoApi.obtenerRespaldoCalculo(idNumerico);
+      setRespaldoCalculo(data);
+      setModoImpresion("respaldo");
+      const sufijoReceta = data.codigo_receta_empleada
+        ? ` - ${data.codigo_receta_empleada}`
+        : "";
+      dispararImpresionTrasRender(
+        `Respaldo Calculo Rotulo - ${data.producto_nombre}${sufijoReceta}`,
+      );
+    } catch (err: unknown) {
+      setErrorPreview(
+        err instanceof Error
+          ? err.message
+          : "No se pudo generar el expediente de respaldo de cálculo.",
+      );
+    } finally {
+      setCargandoRespaldo(false);
+    }
   };
 
   return (
@@ -156,7 +220,7 @@ export default function RotuloProductoPage() {
         w="100%"
       >
         <VStack align="stretch" gap={5} w="100%">
-          <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
+          <HStack justify="space-between" align="flex-start" flexWrap="wrap" gap={3}>
             <Button
               variant="outline"
               colorPalette="green"
@@ -194,15 +258,58 @@ export default function RotuloProductoPage() {
                 </HStack>
 
                 {modoVista === "previa" && (
-                  <Button
-                    size="sm"
-                    variant="solid"
-                    colorPalette="blue"
-                    onClick={handleImprimir}
-                    disabled={!vistaPrevia || cargandoPreview}
-                  >
-                    <FiPrinter /> Imprimir / Guardar PDF
-                  </Button>
+                  <Menu.Root>
+                    <Menu.Trigger asChild>
+                      <Button
+                        size="sm"
+                        variant="solid"
+                        colorPalette="blue"
+                        disabled={!vistaPrevia || cargandoPreview || cargandoRespaldo}
+                      >
+                        <FiPrinter />
+                        {cargandoRespaldo
+                          ? "Generando respaldo..."
+                          : "Exportar / Imprimir PDF"}
+                        <FiChevronDown />
+                      </Button>
+                    </Menu.Trigger>
+                    <Portal>
+                      <Menu.Positioner>
+                        <Menu.Content minW="270px">
+                          <Menu.Item
+                            value="borrador"
+                            onSelect={handleImprimirBorrador}
+                            disabled={!vistaPrevia || cargandoRespaldo}
+                          >
+                            <FiPrinter />
+                            <Box>
+                              <Text fontWeight="medium">
+                                Imprimir / Guardar borrador PDF
+                              </Text>
+                              <Text fontSize="xs" color="gray.500">
+                                Solo maqueta del rótulo (cara informativa y principal)
+                              </Text>
+                            </Box>
+                          </Menu.Item>
+                          <Menu.Item
+                            value="respaldo"
+                            onSelect={() => void handleExportarConRespaldo()}
+                            disabled={!vistaPrevia || cargandoRespaldo}
+                          >
+                            <FiFileText />
+                            <Box>
+                              <Text fontWeight="medium">
+                                Exportar PDF con respaldo de cálculo
+                              </Text>
+                              <Text fontSize="xs" color="gray.500">
+                                Maqueta + anexos de receta, composición, nutrición y sellos
+                              </Text>
+                            </Box>
+                          </Menu.Item>
+                        </Menu.Content>
+                      </Menu.Positioner>
+                    </Portal>
+                  </Menu.Root>
                 )}
               </VStack>
             )}
@@ -267,7 +374,11 @@ export default function RotuloProductoPage() {
         </VStack>
       </Box>
 
-      {vistaPrevia && <RotuloBorradorPrint vistaPrevia={vistaPrevia} />}
+      {modoImpresion === "respaldo" && respaldoCalculo ? (
+        <RotuloRespaldoPrint respaldo={respaldoCalculo} />
+      ) : (
+        vistaPrevia && <RotuloBorradorPrint vistaPrevia={vistaPrevia} />
+      )}
     </>
   );
 }

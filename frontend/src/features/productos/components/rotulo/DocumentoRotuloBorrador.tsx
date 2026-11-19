@@ -19,6 +19,7 @@ import type { VistaPreviaRotulo } from "../../types";
 interface DocumentoRotuloBorradorProps {
   vistaPrevia: VistaPreviaRotulo;
   modoImpresion?: boolean;
+  ocultarFranjaBorradorSuperior?: boolean;
 }
 
 function ValorODatoFaltante({
@@ -51,6 +52,7 @@ function formatearTemperatura(
 export function DocumentoRotuloBorrador({
   vistaPrevia,
   modoImpresion = false,
+  ocultarFranjaBorradorSuperior = false,
 }: DocumentoRotuloBorradorProps) {
   const {
     cara_principal: caraPrincipal,
@@ -71,6 +73,12 @@ export function DocumentoRotuloBorrador({
     cons.temp_conservacion_max_c,
   );
 
+  const tieneSellosOLeyendas =
+    caraPrincipal.sellos_advertencia.length > 0 ||
+    caraPrincipal.leyendas_precautorias.length > 0;
+  const sellosIncompletos =
+    !tieneSellosOLeyendas && caraPrincipal.sellos_calculables === false;
+
   const panelCaraPrincipal = (
     <Box
       bg='white'
@@ -80,11 +88,6 @@ export function DocumentoRotuloBorrador({
       p={modoImpresion ? 5 : 5}
       boxShadow={modoImpresion ? "none" : "sm"}
       breakInside='avoid'
-      style={
-        modoImpresion
-          ? { breakBefore: "page", pageBreakBefore: "always" }
-          : undefined
-      }
     >
       <HStack justify='space-between' mb={3}>
         <Text
@@ -115,19 +118,18 @@ export function DocumentoRotuloBorrador({
       <Box
         minH='120px'
         borderWidth='1px'
-        borderStyle='dashed'
-        borderColor='gray.300'
+        borderStyle={sellosIncompletos ? "solid" : "dashed"}
+        borderColor={sellosIncompletos ? "orange.400" : "gray.300"}
         borderRadius='md'
         p={4}
         mb={5}
-        bg='gray.50'
+        bg={sellosIncompletos ? "orange.50" : "gray.50"}
         style={{
           WebkitPrintColorAdjust: "exact",
           printColorAdjust: "exact",
         }}
       >
-        {caraPrincipal.sellos_advertencia.length > 0 ||
-        caraPrincipal.leyendas_precautorias.length > 0 ? (
+        {tieneSellosOLeyendas ? (
           <VStack gap={4} align='center'>
             {caraPrincipal.sellos_advertencia.length > 0 && (
               <Flex wrap='wrap' gap={3} justify='center' align='center'>
@@ -152,6 +154,21 @@ export function DocumentoRotuloBorrador({
               </Flex>
             )}
           </VStack>
+        ) : sellosIncompletos ? (
+          <HStack gap={2.5} align='start' color='orange.900'>
+            <Box mt='3px' flexShrink={0} color='orange.600'>
+              <FiAlertTriangle size={18} />
+            </Box>
+            <VStack align='start' gap={0.5}>
+              <Text fontSize='sm' fontWeight='semibold' color='orange.900'>
+                Cálculo de sellos pendiente por datos incompletos
+              </Text>
+              <Text fontSize='sm' color='orange.800'>
+                {caraPrincipal.aviso_sin_sellos ||
+                  "Faltan datos nutricionales o equivalencias en la receta para determinar si corresponden sellos de advertencia."}
+              </Text>
+            </VStack>
+          </HStack>
         ) : (
           <HStack gap={2.5} align='start' color='gray.700'>
             <Box mt='3px' flexShrink={0}>
@@ -211,6 +228,11 @@ export function DocumentoRotuloBorrador({
       borderRadius='md'
       p={modoImpresion ? 4 : 5}
       boxShadow={modoImpresion ? "none" : "sm"}
+      style={
+        modoImpresion
+          ? { breakBefore: "page", pageBreakBefore: "always" }
+          : undefined
+      }
     >
       <Text
         fontSize='xs'
@@ -231,9 +253,6 @@ export function DocumentoRotuloBorrador({
             color='gray.900'
             lineHeight={modoImpresion ? "1.45" : "1.6"}
           >
-            <Text as='span' fontWeight='bold'>
-              INGREDIENTES:{" "}
-            </Text>
             <ValorODatoFaltante
               valor={vistaPrevia.lista_ingredientes_texto}
               faltante='Lista de ingredientes no declarada'
@@ -522,28 +541,30 @@ export function DocumentoRotuloBorrador({
   return (
     <VStack align='stretch' gap={modoImpresion ? 3 : 5} w='100%'>
       {/* Franja superior INMUTABLE de BORRADOR */}
-      <Box
-        bg='orange.100'
-        borderRadius='md'
-        px={4}
-        py={3}
-        style={{
-          WebkitPrintColorAdjust: "exact",
-          printColorAdjust: "exact",
-        }}
-      >
-        <HStack gap={2.5} align='center' justify='center' textAlign='center'>
-          <FiInfo size={18} color='#9c4221' />
-          <Text
-            fontSize={modoImpresion ? "xs" : "sm"}
-            fontWeight='bold'
-            color='orange.700'
-            letterSpacing='0.02em'
-          >
-            {vistaPrevia.leyenda_borrador_obligatoria}
-          </Text>
-        </HStack>
-      </Box>
+      {!ocultarFranjaBorradorSuperior && (
+        <Box
+          bg='orange.100'
+          borderRadius='md'
+          px={4}
+          py={3}
+          style={{
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact",
+          }}
+        >
+          <HStack gap={2.5} align='center' justify='center' textAlign='center'>
+            <FiInfo size={18} color='#9c4221' />
+            <Text
+              fontSize={modoImpresion ? "xs" : "sm"}
+              fontWeight='bold'
+              color='orange.700'
+              letterSpacing='0.02em'
+            >
+              {vistaPrevia.leyenda_borrador_obligatoria}
+            </Text>
+          </HStack>
+        </Box>
+      )}
 
       {/* Banner destacado de completitud / advertencias (Criterio 4) */}
       {tieneAdvertencias && (
@@ -588,19 +609,9 @@ export function DocumentoRotuloBorrador({
         </Box>
       )}
 
-      {/* En pantalla: Cara Principal (con sellos) encima de la Cara de Información Reglamentaria.
-          En PDF: Cara de Información Reglamentaria en la 1ª página y Cara Principal en la 2ª página. */}
-      {modoImpresion ? (
-        <>
-          {panelInformacionReglamentaria}
-          {panelCaraPrincipal}
-        </>
-      ) : (
-        <>
-          {panelCaraPrincipal}
-          {panelInformacionReglamentaria}
-        </>
-      )}
+      {/* En pantalla y en PDF: primero la Cara Principal (con los sellos) y luego la Cara de Información Reglamentaria */}
+      {panelCaraPrincipal}
+      {panelInformacionReglamentaria}
     </VStack>
   );
 }

@@ -1,6 +1,7 @@
 import { BASE_URL, JSON_HEADERS } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
 import type {
+  RespaldoCalculoRotulo,
   RotuloProductoConsolidado,
   RotuloProductoUpdate,
   VistaPreviaRotulo,
@@ -53,6 +54,23 @@ export const rotuloProductoApi = {
         await extraerError(
           res,
           "No se pudo generar la vista previa del borrador del rótulo.",
+        ),
+      );
+    }
+    return res.json();
+  },
+
+  async obtenerRespaldoCalculo(
+    productoId: number,
+  ): Promise<RespaldoCalculoRotulo> {
+    const res = await apiFetch(
+      `${BASE_URL}/productos/${productoId}/rotulo/respaldo-calculo`,
+    );
+    if (!res.ok) {
+      throw new Error(
+        await extraerError(
+          res,
+          "No se pudo generar el expediente de respaldo de cálculo del rótulo.",
         ),
       );
     }

@@ -1,4 +1,10 @@
 import type { CodigoAlergenoCAA } from "../insumo/types";
+import type {
+    AplicabilidadFrontalOut,
+    ComposicionPorcentualResponse,
+    InformacionNutricionalResponse,
+    SellosAdvertenciaOut,
+} from "../recetas/types";
 import type { UnidadMedida } from "../unidadMedida/types";
 
 export interface Producto {
@@ -235,6 +241,7 @@ export interface CaraPrincipalRotulo {
     dictamen_aplicabilidad?: string | null;
     dictamen_titulo?: string | null;
     motivo_aplicabilidad?: string | null;
+    sellos_calculables?: boolean;
     sellos_advertencia: SelloRotuloItem[];
     leyendas_precautorias: SelloRotuloItem[];
     aviso_sin_sellos?: string | null;
@@ -292,4 +299,68 @@ export interface VistaPreviaRotulo {
     tabla_nutricional_incompleta: boolean;
     advertencias: string[];
     fecha_generacion: string;
+}
+
+export interface InsumoAnexoReceta {
+    insumo_id: number;
+    nombre: string;
+    denominacion_rotulo?: string | null;
+    categoria: string;
+    es_aditivo: boolean;
+    clase_funcional?: string | null;
+    numero_ins?: string | null;
+    cantidad_nominal: number;
+    unidad_simbolo: string;
+}
+
+export interface AnexoRecetaActiva {
+    receta_id: number;
+    codigo_receta: string;
+    nombre_receta: string;
+    estado_receta: string;
+    fecha_creacion: string;
+    rendimiento_estandar: number;
+    unidad_rendimiento: string;
+    tamano_porcion?: number | null;
+    version_parametro_frontal?: string | null;
+    ingredientes: InsumoAnexoReceta[];
+    aditivos: InsumoAnexoReceta[];
+}
+
+export interface FuenteNutricionalInsumo {
+    insumo_id: number;
+    nombre: string;
+    categoria: string;
+    nutricion_completa: boolean;
+    fuente_nutricional?: string | null;
+    es_nutricion_modificada: boolean;
+    fecha_carga_nutricional?: string | null;
+    fecha_modificacion_nutricional?: string | null;
+    campos_faltantes: string[];
+}
+
+export interface AnexoNutricionDetallada {
+    informacion_nutricional: InformacionNutricionalResponse;
+    fuentes_datos_insumos: FuenteNutricionalInsumo[];
+}
+
+export interface AnexoMemoriaSellos {
+    aplicabilidad: AplicabilidadFrontalOut;
+    sellos: SellosAdvertenciaOut;
+}
+
+export interface RespaldoCalculoRotulo {
+    producto_id: number;
+    producto_nombre: string;
+    fecha_emision: string;
+    leyenda_borrador_obligatoria: string;
+    codigo_receta_empleada?: string | null;
+    version_parametros_aplicada?: string | null;
+    tiene_receta_activa: boolean;
+    vista_previa: VistaPreviaRotulo;
+    anexo_receta?: AnexoRecetaActiva | null;
+    anexo_composicion?: ComposicionPorcentualResponse | null;
+    es_orden_ingredientes_manual: boolean;
+    anexo_nutricion?: AnexoNutricionDetallada | null;
+    anexo_memoria_sellos?: AnexoMemoriaSellos | null;
 }
