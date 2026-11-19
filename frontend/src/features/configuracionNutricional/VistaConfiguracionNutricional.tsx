@@ -12,8 +12,8 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { FiRefreshCw, FiSave, FiSliders } from "react-icons/fi";
-import { AlertConfirm, AlertMessage, LoadingState } from "../../components/ui";
+import { FiRotateCcw, FiSave, FiSliders } from "react-icons/fi";
+import { AlertMessage, LoadingState } from "../../components/ui";
 import { configuracionNutricionalApi } from "./hooks/configuracionNutricionalApi";
 import type { ParametroNutricional } from "./types";
 
@@ -50,7 +50,9 @@ const aEditable = (items: ParametroNutricional[]): ParametroEditable[] =>
     vdr: p.vdr != null ? String(p.vdr) : "",
     decimales: String(p.decimales),
     umbral_no_significativo:
-      p.umbral_no_significativo != null ? String(p.umbral_no_significativo) : "",
+      p.umbral_no_significativo != null
+        ? String(p.umbral_no_significativo)
+        : "",
     texto_no_significativo: p.texto_no_significativo ?? "",
     factor_conversion_kj:
       p.factor_conversion_kj != null ? String(p.factor_conversion_kj) : "",
@@ -67,7 +69,6 @@ export const VistaConfiguracionNutricional = () => {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensajeExito, setMensajeExito] = useState("");
-  const [confirmRestaurar, setConfirmRestaurar] = useState(false);
 
   const actualizarMetaModificacion = (items: ParametroNutricional[]) => {
     const conFecha = items.filter((p) => p.fecha_modificacion);
@@ -142,9 +143,16 @@ export const VistaConfiguracionNutricional = () => {
             `Los decimales de '${f.nombre_etiqueta}' deben ser un entero entre 0 y 3.`,
           );
         }
-        const vdrNum = f.permite_vdr && f.vdr.trim() !== "" ? Number(f.vdr) : null;
-        if (f.permite_vdr && vdrNum !== null && (Number.isNaN(vdrNum) || vdrNum <= 0)) {
-          throw new Error(`El VDR de '${f.nombre_etiqueta}' debe ser mayor a 0.`);
+        const vdrNum =
+          f.permite_vdr && f.vdr.trim() !== "" ? Number(f.vdr) : null;
+        if (
+          f.permite_vdr &&
+          vdrNum !== null &&
+          (Number.isNaN(vdrNum) || vdrNum <= 0)
+        ) {
+          throw new Error(
+            `El VDR de '${f.nombre_etiqueta}' debe ser mayor a 0.`,
+          );
         }
         const umbralNum =
           f.umbral_no_significativo.trim() !== ""
@@ -156,7 +164,8 @@ export const VistaConfiguracionNutricional = () => {
           );
         }
         const factorKj =
-          f.codigo_nutriente === "valor_energetico" && f.factor_conversion_kj.trim() !== ""
+          f.codigo_nutriente === "valor_energetico" &&
+          f.factor_conversion_kj.trim() !== ""
             ? Number(f.factor_conversion_kj)
             : null;
         if (factorKj !== null && (Number.isNaN(factorKj) || factorKj <= 0)) {
@@ -173,7 +182,8 @@ export const VistaConfiguracionNutricional = () => {
         };
       });
 
-      const actualizados = await configuracionNutricionalApi.actualizarParametros(payload);
+      const actualizados =
+        await configuracionNutricionalApi.actualizarParametros(payload);
       const editables = aEditable(actualizados);
       setFilas(editables);
       setFilasIniciales(editables);
@@ -190,27 +200,10 @@ export const VistaConfiguracionNutricional = () => {
     }
   };
 
-  const handleRestaurar = async () => {
-    setConfirmRestaurar(false);
+  const handleRestaurar = () => {
     setError("");
     setMensajeExito("");
-    setGuardando(true);
-    try {
-      const restaurados = await configuracionNutricionalApi.restaurarDefecto();
-      const editables = aEditable(restaurados);
-      setFilas(editables);
-      setFilasIniciales(editables);
-      actualizarMetaModificacion(restaurados);
-      setMensajeExito("Se restauraron los valores normativos CAA / Mercosur por defecto.");
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "No se pudieron restaurar los valores por defecto.",
-      );
-    } finally {
-      setGuardando(false);
-    }
+    setFilas(filasIniciales.map((item) => ({ ...item })));
   };
 
   const hayCambios =
@@ -221,29 +214,34 @@ export const VistaConfiguracionNutricional = () => {
         !ini ||
         f.vdr.trim() !== ini.vdr.trim() ||
         f.decimales.trim() !== ini.decimales.trim() ||
-        f.umbral_no_significativo.trim() !== ini.umbral_no_significativo.trim() ||
+        f.umbral_no_significativo.trim() !==
+          ini.umbral_no_significativo.trim() ||
         f.texto_no_significativo.trim() !== ini.texto_no_significativo.trim() ||
         f.factor_conversion_kj.trim() !== ini.factor_conversion_kj.trim()
       );
     });
 
   return (
-    <Card.Root variant="outline" bg="white" shadow="xs">
+    <Card.Root variant='outline' bg='white' shadow='xs'>
       <Card.Header pb={3}>
-        <HStack justify="space-between" flexWrap="wrap" gap={3}>
+        <HStack justify='space-between' flexWrap='wrap' gap={3}>
           <HStack gap={2.5}>
-            <Icon as={FiSliders} boxSize={5} color="teal.600" />
+            <Icon as={FiSliders} boxSize={5} color='teal.600' />
             <Box>
-              <Heading size="md" color="gray.800">
+              <Heading size='md' color='gray.800'>
                 Configuración Nutricional (CAA / Mercosur)
               </Heading>
-              <Text fontSize="sm" color="gray.600">
-                Parámetros normativos (dieta 2.000 kcal), redondeo y umbrales de cantidad no significativa.
+              <Text fontSize='sm' color='gray.600'>
+                Parámetros normativos (dieta 2.000 kcal), redondeo y umbrales de
+                cantidad no significativa.
               </Text>
               {ultimaModificacion && (
-                <Text fontSize="xs" color="gray.500" mt={0.5}>
-                  Última modificación: {formatearFechaHoraLocal(ultimaModificacion.fecha)}
-                  {ultimaModificacion.autor ? ` por ${ultimaModificacion.autor}` : ""}
+                <Text fontSize='xs' color='gray.500' mt={0.5}>
+                  Última modificación:{" "}
+                  {formatearFechaHoraLocal(ultimaModificacion.fecha)}
+                  {ultimaModificacion.autor
+                    ? ` por ${ultimaModificacion.autor}`
+                    : ""}
                 </Text>
               )}
             </Box>
@@ -251,18 +249,16 @@ export const VistaConfiguracionNutricional = () => {
 
           <HStack gap={2}>
             <Button
-              variant="outline"
-              colorPalette="gray"
-              size="sm"
-              onClick={() => setConfirmRestaurar(true)}
-              disabled={loading || guardando}
+              variant='outline'
+              colorPalette='gray'
+              onClick={handleRestaurar}
+              disabled={loading || guardando || !hayCambios}
             >
-              <Icon as={FiRefreshCw} />
-              Restaurar CAA / Mercosur
+              <FiRotateCcw />
+              Restaurar
             </Button>
             <Button
-              colorPalette="green"
-              size="sm"
+              colorPalette='green'
               onClick={handleGuardar}
               loading={guardando}
               disabled={loading || !hayCambios}
@@ -275,25 +271,29 @@ export const VistaConfiguracionNutricional = () => {
       </Card.Header>
 
       <Card.Body pt={0}>
-        <VStack align="stretch" gap={4}>
-          {error && <AlertMessage type="error" message={error} />}
-          {mensajeExito && <AlertMessage type="success" message={mensajeExito} />}
+        <VStack align='stretch' gap={4}>
+          {error && <AlertMessage type='error' message={error} />}
+          {mensajeExito && (
+            <AlertMessage type='success' message={mensajeExito} />
+          )}
 
           {loading ? (
-            <LoadingState message="Cargando parámetros nutricionales..." />
+            <LoadingState message='Cargando parámetros nutricionales...' />
           ) : (
             <Box
-              overflowX="auto"
-              borderWidth="1px"
-              borderColor="gray.200"
-              borderRadius="md"
+              overflowX='auto'
+              borderWidth='1px'
+              borderColor='gray.200'
+              borderRadius='md'
             >
-              <Table.Root size="sm" variant="line">
-                <Table.Header bg="gray.50">
+              <Table.Root size='sm' variant='line'>
+                <Table.Header bg='gray.50'>
                   <Table.Row>
                     <Table.ColumnHeader>Nutriente</Table.ColumnHeader>
                     <Table.ColumnHeader>Unidad</Table.ColumnHeader>
-                    <Table.ColumnHeader>VDR (Dieta 2.000 kcal)</Table.ColumnHeader>
+                    <Table.ColumnHeader>
+                      VDR (Dieta 2.000 kcal)
+                    </Table.ColumnHeader>
                     <Table.ColumnHeader>Decimales</Table.ColumnHeader>
                     <Table.ColumnHeader>Umbral no sig.</Table.ColumnHeader>
                     <Table.ColumnHeader>Texto no sig.</Table.ColumnHeader>
@@ -304,54 +304,70 @@ export const VistaConfiguracionNutricional = () => {
                   {filas.map((fila) => (
                     <Table.Row key={fila.codigo_nutriente}>
                       <Table.Cell
-                        pl={fila.nivel_indentacion === 0 ? 3 : fila.nivel_indentacion === 1 ? 7 : 10}
-                        fontWeight={fila.nivel_indentacion === 0 ? "semibold" : "normal"}
-                        fontSize="sm"
-                        color="gray.800"
-                        whiteSpace="nowrap"
+                        pl={
+                          fila.nivel_indentacion === 0
+                            ? 3
+                            : fila.nivel_indentacion === 1
+                              ? 7
+                              : 10
+                        }
+                        fontWeight={
+                          fila.nivel_indentacion === 0 ? "semibold" : "normal"
+                        }
+                        fontSize='sm'
+                        color='gray.800'
+                        whiteSpace='nowrap'
                       >
                         {fila.nombre_etiqueta}
                       </Table.Cell>
-                      <Table.Cell fontSize="sm" color="gray.600">
+                      <Table.Cell fontSize='sm' color='gray.600'>
                         {fila.unidad}
                       </Table.Cell>
-                      <Table.Cell minW="140px">
+                      <Table.Cell minW='140px'>
                         {fila.permite_vdr ? (
                           <Input
-                            size="xs"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
+                            size='xs'
+                            type='number'
+                            step='0.01'
+                            min='0.01'
                             value={fila.vdr}
                             onChange={(e) =>
-                              actualizarCampo(fila.codigo_nutriente, "vdr", e.target.value)
+                              actualizarCampo(
+                                fila.codigo_nutriente,
+                                "vdr",
+                                e.target.value,
+                              )
                             }
                           />
                         ) : (
-                          <Badge colorPalette="gray" variant="subtle" size="sm">
+                          <Badge colorPalette='gray' variant='subtle' size='sm'>
                             No aplica (CAA)
                           </Badge>
                         )}
                       </Table.Cell>
-                      <Table.Cell w="90px">
+                      <Table.Cell w='90px'>
                         <Input
-                          size="xs"
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="3"
+                          size='xs'
+                          type='number'
+                          step='1'
+                          min='0'
+                          max='3'
                           value={fila.decimales}
                           onChange={(e) =>
-                            actualizarCampo(fila.codigo_nutriente, "decimales", e.target.value)
+                            actualizarCampo(
+                              fila.codigo_nutriente,
+                              "decimales",
+                              e.target.value,
+                            )
                           }
                         />
                       </Table.Cell>
-                      <Table.Cell w="120px">
+                      <Table.Cell w='120px'>
                         <Input
-                          size="xs"
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          size='xs'
+                          type='number'
+                          step='0.01'
+                          min='0'
                           value={fila.umbral_no_significativo}
                           onChange={(e) =>
                             actualizarCampo(
@@ -362,9 +378,9 @@ export const VistaConfiguracionNutricional = () => {
                           }
                         />
                       </Table.Cell>
-                      <Table.Cell minW="160px">
+                      <Table.Cell minW='160px'>
                         <Input
-                          size="xs"
+                          size='xs'
                           value={fila.texto_no_significativo}
                           placeholder='Ej. "0"'
                           onChange={(e) =>
@@ -376,13 +392,13 @@ export const VistaConfiguracionNutricional = () => {
                           }
                         />
                       </Table.Cell>
-                      <Table.Cell w="110px">
+                      <Table.Cell w='110px'>
                         {fila.codigo_nutriente === "valor_energetico" ? (
                           <Input
-                            size="xs"
-                            type="number"
-                            step="0.001"
-                            min="0.001"
+                            size='xs'
+                            type='number'
+                            step='0.001'
+                            min='0.001'
                             value={fila.factor_conversion_kj}
                             onChange={(e) =>
                               actualizarCampo(
@@ -393,7 +409,7 @@ export const VistaConfiguracionNutricional = () => {
                             }
                           />
                         ) : (
-                          <Text fontSize="xs" color="gray.400">
+                          <Text fontSize='xs' color='gray.400'>
                             —
                           </Text>
                         )}
@@ -406,15 +422,6 @@ export const VistaConfiguracionNutricional = () => {
           )}
         </VStack>
       </Card.Body>
-
-      <AlertConfirm
-        open={confirmRestaurar}
-        onCancel={() => setConfirmRestaurar(false)}
-        onConfirm={handleRestaurar}
-        title="Restaurar valores por defecto"
-        message="¿Estás seguro de restablecer todos los parámetros a los valores por defecto del CAA? Se perderán las personalizaciones."
-        confirmLabel="Restaurar"
-      />
     </Card.Root>
   );
 };
