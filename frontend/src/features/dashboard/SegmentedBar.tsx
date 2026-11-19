@@ -1,5 +1,6 @@
 import { Box, Flex, Text, VStack } from "@chakra-ui/react";
 import { getChartColor } from "./utils/chartColors";
+import type { TamanoFijo } from "./types";
 
 // Datos para cada segmento de la barra
 interface SegmentoBarra {
@@ -11,6 +12,11 @@ interface SegmentoBarra {
 interface SegmentedBarProps {
   segmentos: SegmentoBarra[];
   mostrarLeyenda?: boolean;
+  /**
+   * Modo impresión: usa este ancho fijo. La barra es HTML y no necesita medir
+   * su contenedor, pero así queda del mismo ancho que los demás gráficos.
+   */
+  fixedSize?: TamanoFijo;
 }
 
 // Barra segmentada apilada para mostrar distribución por estado
@@ -18,10 +24,13 @@ interface SegmentedBarProps {
 export function SegmentedBar({
   segmentos,
   mostrarLeyenda = true,
+  fixedSize,
 }: SegmentedBarProps) {
+  const ancho = fixedSize ? `${fixedSize.width}px` : "full";
+
   if (!segmentos || segmentos.length === 0) {
     return (
-      <VStack align='stretch' gap={2}>
+      <VStack align='stretch' gap={2} w={ancho} mx='auto'>
         <Box h='12px' bg='gray.200' borderRadius='full' />
         <Text fontSize='xs' color='gray.500' textAlign='center'>
           Sin datos
@@ -35,7 +44,7 @@ export function SegmentedBar({
 
   if (total === 0) {
     return (
-      <VStack align='stretch' gap={2}>
+      <VStack align='stretch' gap={2} w={ancho} mx='auto'>
         <Box h='12px' bg='gray.200' borderRadius='full' />
         <Text fontSize='xs' color='gray.500' textAlign='center'>
           Sin datos
@@ -45,7 +54,7 @@ export function SegmentedBar({
   }
 
   return (
-    <VStack align='stretch' gap={3}>
+    <VStack align='stretch' gap={3} w={ancho} mx='auto'>
       {/* Barra segmentada apilada */}
       <Flex
         h='12px'

@@ -24,7 +24,9 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../components/layout";
 import { ITEMS_POR_PAGINA } from "../config";
 import type { Equipo } from "../features/equipos/types";
@@ -35,6 +37,12 @@ import { ESTADOS_RECETA } from "../features/recetas/constants";
 import { recetasApi } from "../features/recetas/hooks/recetaApi";
 import { useRecetaData } from "../features/recetas/hooks/useRecetaData";
 import type { FiltrosReceta, Receta } from "../features/recetas/types";
+
+const OPCIONES_ESTADO_RECETA = [
+  { label: "Borrador", value: "BORRADOR" },
+  { label: "Activa", value: "ACTIVA" },
+  { label: "Inhabilitada", value: "INHABILITADA" },
+];
 
 interface FiltrosEstado {
   busqueda: string;
@@ -60,8 +68,14 @@ export default function RecetasPage() {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
 
   useEffect(() => {
-    recetasApi.obtenerInsumos().then(setInsumos).catch(() => setInsumos([]));
-    recetasApi.obtenerEquipos().then(setEquipos).catch(() => setEquipos([]));
+    recetasApi
+      .obtenerInsumos()
+      .then(setInsumos)
+      .catch(() => setInsumos([]));
+    recetasApi
+      .obtenerEquipos()
+      .then(setEquipos)
+      .catch(() => setEquipos([]));
   }, []);
 
   const filtrosParaApi: FiltrosReceta = useMemo(
@@ -203,11 +217,29 @@ export default function RecetasPage() {
     }
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", aplicados.busqueda],
+    [
+      "Insumo",
+      aplicados.insumo_id &&
+        (insumos.find((i) => String(i.id) === aplicados.insumo_id)?.nombre ??
+          aplicados.insumo_id),
+    ],
+    [
+      "Equipo",
+      aplicados.equipo_id &&
+        (equipos.find((e) => String(e.id) === aplicados.equipo_id)?.nombre ??
+          aplicados.equipo_id),
+    ],
+    ["Estado", etiquetaOpcion(OPCIONES_ESTADO_RECETA, aplicados.estado)],
+  ]);
+
   const columnas: ColumnDef<Receta>[] = [
     { key: "codigo_receta", label: "Código", render: (r) => r.codigo_receta },
     {
       key: "nombre_receta",
       label: "Nombre",
+      valorExportacion: (r) => r.nombre_receta,
       render: (r) => {
         const coincidenciaInsumo = (() => {
           if (!aplicados.insumo_id) return null;
@@ -289,24 +321,24 @@ export default function RecetasPage() {
         })();
 
         return (
-          <VStack align="start" gap={0.5}>
+          <VStack align='start' gap={0.5}>
             <Text>{r.nombre_receta}</Text>
             {coincidenciaInsumo && (
-              <Text fontSize="xs" color="blue.600" fontWeight="medium">
+              <Text fontSize='xs' color='blue.600' fontWeight='medium'>
                 {coincidenciaInsumo}
               </Text>
             )}
             {coincidenciaEquipo && (
-              <Text fontSize="xs" color="purple.600" fontWeight="medium">
+              <Text fontSize='xs' color='purple.600' fontWeight='medium'>
                 {coincidenciaEquipo}
               </Text>
             )}
             {coincidenciasTextoRecurso.map((c, i) => (
               <Text
                 key={i}
-                fontSize="xs"
+                fontSize='xs'
                 color={c.tipo === "insumo" ? "blue.600" : "purple.600"}
-                fontWeight="medium"
+                fontWeight='medium'
               >
                 {c.texto}
               </Text>
@@ -318,9 +350,13 @@ export default function RecetasPage() {
     {
       key: "producto",
       label: "Producto",
+      valorExportacion: (r) =>
+        r.producto?.nombre ||
+        (r.producto_id ? `Producto #${r.producto_id}` : ""),
       render: (r) => (
-        <Badge colorPalette="purple" variant="subtle">
-          {r.producto?.nombre || (r.producto_id ? `Producto #${r.producto_id}` : "—")}
+        <Badge colorPalette='purple' variant='subtle'>
+          {r.producto?.nombre ||
+            (r.producto_id ? `Producto #${r.producto_id}` : "—")}
         </Badge>
       ),
     },
@@ -332,21 +368,30 @@ export default function RecetasPage() {
     {
       key: "tiempo_estimado_total",
       label: "Tiempo estimado",
+      valorExportacion: (r) =>
+        r.tiempo_estimado_total != null
+          ? `${r.tiempo_estimado_total} min`
+          : "Sin estimar",
       render: (r) =>
-        r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—",
+        r.tiempo_estimado_total != null ? (
+          `${r.tiempo_estimado_total} min`
+        ) : (
+          <TextoSinValor>Sin estimar</TextoSinValor>
+        ),
     },
     {
       key: "estado",
       label: "Estado",
+      valorExportacion: (r) => ESTADOS_RECETA[r.estado]?.texto || r.estado,
       render: (r) => {
         const estado = ESTADOS_RECETA[r.estado];
         return (
-          <VStack align="start" gap={0.5}>
+          <VStack align='start' gap={0.5}>
             <Badge colorPalette={estado?.color || "gray"}>
               {estado?.texto || r.estado}
             </Badge>
             {r.estado === "ACTIVA" && (
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize='xs' color='gray.500'>
                 {r.tiene_lotes ? "Con lotes elaborados" : "Sin lotes asociados"}
               </Text>
             )}
@@ -357,6 +402,7 @@ export default function RecetasPage() {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (r) => {
         const tienePasos = (r.pasos?.length ?? 0) > 0;
@@ -370,27 +416,25 @@ export default function RecetasPage() {
           r.estado === "INHABILITADA" ||
           (r.estado === "ACTIVA" && Boolean(r.tiene_lotes));
         const puedeEditar =
-          r.estado === "BORRADOR" ||
-          (r.estado === "ACTIVA" && !r.tiene_lotes);
-        const puedeEliminar =
-          r.estado === "BORRADOR" || r.estado === "ACTIVA";
+          r.estado === "BORRADOR" || (r.estado === "ACTIVA" && !r.tiene_lotes);
+        const puedeEliminar = r.estado === "BORRADOR" || r.estado === "ACTIVA";
         const esArchivar = r.estado === "ACTIVA" && Boolean(r.tiene_lotes);
 
         return (
           <RowActions>
             <Box
-              display="inline-grid"
-              gridTemplateColumns="repeat(4, 44px)"
-              justifyItems="center"
-              alignItems="center"
+              display='inline-grid'
+              gridTemplateColumns='repeat(4, 44px)'
+              justifyItems='center'
+              alignItems='center'
               gap={1}
             >
               <Box>
                 {puedeVerFicha && (
                   <RowActionButton
                     icon={FiFileText}
-                    label="Ficha Técnica"
-                    colorPalette="purple"
+                    label='Ficha Técnica'
+                    colorPalette='purple'
                     onClick={() =>
                       navigate(`/recetas/${r.id}/ficha-tecnica`, {
                         state: { from: "/recetas", label: "Recetas" },
@@ -403,13 +447,13 @@ export default function RecetasPage() {
                 {puedeDuplicar ? (
                   <RowActionButton
                     icon={FiCopy}
-                    label="Duplicar"
+                    label='Duplicar'
                     title={
                       r.estado === "ACTIVA" && r.tiene_lotes
                         ? "Duplicar como nueva versión"
                         : "Duplicar como nueva versión"
                     }
-                    colorPalette="blue"
+                    colorPalette='blue'
                     onClick={() => {
                       setRecetaCopiar(r);
                       setErrorCopiar("");
@@ -419,13 +463,13 @@ export default function RecetasPage() {
                 ) : puedeEditar ? (
                   <RowActionButton
                     icon={FiEdit2}
-                    label="Editar"
+                    label='Editar'
                     title={
                       r.estado === "ACTIVA"
                         ? "Editar receta (sin lotes producidos)"
                         : "Editar borrador"
                     }
-                    colorPalette="blue"
+                    colorPalette='blue'
                     onClick={() => void editarReceta(r)}
                   />
                 ) : null}
@@ -433,8 +477,8 @@ export default function RecetasPage() {
               <Box>
                 <RowActionButton
                   icon={FiEye}
-                  label="Ver detalle"
-                  colorPalette="yellow"
+                  label='Ver detalle'
+                  colorPalette='yellow'
                   onClick={() => setRecetaVer(r)}
                 />
               </Box>
@@ -443,12 +487,8 @@ export default function RecetasPage() {
                   <RowActionButton
                     icon={FiTrash2}
                     label={esArchivar ? "Archivar" : "Eliminar"}
-                    title={
-                      esArchivar
-                        ? "Archivar receta"
-                        : "Eliminar receta"
-                    }
-                    colorPalette="red"
+                    title={esArchivar ? "Archivar receta" : "Eliminar receta"}
+                    colorPalette='red'
                     onClick={() => {
                       setRecetaEliminar(r);
                       setErrorEliminar("");
@@ -466,11 +506,11 @@ export default function RecetasPage() {
 
   return (
     <ListadoContainer>
-      <ListadoHeader title="Recetas" icon={FiBookOpen}>
-        <HStack justify="flex-end" mb={6} align="center">
+      <ListadoHeader title='Recetas' icon={FiBookOpen}>
+        <HStack justify='flex-end' mb={6} align='center'>
           <Button
-            variant="solid"
-            colorPalette="green"
+            variant='solid'
+            colorPalette='green'
             onClick={() => setCrearAbierto(true)}
           >
             <FiPlus /> Nueva Receta
@@ -480,7 +520,7 @@ export default function RecetasPage() {
 
       <Box
         mb={4}
-        w="100%"
+        w='100%'
         css={{
           "& > div": {
             width: "100% !important",
@@ -506,8 +546,8 @@ export default function RecetasPage() {
           loading={loading}
         >
           <FiltroTexto
-            ariaLabel="Buscar por código, receta, producto, insumo o equipo"
-            placeholder="Código, receta, producto, insumo o equipo..."
+            ariaLabel='Buscar por código, receta, producto, insumo o equipo'
+            placeholder='Código, receta, producto, insumo o equipo...'
             value={borrador.busqueda}
             onChange={(valor) => setBorrador({ ...borrador, busqueda: valor })}
             onKeyDown={(e) => {
@@ -515,8 +555,8 @@ export default function RecetasPage() {
             }}
           />
           <FiltroSelect
-            ariaLabel="Insumo utilizado"
-            placeholder="Todos los insumos"
+            ariaLabel='Insumo utilizado'
+            placeholder='Todos los insumos'
             options={insumos.map((ins) => ({
               label: ins.nombre,
               value: String(ins.id),
@@ -525,8 +565,8 @@ export default function RecetasPage() {
             onChange={(valor) => setBorrador({ ...borrador, insumo_id: valor })}
           />
           <FiltroSelect
-            ariaLabel="Equipo utilizado"
-            placeholder="Todos los equipos"
+            ariaLabel='Equipo utilizado'
+            placeholder='Todos los equipos'
             options={equipos.map((eq) => ({
               label: eq.nombre,
               value: String(eq.id),
@@ -535,30 +575,26 @@ export default function RecetasPage() {
             onChange={(valor) => setBorrador({ ...borrador, equipo_id: valor })}
           />
           <FiltroSelect
-            ariaLabel="Estado de la receta"
-            placeholder="Todos los estados"
-            options={[
-              { label: "Borrador", value: "BORRADOR" },
-              { label: "Activa", value: "ACTIVA" },
-              { label: "Archivada", value: "INHABILITADA" },
-            ]}
+            ariaLabel='Estado de la receta'
+            placeholder='Todos los estados'
+            options={OPCIONES_ESTADO_RECETA}
             value={borrador.estado}
             onChange={(valor) => setBorrador({ ...borrador, estado: valor })}
           />
         </FiltrosBar>
       </Box>
 
-      {error && <AlertMessage type="error" message={error} />}
-      {errorRetomar && <AlertMessage type="error" message={errorRetomar} />}
+      {error && <AlertMessage type='error' message={error} />}
+      {errorRetomar && <AlertMessage type='error' message={errorRetomar} />}
       {retomando && (
-        <AlertMessage type="info" message="Retomando borrador..." />
+        <AlertMessage type='info' message='Retomando borrador...' />
       )}
 
-      {loading && <LoadingState message="Cargando recetas..." />}
+      {loading && <LoadingState message='Cargando recetas...' />}
 
       {!loading && recetas.length === 0 && (
         <AlertMessage
-          type="info"
+          type='info'
           message={
             hayAplicados
               ? "No se encontraron recetas con los filtros aplicados."
@@ -571,6 +607,9 @@ export default function RecetasPage() {
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={recetas}
+            exportarTitulo='Recetas'
+            exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(r) => r.id}
           />
@@ -579,15 +618,15 @@ export default function RecetasPage() {
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
-            labelSingular="receta"
-            labelPlural="recetas"
+            labelSingular='receta'
+            labelPlural='recetas'
           />
         </>
       )}
 
       <FormModal open={crearAbierto} onClose={() => setCrearAbierto(false)}>
         <RecetaForm
-          modo="crear"
+          modo='crear'
           onCancelar={() => setCrearAbierto(false)}
           onGuardado={guardarReceta}
           enModal
@@ -596,15 +635,15 @@ export default function RecetasPage() {
 
       <AlertConfirm
         open={recetaEditar !== null}
-        title="Editar receta activa"
+        title='Editar receta activa'
         message={
           recetaEditar
             ? `Para editar la receta "${recetaEditar.nombre_receta}" (${recetaEditar.codigo_receta}) se pasará a estado BORRADOR. ¿Continuar?`
             : ""
         }
         loading={pasandoABorrador}
-        loadingText="Pasando a borrador..."
-        confirmLabel="Continuar"
+        loadingText='Pasando a borrador...'
+        confirmLabel='Continuar'
         error={errorEditar}
         onConfirm={() => void ejecutarPasarABorrador()}
         onCancel={() => {
@@ -615,15 +654,15 @@ export default function RecetasPage() {
 
       <AlertConfirm
         open={recetaCopiar !== null}
-        title="Copiar receta"
+        title='Copiar receta'
         message={
           recetaCopiar
             ? `Se creará un nuevo borrador a partir de la receta "${recetaCopiar.nombre_receta}" (${recetaCopiar.codigo_receta}), con un nuevo código. ¿Continuar?`
             : ""
         }
         loading={copiando}
-        loadingText="Copiando..."
-        confirmLabel="Copiar"
+        loadingText='Copiando...'
+        confirmLabel='Copiar'
         error={errorCopiar}
         onConfirm={() => void ejecutarCopiar()}
         onCancel={() => {
@@ -654,7 +693,7 @@ export default function RecetasPage() {
             ? "Dar de baja"
             : "Eliminar"
         }
-        loadingText="Procesando..."
+        loadingText='Procesando...'
         loading={eliminando}
         error={errorEliminar}
         onConfirm={() => void ejecutarEliminar()}
@@ -665,10 +704,7 @@ export default function RecetasPage() {
       />
 
       {recetaVer && (
-        <RecetaDetalle
-          receta={recetaVer}
-          onCerrar={() => setRecetaVer(null)}
-        />
+        <RecetaDetalle receta={recetaVer} onCerrar={() => setRecetaVer(null)} />
       )}
     </ListadoContainer>
   );

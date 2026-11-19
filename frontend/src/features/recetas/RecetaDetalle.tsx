@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge, Box, HStack, Text, VStack } from "@chakra-ui/react";
 import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
+import { TextoSinValor } from "../../components/ui";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
 import type { PasoReceta, Receta } from "./types";
@@ -198,7 +199,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           valor:
             receta.tiempo_estimado_total != null
               ? `${receta.tiempo_estimado_total} min`
-              : "—",
+              : <TextoSinValor>Sin estimar</TextoSinValor>,
         },
         {
           label: "Estado",
@@ -222,7 +223,7 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
         },
         {
           label: "Observaciones",
-          valor: receta.observaciones || "—",
+          valor: receta.observaciones || <TextoSinValor>No tiene</TextoSinValor>,
         },
       ],
     },

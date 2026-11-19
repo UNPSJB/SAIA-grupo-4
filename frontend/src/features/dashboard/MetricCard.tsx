@@ -11,6 +11,8 @@ interface MetricCardProps {
   unidad: "porcentaje" | "cantidad";
   detalle?: string | null;
   link?: string | null;
+  /** Modo impresión: sin link, sin hover ni sombra, y sin cortarse entre hojas. */
+  estatica?: boolean;
 }
 
 // Tarjeta de métrica
@@ -21,6 +23,7 @@ export function MetricCard({
   unidad,
   detalle,
   link,
+  estatica = false,
 }: MetricCardProps) {
   const navigate = useNavigate();
   const color = getCardColor(metricKey);
@@ -32,9 +35,12 @@ export function MetricCard({
     return valor.toString();
   };
 
+  // En el informe impreso la tarjeta no navega a ningún lado
+  const linkActivo = estatica ? null : link;
+
   const handleClick = () => {
-    if (link) {
-      navigate(link, { state: { origen: "dashboard" } });
+    if (linkActivo) {
+      navigate(linkActivo, { state: { origen: "dashboard" } });
     }
   };
 
@@ -42,9 +48,18 @@ export function MetricCard({
     <Card.Root
       borderLeft="4px solid"
       borderLeftColor={color}
-      shadow="md"
-      cursor={link ? "pointer" : "default"}
-      _hover={link ? { shadow: "lg", transform: "translateY(-2px)" } : {}}
+      size={estatica ? "sm" : "md"}
+      shadow={estatica ? "none" : "md"}
+      // Borde fino en los otros tres lados, sin pisar el borde izquierdo de color
+      borderTopWidth={estatica ? "1px" : undefined}
+      borderRightWidth={estatica ? "1px" : undefined}
+      borderBottomWidth={estatica ? "1px" : undefined}
+      borderTopColor={estatica ? "gray.200" : undefined}
+      borderRightColor={estatica ? "gray.200" : undefined}
+      borderBottomColor={estatica ? "gray.200" : undefined}
+      className={estatica ? "no-cortar" : undefined}
+      cursor={linkActivo ? "pointer" : "default"}
+      _hover={linkActivo ? { shadow: "lg", transform: "translateY(-2px)" } : {}}
       transition="all 0.2s"
       onClick={handleClick}
     >
@@ -53,7 +68,7 @@ export function MetricCard({
           <Text fontSize="sm" color="gray.600" fontWeight="medium">
             {titulo}
           </Text>
-          {link && <FiExternalLink color="gray.400" />}
+          {linkActivo && <FiExternalLink color="gray.400" />}
         </Flex>
         <Text fontSize="2xl" fontWeight="bold" color="gray.800" mb={1}>
           {formatValue()}

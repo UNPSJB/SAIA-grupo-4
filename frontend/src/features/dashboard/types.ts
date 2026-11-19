@@ -30,3 +30,12 @@ export interface DashboardResponse {
   graficos: Record<string, GraficoConfig>;
   totales?: Record<string, number> | null;
 }
+
+/**
+ * Tamaño fijo en píxeles para dibujar un gráfico en modo impresión.
+ * Si no se pasa, el gráfico se adapta al ancho de su contenedor (modo pantalla).
+ */
+export interface TamanoFijo {
+  width: number;
+  height: number;
+}

@@ -1,23 +1,8 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 import { COLOR_ESTADO, type EstadoSemaforo } from "../../components/ui";
+import { formatearFechaHoraIncidente, parsearFechaIncidente } from "./fechaIncidente";
 
 const MILISEGUNDOS_POR_DIA = 1000 * 60 * 60 * 24;
-
-const formatearFechaHora = (fecha: string): string => {
-  const fechaConZona = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fecha)
-    ? fecha
-    : `${fecha}Z`;
-
-  return new Date(fechaConZona).toLocaleString("es-AR", {
-    timeZone: "America/Argentina/Buenos_Aires",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  });
-};
 
 interface SemaforoFechaIncidenteProps {
   /** Fecha y hora de reporte, tal como la devuelve el backend. */
@@ -35,10 +20,7 @@ export const SemaforoFechaIncidente = ({
 }: SemaforoFechaIncidenteProps) => {
   if (!fecha) return <Text>—</Text>;
 
-  const fechaConZona = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fecha)
-    ? fecha
-    : `${fecha}Z`;
-  const fechaReporte = new Date(fechaConZona);
+  const fechaReporte = parsearFechaIncidente(fecha);
 
   if (Number.isNaN(fechaReporte.getTime())) return <Text>—</Text>;
 
@@ -73,7 +55,7 @@ export const SemaforoFechaIncidente = ({
           bg={`${COLOR_ESTADO[estado]}.500`}
           flexShrink={0}
         />
-        <Text>{formatearFechaHora(fecha)}</Text>
+        <Text>{formatearFechaHoraIncidente(fecha)}</Text>
       </HStack>
       <Text fontSize='sm' fontStyle='italic' color='gray.500'>
         {leyenda}

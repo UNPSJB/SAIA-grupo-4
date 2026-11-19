@@ -23,6 +23,7 @@ import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
 import type { Sector } from "./types";
 import type { ColumnDef } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 
 interface ListadoSectoresProps {
     onCrear?: () => void;
@@ -86,6 +87,11 @@ export const ListadoSectores = ({
         setPage(1);
     };
 
+    const filtrosExportacion = armarFiltros([
+        ["Búsqueda", busquedaAplicada],
+        ["Estado", etiquetaOpcion(OPCIONES_ESTADO, estadoAplicado)],
+    ]);
+
     const columnas: ColumnDef<Sector>[] = [
         {
             key: "nombre",
@@ -95,6 +101,7 @@ export const ListadoSectores = ({
         {
             key: "activo",
             label: "Estado",
+            valorExportacion: (sector) => (sector.activo ? "Activo" : "Inactivo"),
             render: (sector) => (
                 <Badge colorPalette={sector.activo ? "green" : "red"}>
                     {sector.activo ? "Activo" : "Inactivo"}
@@ -104,6 +111,7 @@ export const ListadoSectores = ({
         {
             key: "acciones",
             label: "Acciones",
+            exportable: false,
             align: "end",
             render: (sector) => (
                 <RowActions>
@@ -192,6 +200,9 @@ export const ListadoSectores = ({
                 <>
                     <DataTable
                         items={itemsPaginados}
+                        exportarItems={data}
+                        exportarTitulo="Sectores"
+                        exportarFiltros={filtrosExportacion}
                         columns={columnas}
                         getRowKey={(sector) => sector.id}
                     />

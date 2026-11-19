@@ -16,7 +16,9 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import {
   DetalleModal,
   ListadoContainer,
@@ -374,7 +376,21 @@ export default function HistorialPlanesPage() {
     {
       key: "fecha_hasta",
       label: "Fecha hasta",
-      render: (plan) => formatFecha(plan.fecha_hasta) ?? "—",
+      // Vigente: sigue en uso hasta hoy. Borrador: todavía no tiene vigencia.
+      valorExportacion: (plan) => {
+        const estado = derivarEstado(plan);
+        if (estado === "vigente") return "Hoy";
+        if (estado === "borrador") return "No tiene";
+        return formatFecha(plan.fecha_hasta);
+      },
+      render: (plan) => {
+        const estado = derivarEstado(plan);
+        if (estado === "vigente") return "Hoy";
+        if (estado === "borrador") {
+          return <TextoSinValor>No tiene</TextoSinValor>;
+        }
+        return formatFecha(plan.fecha_hasta);
+      },
     },
     {
       key: "tareas",
@@ -385,6 +401,7 @@ export default function HistorialPlanesPage() {
     {
       key: "estado",
       label: "Estado",
+      valorExportacion: (plan) => labelsEstado[derivarEstado(plan)].texto,
       render: (plan) => {
         const estado = labelsEstado[derivarEstado(plan)];
         return <Badge colorPalette={estado.color}>{estado.texto}</Badge>;
@@ -393,6 +410,7 @@ export default function HistorialPlanesPage() {
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       render: (plan) => {
         const estado = derivarEstado(plan);
@@ -579,6 +597,13 @@ export default function HistorialPlanesPage() {
         <>
           <DataTable
             items={itemsPaginados}
+            exportarItems={planesFiltrados}
+            exportarTitulo="Historial de planes POES"
+            exportarFiltros={armarFiltros([
+              ["Búsqueda", busquedaAplicada],
+              ["Elaborado por", etiquetaOpcion(opcionesElaboradoPor, aplicados.elaboradoPorId)],
+              ["Estado", etiquetaOpcion(OPCIONES_ESTADO, aplicados.estado)],
+            ])}
             columns={columnas}
             getRowKey={(plan) => plan.id}
           />

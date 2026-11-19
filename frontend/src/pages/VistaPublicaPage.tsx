@@ -16,9 +16,29 @@ import { EnlacePublicoCard } from "../features/vistaPublica/EnlacePublicoCard";
 import { EstadoVistaPublicaCard } from "../features/vistaPublica/EstadoVistaPublicaCard";
 import { IndicadoresVistaPublicaCard } from "../features/vistaPublica/IndicadoresVistaPublicaCard";
 import { useVistaPublicaConfig } from "../features/vistaPublica/hooks/useVistaPublicaConfig";
+import { useIndicadoresPublicos } from "../features/vistaPublica/hooks/useIndicadoresPublicos";
+import { IndicadoresPublicosPrintView } from "../features/vistaPublica/IndicadoresPublicosPrintView";
+import { nombreArchivoIndicadoresPublicos } from "../features/vistaPublica/nombreArchivoInforme";
+import type { IndicadoresPublicos } from "../features/vistaPublica/types";
+import { imprimirInforme } from "../utils/imprimirInforme";
 
 function construirUrlPublica(token: string): string {
   return `${PUBLIC_APP_URL}/publico/${encodeURIComponent(token)}`;
+}
+
+// Solo se imprime si la vista está activa y hay al menos una sección habilitada
+function obtenerIndicadoresImprimibles(
+  respuesta: { activo: boolean; indicadores?: IndicadoresPublicos | null } | null,
+): IndicadoresPublicos | null {
+  const indicadores = respuesta?.activo ? respuesta.indicadores : null;
+  if (!indicadores) return null;
+
+  const { metricas, vencimientos, incidentes } = indicadores;
+  const hayVencimientos =
+    vencimientos?.porcentaje_al_dia != null ||
+    (vencimientos?.por_categoria?.length ?? 0) > 0;
+
+  return metricas || hayVencimientos || incidentes ? indicadores : null;
 }
 
 export default function VistaPublicaPage() {
@@ -33,6 +53,10 @@ export default function VistaPublicaPage() {
     actualizar,
     guardarIndicadores,
   } = useVistaPublicaConfig();
+  // Los mismos indicadores que ve un visitante con el enlace: son los que se imprimen
+  const { data: respuestaPublica, recargar: recargarIndicadores } =
+    useIndicadoresPublicos(estado?.token);
+  const indicadoresImprimibles = obtenerIndicadoresImprimibles(respuestaPublica);
   const [confirmarDesactivar, setConfirmarDesactivar] = useState(false);
   const [seleccion, setSeleccion] = useState<Record<string, boolean>>({});
 
@@ -56,12 +80,12 @@ export default function VistaPublicaPage() {
       return;
     }
 
-    void actualizar(true);
+    void actualizar(true).then((ok) => ok && recargarIndicadores());
   };
 
   const confirmarDesactivacion = () => {
     setConfirmarDesactivar(false);
-    void actualizar(false);
+    void actualizar(false).then((ok) => ok && recargarIndicadores());
   };
 
   const toggleIndicador = (clave: string, activo: boolean) => {
@@ -75,7 +99,7 @@ export default function VistaPublicaPage() {
       .filter((indicador) => seleccion[indicador.clave] ?? indicador.activo)
       .map((indicador) => indicador.clave);
 
-    void guardarIndicadores(activos);
+    void guardarIndicadores(activos).then((ok) => ok && recargarIndicadores());
   };
 
   if (loading && !estado) {
@@ -134,7 +158,18 @@ export default function VistaPublicaPage() {
             onToggle={handleToggle}
           />
 
-          <EnlacePublicoCard url={url} activo={estado.activo} />
+          <EnlacePublicoCard
+            url={url}
+            activo={estado.activo}
+            onImprimir={
+              estado.activo && indicadoresImprimibles
+                ? () =>
+                    imprimirInforme(
+                      nombreArchivoIndicadoresPublicos(indicadoresImprimibles),
+                    )
+                : undefined
+            }
+          />
 
           <IndicadoresVistaPublicaCard
             indicadores={estado.indicadores}
@@ -179,6 +214,11 @@ export default function VistaPublicaPage() {
         onConfirm={confirmarDesactivacion}
         onCancel={() => setConfirmarDesactivar(false)}
       />
+
+      {/* Informe imprimible: oculto en pantalla, solo aparece al imprimir */}
+      {estado.activo && indicadoresImprimibles && (
+        <IndicadoresPublicosPrintView indicadores={indicadoresImprimibles} />
+      )}
     </Box>
   );
 }

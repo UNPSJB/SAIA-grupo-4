@@ -18,6 +18,7 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../components/ui";
 import {
   DetalleModal,
@@ -101,6 +102,7 @@ export default function HistorialVersionesPage() {
       key: "estado",
       label: "Estado",
       w: "110px",
+      valorExportacion: (v) => (v.es_vigente ? "Vigente" : "Histórica"),
       render: (v) => (
         <Badge colorPalette={v.es_vigente ? "green" : "gray"}>
           {v.es_vigente ? "Vigente" : "Histórica"}
@@ -132,11 +134,14 @@ export default function HistorialVersionesPage() {
       label: "Motivo / Observaciones",
       w: "240px",
       truncate: true,
-      render: (v) => v.observaciones_cambio || "—",
+      valorExportacion: (v) => v.observaciones_cambio || "Sin observaciones",
+      render: (v) =>
+        v.observaciones_cambio || <TextoSinValor>Sin observaciones</TextoSinValor>,
     },
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       align: "end",
       w: "170px",
       render: (v) => (
@@ -204,7 +209,7 @@ export default function HistorialVersionesPage() {
                 },
                 {
                   label: "Observaciones",
-                  valor: r.observaciones || "—",
+                  valor: r.observaciones || <TextoSinValor>Sin observaciones</TextoSinValor>,
                   fullWidth: true,
                 },
                 { label: "Registrado por", valor: r.registrado_por_nombre || "—" },
@@ -295,6 +300,9 @@ export default function HistorialVersionesPage() {
             <>
               <DataTable
                 items={versiones.slice((page - 1) * ITEMS_POR_PAGINA, page * ITEMS_POR_PAGINA)}
+                exportarItems={versiones}
+                exportarTitulo={`Historial de versiones - ${documento.codigo ? `${documento.codigo} ` : ""}${documento.titulo}`}
+                exportarNombreArchivo={`versiones-${documento.codigo || documento.titulo}`}
                 columns={columnas}
                 getRowKey={(v) => v.id}
                 minW="1150px"

@@ -21,6 +21,13 @@ export type FiltrosVencimientos = {
   dias: string;
 };
 
+export const OPCIONES_ESTADO = [
+  { label: "Vencidos", value: "vencido" },
+  { label: "Próximos a vencer", value: "proximo" },
+  { label: "Vencidos y próximos a vencer", value: "por_vencer" },
+  { label: "Vigentes", value: "vigente" },
+];
+
 /** Sin filtros: todo el listado, sin recorte de ventana. */
 export const FILTROS_INICIALES: FiltrosVencimientos = {
   busqueda: "",

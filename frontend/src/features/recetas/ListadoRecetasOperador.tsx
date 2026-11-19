@@ -22,7 +22,9 @@ import {
   RowActions,
   TablePagination,
   type ColumnDef,
+  TextoSinValor,
 } from "../../components/ui";
+import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { ITEMS_POR_PAGINA } from "../../config";
 import { recetasApi } from "./hooks/recetaApi";
@@ -51,11 +53,16 @@ export const ListadoRecetasOperador = () => {
   });
 
   const [page, setPage] = useState(1);
-  const [recetaParaImprimir, setRecetaParaImprimir] = useState<Receta | null>(null);
+  const [recetaParaImprimir, setRecetaParaImprimir] = useState<Receta | null>(
+    null,
+  );
 
   const handleImprimir = async (r: Receta) => {
     try {
-      const full = r.pasos && r.pasos.length > 0 ? r : await recetasApi.obtenerRecetaActiva(r.id);
+      const full =
+        r.pasos && r.pasos.length > 0
+          ? r
+          : await recetasApi.obtenerRecetaActiva(r.id);
       setRecetaParaImprimir(full);
       setTimeout(() => {
         imprimirFichaReceta(full);
@@ -78,7 +85,11 @@ export const ListadoRecetasOperador = () => {
       })
       .catch((e) => {
         if (activo) {
-          setError(e instanceof Error ? e.message : "No se pudieron cargar las recetas activas.");
+          setError(
+            e instanceof Error
+              ? e.message
+              : "No se pudieron cargar las recetas activas.",
+          );
         }
       })
       .finally(() => {
@@ -127,13 +138,21 @@ export const ListadoRecetasOperador = () => {
         const coincideCodigo = r.codigo_receta?.toLowerCase().includes(query);
         const coincideNombre = r.nombre_receta?.toLowerCase().includes(query);
         const coincideProd = r.producto?.nombre?.toLowerCase().includes(query);
-        const coincideRend = String(r.rendimiento_estandar ?? "").toLowerCase().includes(query);
-        const coincideTiempo = String(r.tiempo_estimado_total ?? "").toLowerCase().includes(query);
+        const coincideRend = String(r.rendimiento_estandar ?? "")
+          .toLowerCase()
+          .includes(query);
+        const coincideTiempo = String(r.tiempo_estimado_total ?? "")
+          .toLowerCase()
+          .includes(query);
         const coincideInsumo = (r.pasos || []).some((p) =>
-          p.insumos?.some((pi) => pi.insumo?.nombre?.toLowerCase().includes(query))
+          p.insumos?.some((pi) =>
+            pi.insumo?.nombre?.toLowerCase().includes(query),
+          ),
         );
         const coincideEquipo = (r.pasos || []).some((p) =>
-          p.equipos?.some((pe) => pe.equipo?.nombre?.toLowerCase().includes(query))
+          p.equipos?.some((pe) =>
+            pe.equipo?.nombre?.toLowerCase().includes(query),
+          ),
         );
 
         if (
@@ -207,31 +226,40 @@ export const ListadoRecetasOperador = () => {
     return items;
   };
 
+  const filtrosExportacion = armarFiltros([
+    ["Búsqueda", filtrosAplicados.busqueda],
+    [
+      "Producto",
+      etiquetaOpcion(opcionesProductos, filtrosAplicados.producto_id),
+    ],
+  ]);
+
   const columnas: ColumnDef<Receta>[] = [
     {
       key: "codigo_receta",
       label: "Código",
       w: "140px",
-      render: (r) => (
-        <Text>
-          {r.codigo_receta}
-        </Text>
-      ),
+      valorExportacion: (r) => r.codigo_receta,
+      render: (r) => <Text>{r.codigo_receta}</Text>,
     },
     {
       key: "nombre_receta",
       label: "Receta",
+      valorExportacion: (r) => r.nombre_receta,
       render: (r) => {
-        const coincidencias = obtenerCoincidenciasRecursos(r, filtrosAplicados.busqueda);
+        const coincidencias = obtenerCoincidenciasRecursos(
+          r,
+          filtrosAplicados.busqueda,
+        );
         return (
-          <VStack align="start" gap={0.5}>
-            <Text fontWeight="medium">{r.nombre_receta}</Text>
+          <VStack align='start' gap={0.5}>
+            <Text fontWeight='medium'>{r.nombre_receta}</Text>
             {coincidencias.map((c, i) => (
               <Text
                 key={i}
-                fontSize="xs"
+                fontSize='xs'
                 color={c.tipo === "insumo" ? "blue.600" : "purple.600"}
-                fontWeight="medium"
+                fontWeight='medium'
               >
                 {c.texto}
               </Text>
@@ -243,8 +271,10 @@ export const ListadoRecetasOperador = () => {
     {
       key: "producto",
       label: "Producto elaborado",
+      valorExportacion: (r) =>
+        r.producto?.nombre || `Producto #${r.producto_id}`,
       render: (r) => (
-        <Badge colorPalette="purple" variant="subtle">
+        <Badge colorPalette='purple' variant='subtle'>
           {r.producto?.nombre || `Producto #${r.producto_id}`}
         </Badge>
       ),
@@ -252,40 +282,60 @@ export const ListadoRecetasOperador = () => {
     {
       key: "rendimiento",
       label: "Rendimiento",
-      render: (r) => (
-        <Text fontSize="sm">
-          {r.rendimiento_estandar} g
-        </Text>
-      ),
+      valorExportacion: (r) => {
+        const unidad = r.producto?.unidad_medida?.simbolo;
+        return unidad
+          ? `${r.rendimiento_estandar} ${unidad}`
+          : r.rendimiento_estandar;
+      },
+      render: (r) => {
+        const unidad = r.producto?.unidad_medida?.simbolo;
+        return (
+          <Text fontSize='sm'>
+            {unidad
+              ? `${r.rendimiento_estandar} ${unidad}`
+              : r.rendimiento_estandar}
+          </Text>
+        );
+      },
     },
     {
       key: "tiempo_estimado",
       label: "Tiempo est.",
+      valorExportacion: (r) =>
+        r.tiempo_estimado_total != null
+          ? `${r.tiempo_estimado_total} min`
+          : "Sin estimar",
       render: (r) => (
-        <Text fontSize="sm">
-          {r.tiempo_estimado_total != null ? `${r.tiempo_estimado_total} min` : "—"}
+        <Text fontSize='sm'>
+          {r.tiempo_estimado_total != null ? (
+            `${r.tiempo_estimado_total} min`
+          ) : (
+            <TextoSinValor>Sin estimar</TextoSinValor>
+          )}
         </Text>
       ),
     },
     {
       key: "acciones",
       label: "Acciones",
+      exportable: false,
       w: "130px",
       align: "end",
       render: (r) => (
         <RowActions>
           <RowActionButton
             icon={FiBookOpen}
-            label="Ver ficha técnica"
-            title="Ver ficha técnica completa"
-            colorPalette="green"
+            label='Ver ficha técnica'
+            title='Ver ficha técnica completa'
+            colorPalette='green'
             onClick={() => verFicha(r)}
           />
           <RowActionButton
             icon={FiPrinter}
-            label="Imprimir ficha"
-            title="Imprimir o guardar en PDF"
-            colorPalette="blue"
+            label='Imprimir ficha'
+            title='Imprimir o guardar en PDF'
+            colorPalette='blue'
             onClick={() => void handleImprimir(r)}
           />
         </RowActions>
@@ -295,11 +345,11 @@ export const ListadoRecetasOperador = () => {
 
   return (
     <ListadoContainer>
-      <ListadoHeader title="Catálogo de Recetas" icon={FiBookOpen} />
+      <ListadoHeader title='Catálogo de Recetas' icon={FiBookOpen} />
 
       <Box
         mb={4}
-        w="100%"
+        w='100%'
         css={{
           "& > div": {
             width: "100% !important",
@@ -321,51 +371,64 @@ export const ListadoRecetasOperador = () => {
         <FiltrosBar
           onAplicar={aplicarFiltros}
           onLimpiar={limpiarFiltros}
-          hayFiltrosActivos={Boolean(filtrosAplicados.busqueda || filtrosAplicados.producto_id)}
+          hayFiltrosActivos={Boolean(
+            filtrosAplicados.busqueda || filtrosAplicados.producto_id,
+          )}
         >
           <FiltroTexto
-            ariaLabel="Buscar por código, receta, producto, insumo o equipo"
-            placeholder="Código, receta, producto, insumo o equipo..."
+            ariaLabel='Buscar por código, receta, producto, insumo o equipo'
+            placeholder='Código, receta, producto, insumo o equipo...'
             value={borradorFiltros.busqueda}
-            onChange={(v) => setBorradorFiltros((prev) => ({ ...prev, busqueda: v }))}
+            onChange={(v) =>
+              setBorradorFiltros((prev) => ({ ...prev, busqueda: v }))
+            }
             onKeyDown={(e) => {
               if (e.key === "Enter") aplicarFiltros();
             }}
           />
           <FiltroSelect
-            ariaLabel="Filtrar por producto elaborado"
-            placeholder="Todos los productos elaborados"
+            ariaLabel='Filtrar por producto elaborado'
+            placeholder='Todos los productos elaborados'
             options={opcionesProductos}
             value={borradorFiltros.producto_id}
-            onChange={(v) => setBorradorFiltros((prev) => ({ ...prev, producto_id: v }))}
+            onChange={(v) =>
+              setBorradorFiltros((prev) => ({ ...prev, producto_id: v }))
+            }
           />
         </FiltrosBar>
       </Box>
 
-      {loading && <LoadingState message="Cargando recetas activas..." />}
+      {loading && <LoadingState message='Cargando recetas activas...' />}
 
-      {!loading && error && <AlertMessage type="error" message={error} />}
+      {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && recetas.length === 0 && (
         <AlertMessage
-          type="info"
-          message="No se encontraron recetas activas en el catálogo actualmente."
+          type='info'
+          message='No se encontraron recetas activas en el catálogo actualmente.'
         />
       )}
 
-      {!loading && !error && recetas.length > 0 && recetasFiltradas.length === 0 && (
-        <AlertMessage
-          type="info"
-          message="No hay recetas activas que coincidan con los filtros seleccionados."
-        />
-      )}
+      {!loading &&
+        !error &&
+        recetas.length > 0 &&
+        recetasFiltradas.length === 0 && (
+          <AlertMessage
+            type='info'
+            message='No hay recetas activas que coincidan con los filtros seleccionados.'
+          />
+        )}
 
       {!loading && !error && recetasFiltradas.length > 0 && (
         <>
           {/* Vista Escritorio / Tablet */}
-          <Box display={{ base: "none", md: "block" }}>
+          <Box>
             <DataTable
               items={itemsPagina}
+              exportarItems={recetasFiltradas}
+              exportarTitulo='Recetas'
+              exportarFiltros={filtrosExportacion}
+              hideTableOnMobile
               columns={columnas}
               getRowKey={(r) => r.id}
             />
@@ -374,7 +437,7 @@ export const ListadoRecetasOperador = () => {
           {/* Vista Móvil: Tarjetas apiladas */}
           <VStack
             display={{ base: "flex", md: "none" }}
-            align="stretch"
+            align='stretch'
             gap={3}
           >
             {itemsPagina.map((r) => {
@@ -382,56 +445,70 @@ export const ListadoRecetasOperador = () => {
               const cantPasos = r.pasos?.length ?? 0;
 
               return (
-                <Card.Root key={r.id} variant="outline">
+                <Card.Root key={r.id} variant='outline'>
                   <Card.Body gap={2}>
-                    <HStack justify="space-between" align="flex-start" gap={2}>
-                      <Text fontWeight="bold" color="green.700">
+                    <HStack justify='space-between' align='flex-start' gap={2}>
+                      <Text fontWeight='bold' color='green.700'>
                         {r.codigo_receta}
                       </Text>
-                      <Badge colorPalette="purple" variant="subtle" flexShrink={0}>
+                      <Badge
+                        colorPalette='purple'
+                        variant='subtle'
+                        flexShrink={0}
+                      >
                         {r.producto?.nombre || `Producto #${r.producto_id}`}
                       </Badge>
                     </HStack>
 
-                    <Text fontWeight="semibold" fontSize="md">
+                    <Text fontWeight='semibold' fontSize='md'>
                       {r.nombre_receta}
                     </Text>
 
-                    {obtenerCoincidenciasRecursos(r, filtrosAplicados.busqueda).map((c, i) => (
+                    {obtenerCoincidenciasRecursos(
+                      r,
+                      filtrosAplicados.busqueda,
+                    ).map((c, i) => (
                       <Text
                         key={i}
-                        fontSize="xs"
+                        fontSize='xs'
                         color={c.tipo === "insumo" ? "blue.600" : "purple.600"}
-                        fontWeight="medium"
+                        fontWeight='medium'
                       >
                         {c.texto}
                       </Text>
                     ))}
 
-                    <Text fontSize="xs" color="gray.600">
+                    <Text fontSize='xs' color='gray.600'>
                       Rendimiento: <strong>{rendimiento}</strong>
                       {r.tiempo_estimado_total != null && (
-                        <> · Tiempo: <strong>{r.tiempo_estimado_total} min</strong></>
+                        <>
+                          {" "}
+                          · Tiempo:{" "}
+                          <strong>{r.tiempo_estimado_total} min</strong>
+                        </>
                       )}
                       {cantPasos > 0 && (
-                        <> · <strong>{cantPasos} pasos</strong></>
+                        <>
+                          {" "}
+                          · <strong>{cantPasos} pasos</strong>
+                        </>
                       )}
                     </Text>
 
                     <HStack gap={2} mt={2}>
                       <Button
-                        colorPalette="green"
-                        variant="outline"
-                        flex="1"
+                        colorPalette='green'
+                        variant='outline'
+                        flex='1'
                         onClick={() => verFicha(r)}
                       >
                         <FiBookOpen /> Ver ficha
                       </Button>
                       <Button
-                        colorPalette="blue"
-                        variant="subtle"
+                        colorPalette='blue'
+                        variant='subtle'
                         onClick={() => void handleImprimir(r)}
-                        aria-label="Imprimir ficha"
+                        aria-label='Imprimir ficha'
                       >
                         <FiPrinter />
                       </Button>
@@ -448,8 +525,8 @@ export const ListadoRecetasOperador = () => {
               page={page}
               pageSize={ITEMS_POR_PAGINA}
               onPageChange={setPage}
-              labelSingular="receta"
-              labelPlural="recetas"
+              labelSingular='receta'
+              labelPlural='recetas'
             />
           </Box>
         </>

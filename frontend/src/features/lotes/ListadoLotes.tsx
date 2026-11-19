@@ -6,17 +6,25 @@ import {
   LoadingState,
   RowActionButton,
   RowActions,
+  TextoSinValor,
   type ColumnDef,
 } from "../../components/ui";
+import type { FiltroAplicado } from "../../utils/exportacion";
 import type { Lote } from "./types";
 
 interface ListadoLotesProps {
   lotes: Lote[];
+  exportarLotes?: Lote[];
+  /** Filtros aplicados en la página, para el encabezado del PDF. */
+  exportarFiltros?: FiltroAplicado[];
   loading?: boolean;
   onVer: (lote: Lote) => void;
   mostrarOperador?: boolean;
   hayFiltrosActivos?: boolean;
 }
+
+// Lotes cuyo producto no tiene vida útil cargada no tienen vencimiento.
+const SIN_ESPECIFICAR = "Sin especificar";
 
 const formatearFechaSoloDia = (fechaIso: string) => {
   if (!fechaIso) return "—";
@@ -27,6 +35,8 @@ const formatearFechaSoloDia = (fechaIso: string) => {
 
 export const ListadoLotes = ({
   lotes,
+  exportarLotes = lotes,
+  exportarFiltros = [],
   loading = false,
   onVer,
   mostrarOperador = true,
@@ -53,6 +63,7 @@ export const ListadoLotes = ({
     {
       key: "codigo_lote",
       label: "Código Lote",
+      valorExportacion: (l) => l.codigo_lote,
       render: (l) => (
         <Badge colorPalette="green" variant="subtle">
           {l.codigo_lote}
@@ -62,6 +73,7 @@ export const ListadoLotes = ({
     {
       key: "producto",
       label: "Producto",
+      valorExportacion: (l) => l.producto_nombre || `Producto #${l.producto_id}`,
       render: (l) => (
         <Badge colorPalette="purple" variant="subtle">
           {l.producto_nombre || `Producto #${l.producto_id}`}
@@ -91,7 +103,14 @@ export const ListadoLotes = ({
     {
       key: "fecha_vencimiento",
       label: "Vencimiento",
-      render: (l) => formatearFechaSoloDia(l.fecha_vencimiento),
+      valorExportacion: (l) =>
+        l.fecha_vencimiento ? formatearFechaSoloDia(l.fecha_vencimiento) : SIN_ESPECIFICAR,
+      render: (l) =>
+        l.fecha_vencimiento ? (
+          formatearFechaSoloDia(l.fecha_vencimiento)
+        ) : (
+          <TextoSinValor>{SIN_ESPECIFICAR}</TextoSinValor>
+        ),
     },
   ];
 
@@ -107,6 +126,7 @@ export const ListadoLotes = ({
     key: "acciones",
     label: "Acciones",
     align: "end",
+    exportable: false,
     render: (l) => (
       <RowActions>
         <RowActionButton
@@ -122,9 +142,13 @@ export const ListadoLotes = ({
   return (
     <>
       {/* Vista de escritorio / tablet */}
-      <Box display={{ base: "none", md: "block" }}>
+      <Box>
         <DataTable
           items={lotes}
+          exportarItems={exportarLotes}
+          exportarTitulo="Lotes de producción"
+          exportarFiltros={exportarFiltros}
+          hideTableOnMobile
           columns={columnas}
           getRowKey={(l) => l.id}
         />
@@ -157,7 +181,12 @@ export const ListadoLotes = ({
                   year: "numeric",
                 })}</strong>
                 {" · "}
-                Vencimiento: <strong>{formatearFechaSoloDia(l.fecha_vencimiento)}</strong>
+                Vencimiento:{" "}
+                {l.fecha_vencimiento ? (
+                  <strong>{formatearFechaSoloDia(l.fecha_vencimiento)}</strong>
+                ) : (
+                  <TextoSinValor>{SIN_ESPECIFICAR}</TextoSinValor>
+                )}
                 {mostrarOperador && l.operador_nombre && (
                   <> · Operador: <strong>{l.operador_nombre}</strong></>
                 )}
