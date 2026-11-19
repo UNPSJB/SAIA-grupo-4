@@ -1,7 +1,6 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { apiFetch } from "../features/auth/apiFetch";
 import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import { PersonalForm } from "../features/personal/PersonalForm";
@@ -108,7 +107,7 @@ export default function PersonalPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoPersonal
         key={refrescar}
         onVerCapacidades={() =>
@@ -236,6 +235,6 @@ export default function PersonalPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

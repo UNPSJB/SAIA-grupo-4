@@ -1,5 +1,5 @@
 import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
-import { Badge, Box, HStack, Button } from "@chakra-ui/react";
+import { Badge, Box, Button } from "@chakra-ui/react";
 import {
   FiTag,
   FiEdit2,
@@ -86,12 +86,11 @@ export const ListadoTiposElementoLimpieza = ({
 
   return (
     <Box>
-      <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Tipos de Elemento de Limpieza' icon={FiTag} />
-        <Button colorPalette='green' onClick={onCrear}>
-          <FiPlus /> Nuevo tipo
-        </Button>
-      </HStack>
+      <ListadoHeader title='Tipos de Elemento de Limpieza' icon={FiTag}>
+      <Button colorPalette='green' onClick={onCrear}>
+        <FiPlus /> Nuevo tipo
+      </Button>
+      </ListadoHeader>
 
       {loading && <LoadingState message='Cargando tipos...' />}
       {!loading && error && <AlertMessage type='error' message={error} />}

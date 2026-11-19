@@ -284,12 +284,11 @@ export const ListadoElementosLimpieza = ({
 
   return (
     <ListadoContainer>
-      <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader
-          title='Elementos de Limpieza'
-          icon={MdOutlineCleaningServices}
-        />
-        <HStack gap={2}>
+      <ListadoHeader
+        title='Elementos de Limpieza'
+        icon={MdOutlineCleaningServices}
+      >
+        <HStack gap={2} wrap='wrap'>
           <Button variant='outline' colorPalette='green' onClick={onCrearTipo}>
             <FiSettings /> Gestionar tipos
           </Button>
@@ -297,7 +296,7 @@ export const ListadoElementosLimpieza = ({
             <FiPlus /> Nuevo elemento
           </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar

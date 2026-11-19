@@ -42,20 +42,14 @@ import {
 import { ListadoContainer } from "../../components/layout";
 import { ITEMS_POR_PAGINA } from "../../config";
 import { recetasApi } from "./hooks/recetaApi";
-import {
-  PasoRecetaModal,
-  type ModoPasoForm,
-} from "./PasoRecetaModal";
+import { PasoRecetaModal, type ModoPasoForm } from "./PasoRecetaModal";
 import { PasoRecetaDetalle } from "./PasoRecetaDetalle";
 import { RecetaForm } from "./RecetaForm";
 import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
 import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import type { PasoReceta, Receta } from "./types";
 
-const estadoInfo: Record<
-  Receta["estado"],
-  { texto: string; color: string }
-> = {
+const estadoInfo: Record<Receta["estado"], { texto: string; color: string }> = {
   BORRADOR: { texto: "Borrador", color: "orange" },
   ACTIVA: { texto: "Activa", color: "green" },
   INHABILITADA: { texto: "Archivada", color: "red" },
@@ -74,9 +68,9 @@ const Chip = ({
     colorPalette={colorPalette}
     px={3}
     py={1}
-    fontSize="sm"
-    display="flex"
-    alignItems="center"
+    fontSize='sm'
+    display='flex'
+    alignItems='center'
     gap={2}
   >
     {icon && <Icon as={icon} />}
@@ -91,11 +85,11 @@ const Dato = ({
   label: string;
   children: React.ReactNode;
 }) => (
-  <HStack align="baseline" gap={1} flexWrap="wrap">
-    <Text as="span" fontWeight="semibold">
+  <HStack align='baseline' gap={1} flexWrap='wrap'>
+    <Text as='span' fontWeight='semibold'>
       {label}:
     </Text>
-    <Text as="span">{children}</Text>
+    <Text as='span'>{children}</Text>
   </HStack>
 );
 
@@ -209,9 +203,7 @@ export default function RecetaWorkspace({
 
   const siguienteOrden = useMemo(() => {
     if (pasosOrdenados.length === 0) return 1;
-    return (
-      Math.max(...pasosOrdenados.map((p) => p.numero_orden)) + 1
-    );
+    return Math.max(...pasosOrdenados.map((p) => p.numero_orden)) + 1;
   }, [pasosOrdenados]);
 
   const recursosInactivosPorPaso = useMemo(() => {
@@ -271,29 +263,29 @@ export default function RecetaWorkspace({
 
   if (loading) {
     return (
-      <Box p={10} bg="gray.100" minH="100vh">
-        <Box maxW="7xl" mx="auto" mt={20}>
-          <LoadingState message="Cargando receta..." />
+      <>
+        <Box maxW='7xl' mx='auto'>
+          <LoadingState message='Cargando receta...' />
         </Box>
-      </Box>
+      </>
     );
   }
 
   if (!receta) {
     return (
-      <Box p={10} bg="gray.100" minH="100vh">
-        <ListadoContainer maxW="4xl">
+      <>
+        <ListadoContainer maxW='4xl'>
           <VStack gap={4}>
             <AlertMessage
-              type="error"
+              type='error'
               message={error || "No se encontró la receta solicitada."}
             />
-            <Button colorPalette="green" onClick={volver}>
+            <Button colorPalette='green' onClick={volver}>
               <FiList /> Volver al listado
             </Button>
           </VStack>
         </ListadoContainer>
-      </Box>
+      </>
     );
   }
 
@@ -304,9 +296,9 @@ export default function RecetaWorkspace({
   const pasos = pasosOrdenados;
   const tienePasos = pasos.length > 0;
   const puedeModificar = esBorrador || (esActiva && !receta.tiene_lotes);
-  const productoInactivo = receta.producto ? receta.producto.activo === false : false;
-
-
+  const productoInactivo = receta.producto
+    ? receta.producto.activo === false
+    : false;
 
   const abrirCrearPaso = () => {
     setError("");
@@ -379,21 +371,19 @@ export default function RecetaWorkspace({
     {
       key: "numero_orden",
       label: "Orden",
-      render: (p) => (
-        <Text>{p.numero_orden}</Text>
-      ),
+      render: (p) => <Text>{p.numero_orden}</Text>,
     },
     {
       key: "titulo",
       label: "Título",
-      render: (p) => <Text fontWeight="semibold">{p.titulo}</Text>,
+      render: (p) => <Text fontWeight='semibold'>{p.titulo}</Text>,
     },
     {
       key: "insumos",
       label: "Insumos Teóricos",
       render: (p) =>
         p.insumos?.length ? (
-          <HStack gap={1} flexWrap="wrap">
+          <HStack gap={1} flexWrap='wrap'>
             {p.insumos.map((i, idx) => {
               const inactivo = i.insumo?.disponible === false;
               return (
@@ -402,7 +392,8 @@ export default function RecetaWorkspace({
                   color={inactivo ? "red.600" : undefined}
                   fontWeight={inactivo ? "medium" : undefined}
                 >
-                  {i.insumo?.nombre ?? `Insumo #${i.insumo_id}`} ({i.cantidad_consumo_estimada}
+                  {i.insumo?.nombre ?? `Insumo #${i.insumo_id}`} (
+                  {i.cantidad_consumo_estimada}
                   {i.insumo?.unidad_medida ? ` ${i.insumo.unidad_medida}` : ""})
                   {idx < (p.insumos?.length ?? 0) - 1 ? "," : ""}
                 </Text>
@@ -418,7 +409,7 @@ export default function RecetaWorkspace({
       label: "Equipos",
       render: (p) =>
         p.equipos?.length ? (
-          <HStack gap={1} flexWrap="wrap">
+          <HStack gap={1} flexWrap='wrap'>
             {p.equipos.map((e, idx) => {
               const inactivo = e.equipo?.activo === false;
               return (
@@ -446,22 +437,22 @@ export default function RecetaWorkspace({
           {esBorrador && (
             <RowActionButton
               icon={FiEdit2}
-              label="Editar"
-              colorPalette="blue"
+              label='Editar'
+              colorPalette='blue'
               onClick={() => abrirModificarPaso(p)}
             />
           )}
           <RowActionButton
             icon={FiEye}
-            label="Ver"
-            colorPalette="yellow"
+            label='Ver'
+            colorPalette='yellow'
             onClick={() => abrirVerPaso(p)}
           />
           {esBorrador && (
             <RowActionButton
               icon={FiTrash2}
-              label="Eliminar"
-              colorPalette="red"
+              label='Eliminar'
+              colorPalette='red'
               onClick={() => {
                 setErrorEliminarPaso("");
                 setPasoEliminar(p);
@@ -508,30 +499,30 @@ export default function RecetaWorkspace({
   };
 
   return (
-    <Box p={10} bg="gray.100" minH="100vh">
-      <ListadoContainer maxW="8xl">
+    <>
+      <ListadoContainer>
         <HStack
-          justify="space-between"
-          align="center"
-          flexWrap="wrap"
+          justify='space-between'
+          align='center'
+          flexWrap='wrap'
           gap={2}
           mb={3}
         >
           <Heading
-            size="xl"
-            color="green"
-            display="flex"
-            alignItems="center"
+            size='xl'
+            color='green'
+            display='flex'
+            alignItems='center'
             gap={2}
           >
             <Icon as={FiBookOpen} />
             {receta.nombre_receta}
           </Heading>
-          <HStack gap={2} flexWrap="wrap">
+          <HStack gap={2} flexWrap='wrap'>
             {puedeModificar && (
               <Button
-                variant="ghost"
-                colorPalette="blue"
+                variant='ghost'
+                colorPalette='blue'
                 onClick={() => {
                   setError("");
                   setSuccess("");
@@ -541,13 +532,13 @@ export default function RecetaWorkspace({
                 <FiEdit3 /> Modificar
               </Button>
             )}
-            <Button variant="ghost" colorPalette="yellow" onClick={volver}>
+            <Button variant='ghost' colorPalette='yellow' onClick={volver}>
               <FiList /> Listado
             </Button>
             {(esActiva || esInhabilitada) && (
               <Button
-                variant="ghost"
-                colorPalette="blue"
+                variant='ghost'
+                colorPalette='blue'
                 onClick={() => imprimirFichaReceta(receta)}
               >
                 <FiPrinter /> Imprimir Ficha
@@ -555,17 +546,19 @@ export default function RecetaWorkspace({
             )}
             {esBorrador && (
               <Button
-                variant="ghost"
-                colorPalette="green"
-                disabled={!tienePasos || tieneRecursosInactivos || productoInactivo}
+                variant='ghost'
+                colorPalette='green'
+                disabled={
+                  !tienePasos || tieneRecursosInactivos || productoInactivo
+                }
                 title={
                   productoInactivo
                     ? "El producto asociado está dado de baja. No se puede activar la receta."
                     : !tienePasos
-                    ? "Agregá al menos un paso para poder activar la receta."
-                    : tieneRecursosInactivos
-                    ? "Hay pasos con recursos dados de baja. Modificalos para poder activar la receta."
-                    : undefined
+                      ? "Agregá al menos un paso para poder activar la receta."
+                      : tieneRecursosInactivos
+                        ? "Hay pasos con recursos dados de baja. Modificalos para poder activar la receta."
+                        : undefined
                 }
                 onClick={() => {
                   setErrorAccion("");
@@ -577,8 +570,8 @@ export default function RecetaWorkspace({
             )}
             {(esBorrador || esActiva) && (
               <Button
-                variant="ghost"
-                colorPalette="red"
+                variant='ghost'
+                colorPalette='red'
                 onClick={() => {
                   setErrorAccion("");
                   setConfirmarBaja(true);
@@ -588,14 +581,14 @@ export default function RecetaWorkspace({
                 {esBorrador
                   ? "Descartar borrador"
                   : receta.tiene_lotes
-                  ? "Dar de baja"
-                  : "Eliminar receta"}
+                    ? "Dar de baja"
+                    : "Eliminar receta"}
               </Button>
             )}
             {esBorrador && onCrearReceta && (
               <Button
-                variant="solid"
-                colorPalette="green"
+                variant='solid'
+                colorPalette='green'
                 onClick={onCrearReceta}
               >
                 <FiPlus /> Nueva Receta
@@ -604,7 +597,7 @@ export default function RecetaWorkspace({
           </HStack>
         </HStack>
 
-        <HStack gap={2} mb={4} flexWrap="wrap">
+        <HStack gap={2} mb={4} flexWrap='wrap'>
           <Chip
             icon={FiActivity}
             texto={`Estado: ${estado.texto}`}
@@ -618,61 +611,59 @@ export default function RecetaWorkspace({
           <Chip
             icon={FiCalendar}
             texto={`Fecha: ${formatFecha(receta.fecha_creacion)}`}
-            colorPalette="blue"
+            colorPalette='blue'
           />
           {receta.fecha_baja && (
             <Chip
               icon={FiCalendar}
               texto={`Fecha de baja: ${formatFecha(receta.fecha_baja)}`}
-              colorPalette="red"
+              colorPalette='red'
             />
           )}
           <Chip
             icon={FiUser}
-            texto={`Creado por: ${
-              receta.usuario_creador_nombre || "—"
-            }`}
-            colorPalette="orange"
+            texto={`Creado por: ${receta.usuario_creador_nombre || "—"}`}
+            colorPalette='orange'
           />
         </HStack>
 
-        <VStack align="stretch" gap={2} mb={2}>
-          <Dato label="Código">{receta.codigo_receta}</Dato>
-          <Dato label="Rendimiento estándar">
+        <VStack align='stretch' gap={2} mb={2}>
+          <Dato label='Código'>{receta.codigo_receta}</Dato>
+          <Dato label='Rendimiento estándar'>
             {`${receta.rendimiento_estandar} g`}
           </Dato>
-          <Dato label="Tiempo estimado total">
+          <Dato label='Tiempo estimado total'>
             {receta.tiempo_estimado_total != null
               ? `${receta.tiempo_estimado_total} min`
               : "—"}
           </Dato>
           {receta.fecha_baja && (
-            <Dato label="Fecha de baja">{formatFecha(receta.fecha_baja)}</Dato>
+            <Dato label='Fecha de baja'>{formatFecha(receta.fecha_baja)}</Dato>
           )}
-          <Dato label="Observaciones">{receta.observaciones || "—"}</Dato>
+          <Dato label='Observaciones'>{receta.observaciones || "—"}</Dato>
         </VStack>
 
         {esInhabilitada && (
           <AlertMessage
-            type="info"
-            message="La receta está archivada. Para volver a usarla, copiala desde el listado de recetas."
+            type='info'
+            message='La receta está archivada. Para volver a usarla, copiala desde el listado de recetas.'
           />
         )}
 
-        {esBorrador && (
-          productoInactivo ? (
+        {esBorrador &&
+          (productoInactivo ? (
             <AlertMessage
-              type="warning"
+              type='warning'
               message={`El producto "${receta.producto?.nombre || "asociado"}" está dado de baja. No se puede activar la receta ya que el producto está dado de baja.`}
             />
           ) : !tienePasos ? (
             <AlertMessage
-              type="info"
-              message="Agregá al menos un paso para poder activar la receta."
+              type='info'
+              message='Agregá al menos un paso para poder activar la receta.'
             />
           ) : tieneRecursosInactivos ? (
             <AlertMessage
-              type="warning"
+              type='warning'
               message={
                 recursosInactivosPorPaso.length === 1
                   ? recursosInactivosPorPaso[0].recursos.length === 1
@@ -690,33 +681,32 @@ export default function RecetaWorkspace({
                       .join(", ")}. Modificalos para poder activar la receta.`
               }
             />
-          ) : null
-        )}
+          ) : null)}
 
-        {error && <AlertMessage type="error" message={error} />}
-        {success && <AlertMessage type="success" message={success} />}
+        {error && <AlertMessage type='error' message={error} />}
+        {success && <AlertMessage type='success' message={success} />}
       </ListadoContainer>
 
-      <ListadoContainer maxW="8xl" mt={4}>
+      <ListadoContainer mt={4}>
         <HStack
-          justify="space-between"
-          align="center"
-          flexWrap="wrap"
+          justify='space-between'
+          align='center'
+          flexWrap='wrap'
           gap={2}
           mb={4}
         >
           <Heading
-            size="lg"
-            color="green"
-            display="flex"
-            alignItems="center"
+            size='lg'
+            color='green'
+            display='flex'
+            alignItems='center'
             gap={2}
           >
             <Icon as={FiHash} />
             Pasos de la receta
           </Heading>
           {esBorrador && (
-            <Button colorPalette="green" onClick={abrirCrearPaso}>
+            <Button colorPalette='green' onClick={abrirCrearPaso}>
               <FiPlus /> Agregar paso
             </Button>
           )}
@@ -724,8 +714,8 @@ export default function RecetaWorkspace({
 
         {!tienePasos ? (
           <AlertMessage
-            type="info"
-            message="La receta no tiene pasos cargados todavía."
+            type='info'
+            message='La receta no tiene pasos cargados todavía.'
           />
         ) : (
           <>
@@ -739,8 +729,8 @@ export default function RecetaWorkspace({
               page={page}
               pageSize={ITEMS_POR_PAGINA}
               onPageChange={setPage}
-              labelSingular="paso"
-              labelPlural="pasos"
+              labelSingular='paso'
+              labelPlural='pasos'
             />
           </>
         )}
@@ -761,15 +751,12 @@ export default function RecetaWorkspace({
       />
 
       {pasoVer && (
-        <PasoRecetaDetalle
-          paso={pasoVer}
-          onCerrar={() => setPasoVer(null)}
-        />
+        <PasoRecetaDetalle paso={pasoVer} onCerrar={() => setPasoVer(null)} />
       )}
 
       <AlertDelete
         open={pasoEliminar !== null}
-        title="Eliminar paso de la receta"
+        title='Eliminar paso de la receta'
         name={pasoEliminar?.titulo ?? null}
         loading={eliminandoPaso}
         error={errorEliminarPaso}
@@ -785,7 +772,7 @@ export default function RecetaWorkspace({
         onClose={() => setModificarAbierto(false)}
       >
         <RecetaForm
-          modo="modificar"
+          modo='modificar'
           receta={receta}
           onCancelar={() => setModificarAbierto(false)}
           onGuardado={(actualizada) => {
@@ -800,11 +787,11 @@ export default function RecetaWorkspace({
 
       <AlertConfirm
         open={confirmarActivar}
-        title="Activar receta"
-        message="¿Está seguro que desea activar esta receta? Si ya existe otra receta ACTIVA para este producto, se inhabilitará automáticamente."
+        title='Activar receta'
+        message='¿Está seguro que desea activar esta receta? Si ya existe otra receta ACTIVA para este producto, se inhabilitará automáticamente.'
         loading={activando}
-        loadingText="Activando..."
-        confirmLabel="Activar"
+        loadingText='Activando...'
+        confirmLabel='Activar'
         error={errorAccion}
         onConfirm={() => void activar()}
         onCancel={() => {
@@ -819,15 +806,15 @@ export default function RecetaWorkspace({
           esActiva && receta.tiene_lotes
             ? "Dar de baja la receta"
             : esBorrador
-            ? "Descartar borrador"
-            : "Eliminar receta"
+              ? "Descartar borrador"
+              : "Eliminar receta"
         }
         message={
           esBorrador
             ? `¿Está seguro que desea descartar la receta "${receta.nombre_receta}"? Se eliminará definitivamente.`
             : receta.tiene_lotes
-            ? `¿Está seguro que desea dar de baja la receta "${receta.nombre_receta}"? Pasará a estado Archivada ya que posee lotes de producción asociados.`
-            : `¿Está seguro que desea eliminar la receta "${receta.nombre_receta}"? Se eliminará definitivamente ya que no posee lotes asociados.`
+              ? `¿Está seguro que desea dar de baja la receta "${receta.nombre_receta}"? Pasará a estado Archivada ya que posee lotes de producción asociados.`
+              : `¿Está seguro que desea eliminar la receta "${receta.nombre_receta}"? Se eliminará definitivamente ya que no posee lotes asociados.`
         }
         confirmLabel={
           esActiva && receta.tiene_lotes ? "Dar de baja" : "Eliminar"
@@ -841,9 +828,7 @@ export default function RecetaWorkspace({
         }}
       />
 
-      {(esActiva || esInhabilitada) && (
-        <FichaRecetaPrint receta={receta} esModoAdmin={true} />
-      )}
-    </Box>
+      {(esActiva || esInhabilitada) && <FichaRecetaPrint receta={receta} />}
+    </>
   );
 }

@@ -1,7 +1,6 @@
 import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { InsumoQuimicoForm } from "../features/insumoQuimico/InsumoQuimicoForm";
 import { InsumoQuimicoDetalle } from "../features/insumoQuimico/InsumoQuimicoDetalle";
 import { ListadoInsumosQuimicos } from "../features/insumoQuimico/ListadoInsumoQuimico";
@@ -61,7 +60,7 @@ export default function InsumoQuimicoPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoInsumosQuimicos
         key={refescar}
         onVerUnidades={() =>
@@ -158,6 +157,6 @@ export default function InsumoQuimicoPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

@@ -465,7 +465,7 @@ export default function RecetasPage() {
   ];
 
   return (
-    <ListadoContainer maxW="8xl">
+    <ListadoContainer>
       <ListadoHeader title="Recetas" icon={FiBookOpen}>
         <HStack justify="flex-end" mb={6} align="center">
           <Button

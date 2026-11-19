@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Box } from "@chakra-ui/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ListadoDocumentos } from "../features/documentos/ListadoDocumentos";
@@ -114,7 +113,7 @@ export default function DocumentosPage() {
   };
 
   return (
-    <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
+    <>
       <ListadoDocumentos
         key={refrescar} // Fuerza el re-fetch cuando cambia
         onCrear={() => {
@@ -232,6 +231,6 @@ export default function DocumentosPage() {
         />
       )}
       
-    </Box>
+    </>
   );
 }

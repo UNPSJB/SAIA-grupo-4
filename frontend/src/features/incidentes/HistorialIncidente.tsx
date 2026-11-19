@@ -30,10 +30,10 @@ export const HistorialIncidente = ({ incidenteId }: Props) => {
   }
 
   return (
-    <Stack gap={3} textAlign="left">
+    <Stack textAlign="left">
       {data.map((item) => (
         <Box key={item.id} p={3} borderWidth="1px" borderRadius="md" bg="white">
-          <HStack justify="space-between" mb={1}>
+          <HStack justify="space-between">
             <Badge colorPalette={item.estado_nuevo === "cerrado" ? "green" : "orange"}>
               {item.estado_nuevo === "cerrado" ? "Resuelto" : "Reabierto"}
             </Badge>

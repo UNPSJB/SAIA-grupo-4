@@ -1,6 +1,5 @@
 import { BASE_URL } from "../config";
 import { useState } from "react";
-import { Box } from "@chakra-ui/react";
 import { SectorForm } from "../features/sectores/SectorForm";
 import { SectorDetalle } from "../features/sectores/SectorDetalle";
 import { ListadoSectores } from "../features/sectores/ListadoSector";
@@ -62,7 +61,7 @@ export default function SectoresPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoSectores
         key={refrescar}
         onCrear={() => setVista("crear")}
@@ -155,6 +154,6 @@ export default function SectoresPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

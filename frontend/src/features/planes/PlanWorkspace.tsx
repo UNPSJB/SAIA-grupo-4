@@ -110,8 +110,7 @@ export const PlanWorkspace = ({
       <VStack
         maxW='4xl'
         mx='auto'
-        mt={20}
-        p={10}
+        p={{ base: 4, md: 6 }}
         borderWidth='1px'
         borderRadius='lg'
         boxShadow='lg'

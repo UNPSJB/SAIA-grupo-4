@@ -1,7 +1,6 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { apiFetch } from "../features/auth/apiFetch";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
@@ -93,7 +92,7 @@ export default function InsumoPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoInsumos
         key={refescar}
         onVerAlimentosReferencia={() =>
@@ -139,10 +138,7 @@ export default function InsumoPage() {
       )}
 
       {(vista === "crear" || vista === "modificar") && (
-        <FormModal
-          open
-          onClose={cerrarModalForm}
-        >
+        <FormModal open onClose={cerrarModalForm}>
           {vista === "crear" && (
             <InsumoForm
               modo='crear'
@@ -198,6 +194,6 @@ export default function InsumoPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

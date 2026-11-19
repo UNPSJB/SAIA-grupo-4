@@ -17,10 +17,10 @@ export const FormContainer = ({
   ...rest
 }: FormContainerProps) => (
   <Box
+    w="full"
     maxW={maxW ?? (modal ? "100%" : "xl")}
     mx="auto"
-    mt={modal ? 0 : 20}
-    p={modal ? 6 : 20}
+    p={modal ? 6 : { base: 6, md: 10 }}
     borderWidth={modal ? 0 : "1px"}
     borderRadius={modal ? "none" : "lg"}
     boxShadow={modal ? "none" : "lg"}

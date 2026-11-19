@@ -39,6 +39,7 @@ import { useAuth } from "../../features/auth/useAuth";
 import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
 import { SideBar, type NavItem as SideBarNavItem } from "./SideBar";
+import { PAGE_PX, PAGE_PY } from "./espaciado";
 
 // Un ítem de la navegación del admin (solo links, sin children).
 export interface AdminNavItem {
@@ -209,7 +210,7 @@ const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
           showMenuButton={true}
         />
 
-        <Box bg="gray.100" flex="1" minW="0">
+        <Box bg="gray.100" flex="1" minW="0" px={PAGE_PX} py={PAGE_PY}>
           {children}
         </Box>
       </Flex>

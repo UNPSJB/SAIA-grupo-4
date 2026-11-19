@@ -181,9 +181,8 @@ export const ListadoProductos = ({
   ];
 
   return (
-    <ListadoContainer maxW='8xl'>
-      <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Productos' icon={FiPackage} />
+    <ListadoContainer>
+      <ListadoHeader title='Productos' icon={FiPackage}>
         <HStack gap={2}>
           <Button
             variant='outline'
@@ -196,7 +195,7 @@ export const ListadoProductos = ({
             <FiPlus /> Nuevo producto
           </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar

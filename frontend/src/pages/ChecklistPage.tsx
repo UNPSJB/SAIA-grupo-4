@@ -154,7 +154,7 @@ export default function ChecklistPage({
   });
 
   return (
-    <Box bg='gray.50' minH={mostrarBarraInstitucional ? "100vh" : "auto"}>
+    <Box minH={mostrarBarraInstitucional ? "100vh" : "auto"}>
       {/* Barra superior institucional SAIA-4.
           El operador ahora entra por OperadorLayout, que ya trae la barra lateral y el
           logout, así que esta barra sólo se muestra si la pantalla se está ejecutando de manera externa y solitaria */}
@@ -190,7 +190,7 @@ export default function ChecklistPage({
       )}
 
       {/* contenido principal */}
-      <Box py={{ base: 4, md: 8 }} px={{ base: 3, md: 6 }}>
+      <Box>
         <Container maxW='container.lg' px={0}>
           <ChecklistHeader
             nombreOperario={
