@@ -1,6 +1,10 @@
 import { BASE_URL, JSON_HEADERS } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
-import type { RotuloProductoConsolidado, RotuloProductoUpdate } from "../types";
+import type {
+  RotuloProductoConsolidado,
+  RotuloProductoUpdate,
+  VistaPreviaRotulo,
+} from "../types";
 
 async function extraerError(res: Response, fallback: string): Promise<string> {
   try {
@@ -35,6 +39,21 @@ export const rotuloProductoApi = {
     if (!res.ok) {
       throw new Error(
         await extraerError(res, "No se pudieron guardar los datos del rótulo."),
+      );
+    }
+    return res.json();
+  },
+
+  async obtenerVistaPrevia(productoId: number): Promise<VistaPreviaRotulo> {
+    const res = await apiFetch(
+      `${BASE_URL}/productos/${productoId}/rotulo/vista-previa`,
+    );
+    if (!res.ok) {
+      throw new Error(
+        await extraerError(
+          res,
+          "No se pudo generar la vista previa del borrador del rótulo.",
+        ),
       );
     }
     return res.json();
