@@ -1,3 +1,4 @@
+import type { CodigoAlergenoCAA } from "../insumo/types";
 import type { UnidadMedida } from "../unidadMedida/types";
 
 export interface Producto {
@@ -61,6 +62,28 @@ export interface CompletitudCAA {
     detalle: ItemCompletitudCAA[];
 }
 
+export type EstadoValidacionAlergenos = "SUGERIDO" | "CONFIRMADO";
+
+export interface AlergenoRotuloItem {
+    codigo: CodigoAlergenoCAA;
+    es_derivado: boolean;
+}
+
+export interface OrigenAlergenoOut {
+    codigo: CodigoAlergenoCAA;
+    etiqueta: string;
+    es_derivado: boolean;
+    insumos_fuente: string[];
+}
+
+export interface ConservacionSugeridaOut {
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+    condiciones_conservacion?: string | null;
+}
+
 export interface DatosAutocompletadosReceta {
     tiene_receta_activa: boolean;
     receta_id?: number | null;
@@ -77,6 +100,10 @@ export interface DatosAutocompletadosReceta {
     lotes_disponibles: LoteResumenRotulo[];
     razon_social_establecimiento?: string | null;
     domicilio_establecimiento?: string | null;
+    alergenos_presentes_calculados: AlergenoRotuloItem[];
+    detalle_origen_alergenos: OrigenAlergenoOut[];
+    leyenda_alergenos_calculada?: string | null;
+    conservacion_sugerida?: ConservacionSugeridaOut | null;
 }
 
 export interface RotuloProductoUpdate {
@@ -110,10 +137,21 @@ export interface RotuloProductoUpdate {
     sellos_advertencia_json?: SelloRotuloItem[];
     leyendas_precautorias_json?: SelloRotuloItem[];
 
+    alergenos_presentes_json?: AlergenoRotuloItem[];
+    alergenos_contaminacion_cruzada_json?: AlergenoRotuloItem[];
+    leyenda_alergenos_declarada?: string | null;
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+    confirmar_alergenos_conservacion?: boolean;
+
     restaurar_ingredientes_automatico?: boolean;
     restaurar_nutricion_automatico?: boolean;
     restaurar_sellos_automatico?: boolean;
     restaurar_lote_automatico?: boolean;
+    restaurar_alergenos_automatico?: boolean;
+    restaurar_conservacion_automatico?: boolean;
 }
 
 export interface RotuloProductoConsolidado {
@@ -154,15 +192,32 @@ export interface RotuloProductoConsolidado {
     sellos_advertencia_json: SelloRotuloItem[];
     leyendas_precautorias_json: SelloRotuloItem[];
 
+    alergenos_presentes_json: AlergenoRotuloItem[];
+    alergenos_contaminacion_cruzada_json: AlergenoRotuloItem[];
+    leyenda_alergenos_declarada?: string | null;
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+
     ingredientes_modificado_manualmente: boolean;
     nutricion_modificada_manualmente: boolean;
     sellos_modificados_manualmente: boolean;
     lote_modificado_manualmente: boolean;
+    alergenos_modificados_manualmente: boolean;
+    conservacion_modificada_manualmente: boolean;
 
     ingredientes_difiere_de_receta: boolean;
     nutricion_difiere_de_receta: boolean;
     sellos_difieren_de_receta: boolean;
     lote_difiere_de_ultimo_lote: boolean;
+    alergenos_difieren_de_receta: boolean;
+    conservacion_difiere_de_sugerida: boolean;
+
+    estado_validacion_alergenos: EstadoValidacionAlergenos;
+    confirmacion_invalidada_por_cambio_receta: boolean;
+    fecha_confirmacion_alergenos?: string | null;
+    confirmado_alergenos_por_nombre?: string | null;
 
     fecha_actualizacion?: string | null;
     actualizado_por_nombre?: string | null;

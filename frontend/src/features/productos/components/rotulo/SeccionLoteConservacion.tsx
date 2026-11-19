@@ -1,7 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
   Card,
-  Checkbox,
   Field,
   Heading,
   HStack,
@@ -9,8 +8,6 @@ import {
   Input,
   NativeSelect,
   SimpleGrid,
-  Textarea,
-  VStack,
 } from "@chakra-ui/react";
 import { FiBox } from "react-icons/fi";
 import { formatearFechaISO } from "../../../../utils/fecha";
@@ -62,7 +59,7 @@ export const SeccionLoteConservacion = ({
           <HStack gap={2}>
             <Icon as={FiBox} color="teal.600" boxSize={5} />
             <Heading size="md" color="gray.800">
-              3. Lote, Duración Mínima, Conservación e Instrucciones
+              3. Identificación de Lote y Fecha de Duración Mínima
             </Heading>
           </HStack>
           <BadgeEstadoRotulo
@@ -140,58 +137,6 @@ export const SeccionLoteConservacion = ({
             />
           </Field.Root>
         </SimpleGrid>
-
-        <Field.Root>
-          <Field.Label fontSize="sm" fontWeight="semibold">
-            Condiciones de conservación
-          </Field.Label>
-          <Textarea
-            rows={2}
-            value={form.condiciones_conservacion ?? ""}
-            onChange={(e) =>
-              setForm((p) => ({
-                ...p,
-                condiciones_conservacion: e.target.value,
-              }))
-            }
-            placeholder="Ej: Conservar en lugar fresco y seco, al abrigo de la luz solar."
-          />
-        </Field.Root>
-
-        <VStack align="stretch" gap={3}>
-          <Checkbox.Root
-            checked={form.aplica_instrucciones_uso}
-            onCheckedChange={(details) =>
-              setForm((p) => ({
-                ...p,
-                aplica_instrucciones_uso: Boolean(details.checked),
-              }))
-            }
-            colorPalette="teal"
-          >
-            <Checkbox.HiddenInput />
-            <Checkbox.Control />
-            <Checkbox.Label fontSize="sm">
-              El producto requiere instrucciones de uso o preparación
-            </Checkbox.Label>
-          </Checkbox.Root>
-
-          {form.aplica_instrucciones_uso && (
-            <Field.Root>
-              <Field.Label fontSize="sm" fontWeight="semibold">
-                Instrucciones de uso / preparación
-              </Field.Label>
-              <Textarea
-                rows={3}
-                value={form.instrucciones_uso ?? ""}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, instrucciones_uso: e.target.value }))
-                }
-                placeholder="Detalle cómo preparar o utilizar el producto..."
-              />
-            </Field.Root>
-          )}
-        </VStack>
       </Card.Body>
     </Card.Root>
   );

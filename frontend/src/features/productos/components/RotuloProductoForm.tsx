@@ -11,6 +11,10 @@ import type {
 } from "../types";
 import { IndicadorCompletitudCAA } from "./IndicadorCompletitudCAA";
 import { norm, normComp } from "./rotulo/RotuloSeccionHelpers";
+import {
+  generarLeyendaAlergenosLocal,
+  SeccionAlergenosConservacion,
+} from "./rotulo/SeccionAlergenosConservacion";
 import { SeccionIdentificacionContenido } from "./rotulo/SeccionIdentificacionContenido";
 import { SeccionIngredientesRotulo } from "./rotulo/SeccionIngredientesRotulo";
 import { SeccionLoteConservacion } from "./rotulo/SeccionLoteConservacion";
@@ -55,6 +59,15 @@ const mapFromConsolidado = (
   leyendas_precautorias_json: r.leyendas_precautorias_json.map((l) => ({
     ...l,
   })),
+  alergenos_presentes_json: r.alergenos_presentes_json.map((a) => ({ ...a })),
+  alergenos_contaminacion_cruzada_json:
+    r.alergenos_contaminacion_cruzada_json.map((a) => ({ ...a })),
+  leyenda_alergenos_declarada: r.leyenda_alergenos_declarada ?? "",
+  temp_conservacion_min_c: r.temp_conservacion_min_c ?? null,
+  temp_conservacion_max_c: r.temp_conservacion_max_c ?? null,
+  durabilidad_antes_abrir: r.durabilidad_antes_abrir ?? "",
+  durabilidad_despues_abrir: r.durabilidad_despues_abrir ?? "",
+  confirmar_alergenos_conservacion: false,
 });
 
 export const RotuloProductoForm = ({
@@ -76,7 +89,10 @@ export const RotuloProductoForm = ({
 
   const hayCambios = useMemo(() => {
     const base = mapFromConsolidado(rotulo);
-    return JSON.stringify(form) !== JSON.stringify(base);
+    return (
+      JSON.stringify(form) !== JSON.stringify(base) ||
+      Boolean(form.confirmar_alergenos_conservacion)
+    );
   }, [form, rotulo]);
 
   const ingredientesDifiere = useMemo(() => {
@@ -164,6 +180,62 @@ export const RotuloProductoForm = ({
     );
   }, [form.codigo_lote_declarado, form.fecha_duracion_minima, loteRef]);
 
+  const alergenosDifiere = useMemo(() => {
+    const pres = form.alergenos_presentes_json ?? [];
+    const cruz = form.alergenos_contaminacion_cruzada_json ?? [];
+    if (auto.tiene_receta_activa) {
+      const sPres = JSON.stringify(
+        [...pres]
+          .sort((a, b) => a.codigo.localeCompare(b.codigo))
+          .map((a) => `${a.codigo}:${a.es_derivado}`),
+      );
+      const sAuto = JSON.stringify(
+        [...auto.alergenos_presentes_calculados]
+          .sort((a, b) => a.codigo.localeCompare(b.codigo))
+          .map((a) => `${a.codigo}:${a.es_derivado}`),
+      );
+      if (sPres !== sAuto) return true;
+    }
+    const esperada = generarLeyendaAlergenosLocal(
+      auto.tiene_receta_activa ? auto.alergenos_presentes_calculados : pres,
+      cruz,
+    );
+    return normComp(form.leyenda_alergenos_declarada) !== normComp(esperada);
+  }, [
+    form.alergenos_presentes_json,
+    form.alergenos_contaminacion_cruzada_json,
+    form.leyenda_alergenos_declarada,
+    auto,
+  ]);
+
+  const conservacionDifiere = useMemo(() => {
+    const sug = auto.conservacion_sugerida;
+    if (!sug) return false;
+    return (
+      (form.temp_conservacion_min_c ?? null) !==
+        (sug.temp_conservacion_min_c ?? null) ||
+      (form.temp_conservacion_max_c ?? null) !==
+        (sug.temp_conservacion_max_c ?? null) ||
+      normComp(form.durabilidad_antes_abrir) !==
+        normComp(sug.durabilidad_antes_abrir) ||
+      normComp(form.durabilidad_despues_abrir) !==
+        normComp(sug.durabilidad_despues_abrir) ||
+      normComp(form.condiciones_conservacion) !==
+        normComp(sug.condiciones_conservacion)
+    );
+  }, [
+    form.temp_conservacion_min_c,
+    form.temp_conservacion_max_c,
+    form.durabilidad_antes_abrir,
+    form.durabilidad_despues_abrir,
+    form.condiciones_conservacion,
+    auto.conservacion_sugerida,
+  ]);
+
+  const estadoValidacionEfectivo =
+    rotulo.estado_validacion_alergenos === "CONFIRMADO" ||
+    Boolean(form.confirmar_alergenos_conservacion);
+
   const completitudEnVivo = useMemo<CompletitudCAA>(() => {
     const filas = form.tabla_nutricional_json ?? [];
     const nutriOk =
@@ -183,6 +255,7 @@ export const RotuloProductoForm = ({
       ["codigo_lote_declarado", "Identificación del lote", "Trazabilidad y Conservación", norm(form.codigo_lote_declarado) !== "", "Falta la identificación del lote."],
       ["fecha_duracion_minima", "Fecha de duración mínima", "Trazabilidad y Conservación", norm(form.fecha_duracion_minima) !== "", "Falta la fecha de duración mínima o vencimiento."],
       ["condiciones_conservacion", "Condiciones de conservación", "Trazabilidad y Conservación", norm(form.condiciones_conservacion) !== "", "Faltan las condiciones de conservación."],
+      ["alergenos_validados", "Declaración de alérgenos y conservación confirmada", "Alérgenos y Conservación", estadoValidacionEfectivo, "Falta confirmar la declaración de alérgenos y conservación."],
       ["informacion_nutricional", "Información nutricional y porción", "Nutrición", nutriOk, "Falta la tabla nutricional o el tamaño de porción."],
     ];
 
@@ -234,7 +307,7 @@ export const RotuloProductoForm = ({
       campos_faltantes: detalle.filter((d) => !d.completado).map((d) => d.etiqueta),
       detalle,
     };
-  }, [form]);
+  }, [form, estadoValidacionEfectivo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,6 +351,24 @@ export const RotuloProductoForm = ({
           autocompletado={auto}
           nutricionDifiere={nutricionDifiere}
           sellosDifieren={sellosDifieren}
+        />
+
+        <SeccionAlergenosConservacion
+          form={form}
+          setForm={setForm}
+          autocompletado={auto}
+          alergenosDifiere={alergenosDifiere}
+          conservacionDifiere={conservacionDifiere}
+          estadoValidacion={rotulo.estado_validacion_alergenos}
+          confirmacionInvalidada={rotulo.confirmacion_invalidada_por_cambio_receta}
+          confirmadoPorNombre={rotulo.confirmado_alergenos_por_nombre}
+          fechaConfirmacion={rotulo.fecha_confirmacion_alergenos}
+          confirmacionMarcadaEnForm={Boolean(
+            form.confirmar_alergenos_conservacion,
+          )}
+          onMarcarConfirmacion={() =>
+            setForm((p) => ({ ...p, confirmar_alergenos_conservacion: true }))
+          }
         />
 
         <HStack

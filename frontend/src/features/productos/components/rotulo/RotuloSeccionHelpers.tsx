@@ -15,14 +15,14 @@ export const normComp = (val?: string | null) =>
 export const AvisoSinRecetaActiva = () => (
   <Box
     p={3.5}
-    bg="blue.50"
-    borderWidth="1px"
-    borderColor="blue.200"
-    borderRadius="md"
+    bg='blue.50'
+    borderWidth='1px'
+    borderColor='blue.200'
+    borderRadius='md'
   >
-    <HStack align="start" gap={2.5}>
-      <Icon as={FiInfo} color="blue.600" boxSize={5} mt={0.5} flexShrink={0} />
-      <Text fontSize="sm" color="blue.900" fontWeight="medium">
+    <HStack align='start' gap={2.5}>
+      <Icon as={FiInfo} color='blue.600' boxSize={5} mt={0.5} flexShrink={0} />
+      <Text fontSize='sm' color='blue.900' fontWeight='medium'>
         {MENSAJE_SIN_RECETA_ACTIVA}
       </Text>
     </HStack>
@@ -42,19 +42,19 @@ export const BadgeEstadoRotulo = ({
   puedeRestaurar,
   onRestaurar,
 }: BadgeEstadoRotuloProps) => (
-  <HStack gap={2} flexWrap="wrap">
+  <HStack gap={2} flexWrap='wrap'>
     {modificado ? (
       <>
-        <Badge colorPalette="orange" variant="subtle" size="sm">
+        <Badge colorPalette='orange' variant='subtle' size='sm'>
           <Icon as={FiSliders} mr={1} />
-          Modificado manualmente / Difiere de la receta
+          Modificado manualmente
         </Badge>
         {puedeRestaurar && (
           <Button
-            type="button"
-            size="xs"
-            variant="outline"
-            colorPalette="orange"
+            type='button'
+            size='xs'
+            variant='outline'
+            colorPalette='orange'
             onClick={onRestaurar}
           >
             <FiRefreshCw /> Restaurar cálculo automático
@@ -63,7 +63,7 @@ export const BadgeEstadoRotulo = ({
       </>
     ) : (
       puedeRestaurar && (
-        <Badge colorPalette="teal" variant="subtle" size="sm">
+        <Badge colorPalette='teal' variant='subtle' size='sm'>
           {etiquetaAuto}
         </Badge>
       )
