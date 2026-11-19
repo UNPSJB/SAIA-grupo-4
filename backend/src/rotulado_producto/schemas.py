@@ -211,3 +211,77 @@ class RotuloProductoConsolidadoOut(BaseModel):
     completitud_caa: CompletitudCAAOut
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CaraPrincipalRotuloOut(BaseModel):
+    denominacion_venta: Optional[str] = None
+    contenido_neto: Optional[str] = None
+    aplica_peso_escurrido: bool = False
+    peso_escurrido: Optional[str] = None
+
+    modulo_octogonos_activo: bool = True
+    dictamen_aplicabilidad: Optional[str] = None
+    dictamen_titulo: Optional[str] = None
+    motivo_aplicabilidad: Optional[str] = None
+    sellos_advertencia: list[SelloRotuloItem] = []
+    leyendas_precautorias: list[SelloRotuloItem] = []
+    aviso_sin_sellos: Optional[str] = None
+
+
+class OrigenRotuloPreviewOut(BaseModel):
+    razon_social_elaborador: Optional[str] = None
+    domicilio_elaborador: Optional[str] = None
+    pais_origen: Optional[str] = None
+    rne_elaborador: Optional[str] = None
+    rnpa_rppa: Optional[str] = None
+    es_importado: bool = False
+    nombre_importador: Optional[str] = None
+    domicilio_importador: Optional[str] = None
+    rne_importador: Optional[str] = None
+
+
+class ConservacionLotePreviewOut(BaseModel):
+    codigo_lote: Optional[str] = None
+    fecha_duracion_minima: Optional[str] = None
+    temp_conservacion_min_c: Optional[float] = None
+    temp_conservacion_max_c: Optional[float] = None
+    durabilidad_antes_abrir: Optional[str] = None
+    durabilidad_despues_abrir: Optional[str] = None
+    condiciones_conservacion: Optional[str] = None
+    aplica_instrucciones_uso: bool = False
+    instrucciones_uso: Optional[str] = None
+
+
+class NutricionRotuloPreviewOut(BaseModel):
+    es_completa: bool
+    motivo_incompleta: Optional[str] = None
+    tamano_porcion: Optional[str] = None
+    base_etiqueta: str = "100 g"
+    filas: list[FilaNutricionalRotuloItem] = []
+    leyenda_vd: Optional[str] = None
+
+
+class VistaPreviaRotuloOut(BaseModel):
+    producto_id: int
+    producto_nombre: str
+    guardado_en_bd: bool
+    tiene_receta_activa: bool
+    receta_codigo: Optional[str] = None
+    receta_nombre: Optional[str] = None
+
+    leyenda_borrador_obligatoria: str
+
+    cara_principal: CaraPrincipalRotuloOut
+    lista_ingredientes_texto: Optional[str] = None
+    leyenda_alergenos_declarada: Optional[str] = None
+    estado_validacion_alergenos: EstadoValidacionAlergenos
+    nutricion: NutricionRotuloPreviewOut
+    origen: OrigenRotuloPreviewOut
+    conservacion_lote: ConservacionLotePreviewOut
+
+    completitud_caa: CompletitudCAAOut
+    tabla_nutricional_incompleta: bool
+    advertencias: list[str] = []
+    fecha_generacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)

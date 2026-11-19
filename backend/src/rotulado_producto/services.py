@@ -18,6 +18,7 @@ from src.rotulado_producto.constants import (
     CodigoAlergenoCAA,
     ETIQUETAS_ALERGENOS_CAA,
     EstadoValidacionAlergenos,
+    LEYENDA_BORRADOR_ROTULO,
 )
 from src.rotulado_producto.models import RotuloProducto
 
@@ -1027,3 +1028,204 @@ def guardar_rotulo_producto(
     db.commit()
     db.refresh(rotulo)
     return obtener_rotulo_producto(db, producto_id)
+
+
+def _construir_aviso_sin_sellos(
+    tiene_receta_activa: bool,
+    modulo_octogonos_activo: bool,
+    dictamen_aplicabilidad: Optional[str],
+    dictamen_titulo: Optional[str],
+    motivo_aplicabilidad: Optional[str],
+    sellos: list[schemas.SelloRotuloItem],
+    leyendas: list[schemas.SelloRotuloItem],
+) -> Optional[str]:
+    """Genera un aviso informativo para la Cara Principal cuando no corresponden sellos ni leyendas."""
+    if sellos or leyendas:
+        return None
+    if not tiene_receta_activa:
+        return "Sin receta activa para evaluar rotulado frontal (Ley 27.642)."
+    if not modulo_octogonos_activo:
+        return "Módulo de octógonos desactivado en la configuración del sistema."
+    if dictamen_aplicabilidad in ("NO_APLICA", "EXCEPTUADO"):
+        if dictamen_titulo and motivo_aplicabilidad:
+            return f"{dictamen_titulo}: {motivo_aplicabilidad}"
+        return motivo_aplicabilidad or dictamen_titulo or "No corresponde rotulado frontal."
+    return "No corresponden sellos de advertencia ni leyendas precautorias según Ley 27.642."
+
+
+def _construir_nutricion_preview(
+    db: Session,
+    rotulo: schemas.RotuloProductoConsolidadoOut,
+    es_liquido: bool,
+) -> tuple[schemas.NutricionRotuloPreviewOut, bool]:
+    """Evalúa la completitud de la tabla nutricional para la vista previa del rótulo."""
+    base_etiqueta = "100 ml" if es_liquido else "100 g"
+    tamano_porcion = _normalizar_texto(rotulo.tamano_porcion_declarado)
+    filas = rotulo.tabla_nutricional_json
+
+    motivo_incompleta: Optional[str] = None
+    if rotulo.autocompletado.tiene_receta_activa and rotulo.autocompletado.receta_id is not None:
+        info_nutri = recetas_services.obtener_informacion_nutricional(
+            db, rotulo.autocompletado.receta_id
+        )
+        if not info_nutri.es_calculable and not filas:
+            detalles: list[str] = []
+            if info_nutri.insumos_sin_equivalencia:
+                nombres = ", ".join(i.nombre for i in info_nutri.insumos_sin_equivalencia)
+                detalles.append(f"insumos sin equivalencia a gramos ({nombres})")
+            if info_nutri.insumos_nutricion_pendiente:
+                nombres = ", ".join(i.nombre for i in info_nutri.insumos_nutricion_pendiente)
+                detalles.append(f"insumos con nutrición pendiente ({nombres})")
+            motivo_incompleta = (
+                "Faltan datos para calcular la tabla nutricional: " + "; ".join(detalles) + "."
+                if detalles
+                else "La tabla nutricional no es calculable con los datos actuales de la receta."
+            )
+    elif not filas:
+        motivo_incompleta = "No hay receta activa vinculada al producto ni tabla nutricional declarada."
+
+    if not filas and motivo_incompleta is None:
+        motivo_incompleta = "La tabla nutricional no contiene filas declaradas."
+    elif filas and tamano_porcion is None:
+        motivo_incompleta = "Falta declarar el tamaño de la porción."
+
+    es_completa = len(filas) > 0 and tamano_porcion is not None and motivo_incompleta is None
+    nutricion_out = schemas.NutricionRotuloPreviewOut(
+        es_completa=es_completa,
+        motivo_incompleta=motivo_incompleta,
+        tamano_porcion=tamano_porcion,
+        base_etiqueta=base_etiqueta,
+        filas=filas,
+        leyenda_vd=rotulo.leyenda_vd_declarada,
+    )
+    return nutricion_out, not es_completa
+
+
+def _construir_advertencias_preview(
+    rotulo: schemas.RotuloProductoConsolidadoOut,
+    tabla_nutricional_incompleta: bool,
+    motivo_nutricion_incompleta: Optional[str],
+) -> list[str]:
+    """Construye la lista de advertencias destacadas para el banner de completitud."""
+    advertencias: list[str] = []
+    if not rotulo.autocompletado.tiene_receta_activa:
+        advertencias.append(
+            "El producto no tiene una receta activa; los datos automáticos no pudieron calcularse."
+        )
+    if tabla_nutricional_incompleta:
+        advertencias.append(
+            f"Tabla nutricional incompleta: {motivo_nutricion_incompleta or 'faltan datos nutricionales.'}"
+        )
+    if rotulo.estado_validacion_alergenos != EstadoValidacionAlergenos.CONFIRMADO:
+        if rotulo.confirmacion_invalidada_por_cambio_receta:
+            advertencias.append(
+                "La confirmación de alérgenos fue invalidada por cambios en la receta o insumos; requiere nueva revisión."
+            )
+        else:
+            advertencias.append(
+                "La declaración de alérgenos y conservación aún está en estado SUGERIDO y requiere confirmación."
+            )
+    if not rotulo.completitud_caa.esta_completo:
+        faltantes = ", ".join(rotulo.completitud_caa.campos_faltantes)
+        advertencias.append(
+            f"Faltan {len(rotulo.completitud_caa.campos_faltantes)} dato(s) obligatorio(s) CAA: {faltantes}."
+        )
+    return advertencias
+
+
+def obtener_vista_previa_rotulo(db: Session, producto_id: int) -> schemas.VistaPreviaRotuloOut:
+    """Consolida todos los elementos normativos del borrador del rótulo para vista previa e impresión."""
+    producto = _obtener_producto(db, producto_id)
+    rotulo = obtener_rotulo_producto(db, producto_id)
+    auto = rotulo.autocompletado
+
+    modulo_octogonos_activo = True
+    dictamen_aplicabilidad = auto.dictamen_aplicabilidad
+    dictamen_titulo: Optional[str] = None
+    motivo_aplicabilidad: Optional[str] = None
+
+    if auto.tiene_receta_activa and auto.receta_id is not None:
+        aplicabilidad = rotulado_services.evaluar_aplicabilidad_frontal(db, auto.receta_id)
+        modulo_octogonos_activo = aplicabilidad.modulo_octogonos_activo
+        dictamen_aplicabilidad = aplicabilidad.dictamen.value
+        dictamen_titulo = aplicabilidad.dictamen_titulo
+        motivo_aplicabilidad = aplicabilidad.motivo
+
+    aviso_sin_sellos = _construir_aviso_sin_sellos(
+        tiene_receta_activa=auto.tiene_receta_activa,
+        modulo_octogonos_activo=modulo_octogonos_activo,
+        dictamen_aplicabilidad=dictamen_aplicabilidad,
+        dictamen_titulo=dictamen_titulo,
+        motivo_aplicabilidad=motivo_aplicabilidad,
+        sellos=rotulo.sellos_advertencia_json,
+        leyendas=rotulo.leyendas_precautorias_json,
+    )
+
+    cara_principal = schemas.CaraPrincipalRotuloOut(
+        denominacion_venta=rotulo.denominacion_venta,
+        contenido_neto=rotulo.contenido_neto,
+        aplica_peso_escurrido=rotulo.aplica_peso_escurrido,
+        peso_escurrido=rotulo.peso_escurrido,
+        modulo_octogonos_activo=modulo_octogonos_activo,
+        dictamen_aplicabilidad=dictamen_aplicabilidad,
+        dictamen_titulo=dictamen_titulo,
+        motivo_aplicabilidad=motivo_aplicabilidad,
+        sellos_advertencia=rotulo.sellos_advertencia_json,
+        leyendas_precautorias=rotulo.leyendas_precautorias_json,
+        aviso_sin_sellos=aviso_sin_sellos,
+    )
+
+    nutricion, tabla_nutricional_incompleta = _construir_nutricion_preview(
+        db, rotulo, producto.es_liquido
+    )
+
+    origen = schemas.OrigenRotuloPreviewOut(
+        razon_social_elaborador=rotulo.razon_social_elaborador,
+        domicilio_elaborador=rotulo.domicilio_elaborador,
+        pais_origen=rotulo.pais_origen,
+        rne_elaborador=rotulo.rne_elaborador,
+        rnpa_rppa=rotulo.rnpa_rppa,
+        es_importado=rotulo.es_importado,
+        nombre_importador=rotulo.nombre_importador,
+        domicilio_importador=rotulo.domicilio_importador,
+        rne_importador=rotulo.rne_importador,
+    )
+
+    conservacion_lote = schemas.ConservacionLotePreviewOut(
+        codigo_lote=rotulo.codigo_lote_declarado,
+        fecha_duracion_minima=rotulo.fecha_duracion_minima,
+        temp_conservacion_min_c=rotulo.temp_conservacion_min_c,
+        temp_conservacion_max_c=rotulo.temp_conservacion_max_c,
+        durabilidad_antes_abrir=rotulo.durabilidad_antes_abrir,
+        durabilidad_despues_abrir=rotulo.durabilidad_despues_abrir,
+        condiciones_conservacion=rotulo.condiciones_conservacion,
+        aplica_instrucciones_uso=rotulo.aplica_instrucciones_uso,
+        instrucciones_uso=rotulo.instrucciones_uso,
+    )
+
+    advertencias = _construir_advertencias_preview(
+        rotulo=rotulo,
+        tabla_nutricional_incompleta=tabla_nutricional_incompleta,
+        motivo_nutricion_incompleta=nutricion.motivo_incompleta,
+    )
+
+    return schemas.VistaPreviaRotuloOut(
+        producto_id=rotulo.producto_id,
+        producto_nombre=rotulo.producto_nombre,
+        guardado_en_bd=rotulo.guardado_en_bd,
+        tiene_receta_activa=auto.tiene_receta_activa,
+        receta_codigo=auto.receta_codigo,
+        receta_nombre=auto.receta_nombre,
+        leyenda_borrador_obligatoria=LEYENDA_BORRADOR_ROTULO,
+        cara_principal=cara_principal,
+        lista_ingredientes_texto=rotulo.lista_ingredientes_texto,
+        leyenda_alergenos_declarada=rotulo.leyenda_alergenos_declarada,
+        estado_validacion_alergenos=rotulo.estado_validacion_alergenos,
+        nutricion=nutricion,
+        origen=origen,
+        conservacion_lote=conservacion_lote,
+        completitud_caa=rotulo.completitud_caa,
+        tabla_nutricional_incompleta=tabla_nutricional_incompleta,
+        advertencias=advertencias,
+        fecha_generacion=datetime.now(),
+    )

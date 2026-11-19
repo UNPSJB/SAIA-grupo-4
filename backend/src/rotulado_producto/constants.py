@@ -44,3 +44,9 @@ ETIQUETAS_ALERGENOS_CAA: dict[CodigoAlergenoCAA, str] = {
 class EstadoValidacionAlergenos(str, Enum):
     SUGERIDO = "SUGERIDO"
     CONFIRMADO = "CONFIRMADO"
+
+
+LEYENDA_BORRADOR_ROTULO = (
+    "BORRADOR: debe ser revisado por un/a profesional y por la autoridad sanitaria "
+    "competente antes de su uso"
+)
