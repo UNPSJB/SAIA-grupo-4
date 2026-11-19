@@ -145,6 +145,27 @@ function construirMigas(pathname: string, state: unknown): MigaItem[] {
     return migas;
   }
 
+  if (
+    segmentos.length === 3 &&
+    segmentos[0] === "productos" &&
+    segmentos[2] === "rotulo" &&
+    dynamicFrom &&
+    dynamicLabel &&
+    dynamicFrom !== "/productos"
+  ) {
+    const migas: MigaItem[] = [];
+    if (origenState?.padre && origenState.padre.nombre && origenState.padre.to) {
+      migas.push({
+        nombre: origenState.padre.nombre,
+        to: origenState.padre.to,
+        esLink: true,
+      });
+    }
+    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({ nombre: legible("rotulo"), to: pathname, esLink: false });
+    return migas;
+  }
+
   // Caso especial: si es una ruta subordinada directa definida en PADRES_LOGICOS (ej: /capacidades)
   if (segmentos.length === 1 && PADRES_LOGICOS[primerSegmento]) {
     const padre = PADRES_LOGICOS[primerSegmento];

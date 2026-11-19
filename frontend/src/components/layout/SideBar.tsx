@@ -1,7 +1,6 @@
 import { Fragment, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import {
-  Box,
   Button,
   Collapsible,
   Flex,
@@ -22,7 +21,6 @@ import {
   FiCheckSquare,
   FiBookOpen,
   FiBox,
-  FiUser,
 } from "react-icons/fi";
 
 import {
@@ -79,19 +77,19 @@ const SingleNavLink = ({
   const navButton = (
     <Button
       asChild
-      w="100%"
+      w='100%'
       justifyContent={isCollapsed ? "center" : "flex-start"}
       px={isCollapsed ? 0 : undefined}
-      variant="ghost"
+      variant='ghost'
       bg={active ? "white" : undefined}
       color={active ? "green.700" : "white"}
       borderLeft={!isSubItem ? "4px solid" : undefined}
       borderLeftColor={
         !isSubItem ? (active ? "green.400" : "transparent") : undefined
       }
-      focusRing="outside"
+      focusRing='outside'
       _hover={active ? { bg: "green.50" } : { bg: "whiteAlpha.200" }}
-      transition="background 0.15s ease, color 0.15s ease"
+      transition='background 0.15s ease, color 0.15s ease'
     >
       <NavLink
         to={item.to}
@@ -140,15 +138,18 @@ const NavSection = ({
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   return (
-    <Collapsible.Root open={open} onOpenChange={(details) => onOpenChange(details.open)}>
+    <Collapsible.Root
+      open={open}
+      onOpenChange={(details) => onOpenChange(details.open)}
+    >
       <Collapsible.Trigger asChild>
         {isCollapsed ? (
           <NavTooltip label={label}>
             <IconButton
               aria-label={label}
-              variant="ghost"
-              color="white"
-              w="100%"
+              variant='ghost'
+              color='white'
+              w='100%'
               onClick={onCollapsedClick}
               _hover={{ bg: "whiteAlpha.200" }}
             >
@@ -157,27 +158,27 @@ const NavSection = ({
           </NavTooltip>
         ) : (
           <Button
-            variant="plain"
-            color="white"
-            w="100%"
-            justifyContent="space-between"
+            variant='plain'
+            color='white'
+            w='100%'
+            justifyContent='space-between'
             _hover={{ bg: "whiteAlpha.200" }}
           >
-            <Flex align="center" gap={2}>
+            <Flex align='center' gap={2}>
               <Icon as={icon} />
               {label}
             </Flex>
             <Icon
               as={FiChevronRight}
               transform={open ? "rotate(90deg)" : "rotate(0deg)"}
-              transition="transform 0.2s"
+              transition='transform 0.2s'
             />
           </Button>
         )}
       </Collapsible.Trigger>
 
       <Collapsible.Content>
-        <VStack align="stretch" gap={1} mt={2}>
+        <VStack align='stretch' gap={1} mt={2}>
           {items.map((item) => {
             if ("children" in item) {
               const submenuOpen =
@@ -199,13 +200,13 @@ const NavSection = ({
                 >
                   <Collapsible.Trigger asChild>
                     <Button
-                      variant="plain"
-                      color="white"
-                      w="100%"
+                      variant='plain'
+                      color='white'
+                      w='100%'
                       justifyContent={isCollapsed ? "center" : "space-between"}
                       _hover={{ bg: "whiteAlpha.200" }}
                     >
-                      <Flex align="center" gap={2}>
+                      <Flex align='center' gap={2}>
                         <Icon as={item.icon} flexShrink={0} />
                         {!isCollapsed && item.label}
                       </Flex>
@@ -215,14 +216,14 @@ const NavSection = ({
                           transform={
                             submenuOpen ? "rotate(90deg)" : "rotate(0deg)"
                           }
-                          transition="transform 0.2s"
+                          transition='transform 0.2s'
                         />
                       )}
                     </Button>
                   </Collapsible.Trigger>
 
                   <Collapsible.Content>
-                    <VStack align="stretch" gap={1} pl={isCollapsed ? 0 : 4}>
+                    <VStack align='stretch' gap={1} pl={isCollapsed ? 0 : 4}>
                       {item.children.map((child) => (
                         <Fragment key={child.to}>
                           <SingleNavLink
@@ -262,8 +263,6 @@ export const SideBar = ({
   checklistColapsable = true,
   loteItems = lotesItems,
   loteColapsable = true,
-  version = "v0.1.0",
-  username = "Usuario",
   display,
 }: {
   title?: string;
@@ -275,7 +274,9 @@ export const SideBar = ({
   loteColapsable?: boolean;
   version?: string;
   username?: string;
-  display?: string | { base?: string; md?: string; lg?: string; xl?: string; "2xl"?: string };
+  display?:
+    | string
+    | { base?: string; md?: string; lg?: string; xl?: string; "2xl"?: string };
 }) => {
   const { pathname } = useLocation();
   const { configuracion, logoSrc } = useConfiguracion();
@@ -317,44 +318,44 @@ export const SideBar = ({
 
   return (
     <VStack
-      as="nav"
-      aria-label="Navegación principal"
-      align="stretch"
+      as='nav'
+      aria-label='Navegación principal'
+      align='stretch'
       gap={2}
       p={3}
-      bg="green.600"
-      h="100vh"
+      bg='green.600'
+      h='100vh'
       w={sidebarW}
-      position="sticky"
+      position='sticky'
       top={0}
       flexShrink={0}
-      overflowY="auto"
-      overflowX="hidden"
+      overflowY='auto'
+      overflowX='hidden'
       css={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
         "&::-webkit-scrollbar": { display: "none" },
       }}
-      transition="width 0.25s ease"
+      transition='width 0.25s ease'
       display={display}
     >
       <Flex
-        align="center"
-        justify="space-between"
+        align='center'
+        justify='space-between'
         gap={2}
         pb={3}
         mb={1}
-        borderBottom="1px solid"
-        borderColor="whiteAlpha.300"
+        borderBottom='1px solid'
+        borderColor='whiteAlpha.300'
       >
         {isCollapsed ? (
-          <NavTooltip label="Expandir menú">
+          <NavTooltip label='Expandir menú'>
             <IconButton
-              aria-label="Expandir menú"
-              variant="ghost"
-              color="white"
-              size="sm"
-              alignSelf="flex-start"
+              aria-label='Expandir menú'
+              variant='ghost'
+              color='white'
+              size='sm'
+              alignSelf='flex-start'
               onClick={() => setIsCollapsed(false)}
               _hover={{ bg: "whiteAlpha.200" }}
             >
@@ -364,7 +365,7 @@ export const SideBar = ({
         ) : (
           <>
             <NavLink
-              to="/"
+              to='/'
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -377,30 +378,25 @@ export const SideBar = ({
                   src={logoSrc}
                   alt={nombreMostrado}
                   boxSize={7}
-                  objectFit="contain"
-                  borderRadius="sm"
-                  bg="white"
+                  objectFit='contain'
+                  borderRadius='sm'
+                  bg='white'
                   p={0.5}
                   flexShrink={0}
                 />
               ) : (
-                <Icon as={brandIcon} boxSize={6} color="white" flexShrink={0} />
+                <Icon as={brandIcon} boxSize={6} color='white' flexShrink={0} />
               )}
-              <Text
-                color="white"
-                fontSize="xl"
-                fontWeight="bold"
-                 truncate
-              >
+              <Text color='white' fontSize='xl' fontWeight='bold' truncate>
                 {nombreMostrado}
               </Text>
             </NavLink>
-            <NavTooltip label="Colapsar menú">
+            <NavTooltip label='Colapsar menú'>
               <IconButton
-                aria-label="Colapsar menú"
-                variant="ghost"
-                color="white"
-                size="sm"
+                aria-label='Colapsar menú'
+                variant='ghost'
+                color='white'
+                size='sm'
                 onClick={() => setIsCollapsed(true)}
                 _hover={{ bg: "whiteAlpha.200" }}
               >
@@ -412,7 +408,7 @@ export const SideBar = ({
       </Flex>
 
       {!isCollapsed && (
-        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Gestión
         </Text>
       )}
@@ -430,7 +426,7 @@ export const SideBar = ({
       />
 
       <NavSection
-        label="Datos Maestros"
+        label='Datos Maestros'
         icon={FiMenu}
         items={items}
         isCollapsed={isCollapsed}
@@ -447,12 +443,12 @@ export const SideBar = ({
       />
 
       {!isCollapsed && (
-        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Planes
         </Text>
       )}
       <NavSection
-        label="Plan POE"
+        label='Plan POE'
         icon={FiClipboard}
         items={planItems}
         isCollapsed={isCollapsed}
@@ -462,12 +458,12 @@ export const SideBar = ({
       />
 
       {!isCollapsed && (
-        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Recetas
         </Text>
       )}
       <NavSection
-        label="Recetas"
+        label='Recetas'
         icon={FiBookOpen}
         items={recetasItems}
         isCollapsed={isCollapsed}
@@ -480,9 +476,9 @@ export const SideBar = ({
         <>
           {!isCollapsed && (
             <Text
-              fontSize="sm"
-              fontWeight="semibold"
-              color="white"
+              fontSize='sm'
+              fontWeight='semibold'
+              color='white'
               px={2}
               mt={2}
             >
@@ -492,7 +488,7 @@ export const SideBar = ({
 
           {loteColapsable ? (
             <NavSection
-              label="Lotes"
+              label='Lotes'
               icon={FiBox}
               items={loteItems}
               isCollapsed={isCollapsed}
@@ -501,7 +497,7 @@ export const SideBar = ({
               onCollapsedClick={() => setIsCollapsed(false)}
             />
           ) : (
-            <VStack align="stretch" gap={1}>
+            <VStack align='stretch' gap={1}>
               {loteItems.map((item) => {
                 if ("children" in item) return null;
                 return (
@@ -519,7 +515,7 @@ export const SideBar = ({
       )}
 
       {!isCollapsed && (
-        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Vencimientos
         </Text>
       )}
@@ -531,7 +527,7 @@ export const SideBar = ({
       />
 
       {!isCollapsed && (
-        <Text fontSize="sm" fontWeight="semibold" color="white" px={2} mt={2}>
+        <Text fontSize='sm' fontWeight='semibold' color='white' px={2} mt={2}>
           Incidentes
         </Text>
       )}
@@ -546,9 +542,9 @@ export const SideBar = ({
         <>
           {!isCollapsed && (
             <Text
-              fontSize="sm"
-              fontWeight="semibold"
-              color="white"
+              fontSize='sm'
+              fontWeight='semibold'
+              color='white'
               px={2}
               mt={2}
             >
@@ -558,7 +554,7 @@ export const SideBar = ({
 
           {checklistColapsable ? (
             <NavSection
-              label="Checklist"
+              label='Checklist'
               icon={FiCheckSquare}
               items={checklistItems}
               isCollapsed={isCollapsed}
@@ -567,7 +563,7 @@ export const SideBar = ({
               onCollapsedClick={() => setIsCollapsed(false)}
             />
           ) : (
-            <VStack align="stretch" gap={1}>
+            <VStack align='stretch' gap={1}>
               {checklistItems.map((item) => {
                 if ("children" in item) return null;
                 return (
@@ -583,33 +579,6 @@ export const SideBar = ({
           )}
         </>
       )}
-
-      <Box mt="auto" pt={3} borderTop="1px solid" borderColor="whiteAlpha.300">
-        <Flex
-          align="center"
-          justify={isCollapsed ? "center" : "flex-start"}
-          gap={2}
-          px={isCollapsed ? 0 : 2}
-        >
-          {isCollapsed ? (
-            <NavTooltip label={username}>
-              <Icon as={FiUser} boxSize={5} color="white" />
-            </NavTooltip>
-          ) : (
-            <>
-              <Icon as={FiUser} boxSize={5} color="white" flexShrink={0} />
-              <Text color="white" fontSize="sm" truncate>
-                {username}
-              </Text>
-            </>
-          )}
-        </Flex>
-        {!isCollapsed && (
-          <Text fontSize="xs" color="whiteAlpha.600" textAlign="center" mt={2}>
-            {version}
-          </Text>
-        )}
-      </Box>
     </VStack>
   );
 };

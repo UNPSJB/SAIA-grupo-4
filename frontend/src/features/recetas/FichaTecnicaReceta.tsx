@@ -296,6 +296,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                       state: {
                         from: `/recetas/${receta.id}/ficha-tecnica`,
                         label: "Ficha Técnica",
+                        padre: { nombre: "Recetas", to: "/recetas" },
                       },
                     })
                   }
