@@ -260,6 +260,31 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     );
   }
 
+  const esBorradorIncompleto =
+    receta.estado === "BORRADOR" &&
+    (pasosOrdenados.length === 0 || Number(receta.rendimiento_estandar) <= 0);
+
+  if (esBorradorIncompleto) {
+    return (
+      <Box p={{ base: 4, md: 10 }} bg="gray.100" minH="100vh">
+        <ListadoContainer maxW="4xl">
+          <Button
+            variant="outline"
+            colorPalette="green"
+            mb={4}
+            onClick={handleVolver}
+          >
+            <FiArrowLeft /> {esModoAdmin ? "Volver a Recetas" : "Volver al catálogo"}
+          </Button>
+          <AlertMessage
+            type="warning"
+            message="Para visualizar la ficha técnica de una receta en estado Borrador, debe tener al menos un paso cargado y un rendimiento estándar mayor a 0."
+          />
+        </ListadoContainer>
+      </Box>
+    );
+  }
+
   const estadoInfo = ESTADOS_RECETA[receta.estado] || {
     texto: receta.estado,
     color: "gray",
