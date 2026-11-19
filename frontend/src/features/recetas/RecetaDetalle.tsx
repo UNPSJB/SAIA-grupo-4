@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiFileText, FiHash } from "react-icons/fi";
+import { Badge, Box, HStack, Text, VStack } from "@chakra-ui/react";
+import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
@@ -134,7 +133,6 @@ const PasoDesplegable = ({ paso }: { paso: PasoReceta }) => {
 };
 
 export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
-  const navigate = useNavigate();
   const estado = ESTADOS_RECETA[receta.estado];
   const [pasos, setPasos] = useState<PasoReceta[]>(() =>
     [...(receta.pasos ?? [])].sort((a, b) => a.numero_orden - b.numero_orden),
@@ -226,26 +224,6 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           label: "Observaciones",
           valor: receta.observaciones || "—",
         },
-        ...(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA"
-          ? [
-              {
-                label: "Ficha técnica",
-                valor: (
-                  <Button
-                    size="xs"
-                    colorPalette="blue"
-                    variant="outline"
-                    onClick={() => {
-                      onCerrar();
-                      navigate(`/recetas/${receta.id}/ficha-tecnica`);
-                    }}
-                  >
-                    <FiFileText /> Ver Ficha Técnica
-                  </Button>
-                ),
-              },
-            ]
-          : []),
       ],
     },
     {

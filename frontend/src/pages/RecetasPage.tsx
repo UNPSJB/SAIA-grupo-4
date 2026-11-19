@@ -5,6 +5,7 @@ import {
   FiCopy,
   FiEdit2,
   FiEye,
+  FiFileText,
   FiPlus,
   FiTrash2,
 } from "react-icons/fi";
@@ -340,9 +341,16 @@ export default function RecetasPage() {
       render: (r) => {
         const estado = ESTADOS_RECETA[r.estado];
         return (
-          <Badge colorPalette={estado?.color || "gray"}>
-            {estado?.texto || r.estado}
-          </Badge>
+          <VStack align="start" gap={0.5}>
+            <Badge colorPalette={estado?.color || "gray"}>
+              {estado?.texto || r.estado}
+            </Badge>
+            {r.estado === "ACTIVA" && (
+              <Text fontSize="xs" color="gray.500">
+                {r.tiene_lotes ? "Con lotes elaborados" : "Sin lotes asociados"}
+              </Text>
+            )}
+          </VStack>
         );
       },
     },
@@ -351,52 +359,105 @@ export default function RecetasPage() {
       label: "Acciones",
       align: "end",
       render: (r) => {
+        const tienePasos = (r.pasos?.length ?? 0) > 0;
+        const puedeVerFicha =
+          r.estado === "ACTIVA" ||
+          r.estado === "INHABILITADA" ||
+          (r.estado === "BORRADOR" &&
+            tienePasos &&
+            Number(r.rendimiento_estandar) > 0);
+        const puedeDuplicar =
+          r.estado === "INHABILITADA" ||
+          (r.estado === "ACTIVA" && Boolean(r.tiene_lotes));
         const puedeEditar =
           r.estado === "BORRADOR" ||
           (r.estado === "ACTIVA" && !r.tiene_lotes);
-        const puedeCopiar =
-          r.estado === "ACTIVA" || r.estado === "INHABILITADA";
+        const puedeEliminar =
+          r.estado === "BORRADOR" || r.estado === "ACTIVA";
+        const esArchivar = r.estado === "ACTIVA" && Boolean(r.tiene_lotes);
 
         return (
           <RowActions>
-            {puedeCopiar && (
-              <RowActionButton
-                icon={FiCopy}
-                label="Copiar"
-                colorPalette="green"
-                onClick={() => {
-                  setRecetaCopiar(r);
-                  setErrorCopiar("");
-                  setErrorRetomar("");
-                }}
-              />
-            )}
-            {puedeEditar && (
-              <RowActionButton
-                icon={FiEdit2}
-                label="Editar"
-                colorPalette="blue"
-                onClick={() => void editarReceta(r)}
-              />
-            )}
-            <RowActionButton
-              icon={FiEye}
-              label="Ver"
-              colorPalette="yellow"
-              onClick={() => setRecetaVer(r)}
-            />
-            {(r.estado === "BORRADOR" || r.estado === "ACTIVA") && (
-              <RowActionButton
-                icon={FiTrash2}
-                label="Eliminar"
-                colorPalette="red"
-                onClick={() => {
-                  setRecetaEliminar(r);
-                  setErrorEliminar("");
-                  setErrorRetomar("");
-                }}
-              />
-            )}
+            <Box
+              display="inline-grid"
+              gridTemplateColumns="repeat(4, 44px)"
+              justifyItems="center"
+              alignItems="center"
+              gap={1}
+            >
+              <Box>
+                {puedeVerFicha && (
+                  <RowActionButton
+                    icon={FiFileText}
+                    label="Ficha Técnica"
+                    colorPalette="purple"
+                    onClick={() =>
+                      navigate(`/recetas/${r.id}/ficha-tecnica`, {
+                        state: { from: "/recetas", label: "Recetas" },
+                      })
+                    }
+                  />
+                )}
+              </Box>
+              <Box>
+                {puedeDuplicar ? (
+                  <RowActionButton
+                    icon={FiCopy}
+                    label="Duplicar"
+                    title={
+                      r.estado === "ACTIVA" && r.tiene_lotes
+                        ? "Duplicar como nueva versión"
+                        : "Duplicar como nueva versión"
+                    }
+                    colorPalette="blue"
+                    onClick={() => {
+                      setRecetaCopiar(r);
+                      setErrorCopiar("");
+                      setErrorRetomar("");
+                    }}
+                  />
+                ) : puedeEditar ? (
+                  <RowActionButton
+                    icon={FiEdit2}
+                    label="Editar"
+                    title={
+                      r.estado === "ACTIVA"
+                        ? "Editar receta (sin lotes producidos)"
+                        : "Editar borrador"
+                    }
+                    colorPalette="blue"
+                    onClick={() => void editarReceta(r)}
+                  />
+                ) : null}
+              </Box>
+              <Box>
+                <RowActionButton
+                  icon={FiEye}
+                  label="Ver detalle"
+                  colorPalette="yellow"
+                  onClick={() => setRecetaVer(r)}
+                />
+              </Box>
+              <Box>
+                {puedeEliminar && (
+                  <RowActionButton
+                    icon={FiTrash2}
+                    label={esArchivar ? "Archivar" : "Eliminar"}
+                    title={
+                      esArchivar
+                        ? "Archivar receta"
+                        : "Eliminar receta"
+                    }
+                    colorPalette="red"
+                    onClick={() => {
+                      setRecetaEliminar(r);
+                      setErrorEliminar("");
+                      setErrorRetomar("");
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
           </RowActions>
         );
       },
