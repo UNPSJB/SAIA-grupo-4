@@ -296,6 +296,7 @@ def test_vista_previa_aplica_con_nutricion_incompleta_advierte_en_cara_principal
         categoria="materia prima",
         unidad_medida_id=um_masa.id,
         disponible=True,
+        aporta_sodio_agregado=True,
     )
     prod_pend = Producto(
         nombre=generar_str("Pan Pendiente"),
