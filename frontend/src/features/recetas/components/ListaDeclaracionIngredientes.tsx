@@ -651,6 +651,17 @@ export const ListaDeclaracionIngredientes = ({
             >
               {texto_legal_rotulo}
             </Text>
+            {declaracion.leyenda_alergenos_caa && (
+              <Text
+                fontSize="sm"
+                fontWeight="bold"
+                textTransform="uppercase"
+                color="gray.900"
+                mt={2}
+              >
+                {declaracion.leyenda_alergenos_caa}
+              </Text>
+            )}
           </Box>
         )}
       </Card.Body>

@@ -637,6 +637,17 @@ export const FichaRecetaPrint = ({
               <Text fontSize="2xs" color="gray.800" fontStyle="italic" lineHeight="1.4">
                 {declaracion.texto_legal_rotulo}
               </Text>
+              {declaracion.leyenda_alergenos_caa && (
+                <Text
+                  fontSize="2xs"
+                  fontWeight="bold"
+                  textTransform="uppercase"
+                  color="gray.900"
+                  mt={1}
+                >
+                  {declaracion.leyenda_alergenos_caa}
+                </Text>
+              )}
             </Box>
           )}
         </Box>

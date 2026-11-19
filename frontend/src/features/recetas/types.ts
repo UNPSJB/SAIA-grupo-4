@@ -173,6 +173,7 @@ export interface DeclaracionIngredientesResponse {
   insumos_sin_equivalencia: InsumoSinEquivalencia[];
   items: ItemDeclaracionIngrediente[];
   texto_legal_rotulo: string;
+  leyenda_alergenos_caa?: string | null;
 }
 
 export interface InsumoNutricionPendiente {
