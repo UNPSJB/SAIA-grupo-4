@@ -5,14 +5,14 @@ import type { Documento } from "../documentos/types";
 import type { Persona } from "../personal/types";
 import { BASE_URL } from "./utils";
 import type { CategoriaVencimiento } from "./types";
-
+import type { LoteInsumo } from "../insumo/types";
 /**
  * Registro crudo que devuelve el módulo de origen de una categoría.
  *
  * Es una unión porque el tablero no sabe de qué módulo viene la fila: cada
  * `aFicha` recibe lo que devolvió su endpoint y lo estrecha a su propio tipo.
  */
-export type RegistroOrigen = ElementoLimpieza | Equipo | Documento | Persona;
+export type RegistroOrigen = ElementoLimpieza | Equipo | Documento | Persona  | LoteInsumo;
 
 /**
  * Ficha del registro de origen de un vencimiento, ya normalizada para mostrar.
@@ -145,6 +145,22 @@ export const ORIGEN_VENCIMIENTOS: Partial<
           { label: "Apellido", valor: r.apellido },
           { label: "DNI", valor: r.dni },
           { label: "Legajo", valor: r.legajo },
+        ],
+        registro: r,
+      };
+    },
+  },
+  lote_insumo: {
+   endpoint: (entidadId) => `${BASE_URL}/lotes-insumo/${entidadId}`,
+    etiqueta: "Lotes de insumo",
+    aFicha: (registro) => {
+      const r = registro as LoteInsumo;
+      return {
+        titulo: r.codigo_lote,
+        campos: [
+          { label: "Código de lote", valor: r.codigo_lote },
+          { label: "Fecha de vencimiento", valor: r.fecha_vencimiento },
+          { label: "Estado", valor: r.estado },
         ],
         registro: r,
       };

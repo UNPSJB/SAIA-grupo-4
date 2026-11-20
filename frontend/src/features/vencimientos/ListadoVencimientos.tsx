@@ -27,7 +27,7 @@ import {
 import { formatearFecha } from "../../utils/fecha";
 import { armarFiltros, etiquetaOpcion } from "../../utils/exportacion";
 import { VencimientosFiltros } from "./VencimientosFiltros";
-import { renovacionDe } from "./renovacionVencimientos";
+import { puedeRenovar, renovacionDe } from "./renovacionVencimientos";
 import { COLOR_CATEGORIA, construirEndpoint } from "./utils";
 import type { CategoriaDisponible, Vencimiento } from "./types";
 
@@ -160,10 +160,12 @@ export const ListadoVencimientos = ({
 
         return (
           <RowActions>
-            {/* El botón solo existe donde la categoría sabe renovarse. El
-                dispatcher decide el ícono y el texto, así que sumar una
-                categoría no obliga a tocar esta tabla. */}
-            {renovacion && (
+            {/* El botón solo existe donde la categoría sabe renovarse, y en
+                las que lo restringen por estado (lotes de insumo: solo
+                vencidos) solo en las filas que corresponden. El dispatcher
+                decide el ícono y el texto, así que sumar una categoría no
+                obliga a tocar esta tabla. */}
+            {renovacion && puedeRenovar(v) && (
               <RowActionButton
                 icon={FiRefreshCw}
                 label={renovacion.etiqueta}

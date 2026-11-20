@@ -50,4 +50,5 @@ export const COLOR_CATEGORIA: Record<CategoriaVencimiento, string> = {
   equipo: "blue",
   elemento_limpieza: "teal",
   documento: "orange",
+  lote_insumo: "pink",
 };

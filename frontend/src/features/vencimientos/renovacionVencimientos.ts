@@ -1,4 +1,4 @@
-import type { CategoriaVencimiento } from "./types";
+import type { CategoriaVencimiento, EstadoVencimiento } from "./types";
 
 export type EntradaRenovacion = {
   /** Texto del botón de fila y del `title`. */
@@ -6,6 +6,8 @@ export type EntradaRenovacion = {
   colorPalette: string;
   /** Título del formulario dentro del modal. */
   titulo: string;
+  /** Si se define, el botón solo aparece en filas con ese estado. */
+  soloEstado?: EstadoVencimiento;
 };
 
 /**
@@ -40,9 +42,25 @@ const RENOVACIONES: Partial<Record<CategoriaVencimiento, EntradaRenovacion>> = {
     colorPalette: "green",
     titulo: "Renovar Vencimiento",
   },
+  lote_insumo: {
+    etiqueta: "Dar de baja",
+    colorPalette: "red",
+    titulo: "Dar de baja lote vencido",
+    soloEstado: "vencido",
+  },
 };
 
 /** Configuración de renovación de una categoría, o null si no la admite. */
 export const renovacionDe = (
   categoria: CategoriaVencimiento,
 ): EntradaRenovacion | null => RENOVACIONES[categoria] ?? null;
+
+/** Si esta fila puntual admite renovación (según su categoría y su estado). */
+export const puedeRenovar = (v: {
+  categoria: CategoriaVencimiento;
+  estado: EstadoVencimiento;
+}): boolean => {
+  const entrada = renovacionDe(v.categoria);
+  if (!entrada) return false;
+  return !entrada.soloEstado || entrada.soloEstado === v.estado;
+};

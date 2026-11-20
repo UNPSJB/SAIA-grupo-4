@@ -18,7 +18,7 @@ import {
   LoadingState,
 } from "../ui";
 import { useNotificaciones } from "../../features/vencimientos/hooks/useNotificaciones";
-import { renovacionDe } from "../../features/vencimientos/renovacionVencimientos";
+import { puedeRenovar, renovacionDe } from "../../features/vencimientos/renovacionVencimientos";
 import { useRenovacion } from "../../features/vencimientos/hooks/useRenovacion";
 import type { Vencimiento } from "../../features/vencimientos/types";
 
@@ -59,8 +59,9 @@ const FilaNotificacion = ({
   onIrAlDetalle,
   onResolver,
 }: FilaProps) => {
-  const entrada = renovacionDe(vencimiento.categoria);
-
+  const entrada = puedeRenovar(vencimiento)
+  ? renovacionDe(vencimiento.categoria)
+  : null;
   return (
     <Box
       display='flex'

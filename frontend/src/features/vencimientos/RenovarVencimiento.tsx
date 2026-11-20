@@ -1,7 +1,13 @@
 import { useState } from "react";
 import type { FC } from "react";
-import { Button, Text, VStack } from "@chakra-ui/react";
-import { FiFileText, FiRefreshCw, FiUpload, FiXCircle } from "react-icons/fi";
+import { Alert, Button, Text, VStack } from "@chakra-ui/react";
+import {
+  FiFileText,
+  FiRefreshCw,
+  FiTrash2,
+  FiUpload,
+  FiXCircle,
+} from "react-icons/fi";
 
 import { RegistrarRecambioForm } from "../recambios/RegistrarRecambioForm";
 import { RegistrarCalibracionForm } from "../equipos/RegistrarCalibracionModal";
@@ -18,8 +24,11 @@ import type { Equipo } from "../equipos/types";
 import type { Documento } from "../documentos/types";
 import { RegistrarVencimientoForm } from "../personal/RegistrarVencimientoForm";
 import type { Persona } from "../personal/types";
+import type { LoteInsumo } from "../insumo/types";
+import { useLoteInsumoDarBajaVencido } from "../insumo/hooks/useLoteInsumoDarBajaVencido";
 import { renovacionDe } from "./renovacionVencimientos";
 import type { RegistroOrigen } from "./origenVencimientos";
+import { BASE_URL } from "./utils";
 import type { CategoriaVencimiento, Vencimiento } from "./types";
 
 type PropsFormulario = {
@@ -180,6 +189,80 @@ const RenovarPersonal: FC<PropsFormulario> = ({
   );
 };
 
+const MOTIVO_BAJA_VENCIDO = "Descarte por fecha de vencimiento alcanzada";
+
+/**
+ * Baja de un lote de insumo vencido.
+ *
+ * Es el mismo flujo que inhabilitar, pero sin campo de motivo: lo fija el
+ * backend (`PATCH /lotes-insumo/{id}/dar-baja-vencido`) y acá solo se muestra.
+ * Al confirmar, el lote queda dado de baja y su alerta desaparece del tablero.
+ */
+const RenovarLoteInsumo: FC<PropsFormulario> = ({
+  registro,
+  vencimiento,
+  titulo,
+  onCancelar,
+  onGuardado,
+}) => {
+  const lote = registro as LoteInsumo;
+  const [error, setError] = useState("");
+  const { submit, isSubmitting } = useLoteInsumoDarBajaVencido({
+    endpoint: `${BASE_URL}/lotes-insumo/`,
+    loteId: lote.id,
+  });
+
+  const confirmar = async () => {
+    setError("");
+    const res = await submit();
+    if (res.status === "error") {
+      setError(res.message);
+      return;
+    }
+    onGuardado();
+  };
+
+  return (
+    <FormContainer modal maxW='2xl'>
+      <FormHeader title={titulo} icon={FiTrash2} />
+      <VStack gap={4} align='stretch'>
+        <Text fontSize='sm' color='gray.600'>
+          {vencimiento.concepto}
+        </Text>
+        <Text fontSize='sm'>
+          <Text as='span' fontWeight='bold'>
+            Motivo de la baja:{" "}
+          </Text>
+          {MOTIVO_BAJA_VENCIDO}
+        </Text>
+        <Text fontSize='sm' color='red.600'>
+          Esta acción no se puede deshacer: el lote quedará dado de baja y la
+          alerta se resolverá.
+        </Text>
+
+        {error && (
+          <Alert.Root status='error'>
+            <Alert.Indicator />
+            <Alert.Title>{error}</Alert.Title>
+          </Alert.Root>
+        )}
+
+        <FormActions>
+          <Button
+            colorPalette='red'
+            onClick={confirmar}
+            loading={isSubmitting}
+            loadingText='Dando de baja...'
+          >
+            <FiTrash2 /> Confirmar baja
+          </Button>
+          <CancelButton text='Cancelar' onClick={onCancelar} icon={FiXCircle} />
+        </FormActions>
+      </VStack>
+    </FormContainer>
+  );
+};
+
 /**
  * Qué formulario de renovación corresponde a cada categoría.
  *
@@ -193,6 +276,7 @@ const FORMULARIOS: Partial<Record<CategoriaVencimiento, FC<PropsFormulario>>> =
     equipo: RenovarEquipo,
     documento: RenovarDocumento,
     personal: RenovarPersonal,
+    lote_insumo: RenovarLoteInsumo,
   };
 
 type Props = {

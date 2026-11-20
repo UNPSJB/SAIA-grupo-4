@@ -7,7 +7,8 @@ export type CategoriaVencimiento =
   | "personal"
   | "equipo"
   | "elemento_limpieza"
-  | "documento";
+  | "documento"
+  | "lote_insumo";
 
 export interface Vencimiento {
   // Clave estable "categoria:entidad_id". No es el id de la tabla de origen:
