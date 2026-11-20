@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session, joinedload
 from src.insumos.models import Insumo
 from src.lotes import exceptions, schemas
 from src.lotes.constants import LoteConstants
-from src.lotes.models import ConsumoInsumoLote, Lote
+from src.lotes.models import ConsumoInsumoLote, DetalleConsumoLoteInsumo, Lote
+from src.lotes_insumo.constants import EstadoLote
+from src.lotes_insumo.models import LoteInsumo
+from src.lotes_insumo.services import listar_lotes_disponibles_para_consumo
 from src.productos.models import Producto
 from src.recetas.constants import EstadoReceta
 from src.recetas.models import Receta, PasoInsumo, PasoReceta
@@ -83,10 +86,25 @@ def listar_productos_con_receta_activa(db: Session) -> List[schemas.ProductoDisp
                     }
                 insumos_agrupados[ins_id]["cantidad_nominal_receta"] += float(pi.cantidad_consumo_estimada)
 
-        insumos_teoricos = [
-            schemas.InsumoTeoricoRecetaOut(**item)
-            for item in insumos_agrupados.values()
-        ]
+        insumos_teoricos = []
+        for item in insumos_agrupados.values():
+            lotes_disp = listar_lotes_disponibles_para_consumo(db, item["insumo_id"])
+            insumos_teoricos.append(
+                schemas.InsumoTeoricoRecetaOut(
+                    **item,
+                    lotes_disponibles=[
+                        schemas.LoteInsumoDisponibleOut(
+                            id=l.id,
+                            insumo_id=l.insumo_id,
+                            codigo_lote=l.codigo_lote,
+                            fecha_vencimiento=l.fecha_vencimiento,
+                            cantidad_inicial=float(l.cantidad_inicial),
+                            cantidad_actual=float(l.cantidad_actual),
+                        )
+                        for l in lotes_disp
+                    ],
+                )
+            )
 
         resultado.append(
             schemas.ProductoDisponibleLoteOut(
@@ -106,7 +124,8 @@ def listar_productos_con_receta_activa(db: Session) -> List[schemas.ProductoDisp
     return resultado
 
 
-def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lote:
+def _validar_fechas_y_cantidad_lote(lote_in: schemas.LoteCreate) -> None:
+    """Valida cantidad producida positiva y consistencia entre fechas de elaboración y vencimiento."""
     if lote_in.cantidad_producida <= 0:
         raise exceptions.CantidadProducidaInvalida()
 
@@ -121,10 +140,13 @@ def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lo
     if lote_in.fecha_vencimiento < fecha_elab_date:
         raise exceptions.FechaVencimientoInvalida()
 
+
+def _obtener_producto_y_receta_activa(db: Session, producto_id: int) -> tuple[Producto, Receta]:
+    """Obtiene el producto activo y su receta técnica activa con sus insumos precargados."""
     producto = db.scalar(
         select(Producto)
         .options(joinedload(Producto.unidad_medida))
-        .where(Producto.id == lote_in.producto_id)
+        .where(Producto.id == producto_id)
     )
     if not producto:
         raise exceptions.ProductoNoEncontrado()
@@ -147,64 +169,137 @@ def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lo
     if not receta_activa:
         raise exceptions.LoteSinRecetaActiva()
 
-    # Validar o generar código de lote
+    return producto, receta_activa
+
+
+def _resolver_codigo_lote(db: Session, producto: Producto, lote_in: schemas.LoteCreate) -> str:
+    """Genera un código automático o verifica que el código provisto no exista."""
     codigo = (lote_in.codigo_lote or "").strip()
     if not codigo:
-        codigo = generar_codigo_lote(db, producto, lote_in.fecha_elaboracion)
-    else:
-        existe = db.scalar(select(Lote.id).where(Lote.codigo_lote == codigo))
-        if existe:
-            raise exceptions.CodigoLoteDuplicado()
+        return generar_codigo_lote(db, producto, lote_in.fecha_elaboracion)
 
-    # Calcular mapa de insumos nominales de la receta (solo disponibles)
+    existe = db.scalar(select(Lote.id).where(Lote.codigo_lote == codigo))
+    if existe:
+        raise exceptions.CodigoLoteDuplicado()
+    return codigo
+
+
+def _calcular_mapa_nominal_receta(receta_activa: Receta) -> dict[int, float]:
+    """Agrupa las cantidades nominales de la receta por insumo disponible."""
     mapa_nominal: dict[int, float] = {}
     for paso in receta_activa.pasos:
         for pi in paso.insumos:
             if not pi.insumo or not pi.insumo.disponible:
                 continue
-            mapa_nominal[pi.insumo_id] = mapa_nominal.get(pi.insumo_id, 0.0) + float(pi.cantidad_consumo_estimada)
+            mapa_nominal[pi.insumo_id] = mapa_nominal.get(pi.insumo_id, 0.0) + float(
+                pi.cantidad_consumo_estimada
+            )
+    return mapa_nominal
 
-    rendimiento = float(receta_activa.rendimiento_estandar) if receta_activa.rendimiento_estandar > 0 else 1.0
+
+def _descontar_lotes_insumo(
+    db: Session,
+    insumo_id: int,
+    cant_real: float,
+    lotes_asignados: list[schemas.DetalleLoteInsumoCreate],
+) -> list[DetalleConsumoLoteInsumo]:
+    """Valida balance, vigencia y stock de los lotes físicos asignados y descuenta en la sesión."""
+    if cant_real == 0:
+        if lotes_asignados:
+            raise exceptions.BalanceConsumoLoteInvalido()
+        return []
+
+    if not lotes_asignados:
+        raise exceptions.LoteInsumoRequerido()
+
+    lote_ids = [item.lote_insumo_id for item in lotes_asignados]
+    if len(lote_ids) != len(set(lote_ids)):
+        raise exceptions.LoteInsumoDuplicado()
+
+    suma_lotes = sum(float(item.cantidad) for item in lotes_asignados)
+    if abs(suma_lotes - cant_real) > 0.001:
+        raise exceptions.BalanceConsumoLoteInvalido()
+
+    detalles_orm: list[DetalleConsumoLoteInsumo] = []
+    for item in lotes_asignados:
+        lote_insumo = db.scalar(
+            select(LoteInsumo).where(LoteInsumo.id == item.lote_insumo_id)
+        )
+        if not lote_insumo:
+            raise exceptions.LoteInsumoNoEncontrado()
+        if lote_insumo.insumo_id != insumo_id:
+            raise exceptions.LoteInsumoNoPertenece()
+        if lote_insumo.estado != EstadoLote.ACTIVO:
+            raise exceptions.LoteInsumoInactivoOVencido()
+        if item.cantidad > lote_insumo.cantidad_actual:
+            raise exceptions.StockLoteInsumoInsuficiente()
+
+        lote_insumo.cantidad_actual = lote_insumo.cantidad_actual - item.cantidad
+        detalles_orm.append(
+            DetalleConsumoLoteInsumo(
+                lote_insumo_id=lote_insumo.id,
+                cantidad=item.cantidad,
+            )
+        )
+    return detalles_orm
+
+
+def _construir_consumos_lote(
+    db: Session,
+    receta_activa: Receta,
+    lote_in: schemas.LoteCreate,
+) -> list[ConsumoInsumoLote]:
+    """Valida los consumos declarados contra la receta activa y construye el detalle ORM."""
+    mapa_nominal = _calcular_mapa_nominal_receta(receta_activa)
+    rendimiento = (
+        float(receta_activa.rendimiento_estandar)
+        if receta_activa.rendimiento_estandar > 0
+        else 1.0
+    )
     factor_escala = float(lote_in.cantidad_producida) / rendimiento
 
-    # Procesar consumos
-    consumos_orm = []
     insumos_recibidos = lote_in.consumos or []
-
-    # Validar duplicados en payload
     ids_insumos = [item.insumo_id for item in insumos_recibidos]
     if len(ids_insumos) != len(set(ids_insumos)):
         raise exceptions.InsumoDuplicadoEnLote()
 
-    if insumos_recibidos:
+    if mapa_nominal and set(ids_insumos) != set(mapa_nominal.keys()):
         for c in insumos_recibidos:
-            insumo_db = db.scalar(select(Insumo).where(Insumo.id == c.insumo_id))
-            if not insumo_db:
-                raise exceptions.InsumoNoEncontrado()
-            if not insumo_db.disponible:
-                raise exceptions.InsumoInactivo()
             if c.insumo_id not in mapa_nominal:
                 raise exceptions.InsumoNoPerteneceAReceta()
+        raise exceptions.ConsumosIncompletos()
 
-            teorica = round(mapa_nominal[c.insumo_id] * factor_escala, 4)
-            consumos_orm.append(
-                ConsumoInsumoLote(
-                    insumo_id=c.insumo_id,
-                    cantidad_teorica=teorica,
-                    cantidad_real_utilizada=round(float(c.cantidad_real_utilizada), 4),
-                )
+    consumos_orm: list[ConsumoInsumoLote] = []
+    for c in insumos_recibidos:
+        insumo_db = db.scalar(select(Insumo).where(Insumo.id == c.insumo_id))
+        if not insumo_db:
+            raise exceptions.InsumoNoEncontrado()
+        if not insumo_db.disponible:
+            raise exceptions.InsumoInactivo()
+        if c.insumo_id not in mapa_nominal:
+            raise exceptions.InsumoNoPerteneceAReceta()
+
+        cant_real = round(float(c.cantidad_real_utilizada), 3)
+        detalles_orm = _descontar_lotes_insumo(db, c.insumo_id, cant_real, c.lotes)
+        teorica = round(mapa_nominal[c.insumo_id] * factor_escala, 4)
+
+        consumos_orm.append(
+            ConsumoInsumoLote(
+                insumo_id=c.insumo_id,
+                cantidad_teorica=teorica,
+                cantidad_real_utilizada=round(float(c.cantidad_real_utilizada), 4),
+                detalles_lotes=detalles_orm,
             )
-    else:
-        # Si no se enviaron consumos, precargar automáticamente todos los insumos de la receta
-        for ins_id, nominal in mapa_nominal.items():
-            teorica = round(nominal * factor_escala, 4)
-            consumos_orm.append(
-                ConsumoInsumoLote(
-                    insumo_id=ins_id,
-                    cantidad_teorica=teorica,
-                    cantidad_real_utilizada=teorica,
-                )
-            )
+        )
+    return consumos_orm
+
+
+def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lote:
+    """Registra un nuevo lote de producción descontando atómicamente los lotes de insumo."""
+    _validar_fechas_y_cantidad_lote(lote_in)
+    producto, receta_activa = _obtener_producto_y_receta_activa(db, lote_in.producto_id)
+    codigo = _resolver_codigo_lote(db, producto, lote_in)
+    consumos_orm = _construir_consumos_lote(db, receta_activa, lote_in)
 
     nuevo_lote = Lote(
         codigo_lote=codigo,
@@ -220,14 +315,6 @@ def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lo
     )
 
     db.add(nuevo_lote)
-
-    # Actualizar consumo incremental en insumos utilizados
-    for c_orm in consumos_orm:
-        db.execute(
-            update(Insumo)
-            .where(Insumo.id == c_orm.insumo_id)
-            .values(consumo=Insumo.consumo + Decimal(str(c_orm.cantidad_real_utilizada)))
-        )
 
     try:
         db.commit()
@@ -246,7 +333,12 @@ def obtener_lote_por_id(db: Session, lote_id: int) -> Lote:
             joinedload(Lote.producto).joinedload(Producto.unidad_medida),
             joinedload(Lote.receta),
             joinedload(Lote.operador),
-            joinedload(Lote.consumos_insumos).joinedload(ConsumoInsumoLote.insumo).joinedload(Insumo.unidad_medida),
+            joinedload(Lote.consumos_insumos)
+            .joinedload(ConsumoInsumoLote.insumo)
+            .joinedload(Insumo.unidad_medida),
+            joinedload(Lote.consumos_insumos)
+            .joinedload(ConsumoInsumoLote.detalles_lotes)
+            .joinedload(DetalleConsumoLoteInsumo.lote_insumo),
         )
         .where(Lote.id == lote_id)
     )
@@ -269,7 +361,12 @@ def _construir_query_lotes(
             joinedload(Lote.producto).joinedload(Producto.unidad_medida),
             joinedload(Lote.receta),
             joinedload(Lote.operador),
-            joinedload(Lote.consumos_insumos).joinedload(ConsumoInsumoLote.insumo).joinedload(Insumo.unidad_medida),
+            joinedload(Lote.consumos_insumos)
+            .joinedload(ConsumoInsumoLote.insumo)
+            .joinedload(Insumo.unidad_medida),
+            joinedload(Lote.consumos_insumos)
+            .joinedload(ConsumoInsumoLote.detalles_lotes)
+            .joinedload(DetalleConsumoLoteInsumo.lote_insumo),
         )
         .order_by(Lote.fecha_elaboracion.desc(), Lote.id.desc())
     )

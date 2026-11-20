@@ -12,6 +12,7 @@ from src.unidad_medida.models import UnidadMedida
 from src.recetas.models import Receta, PasoReceta, PasoInsumo
 from src.recetas.constants import EstadoReceta
 from src.lotes.models import Lote
+from src.lotes_insumo.models import LoteInsumo
 from src.personal.models import Persona
 from tests.database import session, TestingSessionLocal
 
@@ -87,6 +88,30 @@ def datos_produccion(session):
         ],
     )
     db.add_all([paso1, paso2])
+    db.flush()
+
+    lote_ins1_a = LoteInsumo(
+        insumo_id=insumo1.id,
+        codigo_lote="L-HAR-01",
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        cantidad_inicial=Decimal("8000.000"),
+        cantidad_actual=Decimal("8000.000"),
+    )
+    lote_ins1_b = LoteInsumo(
+        insumo_id=insumo1.id,
+        codigo_lote="L-HAR-02",
+        fecha_vencimiento=date.today() + timedelta(days=60),
+        cantidad_inicial=Decimal("8000.000"),
+        cantidad_actual=Decimal("8000.000"),
+    )
+    lote_ins2 = LoteInsumo(
+        insumo_id=insumo2.id,
+        codigo_lote="L-LEV-01",
+        fecha_vencimiento=date.today() + timedelta(days=45),
+        cantidad_inicial=Decimal("1000.000"),
+        cantidad_actual=Decimal("1000.000"),
+    )
+    db.add_all([lote_ins1_a, lote_ins1_b, lote_ins2])
     db.commit()
 
     return {
@@ -94,6 +119,9 @@ def datos_produccion(session):
         "receta_id": receta.id,
         "insumo1_id": insumo1.id,
         "insumo2_id": insumo2.id,
+        "lote_ins1_a_id": lote_ins1_a.id,
+        "lote_ins1_b_id": lote_ins1_b.id,
+        "lote_ins2_id": lote_ins2.id,
         "rendimiento_estandar": float(receta.rendimiento_estandar),
     }
 
@@ -139,8 +167,21 @@ def test_crear_lote_exitoso_con_escalado_dinamico(datos_produccion):
         "fecha_vencimiento": str(venc),
         "cantidad_producida": 20.0,
         "consumos": [
-            {"insumo_id": datos_produccion["insumo1_id"], "cantidad_real_utilizada": 11200.0},
-            {"insumo_id": datos_produccion["insumo2_id"], "cantidad_real_utilizada": 390.0},
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 11200.0,
+                "lotes": [
+                    {"lote_insumo_id": datos_produccion["lote_ins1_a_id"], "cantidad": 6000.0},
+                    {"lote_insumo_id": datos_produccion["lote_ins1_b_id"], "cantidad": 5200.0},
+                ],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 390.0,
+                "lotes": [
+                    {"lote_insumo_id": datos_produccion["lote_ins2_id"], "cantidad": 390.0},
+                ],
+            },
         ],
     }
 
@@ -156,10 +197,12 @@ def test_crear_lote_exitoso_con_escalado_dinamico(datos_produccion):
     c1 = next(c for c in consumos if c["insumo_id"] == datos_produccion["insumo1_id"])
     assert c1["cantidad_teorica"] == 11000.0
     assert c1["cantidad_real_utilizada"] == 11200.0
+    assert len(c1["detalles_lotes"]) == 2
 
     c2 = next(c for c in consumos if c["insumo_id"] == datos_produccion["insumo2_id"])
     assert c2["cantidad_teorica"] == 400.0
     assert c2["cantidad_real_utilizada"] == 390.0
+    assert c2["detalles_lotes"][0]["codigo_lote_insumo"] == "L-LEV-01"
 
 
 def test_crear_lote_falla_si_producto_sin_receta_activa(datos_produccion, session):
@@ -199,6 +242,18 @@ def test_crear_lote_falla_codigo_duplicado(datos_produccion):
         "fecha_elaboracion": datetime.now().isoformat(),
         "fecha_vencimiento": str(date.today() + timedelta(days=5)),
         "cantidad_producida": 10.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 100.0,
+                "lotes": [{"lote_insumo_id": datos_produccion["lote_ins1_a_id"], "cantidad": 100.0}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 10.0,
+                "lotes": [{"lote_insumo_id": datos_produccion["lote_ins2_id"], "cantidad": 10.0}],
+            },
+        ],
     }
     res1 = client.post("/lotes/", json=payload)
     assert res1.status_code == 201
@@ -210,12 +265,25 @@ def test_crear_lote_falla_codigo_duplicado(datos_produccion):
 def test_receta_con_lotes_es_inmutable_y_su_baja_pasa_a_inhabilitada(datos_produccion, session):
     """Regla de inmutabilidad: si la receta tiene lotes, no se borra físicamente y pasa a INHABILITADA."""
     # 1. Crear un lote para esta receta
-    client.post("/lotes/", json={
+    res_lote = client.post("/lotes/", json={
         "producto_id": datos_produccion["producto_id"],
         "fecha_elaboracion": datetime.now().isoformat(),
         "fecha_vencimiento": str(date.today() + timedelta(days=5)),
         "cantidad_producida": 10.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 50.0,
+                "lotes": [{"lote_insumo_id": datos_produccion["lote_ins1_a_id"], "cantidad": 50.0}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 5.0,
+                "lotes": [{"lote_insumo_id": datos_produccion["lote_ins2_id"], "cantidad": 5.0}],
+            },
+        ],
     })
+    assert res_lote.status_code == 201
 
     receta_id = datos_produccion["receta_id"]
 
@@ -293,11 +361,97 @@ def test_crear_lote_falla_si_insumo_no_pertenece_a_receta(datos_produccion, sess
     assert "no pertenece a la receta" in res.json()["detail"].lower()
 
 
-def test_consumo_incremental_insumo(datos_produccion, session):
-    """Al registrar un lote, se incrementa el consumo acumulado de los insumos utilizados."""
-    insumo_id = datos_produccion["insumo1_id"]
-    insumo_antes = session.scalar(select(Insumo).where(Insumo.id == insumo_id))
-    consumo_inicial = insumo_antes.consumo
+def test_consumo_multi_lote_descuenta_atomico_y_agota(datos_produccion, session):
+    """Consume de 2 lotes físicos: uno queda AGOTADO (0) y el otro con stock remanente."""
+    res = client.post("/lotes/", json={
+        "producto_id": datos_produccion["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": str(date.today() + timedelta(days=5)),
+        "cantidad_producida": 10.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 9500.0,
+                "lotes": [
+                    {"lote_insumo_id": datos_produccion["lote_ins1_a_id"], "cantidad": 8000.0},
+                    {"lote_insumo_id": datos_produccion["lote_ins1_b_id"], "cantidad": 1500.0},
+                ],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0.0,
+                "lotes": [],
+            },
+        ],
+    })
+    assert res.status_code == 201, res.text
+
+    session.expire_all()
+    lote_a = session.scalar(select(LoteInsumo).where(LoteInsumo.id == datos_produccion["lote_ins1_a_id"]))
+    lote_b = session.scalar(select(LoteInsumo).where(LoteInsumo.id == datos_produccion["lote_ins1_b_id"]))
+    assert lote_a.cantidad_actual == Decimal("0.000")
+    assert lote_a.estado.value == "agotado"
+    assert lote_b.cantidad_actual == Decimal("6500.000")
+    assert lote_b.estado.value == "activo"
+
+
+def test_consumo_falla_por_desbalance_y_stock_insuficiente(datos_produccion, session):
+    """Rechaza si la suma de lotes no coincide con cantidad_real_utilizada o supera stock, sin descontar."""
+    res_desbalance = client.post("/lotes/", json={
+        "producto_id": datos_produccion["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": str(date.today() + timedelta(days=5)),
+        "cantidad_producida": 10.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 500.0,
+                "lotes": [{"lote_insumo_id": datos_produccion["lote_ins1_a_id"], "cantidad": 400.0}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0.0,
+                "lotes": [],
+            },
+        ],
+    })
+    assert res_desbalance.status_code == 400
+
+    res_stock = client.post("/lotes/", json={
+        "producto_id": datos_produccion["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": str(date.today() + timedelta(days=5)),
+        "cantidad_producida": 10.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 9000.0,
+                "lotes": [{"lote_insumo_id": datos_produccion["lote_ins1_a_id"], "cantidad": 9000.0}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0.0,
+                "lotes": [],
+            },
+        ],
+    })
+    assert res_stock.status_code == 400
+
+    session.expire_all()
+    lote_a = session.scalar(select(LoteInsumo).where(LoteInsumo.id == datos_produccion["lote_ins1_a_id"]))
+    assert lote_a.cantidad_actual == Decimal("8000.000")
+
+
+def test_consumo_falla_por_lote_vencido_o_inhabilitado(datos_produccion, session):
+    lote_vencido = LoteInsumo(
+        insumo_id=datos_produccion["insumo1_id"],
+        codigo_lote="L-HAR-VENC",
+        fecha_vencimiento=date.today() - timedelta(days=1),
+        cantidad_inicial=Decimal("5000.000"),
+        cantidad_actual=Decimal("5000.000"),
+    )
+    session.add(lote_vencido)
+    session.commit()
 
     res = client.post("/lotes/", json={
         "producto_id": datos_produccion["producto_id"],
@@ -305,11 +459,16 @@ def test_consumo_incremental_insumo(datos_produccion, session):
         "fecha_vencimiento": str(date.today() + timedelta(days=5)),
         "cantidad_producida": 10.0,
         "consumos": [
-            {"insumo_id": insumo_id, "cantidad_real_utilizada": 2.5}
-        ]
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 100.0,
+                "lotes": [{"lote_insumo_id": lote_vencido.id, "cantidad": 100.0}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0.0,
+                "lotes": [],
+            },
+        ],
     })
-    assert res.status_code == 201
-
-    session.expire_all()
-    insumo_despues = session.scalar(select(Insumo).where(Insumo.id == insumo_id))
-    assert insumo_despues.consumo == consumo_inicial + Decimal("2.5")
+    assert res.status_code == 400

@@ -105,7 +105,7 @@ from src.alimento_referencia.services import sembrar_alimentos_sara
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.productos.models import Producto
-from src.lotes.models import Lote, ConsumoInsumoLote
+from src.lotes.models import Lote, ConsumoInsumoLote, DetalleConsumoLoteInsumo
 from src.lotes_insumo.models import LoteInsumo  # noqa: F401
 from src.recetas.constants import EstadoReceta
 from src.recetas.models import PasoEquipo, PasoInsumo, PasoReceta, Receta
@@ -808,7 +808,6 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             numero_ins=numero_ins,
             densidad_g_ml=densidad_g_ml,
             peso_unitario_g=peso_unitario_g,
-            consumo=Decimal("0"),
             disponible=True,
             base_calculo="100ml" if densidad_g_ml is not None else "100g",
             aporta_azucares_agregados=(nombre == "Azucar Comun"),
@@ -2242,7 +2241,34 @@ def _crear_lotes(db, personas, recetas, hoy):
 
     lotes_creados = []
     secuencias_dia: dict[tuple[str, str], int] = {}
-    consumo_acumulado: dict[int, Decimal] = {}
+
+    # Sembrar lotes fisicos de insumo (2 lotes vigentes con stock segun unidad)
+    lotes_por_insumo: dict[int, list[LoteInsumo]] = {}
+    todos_insumos = db.scalars(select(Insumo).order_by(Insumo.id.asc())).all()
+    lotes_insumo_seed: list[LoteInsumo] = []
+    for idx_ins, ins in enumerate(todos_insumos):
+        cant_base = Decimal("20000.000") if ins.unidad_medida.simbolo == "g" else Decimal("500.000")
+        l1 = LoteInsumo(
+            insumo_id=ins.id,
+            codigo_lote=f"LOT-INS-{ins.id:02d}-A",
+            fecha_vencimiento=hoy + timedelta(days=45 + idx_ins * 3),
+            cantidad_inicial=cant_base,
+            cantidad_actual=cant_base,
+            activo=True,
+        )
+        l2 = LoteInsumo(
+            insumo_id=ins.id,
+            codigo_lote=f"LOT-INS-{ins.id:02d}-B",
+            fecha_vencimiento=hoy + timedelta(days=90 + idx_ins * 3),
+            cantidad_inicial=cant_base,
+            cantidad_actual=cant_base,
+            activo=True,
+        )
+        lotes_insumo_seed.extend([l1, l2])
+        lotes_por_insumo[ins.id] = [l1, l2]
+
+    db.add_all(lotes_insumo_seed)
+    db.flush()
 
     for codigo_receta, dias_atras, cantidad, idx_op, obs in datos_lotes:
         receta = recetas_activas.get(codigo_receta)
@@ -2274,16 +2300,27 @@ def _crear_lotes(db, personas, recetas, hoy):
         consumos_orm = []
         for ins_id, nominal in mapa_nominal.items():
             teorica = round(nominal * factor_escala, 3)
+            restante = Decimal(str(teorica))
+            detalles_orm: list[DetalleConsumoLoteInsumo] = []
+            for li in lotes_por_insumo.get(ins_id, []):
+                if restante <= 0:
+                    break
+                if li.cantidad_actual <= 0:
+                    continue
+                tomar = min(restante, li.cantidad_actual)
+                li.cantidad_actual -= tomar
+                restante -= tomar
+                detalles_orm.append(
+                    DetalleConsumoLoteInsumo(lote_insumo_id=li.id, cantidad=tomar)
+                )
+
             consumos_orm.append(
                 ConsumoInsumoLote(
                     insumo_id=ins_id,
                     cantidad_teorica=teorica,
                     cantidad_real_utilizada=teorica,
+                    detalles_lotes=detalles_orm,
                 )
-            )
-            consumo_acumulado[ins_id] = (
-                consumo_acumulado.get(ins_id, Decimal("0"))
-                + Decimal(str(teorica))
             )
 
         lote = Lote(
@@ -2301,13 +2338,6 @@ def _crear_lotes(db, personas, recetas, hoy):
         lotes_creados.append(lote)
 
     db.add_all(lotes_creados)
-    db.flush()
-
-    for insumo_id, total in consumo_acumulado.items():
-        db.get(Insumo, insumo_id).consumo = total.quantize(
-            Decimal("0.001"), rounding=ROUND_HALF_UP
-        )
-
     db.flush()
     return lotes_creados
 

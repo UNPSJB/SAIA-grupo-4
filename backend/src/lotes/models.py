@@ -71,6 +71,11 @@ class ConsumoInsumoLote(ModeloBase):
 
     lote: Mapped["Lote"] = relationship("Lote", back_populates="consumos_insumos")
     insumo: Mapped["Insumo"] = relationship("Insumo")
+    detalles_lotes: Mapped[list["DetalleConsumoLoteInsumo"]] = relationship(
+        "DetalleConsumoLoteInsumo",
+        back_populates="consumo_insumo",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def insumo_nombre(self) -> str:
@@ -81,3 +86,40 @@ class ConsumoInsumoLote(ModeloBase):
         if self.insumo and self.insumo.unidad_medida:
             return self.insumo.unidad_medida.simbolo
         return ""
+
+
+class DetalleConsumoLoteInsumo(ModeloBase):
+    __tablename__ = "detalle_consumos_lote_insumo"
+    __table_args__ = (
+        UniqueConstraint(
+            "consumo_insumo_id",
+            "lote_insumo_id",
+            name="uq_detalle_consumo_lote_insumo",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    consumo_insumo_id: Mapped[int] = mapped_column(
+        ForeignKey("consumos_insumo_lote.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    lote_insumo_id: Mapped[int] = mapped_column(
+        ForeignKey("lotes_insumo.id"),
+        nullable=False,
+        index=True,
+    )
+    cantidad: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+
+    consumo_insumo: Mapped["ConsumoInsumoLote"] = relationship(
+        "ConsumoInsumoLote", back_populates="detalles_lotes"
+    )
+    lote_insumo: Mapped["LoteInsumo"] = relationship("LoteInsumo")
+
+    @property
+    def codigo_lote_insumo(self) -> str:
+        return self.lote_insumo.codigo_lote if self.lote_insumo else ""
+
+    @property
+    def fecha_vencimiento(self) -> date | None:
+        return self.lote_insumo.fecha_vencimiento if self.lote_insumo else None

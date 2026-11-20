@@ -4,9 +4,28 @@ from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class DetalleLoteInsumoCreate(BaseModel):
+    lote_insumo_id: int
+    cantidad: Annotated[
+        Decimal,
+        Field(gt=0, max_digits=10, decimal_places=3, description="Cantidad descontada del lote físico"),
+    ]
+
+
+class DetalleLoteInsumoOut(BaseModel):
+    id: int
+    lote_insumo_id: int
+    codigo_lote_insumo: str
+    fecha_vencimiento: Optional[date] = None
+    cantidad: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ConsumoInsumoCreate(BaseModel):
     insumo_id: int
     cantidad_real_utilizada: Annotated[float, Field(ge=0, description="Cantidad real consumida (debe ser mayor o igual a cero)")]
+    lotes: list[DetalleLoteInsumoCreate] = []
 
 
 class ConsumoInsumoOut(BaseModel):
@@ -16,6 +35,7 @@ class ConsumoInsumoOut(BaseModel):
     unidad_medida_simbolo: str
     cantidad_teorica: float
     cantidad_real_utilizada: float
+    detalles_lotes: list[DetalleLoteInsumoOut] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,11 +70,23 @@ class Lote(LoteBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LoteInsumoDisponibleOut(BaseModel):
+    id: int
+    insumo_id: int
+    codigo_lote: str
+    fecha_vencimiento: date
+    cantidad_inicial: float
+    cantidad_actual: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class InsumoTeoricoRecetaOut(BaseModel):
     insumo_id: int
     nombre: str
     unidad_medida_simbolo: str
     cantidad_nominal_receta: float
+    lotes_disponibles: list[LoteInsumoDisponibleOut] = []
 
     model_config = ConfigDict(from_attributes=True)
 
