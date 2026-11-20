@@ -8,7 +8,8 @@ import {
   FiCheckCircle,
   FiEye,
   FiPlus,
-  FiPackage
+  FiPackage,
+  FiDatabase,
 } from "react-icons/fi";
 import { FaRuler} from "react-icons/fa";
 import {
@@ -36,7 +37,20 @@ interface ListadoInsumosProps {
   onDarAlta?: (insumo: Insumo) => void;
   onVerUnidades?: () => void;
   onVerLotes?: (insumo: Insumo) => void,
+  onVerAlimentosReferencia?: () => void;
 }
+
+const ETIQUETAS_TIPO: Record<string, string> = {
+  "materia prima": "Materia Prima",
+  aditivo: "Aditivo",
+  envase: "Envase",
+  otro: "Otro",
+};
+
+const formatearTipo = (categoria?: string | null) => {
+  const clave = (categoria || "").trim().toLowerCase();
+  return ETIQUETAS_TIPO[clave] || categoria || "—";
+};
 
 const formatearConsumo = (consumo: number) =>
   Number(consumo ?? 0).toLocaleString("es-AR", {
@@ -66,7 +80,8 @@ export const ListadoInsumos = ({
   onVer,
   onDarAlta,
   onVerUnidades,
-  onVerLotes
+  onVerLotes,
+  onVerAlimentosReferencia,
 }: ListadoInsumosProps) => {
   // Búsqueda: se escribe en borrador y se aplica con Enter o "Filtrar".
   const [busqueda, setBusqueda] = useState("");
@@ -112,10 +127,31 @@ export const ListadoInsumos = ({
       render: (insumo) => insumo.nombre,
     },
     {
+      key: "categoria",
+      label: "Tipo",
+      render: (insumo) => formatearTipo(insumo.categoria),
+    },
+    {
       key: "unidad_medida",
       label: "Unidad de medida",
       render: (insumo) =>
         `${insumo.unidad_medida.nombre} (${insumo.unidad_medida.simbolo})`,
+    },
+    {
+      key: "nutricion",
+      label: "Nutrición",
+      render: (insumo) => {
+        if ((insumo.categoria || "").trim().toLowerCase() === "envase") {
+          return "—";
+        }
+        if (insumo.nutricion_completa && insumo.es_nutricion_modificada) {
+          return <Badge colorPalette='blue'>Completa (modificada)</Badge>;
+        }
+        if (insumo.nutricion_completa) {
+          return <Badge colorPalette='green'>Completa</Badge>;
+        }
+        return <Badge colorPalette='yellow'>Pendiente</Badge>;
+      },
     },
     {
       key: "consumo",
@@ -180,9 +216,15 @@ export const ListadoInsumos = ({
 
   return (
     <ListadoContainer>
-      <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title="Insumos" icon={FiBox} />
-        <HStack gap={2}>
+      <ListadoHeader title="Insumos" icon={FiBox}>
+        <HStack gap={2} wrap="wrap">
+          <Button
+            variant="outline"
+            colorPalette="green"
+            onClick={onVerAlimentosReferencia}
+          >
+            <FiDatabase /> Alimentos de referencia
+          </Button>
           <Button
             variant="outline"
             colorPalette="green"
@@ -194,7 +236,7 @@ export const ListadoInsumos = ({
             <FiPlus /> Nuevo insumo
           </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar

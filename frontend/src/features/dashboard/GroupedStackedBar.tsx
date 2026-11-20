@@ -1,6 +1,9 @@
-import { Box, Card, Flex, Text, VStack } from "@chakra-ui/react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Box, Flex, Text, VStack } from "@chakra-ui/react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { getChartColor } from "./utils/chartColors";
+import { GraficoCard } from "./GraficoCard";
+import { ContenedorGrafico } from "./ContenedorGrafico";
+import type { TamanoFijo } from "./types";
 
 interface GroupedBarData {
   categoria: string;
@@ -12,6 +15,11 @@ interface GroupedStackedBarProps {
   data: GroupedBarData[];
   keys: string[];
   keyLabels?: Record<string, string>;
+  /**
+   * Modo impresión: dibuja el gráfico con este tamaño exacto, sin animaciones,
+   * sin tooltip y sin botón de descarga. Sin esta prop se comporta como siempre.
+   */
+  fixedSize?: TamanoFijo;
 }
 
 // Tooltip personalizado
@@ -36,34 +44,36 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // Gráfico de barras agrupadas con segmentos apilados
-export function GroupedStackedBar({ title, data, keys, keyLabels = {} }: GroupedStackedBarProps) {
+export function GroupedStackedBar({
+  title,
+  data,
+  keys,
+  keyLabels = {},
+  fixedSize,
+}: GroupedStackedBarProps) {
+  const impresion = !!fixedSize;
+
   if (!data || data.length === 0) {
     return (
-      <Card.Root shadow="md" h="full">
-        <Card.Header>
-          <Text fontSize="md" fontWeight="semibold">{title}</Text>
-        </Card.Header>
-        <Card.Body>
-          <VStack py={8}>
-            <Text color="gray.500" fontSize="sm">Sin datos para mostrar</Text>
-          </VStack>
-        </Card.Body>
-      </Card.Root>
+      <GraficoCard title={title} descargable={false} impresion={impresion}>
+        <VStack py={8}>
+          <Text color="gray.500" fontSize="sm">Sin datos para mostrar</Text>
+        </VStack>
+      </GraficoCard>
     );
   }
 
   return (
-    <Card.Root shadow="md" h="full">
-      <Card.Header>
-        <Text fontSize="md" fontWeight="semibold">{title}</Text>
-      </Card.Header>
-      <Card.Body>
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 40 }}>
+    <GraficoCard title={title} impresion={impresion}>
+      {/* Ocupa el espacio libre de la tarjeta y centra el gráfico en vertical */}
+      <Flex flex="1" direction="column" justify="center">
+        <ContenedorGrafico altoPantalla={260} fixedSize={fixedSize}>
+          {/* En impresión el gráfico es más angosto: margen izquierdo para que el primer nombre inclinado no se corte */}
+          <BarChart data={data} margin={{ top: 10, right: 5, left: impresion ? 25 : 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
             <XAxis dataKey="categoria" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" interval={0} height={60} />
-            <YAxis tick={{ fontSize: 9 }} width={30} />
-            <Tooltip content={<CustomTooltip />} />
+            <YAxis tick={{ fontSize: 9 }} width={36} allowDecimals={false} />
+            {!impresion && <Tooltip content={<CustomTooltip />} />}
             {keys.map((key, idx) => (
               <Bar
                 key={key}
@@ -72,20 +82,21 @@ export function GroupedStackedBar({ title, data, keys, keyLabels = {} }: Grouped
                 stackId="a"
                 fill={getChartColor(keyLabels[key] || key, idx)}
                 radius={idx === keys.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                isAnimationActive={!impresion}
               />
             ))}
           </BarChart>
-        </ResponsiveContainer>
-        {/* Leyenda */}
-        <Flex gap={4} wrap="wrap" mt={4} justify="center">
-          {keys.map((key, idx) => (
-            <Flex key={key} align="center" gap={2}>
-              <Box w={3} h={3} borderRadius="sm" bg={getChartColor(keyLabels[key] || key, idx)} />
-              <Text fontSize="xs" color="gray.600">{keyLabels[key] || key}</Text>
-            </Flex>
-          ))}
-        </Flex>
-      </Card.Body>
-    </Card.Root>
+        </ContenedorGrafico>
+      </Flex>
+      {/* Leyenda */}
+      <Flex gap={4} wrap="wrap" pt={4} justify="center">
+        {keys.map((key, idx) => (
+          <Flex key={key} align="center" gap={2}>
+            <Box w={3} h={3} borderRadius="sm" bg={getChartColor(keyLabels[key] || key, idx)} />
+            <Text fontSize="xs" color="gray.600">{keyLabels[key] || key}</Text>
+          </Flex>
+        ))}
+      </Flex>
+    </GraficoCard>
   );
 }

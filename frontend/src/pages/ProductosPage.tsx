@@ -1,7 +1,6 @@
 import { BASE_URL } from "../config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { ProductoForm } from "../features/productos/ProductosForm";
 import { ProductoDetalle } from "../features/productos/ProductosDetalle";
 import { ListadoProductos } from "../features/productos/ListadoProductos";
@@ -60,7 +59,7 @@ export default function ProductosPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoProductos 
         key={refescar}
         onVerUnidades={() =>
@@ -87,6 +86,11 @@ export default function ProductosPage() {
           setProductoSeleccionado(p);
           setVista("ver");
         }}
+        onRotulo={(p) =>
+          navigate(`/productos/${p.id}/rotulo`, {
+            state: { from: "/productos", label: "Productos" },
+          })
+        }
         onDarAlta={(p) => {
           setError("");
           setProductoAlta(p);
@@ -159,6 +163,6 @@ export default function ProductosPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

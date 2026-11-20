@@ -1,3 +1,10 @@
+import type { CodigoAlergenoCAA } from "../insumo/types";
+import type {
+    AplicabilidadFrontalOut,
+    ComposicionPorcentualResponse,
+    InformacionNutricionalResponse,
+    SellosAdvertenciaOut,
+} from "../recetas/types";
 import type { UnidadMedida } from "../unidadMedida/types";
 
 export interface Producto {
@@ -7,6 +14,7 @@ export interface Producto {
     unidad_medida_id: number;
     unidad_medida: UnidadMedida;
     dias_vida_util?: number | null;
+    envasado_ausencia_cliente: boolean;
     activo: boolean;
 }
 
@@ -15,4 +23,344 @@ export type ProductoCreate = {
     descripcion: string;
     unidad_medida_id: number;
     dias_vida_util?: number | null;
+    envasado_ausencia_cliente?: boolean;
 };
+
+export interface FilaNutricionalRotuloItem {
+    codigo_nutriente: string;
+    nombre_etiqueta: string;
+    unidad: string;
+    nivel_indentacion: number;
+    valor_100g?: string | null;
+    valor_porcion?: string | null;
+    porcentaje_vd?: string | null;
+    lleva_vd: boolean;
+}
+
+export interface SelloRotuloItem {
+    codigo: string;
+    texto: string;
+}
+
+export interface LoteResumenRotulo {
+    id: number;
+    codigo_lote: string;
+    fecha_elaboracion: string;
+    fecha_vencimiento: string;
+    receta_codigo: string;
+}
+
+export interface ItemCompletitudCAA {
+    clave: string;
+    etiqueta: string;
+    seccion: string;
+    obligatorio: boolean;
+    completado: boolean;
+    motivo_faltante?: string | null;
+}
+
+export interface CompletitudCAA {
+    porcentaje: number;
+    total_obligatorios: number;
+    total_completados: number;
+    esta_completo: boolean;
+    campos_faltantes: string[];
+    detalle: ItemCompletitudCAA[];
+}
+
+export type EstadoValidacionAlergenos = "SUGERIDO" | "CONFIRMADO";
+
+export interface AlergenoRotuloItem {
+    codigo: CodigoAlergenoCAA;
+    es_derivado: boolean;
+}
+
+export interface OrigenAlergenoOut {
+    codigo: CodigoAlergenoCAA;
+    etiqueta: string;
+    es_derivado: boolean;
+    insumos_fuente: string[];
+}
+
+export interface ConservacionSugeridaOut {
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+    condiciones_conservacion?: string | null;
+}
+
+export interface DatosAutocompletadosReceta {
+    tiene_receta_activa: boolean;
+    receta_id?: number | null;
+    receta_codigo?: string | null;
+    receta_nombre?: string | null;
+    lista_ingredientes_calculada?: string | null;
+    tamano_porcion_calculado?: string | null;
+    leyenda_vd_calculada?: string | null;
+    tabla_nutricional_calculada: FilaNutricionalRotuloItem[];
+    sellos_calculados: SelloRotuloItem[];
+    leyendas_calculadas: SelloRotuloItem[];
+    dictamen_aplicabilidad?: string | null;
+    ultimo_lote?: LoteResumenRotulo | null;
+    lotes_disponibles: LoteResumenRotulo[];
+    razon_social_establecimiento?: string | null;
+    domicilio_establecimiento?: string | null;
+    alergenos_presentes_calculados: AlergenoRotuloItem[];
+    detalle_origen_alergenos: OrigenAlergenoOut[];
+    leyenda_alergenos_calculada?: string | null;
+    conservacion_sugerida?: ConservacionSugeridaOut | null;
+}
+
+export interface RotuloProductoUpdate {
+    denominacion_venta?: string | null;
+    contenido_neto?: string | null;
+    aplica_peso_escurrido: boolean;
+    peso_escurrido?: string | null;
+
+    razon_social_elaborador?: string | null;
+    domicilio_elaborador?: string | null;
+    pais_origen?: string | null;
+    rne_elaborador?: string | null;
+    rnpa_rppa?: string | null;
+
+    es_importado: boolean;
+    nombre_importador?: string | null;
+    domicilio_importador?: string | null;
+    rne_importador?: string | null;
+
+    lote_origen_id?: number | null;
+    codigo_lote_declarado?: string | null;
+    fecha_duracion_minima?: string | null;
+    condiciones_conservacion?: string | null;
+    aplica_instrucciones_uso: boolean;
+    instrucciones_uso?: string | null;
+
+    lista_ingredientes_texto?: string | null;
+    tamano_porcion_declarado?: string | null;
+    leyenda_vd_declarada?: string | null;
+    tabla_nutricional_json?: FilaNutricionalRotuloItem[];
+    sellos_advertencia_json?: SelloRotuloItem[];
+    leyendas_precautorias_json?: SelloRotuloItem[];
+
+    alergenos_presentes_json?: AlergenoRotuloItem[];
+    alergenos_contaminacion_cruzada_json?: AlergenoRotuloItem[];
+    leyenda_alergenos_declarada?: string | null;
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+    confirmar_alergenos_conservacion?: boolean;
+
+    restaurar_ingredientes_automatico?: boolean;
+    restaurar_nutricion_automatico?: boolean;
+    restaurar_sellos_automatico?: boolean;
+    restaurar_lote_automatico?: boolean;
+    restaurar_alergenos_automatico?: boolean;
+    restaurar_conservacion_automatico?: boolean;
+}
+
+export interface RotuloProductoConsolidado {
+    id?: number | null;
+    producto_id: number;
+    producto_nombre: string;
+    unidad_medida_simbolo: string;
+    envasado_ausencia_cliente: boolean;
+    guardado_en_bd: boolean;
+
+    denominacion_venta?: string | null;
+    contenido_neto?: string | null;
+    aplica_peso_escurrido: boolean;
+    peso_escurrido?: string | null;
+
+    razon_social_elaborador?: string | null;
+    domicilio_elaborador?: string | null;
+    pais_origen?: string | null;
+    rne_elaborador?: string | null;
+    rnpa_rppa?: string | null;
+
+    es_importado: boolean;
+    nombre_importador?: string | null;
+    domicilio_importador?: string | null;
+    rne_importador?: string | null;
+
+    lote_origen_id?: number | null;
+    codigo_lote_declarado?: string | null;
+    fecha_duracion_minima?: string | null;
+    condiciones_conservacion?: string | null;
+    aplica_instrucciones_uso: boolean;
+    instrucciones_uso?: string | null;
+
+    lista_ingredientes_texto?: string | null;
+    tamano_porcion_declarado?: string | null;
+    leyenda_vd_declarada?: string | null;
+    tabla_nutricional_json: FilaNutricionalRotuloItem[];
+    sellos_advertencia_json: SelloRotuloItem[];
+    leyendas_precautorias_json: SelloRotuloItem[];
+
+    alergenos_presentes_json: AlergenoRotuloItem[];
+    alergenos_contaminacion_cruzada_json: AlergenoRotuloItem[];
+    leyenda_alergenos_declarada?: string | null;
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+
+    ingredientes_modificado_manualmente: boolean;
+    nutricion_modificada_manualmente: boolean;
+    sellos_modificados_manualmente: boolean;
+    lote_modificado_manualmente: boolean;
+    alergenos_modificados_manualmente: boolean;
+    conservacion_modificada_manualmente: boolean;
+
+    ingredientes_difiere_de_receta: boolean;
+    nutricion_difiere_de_receta: boolean;
+    sellos_difieren_de_receta: boolean;
+    lote_difiere_de_ultimo_lote: boolean;
+    alergenos_difieren_de_receta: boolean;
+    conservacion_difiere_de_sugerida: boolean;
+
+    estado_validacion_alergenos: EstadoValidacionAlergenos;
+    confirmacion_invalidada_por_cambio_receta: boolean;
+    fecha_confirmacion_alergenos?: string | null;
+    confirmado_alergenos_por_nombre?: string | null;
+
+    fecha_actualizacion?: string | null;
+    actualizado_por_nombre?: string | null;
+
+    autocompletado: DatosAutocompletadosReceta;
+    completitud_caa: CompletitudCAA;
+}
+
+export interface CaraPrincipalRotulo {
+    denominacion_venta?: string | null;
+    contenido_neto?: string | null;
+    aplica_peso_escurrido: boolean;
+    peso_escurrido?: string | null;
+    modulo_octogonos_activo: boolean;
+    dictamen_aplicabilidad?: string | null;
+    dictamen_titulo?: string | null;
+    motivo_aplicabilidad?: string | null;
+    sellos_calculables?: boolean;
+    sellos_advertencia: SelloRotuloItem[];
+    leyendas_precautorias: SelloRotuloItem[];
+    aviso_sin_sellos?: string | null;
+}
+
+export interface OrigenRotuloPreview {
+    razon_social_elaborador?: string | null;
+    domicilio_elaborador?: string | null;
+    pais_origen?: string | null;
+    rne_elaborador?: string | null;
+    rnpa_rppa?: string | null;
+    es_importado: boolean;
+    nombre_importador?: string | null;
+    domicilio_importador?: string | null;
+    rne_importador?: string | null;
+}
+
+export interface ConservacionLotePreview {
+    codigo_lote?: string | null;
+    fecha_duracion_minima?: string | null;
+    temp_conservacion_min_c?: number | null;
+    temp_conservacion_max_c?: number | null;
+    durabilidad_antes_abrir?: string | null;
+    durabilidad_despues_abrir?: string | null;
+    condiciones_conservacion?: string | null;
+    aplica_instrucciones_uso: boolean;
+    instrucciones_uso?: string | null;
+}
+
+export interface NutricionRotuloPreview {
+    es_completa: boolean;
+    motivo_incompleta?: string | null;
+    tamano_porcion?: string | null;
+    base_etiqueta: string;
+    filas: FilaNutricionalRotuloItem[];
+    leyenda_vd?: string | null;
+}
+
+export interface VistaPreviaRotulo {
+    producto_id: number;
+    producto_nombre: string;
+    guardado_en_bd: boolean;
+    tiene_receta_activa: boolean;
+    receta_codigo?: string | null;
+    receta_nombre?: string | null;
+    leyenda_borrador_obligatoria: string;
+    cara_principal: CaraPrincipalRotulo;
+    lista_ingredientes_texto?: string | null;
+    leyenda_alergenos_declarada?: string | null;
+    estado_validacion_alergenos: EstadoValidacionAlergenos;
+    nutricion: NutricionRotuloPreview;
+    origen: OrigenRotuloPreview;
+    conservacion_lote: ConservacionLotePreview;
+    completitud_caa: CompletitudCAA;
+    tabla_nutricional_incompleta: boolean;
+    advertencias: string[];
+    fecha_generacion: string;
+}
+
+export interface InsumoAnexoReceta {
+    insumo_id: number;
+    nombre: string;
+    denominacion_rotulo?: string | null;
+    categoria: string;
+    es_aditivo: boolean;
+    clase_funcional?: string | null;
+    numero_ins?: string | null;
+    cantidad_nominal: number;
+    unidad_simbolo: string;
+}
+
+export interface AnexoRecetaActiva {
+    receta_id: number;
+    codigo_receta: string;
+    nombre_receta: string;
+    estado_receta: string;
+    fecha_creacion: string;
+    rendimiento_estandar: number;
+    unidad_rendimiento: string;
+    tamano_porcion?: number | null;
+    version_parametro_frontal?: string | null;
+    ingredientes: InsumoAnexoReceta[];
+    aditivos: InsumoAnexoReceta[];
+}
+
+export interface FuenteNutricionalInsumo {
+    insumo_id: number;
+    nombre: string;
+    categoria: string;
+    nutricion_completa: boolean;
+    fuente_nutricional?: string | null;
+    es_nutricion_modificada: boolean;
+    fecha_carga_nutricional?: string | null;
+    fecha_modificacion_nutricional?: string | null;
+    campos_faltantes: string[];
+}
+
+export interface AnexoNutricionDetallada {
+    informacion_nutricional: InformacionNutricionalResponse;
+    fuentes_datos_insumos: FuenteNutricionalInsumo[];
+}
+
+export interface AnexoMemoriaSellos {
+    aplicabilidad: AplicabilidadFrontalOut;
+    sellos: SellosAdvertenciaOut;
+}
+
+export interface RespaldoCalculoRotulo {
+    producto_id: number;
+    producto_nombre: string;
+    fecha_emision: string;
+    leyenda_borrador_obligatoria: string;
+    codigo_receta_empleada?: string | null;
+    version_parametros_aplicada?: string | null;
+    tiene_receta_activa: boolean;
+    vista_previa: VistaPreviaRotulo;
+    anexo_receta?: AnexoRecetaActiva | null;
+    anexo_composicion?: ComposicionPorcentualResponse | null;
+    es_orden_ingredientes_manual: boolean;
+    anexo_nutricion?: AnexoNutricionDetallada | null;
+    anexo_memoria_sellos?: AnexoMemoriaSellos | null;
+}

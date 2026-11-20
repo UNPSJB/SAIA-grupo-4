@@ -64,8 +64,8 @@ export default function DocumentoPersonalPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
-      <Box maxW='8xl' mx='auto' mb={-4} textAlign='left'>
+    <>
+      <Box mb={4} textAlign='left'>
         <Button
           variant='ghost'
           colorPalette='green'
@@ -155,6 +155,6 @@ export default function DocumentoPersonalPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

@@ -251,8 +251,7 @@ export const ListadoIncidentes = ({
 
   return (
     <ListadoContainer>
-      <HStack justify="space-between" mb={6} align="center">
-        <ListadoHeader title={titulo} icon={FiAlertTriangle}/>
+      <ListadoHeader title={titulo} icon={FiAlertTriangle}>
         <HStack gap={2}>
           {onGestionarTipos && (
             <Button variant='outline' colorPalette='green' onClick={onGestionarTipos}>
@@ -265,7 +264,8 @@ export const ListadoIncidentes = ({
           </Button>
           )}
         </HStack>
-      </HStack>
+      </ListadoHeader>
+      
       <Box mb={4}>
         <FiltrosBar
           onAplicar={aplicarFiltros}

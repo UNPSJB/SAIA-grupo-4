@@ -19,6 +19,7 @@ import {
   FiExternalLink,
   FiFileText,
   FiImage,
+  FiPrinter,
 } from "react-icons/fi";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { AlertMessage } from "../../components/ui";
@@ -31,6 +32,11 @@ type FormatoDescarga = "png" | "pdf";
 interface EnlacePublicoCardProps {
   url: string;
   activo: boolean;
+  /**
+   * Abre la impresión de los indicadores. Si no se pasa (vista desactivada o
+   * indicadores todavía sin cargar), el botón no se muestra.
+   */
+  onImprimir?: () => void;
 }
 
 function descargarArchivo(dataUrl: string, nombre: string) {
@@ -86,7 +92,11 @@ async function descargarPdf(dataUrl: string, url: string) {
   documento.save(`${NOMBRE_BASE_QR}.pdf`);
 }
 
-export function EnlacePublicoCard({ url, activo }: EnlacePublicoCardProps) {
+export function EnlacePublicoCard({
+  url,
+  activo,
+  onImprimir,
+}: EnlacePublicoCardProps) {
   const [copiado, setCopiado] = useState(false);
   const [errorCopiado, setErrorCopiado] = useState<string | null>(null);
   const [descargando, setDescargando] = useState<FormatoDescarga | null>(null);
@@ -263,6 +273,25 @@ export function EnlacePublicoCard({ url, activo }: EnlacePublicoCardProps) {
                     </Menu.Positioner>
                   </Portal>
                 </Menu.Root>
+
+                {onImprimir && (
+                  <Button
+                    onClick={onImprimir}
+                    variant='outline'
+                    colorPalette='blue'
+                    bg='white'
+                    transition='all 0.15s ease'
+                    _hover={{
+                      bg: "blue.50",
+                      borderColor: "blue.500",
+                      color: "blue.700",
+                      shadow: "sm",
+                    }}
+                  >
+                    <FiPrinter />
+                    Imprimir / Descargar PDF
+                  </Button>
+                )}
               </HStack>
 
               {errorCopiado && (

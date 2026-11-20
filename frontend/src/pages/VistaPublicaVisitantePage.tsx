@@ -8,6 +8,7 @@ import {
   Flex,
   HStack,
   Icon,
+  Image,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -24,6 +25,7 @@ import { IndicadoresPublicosView } from "../features/vistaPublica/IndicadoresPub
 import { useIndicadoresPublicos } from "../features/vistaPublica/hooks/useIndicadoresPublicos";
 import type { IndicadoresPublicos } from "../features/vistaPublica/types";
 import { formatearFecha } from "../utils/fecha";
+import { useConfiguracion } from "../features/configuracion/useConfiguracion";
 
 function EstadoCard({
   icon,
@@ -77,13 +79,15 @@ export default function VistaPublicaPublicaPage() {
   const { data, loading, error, noEncontrada, recargar } =
     useIndicadoresPublicos(token);
   const enlaceInvalido = !token;
+  const { configuracion, logoSrc } = useConfiguracion();
+const nombreEstablecimiento = configuracion.nombre_establecimiento || "SAIA-4";
 
   useEffect(() => {
-    document.title = "Vista pública | SAIA-4";
+    document.title = "Vista pública | " + nombreEstablecimiento;
     return () => {
-      document.title = "SAIA-4 | Gestión de Inocuidad";
+      document.title = nombreEstablecimiento + " | Gestión de Inocuidad";
     };
-  }, []);
+  }, [nombreEstablecimiento]);
 
   return (
     <Box bg='gray.50' minH='100vh'>
@@ -96,19 +100,31 @@ export default function VistaPublicaPublicaPage() {
       >
         <Container maxW='container.xl' px={0}>
           <HStack gap={3} align='center'>
-            <Icon as={FiShield} boxSize={{ base: 7, md: 8 }} />
-            <Box>
-              <Text
-                as='h1'
-                fontSize={{ base: "xl", md: "2xl" }}
-                fontWeight='bold'
-              >
-                SAIA-4
-              </Text>
-              <Text fontSize={{ base: "xs", md: "sm" }} color='whiteAlpha.800'>
-                Vista pública de buenas prácticas
-              </Text>
-            </Box>
+             {logoSrc ? (
+                <Image
+                  src={logoSrc}
+                  alt={nombreEstablecimiento}
+                  boxSize={{ base: 8, md: 10 }}
+                  objectFit='contain'
+                  bg='white'
+                  borderRadius='md'
+                  p={1}
+                />
+              ) : (
+                <Icon as={FiShield} boxSize={{ base: 7, md: 8 }} />
+              )}
+              <Box>
+                <Text
+                  as='h1'
+                  fontSize={{ base: "xl", md: "2xl" }}
+                  fontWeight='bold'
+                >
+                  {nombreEstablecimiento}
+                </Text>
+                <Text fontSize={{ base: "xs", md: "sm" }} color='whiteAlpha.800'>
+                  Vista pública de buenas prácticas
+                </Text>
+              </Box>
           </HStack>
         </Container>
       </Box>
@@ -194,14 +210,24 @@ export default function VistaPublicaPublicaPage() {
                 borderColor='gray.200'
                 pt={4}
               >
-                <Text fontSize='xs' color='gray.500'>
-                  Indicadores agregados. No incluyen datos internos ni
-                  identifican al personal.
-                </Text>
-                <Button size='sm' variant='ghost' onClick={recargar}>
-                  <FiRefreshCw />
-                  Actualizar
-                </Button>
+                <VStack align='start' gap={0.5}>
+                  {configuracion.pie_informes && (
+                    <Text fontSize='xs' fontWeight='medium' color='gray.700'>
+                      {configuracion.pie_informes}
+                    </Text>
+                  )}
+                  {(configuracion.direccion || configuracion.telefono || configuracion.email) && (
+                    <Text fontSize='xs' color='gray.600'>
+                     {[configuracion.direccion, configuracion.localidad, configuracion.provincia, configuracion.telefono, configuracion.email]
+                       .filter(Boolean)
+                       .join(" · ")}
+                    </Text>
+                  )}
+                  <Text fontSize='xs' color='gray.500'>
+                    Indicadores agregados. No incluyen datos internos ni
+                    identifican al personal.
+                  </Text>
+                </VStack>
               </Flex>
             </VStack>
           )}

@@ -24,8 +24,8 @@ import {
   FiEye,
   FiPackage,
 } from "react-icons/fi";
-import { VStack } from "@chakra-ui/react";
-import { useForm } from "react-hook-form";
+import { Box, Switch, Text, VStack } from "@chakra-ui/react";
+import { Controller, useForm } from "react-hook-form";
 
 type ProductoFormProps = {
   modo: "crear" | "modificar" | "ver";
@@ -79,16 +79,19 @@ export const ProductoForm = ({
           descripcion: producto!.descripcion,
           unidad_medida_id: String(producto!.unidad_medida.id),
           dias_vida_util: producto?.dias_vida_util ?? null,
+          envasado_ausencia_cliente: producto?.envasado_ausencia_cliente ?? true,
         }
       : {
           nombre: "",
           descripcion: "",
           unidad_medida_id: "",
           dias_vida_util: null,
+          envasado_ausencia_cliente: true,
         };
 
   const {
     register,
+    control,
     handleSubmit,
     formState: {errors, isSubmitting },
     setError,
@@ -201,7 +204,11 @@ export const ProductoForm = ({
             label='Días de vida útil (opcional)'
             type='number'
             disabled={esModoVer}
-            defaultValue={String(defaultValues.dias_vida_util ?? "")}
+            defaultValue={
+              defaultValues.dias_vida_util != null
+                ? String(defaultValues.dias_vida_util)
+                : ""
+            }
             placeholder='Ej. 30'
             error={errors.dias_vida_util?.message}
             {...register("dias_vida_util", {
@@ -210,6 +217,30 @@ export const ProductoForm = ({
                   ? null
                   : Number(v),
             })}
+          />
+
+          <Controller
+            control={control}
+            name='envasado_ausencia_cliente'
+            render={({ field }) => (
+              <Box width='100%' py={1}>
+                <Switch.Root
+                  checked={field.value}
+                  onCheckedChange={(details) => field.onChange(details.checked)}
+                  disabled={esModoVer}
+                  colorPalette='green'
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Control />
+                  <Switch.Label fontSize='sm' fontWeight='medium'>
+                    Comercializado envasado en ausencia del cliente
+                  </Switch.Label>
+                </Switch.Root>
+                <Text fontSize='xs' color='gray.500' mt={1}>
+                  Indica si el producto se envasa previamente a su venta sin presencia del consumidor (condición requerida para el rotulado frontal Ley 27.642).
+                </Text>
+              </Box>
+            )}
           />
 
           <FormActions>

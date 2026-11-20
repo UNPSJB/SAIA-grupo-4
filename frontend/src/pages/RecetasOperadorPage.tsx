@@ -1,5 +1,3 @@
-import { Box } from "@chakra-ui/react";
-
 import { ListadoRecetasOperador } from "../features/recetas/ListadoRecetasOperador";
 
 /**
@@ -8,8 +6,8 @@ import { ListadoRecetasOperador } from "../features/recetas/ListadoRecetasOperad
  */
 export default function RecetasOperadorPage() {
   return (
-    <Box p={{ base: 4, md: 10 }} minH="100%">
+    <>
       <ListadoRecetasOperador />
-    </Box>
+    </>
   );
 }

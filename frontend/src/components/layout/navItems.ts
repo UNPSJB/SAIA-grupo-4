@@ -16,6 +16,7 @@ import {
   FiGlobe,
   FiCheckSquare,
   FiArchive,
+  FiDatabase,
 } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 
@@ -44,6 +45,11 @@ export const defaultItems: NavItem[] = [
       { to: "/insumos", label: "Insumos", icon: FiPackage },
       { to: "/insumos-quimicos", label: "Insumos Químicos", icon: FiDroplet },
     ],
+  },
+  {
+    to: "/alimentos-referencia",
+    label: "Alimentos de referencia",
+    icon: FiDatabase,
   },
   {
     to: "/elementos-limpieza",

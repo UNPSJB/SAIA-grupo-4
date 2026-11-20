@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash, FiPrinter } from "react-icons/fi";
+import { Badge, Box, HStack, Text, VStack } from "@chakra-ui/react";
+import { FiChevronDown, FiChevronUp, FiClock, FiEye, FiHash } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import { TextoSinValor } from "../../components/ui";
 import { ESTADOS_RECETA } from "./constants";
 import { recetasApi } from "./hooks/recetaApi";
-import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
-import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import type { PasoReceta, Receta } from "./types";
 
 interface RecetaDetalleProps {
@@ -187,9 +185,14 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
         },
         {
           label: "Rendimiento estándar",
-          valor: receta.producto?.unidad_medida?.simbolo
-            ? `${receta.rendimiento_estandar} ${receta.producto.unidad_medida.simbolo}`
-            : receta.rendimiento_estandar,
+          valor: `${receta.rendimiento_estandar} g`,
+        },
+        {
+          label: "Tamaño de porción",
+          valor:
+            receta.tamano_porcion != null
+              ? `${receta.tamano_porcion} g`
+              : "No especificado",
         },
         {
           label: "Tiempo estimado total",
@@ -222,23 +225,6 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
           label: "Observaciones",
           valor: receta.observaciones || <TextoSinValor>No tiene</TextoSinValor>,
         },
-        ...(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA"
-          ? [
-              {
-                label: "Ficha técnica",
-                valor: (
-                  <Button
-                    size="xs"
-                    colorPalette="blue"
-                    variant="outline"
-                    onClick={() => imprimirFichaReceta({ ...receta, pasos })}
-                  >
-                    <FiPrinter /> Imprimir / Descargar PDF
-                  </Button>
-                ),
-              },
-            ]
-          : []),
       ],
     },
     {
@@ -257,17 +243,12 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
   ];
 
   return (
-    <>
-      <DetalleModal
-        open
-        title={`Detalle de Receta: ${receta.nombre_receta}`}
-        icon={FiEye}
-        onClose={onCerrar}
-        secciones={secciones}
-      />
-      {(receta.estado === "ACTIVA" || receta.estado === "INHABILITADA") && (
-        <FichaRecetaPrint receta={{ ...receta, pasos }} />
-      )}
-    </>
+    <DetalleModal
+      open
+      title={`Detalle de Receta: ${receta.nombre_receta}`}
+      icon={FiEye}
+      onClose={onCerrar}
+      secciones={secciones}
+    />
   );
 };

@@ -1,9 +1,12 @@
 import { BASE_URL, ITEMS_SELECT } from "../../config";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Box, Button, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 
-import { useInsumoSubmit } from "./hooks/useInsumoSubmit";
+import { useInsumoSubmit, type InsumoPayload } from "./hooks/useInsumoSubmit";
+import { SeccionNutricionalInsumo } from "./components/SeccionNutricionalInsumo";
+import { SeccionRotuladoAlergenosInsumo } from "./components/SeccionRotuladoAlergenosInsumo";
 import { useListadoData } from "../../hooks/useListadoData";
 import { insumoSchema, type InsumoFormValues } from "./validationSchema";
 import type { Insumo, UnidadMedida } from "./types";
@@ -19,7 +22,74 @@ import {
   AlertMessage,
   AlertConfirm,
 } from "../../components/ui";
-import { FiBox, FiEdit2, FiSave, FiXCircle, FiEye } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiArrowRight,
+  FiBox,
+  FiEdit2,
+  FiSave,
+  FiXCircle,
+  FiEye,
+} from "react-icons/fi";
+
+type PasoInsumo = {
+  id: "generales" | "nutricion" | "rotulado";
+  titulo: string;
+  descripcion: string;
+  campos: (keyof InsumoFormValues)[];
+};
+
+const PASOS_INSUMO: PasoInsumo[] = [
+  {
+    id: "generales",
+    titulo: "Datos generales",
+    descripcion: "Nombre, unidad, categoría y datos de rótulo",
+    campos: [
+      "nombre",
+      "unidad_medida_id",
+      "densidad_g_ml",
+      "peso_unitario_g",
+      "categoria",
+      "descripcion",
+      "denominacion_rotulo",
+      "clase_funcional",
+      "numero_ins",
+    ],
+  },
+  {
+    id: "nutricion",
+    titulo: "Información nutricional",
+    descripcion: "Valores cada 100 g / 100 ml (SARA 2 o carga manual)",
+    campos: [
+      "base_calculo",
+      "alimento_referencia_id",
+      "fuente_nutricional",
+      "valor_energetico_kcal",
+      "carbohidratos_g",
+      "azucares_totales_g",
+      "azucares_anadidos_g",
+      "proteinas_g",
+      "grasas_totales_g",
+      "grasas_saturadas_g",
+      "grasas_trans_g",
+      "fibra_g",
+      "sodio_mg",
+    ],
+  },
+  {
+    id: "rotulado",
+    titulo: "Rotulado frontal, alérgenos y cereales",
+    descripcion: "Aportes Ley 27.642 y alérgenos Art. 235 séptimo CAA",
+    campos: [
+      "aporta_azucares_agregados",
+      "aporta_grasas_agregadas",
+      "aporta_sodio_agregado",
+      "es_edulcorante",
+      "contiene_cafeina",
+      "alergenos_declarados_json",
+    ],
+  },
+];
 
 type InsumoFormProps = {
   modo: "crear" | "modificar" | "ver";
@@ -70,14 +140,93 @@ export const InsumoForm = ({
           nombre: insumo!.nombre,
           unidad_medida_id: String(insumo!.unidad_medida.id),
           categoria: insumo!.categoria,
-          descripcion: insumo!.descripcion,
+          descripcion: insumo!.descripcion || "",
+          densidad_g_ml:
+            insumo?.densidad_g_ml != null ? String(insumo.densidad_g_ml) : "",
+          peso_unitario_g:
+            insumo?.peso_unitario_g != null ? String(insumo.peso_unitario_g) : "",
+          denominacion_rotulo: insumo?.denominacion_rotulo || "",
+          clase_funcional: insumo?.clase_funcional || "",
+          numero_ins: insumo?.numero_ins || "",
+          base_calculo: insumo?.base_calculo === "100ml" ? "100ml" : "100g",
+          alimento_referencia_id:
+            insumo?.alimento_referencia_id != null
+              ? String(insumo.alimento_referencia_id)
+              : "",
+          fuente_nutricional: insumo?.fuente_nutricional || "",
+          valor_energetico_kcal:
+            insumo?.valor_energetico_kcal != null
+              ? String(insumo.valor_energetico_kcal)
+              : "",
+          carbohidratos_g:
+            insumo?.carbohidratos_g != null ? String(insumo.carbohidratos_g) : "",
+          azucares_totales_g:
+            insumo?.azucares_totales_g != null
+              ? String(insumo.azucares_totales_g)
+              : "",
+          azucares_anadidos_g:
+            insumo?.azucares_anadidos_g != null
+              ? String(insumo.azucares_anadidos_g)
+              : "",
+          proteinas_g:
+            insumo?.proteinas_g != null ? String(insumo.proteinas_g) : "",
+          grasas_totales_g:
+            insumo?.grasas_totales_g != null ? String(insumo.grasas_totales_g) : "",
+          grasas_saturadas_g:
+            insumo?.grasas_saturadas_g != null
+              ? String(insumo.grasas_saturadas_g)
+              : "",
+          grasas_trans_g:
+            insumo?.grasas_trans_g != null ? String(insumo.grasas_trans_g) : "",
+          fibra_g: insumo?.fibra_g != null ? String(insumo.fibra_g) : "",
+          sodio_mg: insumo?.sodio_mg != null ? String(insumo.sodio_mg) : "",
+          aporta_azucares_agregados: Boolean(insumo?.aporta_azucares_agregados),
+          aporta_grasas_agregadas: Boolean(insumo?.aporta_grasas_agregadas),
+          aporta_sodio_agregado: Boolean(insumo?.aporta_sodio_agregado),
+          es_edulcorante: Boolean(insumo?.es_edulcorante),
+          contiene_cafeina: Boolean(insumo?.contiene_cafeina),
+          alergenos_declarados_json: insumo?.alergenos_declarados_json ?? [],
         }
-      : { nombre: "", unidad_medida_id: "", categoria: "", descripcion: "" };
+      : {
+          nombre: "",
+          unidad_medida_id: "",
+          categoria: "",
+          descripcion: "",
+          densidad_g_ml: "",
+          peso_unitario_g: "",
+          denominacion_rotulo: "",
+          clase_funcional: "",
+          numero_ins: "",
+          base_calculo: "100g",
+          alimento_referencia_id: "",
+          fuente_nutricional: "",
+          valor_energetico_kcal: "",
+          carbohidratos_g: "",
+          azucares_totales_g: "",
+          azucares_anadidos_g: "",
+          proteinas_g: "",
+          grasas_totales_g: "",
+          grasas_saturadas_g: "",
+          grasas_trans_g: "",
+          fibra_g: "",
+          sodio_mg: "",
+          aporta_azucares_agregados: false,
+          aporta_grasas_agregadas: false,
+          aporta_sodio_agregado: false,
+          es_edulcorante: false,
+          contiene_cafeina: false,
+          alergenos_declarados_json: [],
+        };
 
   const {
     register,
+    control,
     handleSubmit,
-    formState: { errors, isSubmitting, isValid },
+    watch,
+    setValue,
+    trigger,
+    getFieldState,
+    formState: { errors, isSubmitting, isValid, dirtyFields },
     setError,
     clearErrors,
     reset,
@@ -86,6 +235,72 @@ export const InsumoForm = ({
     defaultValues,
     mode: "onChange",
   });
+
+  const [paso, setPaso] = useState(0);
+  const inicioRef = useRef<HTMLDivElement>(null);
+
+  const unidadSeleccionadaId = watch("unidad_medida_id");
+  const categoriaSeleccionada = watch("categoria");
+  const claseFuncionalSeleccionada = watch("clase_funcional");
+
+  const esEnvase =
+    (categoriaSeleccionada || "").trim().toLowerCase() === "envase";
+  const pasosVisibles = useMemo(
+    () =>
+      esEnvase
+        ? PASOS_INSUMO.filter((item) => item.id === "generales")
+        : PASOS_INSUMO,
+    [esEnvase]
+  );
+  const pasoActual = Math.min(paso, Math.max(0, pasosVisibles.length - 1));
+  const esUltimoPaso = pasoActual >= pasosVisibles.length - 1;
+  const pasoActualMeta = pasosVisibles[pasoActual];
+
+  useEffect(() => {
+    if (paso !== pasoActual) {
+      setPaso(pasoActual);
+    }
+  }, [paso, pasoActual]);
+
+  useEffect(() => {
+    if (esModoVer) return;
+    inicioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pasoActual, esModoVer]);
+
+  const esAditivo = (categoriaSeleccionada || "").trim().toLowerCase() === "aditivo";
+  const esAromatizante =
+    (claseFuncionalSeleccionada || "").trim().toLowerCase() === "aromatizante" ||
+    (claseFuncionalSeleccionada || "").trim().toLowerCase() === "saborizante" ||
+    (claseFuncionalSeleccionada || "").trim().toLowerCase().includes("aromatizante");
+
+  const unidadSeleccionada = useMemo(() => {
+    return (
+      unidades.find((u) => String(u.id) === String(unidadSeleccionadaId)) ||
+      (insumo?.unidad_medida &&
+      String(insumo.unidad_medida.id) === String(unidadSeleccionadaId)
+        ? insumo.unidad_medida
+        : undefined)
+    );
+  }, [unidades, unidadSeleccionadaId, insumo]);
+
+  const tipoMagnitud = unidadSeleccionada?.tipo_magnitud?.toLowerCase();
+
+  useEffect(() => {
+    if (!esModoCrear || dirtyFields.base_calculo || !tipoMagnitud) return;
+    setValue("base_calculo", tipoMagnitud === "volumen" ? "100ml" : "100g", {
+      shouldValidate: true,
+    });
+  }, [esModoCrear, tipoMagnitud, dirtyFields.base_calculo, setValue]);
+
+  useEffect(() => {
+    if (esModoVer) return;
+    if (
+      esAditivo &&
+      (claseFuncionalSeleccionada || "").trim().toLowerCase().includes("edulcorante")
+    ) {
+      setValue("es_edulcorante", true, { shouldDirty: true });
+    }
+  }, [esAditivo, claseFuncionalSeleccionada, esModoVer, setValue]);
 
   const [success, setSuccess] = useState(false);
   const [confirmAltaAbierto, setConfirmAltaAbierto] = useState(false);
@@ -130,15 +345,38 @@ export const InsumoForm = ({
     }
   };
 
+  const avanzar = async () => {
+    const camposPaso = pasoActualMeta?.campos ?? [];
+    const valido = await trigger(camposPaso, { shouldFocus: true });
+    const tieneErrorPaso = camposPaso.some(
+      (campo) => getFieldState(campo).invalid
+    );
+    if (!valido || tieneErrorPaso) return;
+    setPaso((prev) => Math.min(prev + 1, pasosVisibles.length - 1));
+  };
+
+  const retroceder = () => {
+    setPaso((prev) => Math.max(0, prev - 1));
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     setSuccess(false);
     clearErrors("root");
     setNombreEnviado(values.nombre);
-    const res = await submit(values);
+    const cleanedValues: InsumoPayload = {
+      ...values,
+      densidad_g_ml: tipoMagnitud === "volumen" ? values.densidad_g_ml : undefined,
+      peso_unitario_g: tipoMagnitud === "cantidad" ? values.peso_unitario_g : undefined,
+      denominacion_rotulo: values.denominacion_rotulo?.trim() || undefined,
+      clase_funcional: esAditivo ? values.clase_funcional?.trim() || undefined : undefined,
+      numero_ins: esAditivo ? values.numero_ins?.trim() || undefined : undefined,
+    };
+    const res = await submit(cleanedValues);
     if (res.status === "error") {
       setError("root", { message: res.message });
     } else if (res.status === "success") {
       reset(defaultValues);
+      setPaso(0);
     }
   });
 
@@ -154,55 +392,252 @@ export const InsumoForm = ({
         }
         icon={esModoVer ? FiEye : esModoModificar ? FiEdit2 : FiBox}
       />
-      <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
-        <FormGrid>
-          <TextField
-            label='Nombre'
-            disabled={esModoVer}
-            defaultValue={defaultValues.nombre}
-            placeholder='Ej. Harina 0000'
-            error={errors.nombre?.message}
-            {...register("nombre")}
-          />
-          <SelectField
-            label='Unidad de medida'
-            placeholder='Selecciona una opcion'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.unidad_medida_id}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={opcionesUnidad}
-            error={errors.unidad_medida_id?.message}
-            {...register("unidad_medida_id")}
-          />
+      <form
+        onSubmit={
+          esModoVer
+            ? undefined
+            : esUltimoPaso
+              ? onSubmit
+              : (e) => {
+                  e.preventDefault();
+                  void avanzar();
+                }
+        }
+        noValidate
+      >
+        <VStack gap={4} align='stretch' ref={inicioRef}>
+          {!esModoVer && pasosVisibles.length > 1 && (
+            <HStack
+              gap={2}
+              align='stretch'
+              w='100%'
+              flexWrap='wrap'
+              aria-label='Pasos del formulario'
+            >
+              {pasosVisibles.map((item, index) => {
+                const activo = index === pasoActual;
+                const completado = index < pasoActual;
+                return (
+                  <Box
+                    key={item.id}
+                    flex='1'
+                    minW='180px'
+                    p={3}
+                    borderWidth='1px'
+                    borderRadius='md'
+                    borderColor={activo ? "green.400" : "border.subtle"}
+                    bg={activo || completado ? "green.50" : undefined}
+                    opacity={activo || completado ? 1 : 0.72}
+                  >
+                    <HStack gap={2} align='center'>
+                      <Box
+                        boxSize='6'
+                        borderRadius='full'
+                        bg={activo || completado ? "green.500" : "gray.200"}
+                        color={activo || completado ? "white" : "gray.600"}
+                        fontSize='xs'
+                        fontWeight='bold'
+                        display='flex'
+                        alignItems='center'
+                        justifyContent='center'
+                        flexShrink={0}
+                      >
+                        {index + 1}
+                      </Box>
+                      <Box>
+                        <Text
+                          fontSize='sm'
+                          fontWeight={activo ? "semibold" : "medium"}
+                          color={activo || completado ? "green.800" : undefined}
+                        >
+                          {item.titulo}
+                        </Text>
+                        <Text
+                          fontSize='xs'
+                          color={activo || completado ? "green.700" : "fg.muted"}
+                        >
+                          {item.descripcion}
+                        </Text>
+                      </Box>
+                    </HStack>
+                  </Box>
+                );
+              })}
+            </HStack>
+          )}
 
-          <SelectField
-            label='Categoria'
-            placeholder='Selecciona una opción'
-            readOnly={esModoVer}
-            defaultValue={defaultValues.categoria}
-            onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
-            onClick={esModoVer ? (e) => e.preventDefault() : undefined}
-            options={[
-              { label: "Materia Prima", value: "materia prima" },
-              { label: "Aditivo", value: "aditivo" },
-              { label: "Envase", value: "envase" },
-              { label: "Otro", value: "otro" },
-            ]}
-            error={errors.categoria?.message}
-            {...register("categoria")}
-          />
+          <Box
+            display={
+              esModoVer || pasoActualMeta?.id === "generales" ? "block" : "none"
+            }
+          >
+            <FormGrid>
+              <TextField
+                label='Nombre'
+                disabled={esModoVer}
+                defaultValue={defaultValues.nombre}
+                placeholder='Ej. Harina 0000'
+                error={errors.nombre?.message}
+                {...register("nombre")}
+              />
+              <SelectField
+                label='Unidad de medida'
+                placeholder='Selecciona una opcion'
+                readOnly={esModoVer}
+                defaultValue={defaultValues.unidad_medida_id}
+                onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+                onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+                options={opcionesUnidad}
+                error={errors.unidad_medida_id?.message}
+                {...register("unidad_medida_id")}
+              />
 
-          <TextField
-            label='Descripcion'
-            disabled={esModoVer}
-            defaultValue={defaultValues.descripcion}
-            placeholder='Breve descripcion del insumo'
-            error={errors.descripcion?.message}
-            {...register("descripcion")}
-          />
+              {tipoMagnitud === "volumen" && (
+                <TextField
+                  label='Densidad (g/ml)'
+                  disabled={esModoVer}
+                  defaultValue={defaultValues.densidad_g_ml}
+                  placeholder='Ej. 0.92'
+                  type='number'
+                  step='0.001'
+                  min='0.001'
+                  hideSpinners
+                  error={errors.densidad_g_ml?.message}
+                  {...register("densidad_g_ml")}
+                />
+              )}
 
-          <FormActions>
+              {tipoMagnitud === "cantidad" && (
+                <TextField
+                  label='Peso promedio unitario (g)'
+                  disabled={esModoVer}
+                  defaultValue={defaultValues.peso_unitario_g}
+                  placeholder='Ej. 50'
+                  type='number'
+                  step='0.01'
+                  min='0.01'
+                  hideSpinners
+                  error={errors.peso_unitario_g?.message}
+                  {...register("peso_unitario_g")}
+                />
+              )}
+
+              <SelectField
+                label='Categoria'
+                placeholder='Selecciona una opción'
+                readOnly={esModoVer}
+                defaultValue={defaultValues.categoria}
+                onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+                onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+                options={[
+                  { label: "Materia Prima", value: "materia prima" },
+                  { label: "Aditivo", value: "aditivo" },
+                  { label: "Envase", value: "envase" },
+                  { label: "Otro", value: "otro" },
+                ]}
+                error={errors.categoria?.message}
+                {...register("categoria")}
+              />
+
+              <TextField
+                label='Descripcion'
+                disabled={esModoVer}
+                defaultValue={defaultValues.descripcion}
+                placeholder='Breve descripcion del insumo'
+                error={errors.descripcion?.message}
+                {...register("descripcion")}
+              />
+
+              <TextField
+                label='Denominación para Rótulo (opcional)'
+                disabled={esModoVer}
+                defaultValue={defaultValues.denominacion_rotulo}
+                placeholder='Si se deja vacío, se usará el nombre del insumo'
+                error={errors.denominacion_rotulo?.message}
+                {...register("denominacion_rotulo")}
+              />
+
+              {esAditivo && (
+                <>
+                  <SelectField
+                    label='Clase Funcional (aditivo)'
+                    placeholder='Selecciona la clase funcional'
+                    readOnly={esModoVer}
+                    defaultValue={defaultValues.clase_funcional}
+                    onFocus={esModoVer ? (e) => e.preventDefault() : undefined}
+                    onClick={esModoVer ? (e) => e.preventDefault() : undefined}
+                    options={[
+                      { label: "Conservante", value: "Conservante" },
+                      { label: "Antioxidante", value: "Antioxidante" },
+                      { label: "Acidulante", value: "Acidulante" },
+                      { label: "Emulsionante", value: "Emulsionante" },
+                      { label: "Estabilizante", value: "Estabilizante" },
+                      { label: "Espesante", value: "Espesante" },
+                      { label: "Gelificante", value: "Gelificante" },
+                      { label: "Colorante", value: "Colorante" },
+                      { label: "Aromatizante / Saborizante", value: "Aromatizante" },
+                      { label: "Leudante químico", value: "Leudante químico" },
+                      { label: "Regulador de acidez", value: "Regulador de acidez" },
+                      { label: "Secuestrante", value: "Secuestrante" },
+                      { label: "Edulcorante", value: "Edulcorante" },
+                      { label: "Humectante", value: "Humectante" },
+                      { label: "Antihumectante", value: "Antihumectante" },
+                      { label: "Mejorador de harina", value: "Mejorador de harina" },
+                      { label: "Resaltador del sabor", value: "Resaltador del sabor" },
+                    ]}
+                    error={errors.clase_funcional?.message}
+                    {...register("clase_funcional")}
+                  />
+
+                  <TextField
+                    label={esAromatizante ? "Número INS (no requerido para aromatizantes)" : "Número INS"}
+                    disabled={esModoVer}
+                    defaultValue={defaultValues.numero_ins}
+                    placeholder={esAromatizante ? "Opcional (ej: 282, 300)" : "Ej. 282, 300, 500ii"}
+                    error={errors.numero_ins?.message}
+                    {...register("numero_ins")}
+                  />
+                </>
+              )}
+            </FormGrid>
+          </Box>
+
+          {!esEnvase && (
+            <>
+              <Box
+                display={
+                  esModoVer || pasoActualMeta?.id === "nutricion" ? "block" : "none"
+                }
+              >
+                <FormGrid>
+                  <SeccionNutricionalInsumo
+                    register={register}
+                    setValue={setValue}
+                    watch={watch}
+                    errors={errors}
+                    esModoVer={esModoVer}
+                    esAditivo={esAditivo}
+                    insumo={insumo}
+                  />
+                </FormGrid>
+              </Box>
+
+              <Box
+                display={
+                  esModoVer || pasoActualMeta?.id === "rotulado" ? "block" : "none"
+                }
+              >
+                <FormGrid>
+                  <SeccionRotuladoAlergenosInsumo
+                    control={control}
+                    esModoVer={esModoVer}
+                  />
+                </FormGrid>
+              </Box>
+            </>
+          )}
+
+          <FormActions justify='end'>
             {esModoVer ? (
               <CancelButton
                 text='Cerrar'
@@ -213,14 +648,36 @@ export const InsumoForm = ({
               />
             ) : (
               <>
-                <SubmitButton
-                  text='Guardar'
-                  icon={FiSave}
-                  loading={isSubmitting}
-                  type='submit'
-                  colorPalette='green'
-                  disabled={!isValid}
-                />
+                {pasoActual > 0 && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    colorPalette='gray'
+                    onClick={retroceder}
+                  >
+                    <Icon as={FiArrowLeft} />
+                    Atrás
+                  </Button>
+                )}
+                {!esUltimoPaso ? (
+                  <Button
+                    type='button'
+                    colorPalette='green'
+                    onClick={() => void avanzar()}
+                  >
+                    Siguiente
+                    <Icon as={FiArrowRight} />
+                  </Button>
+                ) : (
+                  <SubmitButton
+                    text='Guardar'
+                    icon={FiSave}
+                    loading={isSubmitting}
+                    type='submit'
+                    colorPalette='green'
+                    disabled={!isValid}
+                  />
+                )}
                 <CancelButton
                   text='Cancelar'
                   icon={FiXCircle}
@@ -245,7 +702,7 @@ export const InsumoForm = ({
               }
             />
           )}
-        </FormGrid>
+        </VStack>
       </form>
 
       {esModoCrear && (

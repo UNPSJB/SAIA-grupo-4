@@ -1,9 +1,8 @@
-import { Box, Card, Text, VStack } from "@chakra-ui/react";
+import { Box, Text, VStack } from "@chakra-ui/react";
 import {
   PieChart,
   Pie,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   BarChart,
   Bar,
@@ -11,14 +10,28 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import type { GraficoConfig } from "./types";
+import type { GraficoConfig, TamanoFijo } from "./types";
 import { getChartColor } from "./utils/chartColors";
 import { SegmentedBar } from "./SegmentedBar";
+import { GraficoCard } from "./GraficoCard";
+import { ContenedorGrafico } from "./ContenedorGrafico";
 
 interface DashboardChartProps {
   title: string;
   config: GraficoConfig;
   metricKey: string;
+  /**
+   * Modo impresión: dibuja el gráfico con este tamaño exacto, sin animaciones,
+   * sin tooltip y sin botón de descarga. Sin esta prop se comporta como siempre.
+   */
+  fixedSize?: TamanoFijo;
+}
+
+// Props comunes de cada variante de gráfico
+interface VistaGraficoProps {
+  title: string;
+  config: GraficoConfig;
+  fixedSize?: TamanoFijo;
 }
 
 const USE_SEGMENTED_BAR = new Set([
@@ -54,111 +67,74 @@ const PieTooltip = ({ active, payload }: any) => {
   );
 };
 
+// Sin datos: solo se muestra el mensaje, sin leyendas.
 const EmptyChart = ({
   title,
-  leyendas,
+  impresion,
 }: {
   title: string;
-  leyendas?: Array<{ label: string }>;
+  impresion: boolean;
 }) => (
-  <Card.Root shadow='md' h='full'>
-    <Card.Header>
-      <Text fontSize='md' fontWeight='semibold'>
-        {title}
+  <GraficoCard title={title} descargable={false} impresion={impresion}>
+    <VStack py={8} gap={4}>
+      <Text color='gray.500' fontSize='sm'>
+        Sin datos para mostrar
       </Text>
-    </Card.Header>
-    <Card.Body>
-      <VStack py={8} gap={4}>
-        <Text color='gray.500' fontSize='sm'>
-          Sin datos para mostrar
-        </Text>
-        {leyendas && leyendas.length > 0 && (
-          <VStack align='stretch' gap={2} w='full'>
-            {leyendas.map((leyenda, idx) => (
-              <Box key={idx} display='flex' alignItems='center' gap={2}>
-                <Box
-                  w={3}
-                  h={3}
-                  borderRadius='full'
-                  bg='#A0AEC0'
-                  flexShrink={0}
-                />
-                <Text fontSize='xs' color='gray.600'>
-                  {leyenda.label}
-                </Text>
-              </Box>
-            ))}
-          </VStack>
-        )}
-      </VStack>
-    </Card.Body>
-  </Card.Root>
+    </VStack>
+  </GraficoCard>
 );
 
-const PieChartView = ({
-  title,
-  config,
-}: {
-  title: string;
-  config: GraficoConfig;
-}) => {
+const PieChartView = ({ title, config, fixedSize }: VistaGraficoProps) => {
   const data = config.datos.map((item, index) => ({
     name: item.label,
     value: item.valor,
     color: getChartColor(item.label, index),
   }));
 
+  // En impresión el radio se ajusta al tamaño fijo para que la torta no se corte
+  const radio = fixedSize
+    ? Math.min(fixedSize.width, fixedSize.height) / 2 - 10
+    : 110;
+
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
-        </Text>
-      </Card.Header>
-      <Card.Body>
-        <ResponsiveContainer width='100%' height={300}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx='50%'
-              cy='50%'
-              outerRadius={110}
-              dataKey='value'
-              labelLine={false}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip content={<PieTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-        <VStack align='start' gap={2} mt={2}>
-          {config.leyendas.map((leyenda, idx) => {
-            const dato = config.datos[idx];
-            const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
-            return (
-              <Box key={idx} display='flex' alignItems='center' gap={2}>
-                <Box w={3} h={3} borderRadius='full' bg={color} />
-                <Text fontSize='xs' color='gray.600'>
-                  {leyenda.label}
-                </Text>
-              </Box>
-            );
-          })}
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+    <GraficoCard title={title} impresion={!!fixedSize}>
+      <ContenedorGrafico altoPantalla={300} fixedSize={fixedSize}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx='50%'
+            cy='50%'
+            outerRadius={radio}
+            dataKey='value'
+            labelLine={false}
+            isAnimationActive={!fixedSize}
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          {!fixedSize && <Tooltip content={<PieTooltip />} />}
+        </PieChart>
+      </ContenedorGrafico>
+      <VStack align='start' gap={2} mt={2}>
+        {config.leyendas.map((leyenda, idx) => {
+          const dato = config.datos[idx];
+          const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
+          return (
+            <Box key={idx} display='flex' alignItems='center' gap={2}>
+              <Box w={3} h={3} borderRadius='full' bg={color} />
+              <Text fontSize='xs' color='gray.600'>
+                {leyenda.label}
+              </Text>
+            </Box>
+          );
+        })}
+      </VStack>
+    </GraficoCard>
   );
 };
 
-const SegmentedBarChart = ({
-  title,
-  config,
-}: {
-  title: string;
-  config: GraficoConfig;
-}) => {
+const SegmentedBarChart = ({ title, config, fixedSize }: VistaGraficoProps) => {
   const segmentos = config.datos.map((dato) => ({
     label: dato.label,
     valor: dato.valor,
@@ -166,85 +142,111 @@ const SegmentedBarChart = ({
   const total = segmentos.reduce((sum, seg) => sum + seg.valor, 0);
 
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
+    <GraficoCard title={title} impresion={!!fixedSize}>
+      <VStack align='stretch' gap={4}>
+        <Text fontSize='xs' color='gray.500' fontWeight='medium'>
+          Total: {total}
         </Text>
-      </Card.Header>
-      <Card.Body>
-        <VStack align='stretch' gap={4}>
-          <Text fontSize='xs' color='gray.500' fontWeight='medium'>
-            Total: {total}
-          </Text>
-          <SegmentedBar segmentos={segmentos} mostrarLeyenda={true} />
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+        <SegmentedBar
+          segmentos={segmentos}
+          mostrarLeyenda={true}
+          fixedSize={fixedSize}
+        />
+      </VStack>
+    </GraficoCard>
   );
 };
 
-const FallbackBarChart = ({
-  title,
-  config,
-}: {
-  title: string;
-  config: GraficoConfig;
-}) => {
+const FallbackBarChart = ({ title, config, fixedSize }: VistaGraficoProps) => {
   const total = config.datos.reduce((sum, item) => sum + item.valor, 0);
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
+    <GraficoCard title={title} impresion={!!fixedSize}>
+      <VStack align='stretch' gap={4}>
+        <Text fontSize='xs' color='gray.500' fontWeight='medium'>
+          Total: {total}
         </Text>
-      </Card.Header>
-      <Card.Body>
-        <VStack align='stretch' gap={4}>
-          <Text fontSize='xs' color='gray.500' fontWeight='medium'>
-            Total: {total}
-          </Text>
-          {config.datos.map((dato, idx) => {
-            const porcentaje = total > 0 ? (dato.valor / total) * 100 : 0;
-            const color = getChartColor(dato.label, idx);
-            return (
-              <Box key={idx}>
-                <Box display='flex' justifyContent='space-between' mb={1}>
-                  <Text fontSize='xs' color='gray.600'>
-                    {dato.label}
-                  </Text>
-                  <Text fontSize='xs' fontWeight='medium'>
-                    {dato.valor} ({porcentaje.toFixed(1)}%)
-                  </Text>
-                </Box>
-                <Box
-                  h='8px'
-                  bg='gray.100'
-                  borderRadius='full'
-                  overflow='hidden'
-                >
-                  <Box h='full' bg={color} w={`${porcentaje}%`} />
-                </Box>
+        {config.datos.map((dato, idx) => {
+          const porcentaje = total > 0 ? (dato.valor / total) * 100 : 0;
+          const color = getChartColor(dato.label, idx);
+          return (
+            <Box key={idx}>
+              <Box display='flex' justifyContent='space-between' mb={1}>
+                <Text fontSize='xs' color='gray.600'>
+                  {dato.label}
+                </Text>
+                <Text fontSize='xs' fontWeight='medium'>
+                  {dato.valor} ({porcentaje.toFixed(1)}%)
+                </Text>
               </Box>
-            );
-          })}
-        </VStack>
-      </Card.Body>
-    </Card.Root>
+              <Box
+                h='8px'
+                bg='gray.100'
+                borderRadius='full'
+                overflow='hidden'
+              >
+                <Box h='full' bg={color} w={`${porcentaje}%`} />
+              </Box>
+            </Box>
+          );
+        })}
+      </VStack>
+    </GraficoCard>
   );
+};
+
+// En el informe impreso el gráfico de lotes ocupa media hoja: con más productos
+// que esto los nombres se pisan, así que el resto se agrupa en una barra "Otros".
+const MAX_BARRAS_IMPRESION = 10;
+const COLOR_OTROS = "#A0AEC0";
+
+interface BarraDato {
+  name: string;
+  fullName: string;
+  value: number;
+  color: string;
+}
+
+/**
+ * Deja las `max` barras de mayor valor (en su orden original) y suma el resto
+ * en una barra final "Otros (N)". Si no hay más de `max`, devuelve los datos tal cual.
+ */
+const agruparResto = (datos: BarraDato[], max: number): BarraDato[] => {
+  if (datos.length <= max) return datos;
+
+  const principales = new Set(
+    [...datos]
+      .map((dato, indice) => ({ dato, indice }))
+      .sort((a, b) => b.dato.value - a.dato.value)
+      .slice(0, max)
+      .map(({ indice }) => indice),
+  );
+  const resto = datos.filter((_, indice) => !principales.has(indice));
+
+  return [
+    // Los colores se reasignan según la posición final, así las 10 barras no repiten color
+    ...datos
+      .filter((_, indice) => principales.has(indice))
+      .map((dato, indice) => ({
+        ...dato,
+        color: getChartColor(dato.fullName, indice),
+      })),
+    {
+      name: `Otros (${resto.length})`,
+      fullName: `Otros: ${resto.map((dato) => dato.fullName).join(", ")}`,
+      value: resto.reduce((suma, dato) => suma + dato.value, 0),
+      color: COLOR_OTROS,
+    },
+  ];
 };
 
 const BarChartView = ({
   title,
   config,
   metricKey,
-}: {
-  title: string;
-  config: GraficoConfig;
-  metricKey?: string;
-}) => {
+  fixedSize,
+}: VistaGraficoProps & { metricKey?: string }) => {
   const isLotes = metricKey === "lotes";
-  const data = config.datos.map((item, index) => {
+  const data: BarraDato[] = config.datos.map((item, index) => {
     const fullLabel = item.label;
     const match = fullLabel.match(/^([^(]+)\s*\(/);
     const productName = match ? match[1].trim() : fullLabel;
@@ -258,6 +260,9 @@ const BarChartView = ({
       color: getChartColor(item.label, index),
     };
   });
+
+  // En el informe impreso, con muchos productos el resto se agrupa en "Otros"
+  const datosImpresion = agruparResto(data, MAX_BARRAS_IMPRESION);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -281,14 +286,37 @@ const BarChartView = ({
   };
 
   return (
-    <Card.Root shadow='md' h='full'>
-      <Card.Header>
-        <Text fontSize='md' fontWeight='semibold'>
-          {title}
-        </Text>
-      </Card.Header>
-      <Card.Body>
-        <ResponsiveContainer width='100%' height={280}>
+    <GraficoCard title={title} impresion={!!fixedSize}>
+      {fixedSize ? (
+        // Impresión: barras verticales como en pantalla, con los nombres más
+        // inclinados y margen a la izquierda para que entren en media hoja A4
+        <ContenedorGrafico altoPantalla={280} fixedSize={fixedSize}>
+          <BarChart
+            data={datosImpresion}
+            margin={{ top: 5, right: 10, left: 15, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray='3 3' stroke='#E2E8F0' />
+            <XAxis
+              dataKey='name'
+              angle={-40}
+              textAnchor='end'
+              interval={0}
+              height={65}
+            />
+            <YAxis width={35} />
+            <Bar
+              dataKey='value'
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
+            >
+              {datosImpresion.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ContenedorGrafico>
+      ) : (
+        <ContenedorGrafico altoPantalla={280}>
           <BarChart
             data={data}
             margin={{ top: 5, right: 10, left: -10, bottom: 40 }}
@@ -310,31 +338,31 @@ const BarChartView = ({
               ))}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
-        {!isLotes && (
-          <VStack align='start' gap={2} mt={2}>
-            {config.leyendas.map((leyenda, idx) => {
-              const dato = config.datos[idx];
-              const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
-              return (
-                <Box key={idx} display='flex' alignItems='center' gap={2}>
-                  <Box
-                    w={3}
-                    h={3}
-                    borderRadius='full'
-                    bg={color}
-                    flexShrink={0}
-                  />
-                  <Text fontSize='xs' color='gray.600'>
-                    {leyenda.label}
-                  </Text>
-                </Box>
-              );
-            })}
-          </VStack>
-        )}
-      </Card.Body>
-    </Card.Root>
+        </ContenedorGrafico>
+      )}
+      {!isLotes && (
+        <VStack align='start' gap={2} mt={2}>
+          {config.leyendas.map((leyenda, idx) => {
+            const dato = config.datos[idx];
+            const color = dato ? getChartColor(dato.label, idx) : "#A0AEC0";
+            return (
+              <Box key={idx} display='flex' alignItems='center' gap={2}>
+                <Box
+                  w={3}
+                  h={3}
+                  borderRadius='full'
+                  bg={color}
+                  flexShrink={0}
+                />
+                <Text fontSize='xs' color='gray.600'>
+                  {leyenda.label}
+                </Text>
+              </Box>
+            );
+          })}
+        </VStack>
+      )}
+    </GraficoCard>
   );
 };
 
@@ -342,22 +370,34 @@ export function DashboardChart({
   title,
   config,
   metricKey,
+  fixedSize,
 }: DashboardChartProps) {
   if (!config.datos || config.datos.length === 0) {
-    return <EmptyChart title={title} leyendas={config.leyendas} />;
+    return <EmptyChart title={title} impresion={!!fixedSize} />;
   }
 
   if (USE_BAR_CHART.has(metricKey)) {
-    return <BarChartView title={title} config={config} metricKey={metricKey} />;
+    return (
+      <BarChartView
+        title={title}
+        config={config}
+        metricKey={metricKey}
+        fixedSize={fixedSize}
+      />
+    );
   }
 
   if (metricKey === "tareas") {
-    return <PieChartView title={title} config={config} />;
+    return <PieChartView title={title} config={config} fixedSize={fixedSize} />;
   }
 
   if (USE_SEGMENTED_BAR.has(metricKey)) {
-    return <SegmentedBarChart title={title} config={config} />;
+    return (
+      <SegmentedBarChart title={title} config={config} fixedSize={fixedSize} />
+    );
   }
 
-  return <FallbackBarChart title={title} config={config} />;
+  return (
+    <FallbackBarChart title={title} config={config} fixedSize={fixedSize} />
+  );
 }

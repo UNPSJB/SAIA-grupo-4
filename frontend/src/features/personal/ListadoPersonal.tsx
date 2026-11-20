@@ -302,9 +302,8 @@ export const ListadoPersonal = ({
 
   return (
     <ListadoContainer>
-      <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Personal' icon={FiUser} />
-        <HStack gap={2}>
+      <ListadoHeader title='Personal' icon={FiUser}>
+        <HStack gap={2} wrap='wrap'>
           <Button
             variant='outline'
             colorPalette='green'
@@ -323,7 +322,7 @@ export const ListadoPersonal = ({
             <FiPlus /> Nueva persona
           </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar

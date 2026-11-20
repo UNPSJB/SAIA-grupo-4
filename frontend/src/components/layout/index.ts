@@ -17,3 +17,4 @@ export { ListadoHeader } from "./ListadoHeader";
 export { DetalleModal, type SeccionDetalle } from "./DetalleModal";
 export { CampanaNotificaciones } from "./CampanaNotificaciones";
 export { TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
+export { PAGE_PX, PAGE_PY } from "./espaciado";

@@ -29,11 +29,11 @@ export default function NuevaRecetaPage() {
 
   if (loading) {
     return (
-      <Box p={10} bg="gray.100" minH="100vh">
-        <Box maxW="7xl" mx="auto" mt={20}>
+      <>
+        <Box maxW="7xl" mx="auto">
           <LoadingState message="Cargando nueva receta..." />
         </Box>
-      </Box>
+      </>
     );
   }
 

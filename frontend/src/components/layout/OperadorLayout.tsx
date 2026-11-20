@@ -9,6 +9,7 @@ import {
   Icon,
   IconButton,
   Portal,
+  Image,
   Text,
   Tooltip,
   VStack,
@@ -29,7 +30,9 @@ import {
 
 import { AlertConfirm } from "../ui";
 import { useAuth } from "../../features/auth/useAuth";
+import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
+import { PAGE_PX, PAGE_PY } from "./espaciado";
 
 // Un ítem de la navegación del operador. Se recibe como lista para poder sumar secciones nuevas en el futuro sin tocar este componente.
 export interface OperadorNavItem {
@@ -87,6 +90,8 @@ export const OperadorLayout = ({
   brandIcon = FiShield,
 }: OperadorLayoutProps) => {
   const { usuario, logout } = useAuth();
+  const { configuracion, logoSrc } = useConfiguracion();
+  const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
   const { pathname } = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -258,7 +263,7 @@ export const OperadorLayout = ({
           showMenuButton={true}
         />
 
-        <Box bg="gray.100" flex="1" minW="0">
+        <Box bg="gray.100" flex="1" minW="0" px={PAGE_PX} py={PAGE_PY}>
           {children}
         </Box>
       </Flex>
@@ -276,11 +281,15 @@ export const OperadorLayout = ({
               <Drawer.Header borderColor="whiteAlpha.300">
                 <HStack justify="space-between" w="100%">
                   <HStack gap={2}>
-                    <Icon as={brandIcon} boxSize={5} color="white" />
-                    <Drawer.Title color="white" fontSize="lg" fontWeight="bold">
-                      {title}
-                    </Drawer.Title>
-                  </HStack>
+                    {logoSrc ? (
+                       <Image src={logoSrc} alt={nombreEstablecimiento} boxSize={6} objectFit="contain" bg="white" borderRadius="sm" p={0.5} />
+                      ) : (
+                        <Icon as={brandIcon} boxSize={6} color="white" flexShrink={0} />
+                      )}
+                      <Drawer.Title color="white" fontSize="lg" fontWeight="bold">
+                        {nombreEstablecimiento}
+                      </Drawer.Title>
+                    </HStack>
                   <Drawer.CloseTrigger asChild>
                     <IconButton
                       aria-label="Cerrar menú"

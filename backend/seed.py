@@ -100,6 +100,8 @@ from src.documentos.services import listar_alertas as listar_alertas_documentos
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.equipos.models import CalibracionEquipo, Equipo
 from src.incidentes.models import Incidente
+from src.alimento_referencia.models import AlimentoReferencia
+from src.alimento_referencia.services import sembrar_alimentos_sara
 from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.productos.models import Producto
@@ -146,6 +148,16 @@ from src.auth.utils import get_password_hash
 from src.capacidades.constants import RolesSistema
 from src.vista_publica.models import VistaPublica
 from src.vista_publica.services import inicializar_vista_publica
+from src.configuracion_nutricional.services import inicializar_configuracion_nutricional
+from src.configuracion.services import inicializar_parametros_frontales
+from src.rotulado.services import inicializar_normativa_rotulado
+from src.rotulado_producto.models import RotuloProducto
+from src.rotulado_producto.schemas import RotuloProductoUpdateIn
+from src.rotulado_producto.services import (
+    asegurar_columnas_alergenos_y_conservacion,
+    guardar_rotulo_producto,
+    obtener_rotulo_producto,
+)
 
 # Tablas que tienen que quedar con exactamente `cantidad` filas, una por entrada
 # del catalogo o por persona sembrada. Las tablas hijas no entran: su cantidad
@@ -230,17 +242,18 @@ EQUIPOS = (
     ("Compresor de Nitrogeno", "Atlas Copco", "CN-0001", "otro", 9, "Taller de mantenimiento", None, None),
 )
 
+# (nombre, indice_unidad, categoria, descripcion, denominacion_rotulo, clase_funcional, numero_ins, densidad_g_ml, peso_unitario_g)
 INSUMOS = (
-    ("Harina de Trigo 000", 0, "materia prima", "Harina de trigo de fuerza para panificados."),
-    ("Manteca de Primera", 0, "materia prima", "Manteca pasteurizada sin sal."),
-    ("Azucar Comun", 0, "materia prima", "Azucar blanco refinado standard."),
-    ("Levadura Prensada", 1, "aditivo", "Levadura prensada fresca para panaderia."),
-    ("Huevos Frescos", 6, "materia prima", "Huevos de granja seleccionados tamano grande."),
-    ("Cacao Amargo en Polvo", 1, "materia prima", "Cacao puro amargo desgrasado."),
-    ("Leche Entera Pasteurizada", 3, "materia prima", "Leche entera fluida pasteurizada."),
-    ("Esencia de Vainilla", 4, "aditivo", "Aromatizante de extracto de vainilla natural."),
-    ("Sal Fina Marina", 1, "aditivo", "Sal fina pura secada al vacio."),
-    ("Semillas de Sesamo", 1, "materia prima", "Semillas tostadas seleccionadas."),
+    ("Harina de Trigo 000", 0, "materia prima", "Harina de trigo de fuerza para panificados.", "Harina de trigo 000 enriquecida", None, None, None, None),
+    ("Manteca de Primera", 0, "materia prima", "Manteca pasteurizada sin sal.", "Manteca pasteurizada sin sal", None, None, None, None),
+    ("Azucar Comun", 0, "materia prima", "Azucar blanco refinado standard.", "Azucar comun tipo A", None, None, None, None),
+    ("Levadura Prensada", 1, "aditivo", "Levadura prensada fresca para panaderia.", "Levadura prensada de panaderia", "Leudante", "500ii", None, None),
+    ("Huevos Frescos", 6, "materia prima", "Huevos de granja seleccionados tamano grande.", "Huevo fresco de gallina", None, None, None, 55.0),
+    ("Cacao Amargo en Polvo", 1, "materia prima", "Cacao puro amargo desgrasado.", "Cacao puro amargo desgrasado", None, None, None, None),
+    ("Leche Entera Pasteurizada", 3, "materia prima", "Leche entera fluida pasteurizada.", "Leche entera fluida", None, None, 1.03, None),
+    ("Esencia de Vainilla", 4, "aditivo", "Aromatizante de extracto de vainilla natural.", "Aroma natural de vainilla", "Aromatizante", None, 1.05, None),
+    ("Sal Fina Marina", 1, "aditivo", "Sal fina pura secada al vacio.", "Sal fina marina", "Conservante", "282", None, None),
+    ("Semillas de Sesamo", 6, "materia prima", "Semillas tostadas seleccionadas.", "Semillas de sesamo tostadas", None, None, None, None),
 )
 
 PRODUCTOS = (
@@ -756,17 +769,106 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             antiguedad_calibracion,
         ) in _ciclar(EQUIPOS, cantidad, campos=(0, 2))
     ]
-    insumos = [
-        Insumo(
+    sembrar_alimentos_sara(db, normalizar_ascii=True, commit=False)
+    refs_por_codigo = {
+        a.codigo: a
+        for a in db.scalars(select(AlimentoReferencia)).all()
+        if a.codigo
+    }
+
+    mapa_sara_insumos = {
+        "Harina de Trigo 000": ("A033", "100g", False),
+        "Manteca de Primera": ("G010", "100g", False),
+        "Azucar Comun": ("D003", "100g", False),
+        "Huevos Frescos": ("U001", "100g", False),
+        "Cacao Amargo en Polvo": ("D018", "100g", True),
+        "Leche Entera Pasteurizada": ("L020", "100ml", False),
+    }
+
+    ahora_carga = datetime.combine(hoy - timedelta(days=5), time(10, 0))
+    insumos = []
+    for (
+        nombre,
+        indice_unidad,
+        categoria,
+        descripcion,
+        denominacion_rotulo,
+        clase_funcional,
+        numero_ins,
+        densidad_g_ml,
+        peso_unitario_g,
+    ) in _ciclar(INSUMOS, cantidad):
+        ins = Insumo(
             nombre=nombre,
             unidad_medida=unidades[indice_unidad % len(unidades)],
             categoria=categoria,
             descripcion=descripcion,
+            denominacion_rotulo=denominacion_rotulo,
+            clase_funcional=clase_funcional,
+            numero_ins=numero_ins,
+            densidad_g_ml=densidad_g_ml,
+            peso_unitario_g=peso_unitario_g,
             consumo=Decimal("0"),
             disponible=True,
+            base_calculo="100ml" if densidad_g_ml is not None else "100g",
+            aporta_azucares_agregados=(nombre == "Azucar Comun"),
+            aporta_grasas_agregadas=(nombre == "Manteca de Primera"),
+            aporta_sodio_agregado=(nombre == "Sal Fina Marina"),
+            es_edulcorante=bool(clase_funcional and "edulcorante" in clase_funcional.lower()),
+            contiene_cafeina=False,
+            alergenos_declarados_json=(
+                [{"codigo": "TRIGO", "es_derivado": True}]
+                if "Harina" in nombre
+                else [{"codigo": "LECHE", "es_derivado": True}]
+                if nombre == "Manteca de Primera"
+                else [{"codigo": "HUEVO", "es_derivado": False}]
+                if "Huevo" in nombre
+                else [{"codigo": "LECHE", "es_derivado": False}]
+                if "Leche" in nombre
+                else []
+            ),
         )
-        for nombre, indice_unidad, categoria, descripcion in _ciclar(INSUMOS, cantidad)
-    ]
+        if nombre in mapa_sara_insumos:
+            cod_sara, base_calc, modificada = mapa_sara_insumos[nombre]
+            ref = refs_por_codigo.get(cod_sara)
+            if ref is not None:
+                ins.base_calculo = base_calc
+                ins.alimento_referencia_id = ref.id
+                ins.fuente_nutricional = f"SARA 2 - {ref.alimento}"[:200]
+                ins.fecha_carga_nutricional = ahora_carga
+                ins.valor_energetico_kcal = ref.energia_kcal
+                ins.carbohidratos_g = ref.carbohidratos_g
+                ins.azucares_totales_g = Decimal("0.00")
+                ins.azucares_anadidos_g = Decimal("0.00")
+                ins.proteinas_g = ref.proteinas_g
+                ins.grasas_totales_g = ref.grasas_totales_g
+                ins.grasas_saturadas_g = ref.grasas_saturadas_g
+                ins.grasas_trans_g = Decimal("0.00")
+                ins.fibra_g = ref.fibra_g
+                ins.sodio_mg = ref.sodio_mg
+                if nombre == "Azucar Comun":
+                    ins.azucares_totales_g = Decimal("99.80")
+                    ins.azucares_anadidos_g = Decimal("99.80")
+                if modificada:
+                    ins.grasas_totales_g = Decimal("11.00")
+                    ins.es_nutricion_modificada = True
+                    ins.fecha_modificacion_nutricional = ahora_carga + timedelta(days=2)
+        elif nombre == "Sal Fina Marina":
+            ins.fuente_nutricional = "Rotulo del proveedor"
+            ins.fecha_carga_nutricional = ahora_carga
+            ins.valor_energetico_kcal = Decimal("0.00")
+            ins.sodio_mg = Decimal("38758.00")
+        elif nombre == "Levadura Prensada":
+            ins.fuente_nutricional = "Rotulo del proveedor"
+            ins.fecha_carga_nutricional = ahora_carga
+            ins.valor_energetico_kcal = Decimal("105.00")
+            ins.sodio_mg = Decimal("30.00")
+        elif nombre == "Esencia de Vainilla":
+            ins.fuente_nutricional = "Rotulo del proveedor"
+            ins.fecha_carga_nutricional = ahora_carga
+            ins.valor_energetico_kcal = Decimal("288.00")
+            ins.sodio_mg = Decimal("9.00")
+        insumos.append(ins)
 
     productos = [
         Producto(
@@ -774,6 +876,7 @@ def _crear_prerrequisitos(db, cantidad, hoy):
             descripcion=descripcion,
             unidad_medida=unidades[indice_unidad % len(unidades)],
             dias_vida_util=7 + (indice_unidad % 4) * 7,
+            envasado_ausencia_cliente=(nombre != "Torta de Chocolate"),
             activo=True,
         )
         for nombre, descripcion, indice_unidad in _ciclar(PRODUCTOS, cantidad)
@@ -1495,6 +1598,8 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     if not reportantes:
         raise RuntimeError("Se necesita al menos una persona activa para crear recetas.")
     creador = reportantes[0]
+    normativa_activa = inicializar_normativa_rotulado(db, normalizar_ascii=True)
+    version_frontal_vigente = inicializar_parametros_frontales(db, normalizar_ascii=True)
 
     # Insumos especificos de panaderia y reposteria
     ins_harina = insumos[0]
@@ -1539,6 +1644,12 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     prod_bl = productos[7]   # Budin de Limon
     pref_bl = _extraer_prefijo_producto(prod_bl.nombre)
 
+    prod_pm = productos[8]   # Pepas de Membrillo (solo receta INHABILITADA)
+    pref_pm = _extraer_prefijo_producto(prod_pm.nombre)
+
+    prod_pmo = productos[9]  # Pan de Molde (receta ACTIVA sin lotes)
+    pref_pmo = _extraer_prefijo_producto(prod_pmo.nombre)
+
     # 7 recetas:
     # 2 del mismo producto (prod_pc: una inhabilitada v1 y una activa v2)
     # 5 de otros productos (2 activas, 1 inhabilitada, 2 borradores)
@@ -1550,7 +1661,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_pc,
                 f"REC-{pref_pc}-001",
                 EstadoReceta.INHABILITADA,
-                Decimal("45.00"),
+                Decimal("21500.00"),
                 180,
                 60,
                 "Formula previa inhabilitada tras la introduccion de la version optimizada v2.",
@@ -1599,10 +1710,10 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_pc,
                 f"REC-{pref_pc}-002",
                 EstadoReceta.ACTIVA,
-                Decimal("50.00"),
+                Decimal("29000.00"),
                 170,
                 12,
-                "Formula activa vigente con fermentacion controlada y rendimiento estandar de 50 kg.",
+                "Formula activa vigente con fermentacion controlada y rendimiento estandar de 29 kg.",
             ),
             [
                 (
@@ -1631,7 +1742,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Semillado superficial artesanal",
                     "Espolvorear semillas de sesamo tostadas sobre la corteza humedecida.",
                     [],
-                    [(ins_sesamo, Decimal("500.000"))],
+                    [(ins_sesamo, Decimal("10.000"))],
                 ),
                 (
                     5,
@@ -1648,7 +1759,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_gv,
                 f"REC-{pref_gv}-001",
                 EstadoReceta.ACTIVA,
-                Decimal("120.00"),
+                Decimal("20000.00"),
                 90,
                 20,
                 "Formula activa de galletas dulces con aroma a vainilla y horneado continuo.",
@@ -1659,21 +1770,21 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Cremado de manteca y azucar",
                     "Batir manteca a punto pomada con azucar comun hasta blanquear.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_manteca, Decimal("8.000")), (ins_azucar, Decimal("6.000"))],
+                    [(ins_manteca, Decimal("6.000")), (ins_azucar, Decimal("4.500"))],
                 ),
                 (
                     2,
                     "Aromatizacion con vainilla natural",
                     "Incorporar huevos frescos y extracto de vainilla natural de forma envolvente.",
                     [],
-                    [(ins_huevos, Decimal("30.000")), (ins_vainilla, Decimal("100.000"))],
+                    [(ins_huevos, Decimal("30.000")), (ins_vainilla, Decimal("60.000"))],
                 ),
                 (
                     3,
                     "Tamizado e integracion de harina",
                     "Unir la harina de trigo sin amasar en exceso para evitar tenacidad.",
                     [(eq_amasadora, 1)],
-                    [(ins_harina, Decimal("12.000"))],
+                    [(ins_harina, Decimal("10.000"))],
                 ),
                 (
                     4,
@@ -1697,7 +1808,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_pi,
                 f"REC-{pref_pi}-001",
                 EstadoReceta.ACTIVA,
-                Decimal("60.00"),
+                Decimal("26500.00"),
                 210,
                 15,
                 "Formula activa con harina integral y semillas activadas para hogazas de campo.",
@@ -1708,14 +1819,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de base integral y sal",
                     "Fraccionar harina y sal fina en balanza de plataforma calibrada.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_harina, Decimal("18.000")), (ins_sal, Decimal("350.000"))],
+                    [(ins_harina, Decimal("18.000")), (ins_sal, Decimal("360.000"))],
                 ),
                 (
                     2,
                     "Hidratacion y levado inicial",
                     "Mezclar con levadura fresca y agua tibia hasta conformar bollo blando.",
                     [(eq_amasadora, 1)],
-                    [(ins_levadura, Decimal("600.000"))],
+                    [(ins_levadura, Decimal("450.000"))],
                 ),
                 (
                     3,
@@ -1729,7 +1840,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Rebozado en semillas de sesamo",
                     "Hacer rodar las piezas formadas sobre cama de semillas de sesamo.",
                     [(eq_mesa, 1)],
-                    [(ins_sesamo, Decimal("800.000"))],
+                    [(ins_sesamo, Decimal("15.000"))],
                 ),
                 (
                     5,
@@ -1746,7 +1857,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_tc,
                 f"REC-{pref_tc}-001",
                 EstadoReceta.INHABILITADA,
-                Decimal("15.00"),
+                Decimal("15600.00"),
                 150,
                 75,
                 "Inhabilitada de forma temporal por sustitucion de proveedor de cacao amargo.",
@@ -1757,21 +1868,21 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de secos y cacao puro",
                     "Tamizar harina, azucar comun y cacao amargo desgrasado de alta pureza.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_harina, Decimal("4.000")), (ins_cacao, Decimal("2000.000")), (ins_azucar, Decimal("5.000"))],
+                    [(ins_harina, Decimal("4.000")), (ins_cacao, Decimal("1500.000")), (ins_azucar, Decimal("4.500"))],
                 ),
                 (
                     2,
                     "Emulsion de manteca, huevos y leche",
                     "Mezclar liquidos a temperatura templada hasta conseguir textura cremosa.",
                     [],
-                    [(ins_manteca, Decimal("3.000")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.000"))],
+                    [(ins_manteca, Decimal("2.500")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.000"))],
                 ),
                 (
                     3,
                     "Toque aromatico de vainilla",
                     "Agregar unas gotas de extracto de vainilla pura para realzar notas de chocolate.",
                     [],
-                    [(ins_vainilla, Decimal("50.000"))],
+                    [(ins_vainilla, Decimal("40.000"))],
                 ),
                 (
                     4,
@@ -1795,7 +1906,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_bs,
                 f"REC-{pref_bs}-001",
                 EstadoReceta.ACTIVA,
-                Decimal("50.00"),
+                Decimal("21000.00"),
                 90,
                 25,
                 "Formula activa tradicional de bizcochos salados horneados a alta temperatura.",
@@ -1806,14 +1917,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de secos y sal fina",
                     "Pesar la harina de trigo y sal marina segun la proporcion estandar.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_harina, Decimal("15.000")), (ins_sal, Decimal("400.000"))],
+                    [(ins_harina, Decimal("15.000")), (ins_sal, Decimal("350.000"))],
                 ),
                 (
                     2,
                     "Amasado con manteca y levadura",
                     "Integrar grasa y levadura fresca en la amasadora a velocidad media.",
                     [(eq_amasadora, 1)],
-                    [(ins_manteca, Decimal("4.000")), (ins_levadura, Decimal("300.000"))],
+                    [(ins_manteca, Decimal("4.500")), (ins_levadura, Decimal("300.000"))],
                 ),
                 (
                     3,
@@ -1837,7 +1948,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_tc,
                 f"REC-{pref_tc}-002",
                 EstadoReceta.ACTIVA,
-                Decimal("18.00"),
+                Decimal("18500.00"),
                 140,
                 15,
                 "Version optimizada con cacao amargo seleccionado y textura esponjosa.",
@@ -1848,21 +1959,21 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Tamizado de harina, cacao y azucar",
                     "Tamizar harina, azucar comun y cacao amargo desgrasado en balanza de laboratorio.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_harina, Decimal("5.000")), (ins_cacao, Decimal("2500.000")), (ins_azucar, Decimal("6.000"))],
+                    [(ins_harina, Decimal("5.000")), (ins_cacao, Decimal("1800.000")), (ins_azucar, Decimal("5.000"))],
                 ),
                 (
                     2,
                     "Emulsion con manteca, huevos y leche",
                     "Batir manteca blanda con huevos y leche fluida hasta emulsion uniforme.",
                     [(eq_amasadora, 1)],
-                    [(ins_manteca, Decimal("3.500")), (ins_huevos, Decimal("24.000")), (ins_leche, Decimal("3.500"))],
+                    [(ins_manteca, Decimal("3.000")), (ins_huevos, Decimal("30.000")), (ins_leche, Decimal("3.500"))],
                 ),
                 (
                     3,
                     "Perfume de vainilla natural",
                     "Incorporar extracto de vainilla para equilibrar la intensidad del cacao.",
                     [],
-                    [(ins_vainilla, Decimal("60.000"))],
+                    [(ins_vainilla, Decimal("50.000"))],
                 ),
                 (
                     4,
@@ -1886,7 +1997,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_med,
                 f"REC-{pref_med}-001",
                 EstadoReceta.BORRADOR,
-                Decimal("200.00"),
+                Decimal("19700.00"),
                 240,
                 4,
                 "Borrador en desarrollo de masa hojaldrada con manteca y tres pliegues simples.",
@@ -1897,14 +2008,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Amasado del paston base con leche",
                     "Preparar masa tierna enriquecida con leche entera y levadura.",
                     [(eq_amasadora, 1)],
-                    [(ins_harina, Decimal("10.000")), (ins_leche, Decimal("4.000")), (ins_levadura, Decimal("400.000"))],
+                    [(ins_harina, Decimal("10.000")), (ins_leche, Decimal("4.000")), (ins_levadura, Decimal("350.000"))],
                 ),
                 (
                     2,
                     "Preparacion de placa de manteca",
                     "Armar empaste rectangular con manteca de primera y azucar.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_manteca, Decimal("5.000")), (ins_azucar, Decimal("2.000"))],
+                    [(ins_manteca, Decimal("4.500")), (ins_azucar, Decimal("1.800"))],
                 ),
                 (
                     3,
@@ -1935,7 +2046,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 prod_bl,
                 f"REC-{pref_bl}-001",
                 EstadoReceta.BORRADOR,
-                Decimal("30.00"),
+                Decimal("19300.00"),
                 110,
                 1,
                 "Borrador de prueba para incorporar glaseado con jugo natural y ralladura fresca.",
@@ -1946,14 +2057,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Pesaje de azucar, manteca y harina",
                     "Pesar los ingredientes fundamentales del batido cuatro cuartos.",
                     [(eq_balanza_lab, 1)],
-                    [(ins_harina, Decimal("6.000")), (ins_azucar, Decimal("5.000")), (ins_manteca, Decimal("4.000"))],
+                    [(ins_harina, Decimal("5.000")), (ins_azucar, Decimal("5.000")), (ins_manteca, Decimal("5.000"))],
                 ),
                 (
                     2,
                     "Batido con huevos y leche fluida",
                     "Montar hasta conseguir punto cinta agregando leche y huevos de a uno.",
                     [(eq_amasadora, 1)],
-                    [(ins_huevos, Decimal("20.000")), (ins_leche, Decimal("2.000"))],
+                    [(ins_huevos, Decimal("90.000")), (ins_leche, Decimal("1.000"))],
                 ),
                 (
                     3,
@@ -1978,7 +2089,80 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 ),
             ],
         ),
+        (
+            (
+                "Pepas de Membrillo Clasicas v1",
+                prod_pm,
+                f"REC-{pref_pm}-001",
+                EstadoReceta.INHABILITADA,
+                Decimal("12000.00"),
+                95,
+                40,
+                "Receta historica inhabilitada para pruebas de rotulo sin receta activa vigente.",
+            ),
+            [
+                (
+                    1,
+                    "Amasado de masa quebrada",
+                    "Integrar harina, manteca y azucar hasta formar masa lisa.",
+                    [(eq_amasadora, 1)],
+                    [(ins_harina, Decimal("6.000")), (ins_manteca, Decimal("3.000")), (ins_azucar, Decimal("2.500"))],
+                ),
+                (
+                    2,
+                    "Horneado de pepas",
+                    "Hornear a 180C durante 18 minutos.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
+        (
+            (
+                "Pan de Molde Lacteado",
+                prod_pmo,
+                "REC-PMO-001",
+                EstadoReceta.ACTIVA,
+                Decimal("18000.00"),
+                150,
+                5,
+                "Receta activa vigente sin lotes asociados para probar rotulo con sugerencia por vida util.",
+            ),
+            [
+                (
+                    1,
+                    "Mezcla de secos y levadura",
+                    "Pesar harina, sal y azucar junto con la levadura fresca.",
+                    [(eq_balanza_plat, 1)],
+                    [(ins_harina, Decimal("12.000")), (ins_sal, Decimal("220.000")), (ins_azucar, Decimal("400.000")), (ins_levadura, Decimal("300.000"))],
+                ),
+                (
+                    2,
+                    "Amasado con leche y manteca",
+                    "Incorporar leche fluida y manteca pomada hasta lograr masa elastica.",
+                    [(eq_amasadora, 1)],
+                    [(ins_leche, Decimal("5.000")), (ins_manteca, Decimal("800.000"))],
+                ),
+                (
+                    3,
+                    "Horneado en moldes",
+                    "Hornear en moldes de pan lactal a 195C durante 40 minutos.",
+                    [(eq_horno, 1)],
+                    [],
+                ),
+            ],
+        ),
     ]
+
+    tamano_porcion_por_receta = {
+        "Pan de Campo Tradicional v1": Decimal("50.00"),
+        "Pan de Campo Tradicional v2": Decimal("50.00"),
+        "Galletas de Vainilla Clasicas": Decimal("30.00"),
+        "Bizcochos Salados Crocantes": Decimal("30.00"),
+        "Torta Humeda de Chocolate": Decimal("60.00"),
+        "Torta de Chocolate Artesanal v2": Decimal("60.00"),
+        "Pan de Molde Lacteado": Decimal("50.00"),
+    }
 
     recetas_creadas = []
     for cabecera, pasos_info in definicion_recetas:
@@ -2003,12 +2187,15 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
             nombre_receta=nombre,
             producto_id=prod.id,
             rendimiento_estandar=rendimiento,
+            tamano_porcion=tamano_porcion_por_receta.get(nombre),
             tiempo_estimado_total=tiempo,
             estado=estado,
             observaciones=observaciones,
             fecha_creacion=fecha_creacion,
             fecha_baja=fecha_baja,
             usuario_creador_id=creador.id,
+            normativa_rotulado_id=normativa_activa.id,
+            version_parametro_frontal_id=version_frontal_vigente.id,
         )
         for num_orden, titulo, instrucciones, eqs_data, inss_data in pasos_info:
             paso = PasoReceta(
@@ -2123,6 +2310,144 @@ def _crear_lotes(db, personas, recetas, hoy):
 
     db.flush()
     return lotes_creados
+
+
+def _ascii_rotulo(texto):
+    if texto is None:
+        return None
+    import unicodedata
+    texto = texto.replace("\u2014", "-").replace("\u2013", "-")
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+
+
+def _crear_rotulos_producto(db, personas, productos):
+    """Siembra ejemplos de rotulos de producto en distintos estados (completo, borrador editado manualmente, importado)."""
+    activos = [p for p in personas if p.activo]
+    if not activos:
+        return
+    usuario_id = activos[0].id
+
+    def _tabla_ascii(filas):
+        res = []
+        for f in filas:
+            d = f.model_dump()
+            d["nombre_etiqueta"] = _ascii_rotulo(d.get("nombre_etiqueta"))
+            d["valor_100g"] = _ascii_rotulo(d.get("valor_100g"))
+            d["valor_porcion"] = _ascii_rotulo(d.get("valor_porcion"))
+            d["porcentaje_vd"] = _ascii_rotulo(d.get("porcentaje_vd"))
+            res.append(d)
+        return res
+
+    def _sellos_ascii(items):
+        res = []
+        for it in items:
+            d = it.model_dump()
+            d["texto"] = _ascii_rotulo(d.get("texto"))
+            res.append(d)
+        return res
+
+    # 1. Galletas de Vainilla (productos[1]): Rotulo nacional 100% completo sincronizado con receta activa y lote
+    if len(productos) > 1:
+        prod_gv = productos[1]
+        base_gv = obtener_rotulo_producto(db, prod_gv.id)
+        guardar_rotulo_producto(
+            db,
+            prod_gv.id,
+            RotuloProductoUpdateIn(
+                denominacion_venta="Galletas dulces sabor vainilla",
+                contenido_neto="250 g",
+                razon_social_elaborador=base_gv.razon_social_elaborador or "Panificadora SAIA S.A.",
+                domicilio_elaborador=base_gv.domicilio_elaborador or "Av. Colon 1250, Cordoba",
+                pais_origen="Argentina",
+                rne_elaborador="04-000185",
+                rnpa_rppa="04-042910",
+                es_importado=False,
+                lote_origen_id=base_gv.lote_origen_id,
+                codigo_lote_declarado=base_gv.codigo_lote_declarado,
+                fecha_duracion_minima=base_gv.fecha_duracion_minima,
+                condiciones_conservacion="Conservar en lugar fresco y seco, al abrigo de la luz.",
+                temp_conservacion_min_c=15.0,
+                temp_conservacion_max_c=25.0,
+                durabilidad_antes_abrir=_ascii_rotulo(base_gv.durabilidad_antes_abrir),
+                durabilidad_despues_abrir=_ascii_rotulo(base_gv.durabilidad_despues_abrir),
+                alergenos_presentes_json=base_gv.alergenos_presentes_json,
+                alergenos_contaminacion_cruzada_json=[],
+                leyenda_alergenos_declarada=_ascii_rotulo(base_gv.leyenda_alergenos_declarada),
+                confirmar_alergenos_conservacion=True,
+                lista_ingredientes_texto=_ascii_rotulo(base_gv.lista_ingredientes_texto),
+                tamano_porcion_declarado=base_gv.tamano_porcion_declarado or "30 g",
+                leyenda_vd_declarada=_ascii_rotulo(base_gv.leyenda_vd_declarada),
+                tabla_nutricional_json=_tabla_ascii(base_gv.tabla_nutricional_json),
+                sellos_advertencia_json=_sellos_ascii(base_gv.sellos_advertencia_json),
+                leyendas_precautorias_json=_sellos_ascii(base_gv.leyendas_precautorias_json),
+            ),
+            usuario_id,
+        )
+
+    # 2. Pan de Campo (productos[0]): Borrador incompleto con edicion manual en ingredientes
+    if len(productos) > 0:
+        prod_pc = productos[0]
+        base_pc = obtener_rotulo_producto(db, prod_pc.id)
+        guardar_rotulo_producto(
+            db,
+            prod_pc.id,
+            RotuloProductoUpdateIn(
+                denominacion_venta="Pan de campo artesanal",
+                contenido_neto="500 g",
+                razon_social_elaborador=base_pc.razon_social_elaborador or "Panificadora SAIA S.A.",
+                pais_origen="Argentina",
+                lote_origen_id=base_pc.lote_origen_id,
+                codigo_lote_declarado=base_pc.codigo_lote_declarado,
+                fecha_duracion_minima=base_pc.fecha_duracion_minima,
+                lista_ingredientes_texto="Ingredientes: Harina de trigo enriquecida Ley 25.630, agua, sal marina, levadura, semillas de sesamo tostadas (texto ajustado manualmente para rotulo).",
+                tamano_porcion_declarado=base_pc.tamano_porcion_declarado or "50 g",
+                leyenda_vd_declarada=_ascii_rotulo(base_pc.leyenda_vd_declarada),
+                tabla_nutricional_json=_tabla_ascii(base_pc.tabla_nutricional_json),
+                sellos_advertencia_json=_sellos_ascii(base_pc.sellos_advertencia_json),
+                leyendas_precautorias_json=_sellos_ascii(base_pc.leyendas_precautorias_json),
+            ),
+            usuario_id,
+        )
+
+    # 3. Bizcochos Salados (productos[3]): Producto importado con campos condicionales completos
+    if len(productos) > 3:
+        prod_bs = productos[3]
+        base_bs = obtener_rotulo_producto(db, prod_bs.id)
+        guardar_rotulo_producto(
+            db,
+            prod_bs.id,
+            RotuloProductoUpdateIn(
+                denominacion_venta="Bizcochos salados horneados",
+                contenido_neto="200 g",
+                razon_social_elaborador="Panificados del Plata S.R.L.",
+                domicilio_elaborador="Ruta 5 Km 12, Canelones",
+                pais_origen="Uruguay",
+                rne_elaborador="UY-10422",
+                rnpa_rppa="00-318845",
+                es_importado=True,
+                nombre_importador="Importadora Alimentos del Sur S.A.",
+                domicilio_importador="Av. Alicia Moreau de Justo 1120, CABA",
+                rne_importador="00-008741",
+                lote_origen_id=base_bs.lote_origen_id,
+                codigo_lote_declarado=base_bs.codigo_lote_declarado,
+                fecha_duracion_minima=base_bs.fecha_duracion_minima,
+                condiciones_conservacion="Mantener en envase cerrado en lugar seco.",
+                temp_conservacion_min_c=15.0,
+                temp_conservacion_max_c=25.0,
+                durabilidad_antes_abrir=_ascii_rotulo(base_bs.durabilidad_antes_abrir),
+                durabilidad_despues_abrir=_ascii_rotulo(base_bs.durabilidad_despues_abrir),
+                alergenos_presentes_json=base_bs.alergenos_presentes_json,
+                alergenos_contaminacion_cruzada_json=[{"codigo": "SOJA", "es_derivado": True}],
+                confirmar_alergenos_conservacion=True,
+                lista_ingredientes_texto=_ascii_rotulo(base_bs.lista_ingredientes_texto),
+                tamano_porcion_declarado=base_bs.tamano_porcion_declarado or "30 g",
+                leyenda_vd_declarada=_ascii_rotulo(base_bs.leyenda_vd_declarada),
+                tabla_nutricional_json=_tabla_ascii(base_bs.tabla_nutricional_json),
+                sellos_advertencia_json=_sellos_ascii(base_bs.sellos_advertencia_json),
+                leyendas_precautorias_json=_sellos_ascii(base_bs.leyendas_precautorias_json),
+            ),
+            usuario_id,
+        )
 
 # --------------------------------------------------------------------------
 # Verificacion
@@ -2241,6 +2566,16 @@ def _verificar_cantidades(db, cantidad):
                 f"El plan {plan.nombre!r} tiene {len(plan.tareas)} tareas "
                 f"y se esperaban {cantidad}."
             )
+
+    total_sara = db.scalar(
+        select(func.count())
+        .select_from(AlimentoReferencia)
+        .where(AlimentoReferencia.es_oficial_sara.is_(True))
+    )
+    if total_sara != 379:
+        raise RuntimeError(
+            f"Se sembraron {total_sara} alimentos SARA 2 y se esperaban 379."
+        )
 
 
 def _verificar_vencimientos(db, cantidad):
@@ -2673,6 +3008,7 @@ def main():
     with SessionLocal() as db:
         db.execute(text("PRAGMA foreign_keys = ON"))
         ModeloBase.metadata.create_all(bind=engine)
+        asegurar_columnas_alergenos_y_conservacion(db)
 
         if args.reset:
             _resetear(db)
@@ -2688,9 +3024,15 @@ def main():
         try:
             catalogo = _crear_prerrequisitos(db, args.cantidad, hoy)
             inicializar_vista_publica(db)
+            inicializar_configuracion_nutricional(db, normalizar_ascii=True)
+            inicializar_normativa_rotulado(db, normalizar_ascii=True)
             _crear_historial_recambios(db, catalogo["elementos"])
             _crear_historial_calibraciones(db, catalogo["equipos"])
             personas = _crear_personas(db, fake, args.cantidad, hoy)
+            if personas:
+                for ins in catalogo["insumos"]:
+                    if ins.es_nutricion_modificada and ins.modificado_por_usuario_id is None:
+                        ins.modificado_por_usuario_id = personas[0].id
             _crear_documentos(db, personas, args.cantidad, hoy)
             documentos_personal = _crear_documentos_personal(db)
             _crear_vencimientos_personal(db, personas, documentos_personal, hoy)
@@ -2704,6 +3046,7 @@ def main():
                 hoy,
             )
             _crear_lotes(db, personas, recetas, hoy)
+            _crear_rotulos_producto(db, personas, catalogo["productos"])
             planes = _crear_planes(db, personas, args.cantidad, hoy)
             _crear_tareas(
                 db,

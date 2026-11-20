@@ -1,6 +1,6 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
-import { Box, Button, HStack, Text } from "@chakra-ui/react";
+import { Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { useAuth } from "../features/auth/useAuth";
 import { esAdministrador, esOperador } from "../features/auth/roles";
 import { ListadoIncidentes } from "../features/incidentes/ListadoIncidentes";
@@ -80,8 +80,8 @@ export default function IncidentesPage() {
   };
 
   return (
-    <Box textAlign="center" p={10} bg="gray.100" minH="100vh">
-      <Box textAlign="left" maxW="8xl" mx="auto">
+    <VStack align="stretch" gap={{ base: 4, md: 6 }}>
+      <>
         <HistorialFiltros
           fechaDesde={fechaDesde}
           fechaHasta={fechaHasta}
@@ -102,7 +102,7 @@ export default function IncidentesPage() {
           />
         )}
         {!loading && !error && estadisticas.length > 0 && (
-          <ListadoContainer maxW="8xl">
+          <ListadoContainer>
             <GraficoIncidentesPorTipo
               datos={estadisticas}
               tipoSeleccionadoId={tipoSeleccionado?.tipo_id}
@@ -116,13 +116,12 @@ export default function IncidentesPage() {
         )}
 
         {tipoSeleccionado && (
-          <ListadoContainer maxW="8xl">
+          <ListadoContainer>
             <HStack
               justify="space-between"
               bg="white"
               p={3}
               borderRadius="md"
-              mb={4}
             >
               <Text fontSize="sm">
                 Mostrando incidentes del tipo <b>{tipoSeleccionado.tipo}</b>{" "}
@@ -138,7 +137,7 @@ export default function IncidentesPage() {
             </HStack>
           </ListadoContainer>
         )}
-      </Box>
+      </>
 
       <ListadoIncidentes
         key={`${tipoSeleccionado?.tipo_id ?? "todos"}-${periodo.desde}-${periodo.hasta}`}
@@ -200,6 +199,6 @@ export default function IncidentesPage() {
           />
         </FormModal>
       )}
-    </Box>
+    </VStack>
   );
 }

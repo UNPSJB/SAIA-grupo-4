@@ -10,12 +10,13 @@
    (App.tsx) redirige según capacidades (admin → /equipos, operador → /checklist).
 */
 
-import { Box, VStack, Text, Button } from "@chakra-ui/react";
+import { Box, VStack, Text, Button, Image, HStack } from "@chakra-ui/react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "../features/auth/useAuth";
+import { useConfiguracion } from "../features/configuracion/useConfiguracion";
 import {
   FormContainer,
   FormHeader,
@@ -40,6 +41,7 @@ type LoginFormValues = z.output<typeof loginSchema>;
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { configuracion, logoSrc } = useConfiguracion();
   const [showPassword, setShowPassword] = useState(false);
   const [errorRoot, setErrorRoot] = useState<string | null>(null);
   const [successRoot, setSuccessRoot] = useState<string | null>(null);
@@ -83,6 +85,19 @@ export default function LoginPage() {
       p={4}
     >
       <FormContainer modal={false}>
+        <HStack gap={3} mb={3} align='center'>
+           {logoSrc && (
+            <Image
+              src={logoSrc}
+              alt={configuracion.nombre_establecimiento}
+              boxSize='44px'
+              objectFit='contain'
+            />
+           )}
+          <Text fontSize='lg' fontWeight='bold' color='green.700'>
+            {configuracion.nombre_establecimiento}
+          </Text>
+       </HStack>
         <FormHeader title='Iniciar sesión' icon={FiLogIn} />
         <form onSubmit={onSubmit} noValidate>
           <VStack gap={4} align='stretch'>

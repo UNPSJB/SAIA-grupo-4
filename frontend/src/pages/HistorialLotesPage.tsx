@@ -169,7 +169,7 @@ export default function HistorialLotesPage() {
   }, [lotes, paginaActual]);
 
   return (
-    <ListadoContainer maxW="8xl">
+    <ListadoContainer>
       <ListadoHeader title="Historial de Lotes" icon={FiClock} />
 
       <Box

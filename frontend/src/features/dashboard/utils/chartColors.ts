@@ -15,8 +15,20 @@ const COLOR_KEYWORDS: Array<{ keywords: string[]; color: string }> = [
   { keywords: ["sin datos"], color: "#A0AEC0" }, // Gris - Sin datos
 ];
 
-// Paleta alternativa para datos sin coincidencia semántica
-const FALLBACK_COLORS = ["#3182CE", "#38A169", "#DD6B20", "#E53E3E", "#805AD5", "#319795", "#D69E2E", "#718096"];
+// Paleta alternativa para datos sin coincidencia semántica.
+// Diez colores: alcanza para las 10 barras del gráfico de lotes impreso sin repetir.
+const FALLBACK_COLORS = [
+  "#3182CE", // Azul
+  "#38A169", // Verde
+  "#DD6B20", // Naranja
+  "#E53E3E", // Rojo
+  "#805AD5", // Violeta
+  "#319795", // Turquesa
+  "#D69E2E", // Amarillo
+  "#718096", // Gris
+  "#D53F8C", // Rosa
+  "#8B5E3C", // Marrón
+];
 
 // Obtiene color según el label del dato o usa paleta por índice
 export const getChartColor = (label: string, index: number): string => {

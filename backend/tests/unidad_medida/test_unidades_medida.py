@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 from src.main import app
 from tests.database import session
+from src.unidad_medida.models import UnidadMedida
+from src.unidad_medida.services import convertir_a_gramos
 
 client = TestClient(app)
 
@@ -150,3 +152,44 @@ def test_eliminar_unidad_medida_con_insumo_dado_de_baja():
     res_del = client.delete(f"/unidades-de-medida/{unidad_id}")
     assert res_del.status_code == 200
     assert res_del.json()["disponible"] is False
+
+
+def test_convertir_a_gramos_masa():
+    um_kg = UnidadMedida(nombre="Kilogramo", simbolo="kg", tipo_magnitud="masa")
+    um_g = UnidadMedida(nombre="Gramo", simbolo="g", tipo_magnitud="masa")
+    um_mg = UnidadMedida(nombre="Miligramo", simbolo="mg", tipo_magnitud="masa")
+    um_desconocida = UnidadMedida(nombre="Pizca", simbolo="pzc", tipo_magnitud="masa")
+
+    assert convertir_a_gramos(2.5, um_kg) == 2500.0
+    assert convertir_a_gramos(500, um_g) == 500.0
+    assert convertir_a_gramos(1000, um_mg) == 1.0
+    # Unidad desconocida retorna None en lugar de inventar un factor
+    assert convertir_a_gramos(5, um_desconocida) is None
+
+
+def test_convertir_a_gramos_volumen():
+    um_l = UnidadMedida(nombre="Litro", simbolo="L", tipo_magnitud="volumen")
+    um_ml = UnidadMedida(nombre="Mililitro", simbolo="ml", tipo_magnitud="volumen")
+    um_desconocida = UnidadMedida(nombre="Balde", simbolo="bld", tipo_magnitud="volumen")
+
+    # Sin densidad retorna None
+    assert convertir_a_gramos(1.5, um_l, densidad_g_ml=None) is None
+    assert convertir_a_gramos(250, um_ml, densidad_g_ml=0) is None
+
+    # Con densidad (ej. agua / leche / aceite)
+    assert convertir_a_gramos(1.0, um_l, densidad_g_ml=1.0) == 1000.0
+    assert convertir_a_gramos(500, um_ml, densidad_g_ml=0.92) == 460.0
+    # Unidad de volumen no registrada retorna None
+    assert convertir_a_gramos(1.0, um_desconocida, densidad_g_ml=1.0) is None
+
+
+def test_convertir_a_gramos_cantidad():
+    um_u = UnidadMedida(nombre="Unidad", simbolo="u", tipo_magnitud="cantidad")
+    um_doc = UnidadMedida(nombre="Docena", simbolo="doc", tipo_magnitud="cantidad")
+
+    # Sin peso unitario retorna None
+    assert convertir_a_gramos(2, um_u, peso_unitario_g=None) is None
+
+    # Con peso unitario (ej. huevos 50g c/u)
+    assert convertir_a_gramos(3, um_u, peso_unitario_g=50.0) == 150.0
+    assert convertir_a_gramos(1, um_doc, peso_unitario_g=50.0) == 600.0

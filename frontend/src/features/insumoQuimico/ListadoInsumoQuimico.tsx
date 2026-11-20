@@ -259,9 +259,8 @@ export const ListadoInsumosQuimicos = ({
 
   return (
     <ListadoContainer>
-      <HStack justify='space-between' mb={6} align='center'>
-        <ListadoHeader title='Insumos Químicos' icon={FiDroplet} />
-        <HStack gap={2}>
+      <ListadoHeader title='Insumos Químicos' icon={FiDroplet}>
+        <HStack gap={2} wrap='wrap'>
           <Button
             variant='outline'
             colorPalette='green'
@@ -273,7 +272,7 @@ export const ListadoInsumosQuimicos = ({
             <FiPlus /> Nuevo insumo químico
           </Button>
         </HStack>
-      </HStack>
+      </ListadoHeader>
 
       <Box mb={4}>
         <FiltrosBar

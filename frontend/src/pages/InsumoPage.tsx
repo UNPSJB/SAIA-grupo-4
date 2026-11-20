@@ -1,7 +1,11 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { apiFetch } from "../features/auth/apiFetch";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
@@ -20,6 +24,10 @@ type Vista = "listado" | "crear" | "modificar" | "ver" | "lotes";
 export default function InsumoPage() {
   const navigate = useNavigate();
   const { insumoId } = useParams<{ insumoId?: string }>();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editarId = searchParams.get("editarId");
+  const from = (location.state as any)?.from;
   const [vista, setVista] = useState<Vista>("listado");
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
     null,
@@ -61,6 +69,33 @@ export default function InsumoPage() {
   const [loteInhabilitar, setLoteInhabilitar] = useState<LoteInsumo | null>(
     null,
   );
+
+  useEffect(() => {
+    if (!editarId) return;
+    let activo = true;
+    apiFetch(`${BASE_URL}/insumos/${editarId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Insumo | null) => {
+        if (activo && data) {
+          setInsumoSeleccionado(data);
+          setVista("modificar");
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      activo = false;
+    };
+  }, [editarId]);
+
+  const cerrarModalForm = () => {
+    setError("");
+    setVista("listado");
+    if (searchParams.get("editarId")) {
+      searchParams.delete("editarId");
+      setSearchParams(searchParams, { replace: true, state: location.state });
+    }
+  };
   const confirmarEliminar = () => {
     handleDelete({
       insumo: insumoEliminar,
@@ -96,11 +131,16 @@ export default function InsumoPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       {/* Listado de insumos: se oculta mientras se miran los lotes de uno. */}
       {!insumoId && vista !== "lotes" && (
         <ListadoInsumos
           key={refescar}
+          onVerAlimentosReferencia={() =>
+            navigate("/alimentos-referencia", {
+              state: { from: "/insumos", label: "Insumos" },
+            })
+          }
           onVerUnidades={() =>
             navigate("/unidades-de-medida", {
               state: { from: "/insumos", label: "Insumos" },
@@ -155,7 +195,6 @@ export default function InsumoPage() {
           onInhabilitarLote={(lote) => setLoteInhabilitar(lote)}
         />
       )}
-
       {vista === "ver" && insumoSeleccionado && (
         <InsumoDetalle
           insumo={insumoSeleccionado}
@@ -164,19 +203,13 @@ export default function InsumoPage() {
       )}
 
       {(vista === "crear" || vista === "modificar") && (
-        <FormModal
-          open
-          onClose={() => {
-            setError("");
-            setVista("listado");
-          }}
-        >
+        <FormModal open onClose={cerrarModalForm}>
           {vista === "crear" && (
             <InsumoForm
               modo='crear'
-              onCancelar={() => setVista("listado")}
+              onCancelar={cerrarModalForm}
               onGuardado={() => {
-                setVista("listado");
+                cerrarModalForm();
                 setRefrescar((r) => r + 1);
               }}
               enModal
@@ -187,10 +220,14 @@ export default function InsumoPage() {
             <InsumoForm
               modo='modificar'
               insumo={insumoSeleccionado}
-              onCancelar={() => setVista("listado")}
+              onCancelar={cerrarModalForm}
               onGuardado={() => {
-                setVista("listado");
-                setRefrescar((r) => r + 1);
+                cerrarModalForm();
+                if (from) {
+                  navigate(from);
+                } else {
+                  setRefrescar((r) => r + 1);
+                }
               }}
               enModal
             />
@@ -259,6 +296,6 @@ export default function InsumoPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }

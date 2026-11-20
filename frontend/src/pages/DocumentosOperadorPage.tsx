@@ -1,5 +1,3 @@
-import { Box } from "@chakra-ui/react";
-
 import { ListadoDocumentosOperador } from "../features/documentos/ListadoDocumentosOperador";
 
 /**
@@ -8,8 +6,8 @@ import { ListadoDocumentosOperador } from "../features/documentos/ListadoDocumen
  */
 export default function DocumentosOperadorPage() {
   return (
-    <Box p={{ base: 4, md: 10 }} minH="100%">
+    <>
       <ListadoDocumentosOperador />
-    </Box>
+    </>
   );
 }

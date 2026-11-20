@@ -27,6 +27,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   sectores: "Sectores",
   insumos: "Insumos",
   "insumos-quimicos": "Insumos Químicos",
+  "alimentos-referencia": "Alimentos de referencia",
   "elementos-limpieza": "Elementos de limpieza",
   productos: "Productos",
   "unidades-de-medida": "Unidades de medida",
@@ -40,6 +41,8 @@ const NOMBRES_RUTA: Record<string, string> = {
   lotes: "Lotes",
   "historial-lotes": "Historial de Lotes",
   "vista-publica": "Vista pública",
+  configuracion: "Configuración",
+  "configuracion-nutricional": "Configuración nutricional",
   historial: "Historial de Checklist",
 
   // Sub-rutas
@@ -50,6 +53,8 @@ const NOMBRES_RUTA: Record<string, string> = {
   editar: "Editar",
   nuevo: "Nuevo",
   ver: "Ver",
+  "ficha-tecnica": "Ficha Técnica",
+  rotulo: "Rótulo CAA",
 };
 
 // Segmentos que no tienen página propia directa: se muestran pero sin navegación
@@ -71,23 +76,37 @@ const legible = (segmento: string) =>
   NOMBRES_RUTA[segmento] ??
   segmento.charAt(0).toUpperCase() + segmento.slice(1).replace(/-/g, " ");
 
-export const Breadcrumbs = ({}: BreadcrumbsProps) => {
-  const location = useLocation();
-  const { pathname, state } = location;
+function construirMigas(pathname: string, state: unknown): MigaItem[] {
   const segmentos = pathname.split("/").filter(Boolean);
 
-  // 1. Detectar si la navegación vino desde una card del Dashboard
-  const vinoDesdeDashboard = state && typeof state === "object" && (state as any).origen === "dashboard";
-
-  // 2. Si la ruta es exactamente la raíz (o dashboard/checklist puro)
   if (segmentos.length === 0) {
-    return null;
+    return [];
   }
 
   const primerSegmento = segmentos[0];
+  const origenState = state && typeof state === "object" ? (state as any) : null;
+
+  // Navegación desde cualquier vista hacia Configuración (conserva el recorrido completo)
+  if (
+    (primerSegmento === "configuracion" || primerSegmento === "configuracion-nutricional") &&
+    typeof origenState?.fromPathname === "string" &&
+    origenState.fromPathname !== pathname
+  ) {
+    const prevMigas = construirMigas(origenState.fromPathname, origenState.fromState).map(
+      (miga) => ({
+        ...miga,
+        esLink: !SIN_LINK.has(miga.to.split("/").filter(Boolean).pop() ?? ""),
+      }),
+    );
+    return [
+      ...prevMigas,
+      { nombre: legible(primerSegmento), to: pathname, esLink: false },
+    ];
+  }
+
+  const vinoDesdeDashboard = origenState?.origen === "dashboard";
 
   // Caso especial: si viene origen dinámico en el state (ej: { from: "/productos", label: "Productos" })
-  const origenState = state && typeof state === "object" ? (state as any) : null;
   let dynamicFrom = origenState?.from;
   let dynamicLabel = origenState?.label;
 
@@ -113,34 +132,58 @@ export const Breadcrumbs = ({}: BreadcrumbsProps) => {
   }
 
   if (segmentos.length === 1 && dynamicFrom && dynamicLabel) {
-    const migas: MigaItem[] = [
-      { nombre: dynamicLabel, to: dynamicFrom, esLink: true },
-      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
-    ];
-    return renderBreadcrumb(migas);
+    const migas: MigaItem[] = [];
+    if (origenState?.padre && origenState.padre.nombre && origenState.padre.to) {
+      migas.push({
+        nombre: origenState.padre.nombre,
+        to: origenState.padre.to,
+        esLink: true,
+      });
+    }
+    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({ nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false });
+    return migas;
+  }
+
+  if (
+    segmentos.length === 3 &&
+    segmentos[0] === "productos" &&
+    segmentos[2] === "rotulo" &&
+    dynamicFrom &&
+    dynamicLabel &&
+    dynamicFrom !== "/productos"
+  ) {
+    const migas: MigaItem[] = [];
+    if (origenState?.padre && origenState.padre.nombre && origenState.padre.to) {
+      migas.push({
+        nombre: origenState.padre.nombre,
+        to: origenState.padre.to,
+        esLink: true,
+      });
+    }
+    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({ nombre: legible("rotulo"), to: pathname, esLink: false });
+    return migas;
   }
 
   // Caso especial: si es una ruta subordinada directa definida en PADRES_LOGICOS (ej: /capacidades)
   if (segmentos.length === 1 && PADRES_LOGICOS[primerSegmento]) {
     const padre = PADRES_LOGICOS[primerSegmento];
-    const migas: MigaItem[] = [
+    return [
       { nombre: padre.nombre, to: padre.to, esLink: true },
       { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
     ];
-    return renderBreadcrumb(migas);
   }
 
   // Si vino derivado de una card del Dashboard (ej: Dashboard -> /vencimientos)
   if (vinoDesdeDashboard && primerSegmento !== "dashboard") {
-    const migas: MigaItem[] = [
+    return [
       { nombre: "Dashboard", to: "/dashboard", esLink: true },
       { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
     ];
-    return renderBreadcrumb(migas);
   }
 
   // 3. Caso general: la ruta arranca desde su propio módulo (ej: SideBar -> /recetas, /personal, /vencimientos)
-  // Construir las migas filtrando IDs dinámicos
   const migas: MigaItem[] = [];
   let pathAcumulado = "";
 
@@ -149,10 +192,13 @@ export const Breadcrumbs = ({}: BreadcrumbsProps) => {
     pathAcumulado += `/${seg}`;
 
     if (esId(seg)) {
-      // Si es un id al final de la ruta (ej: /recetas/12), agregamos la entidad
       if (i === segmentos.length - 1 && segmentos[0] === "recetas") {
+        const nombreItem =
+          origenState?.label && origenState.label !== "Recetas"
+            ? origenState.label
+            : "Ficha Técnica";
         migas.push({
-          nombre: origenState?.label || "Receta Activa",
+          nombre: nombreItem,
           to: pathAcumulado,
           esLink: false,
         });
@@ -163,7 +209,6 @@ export const Breadcrumbs = ({}: BreadcrumbsProps) => {
     const esUltima = i === segmentos.length - 1;
     const puedeTenerLink = !esUltima && !SIN_LINK.has(seg);
 
-    // Casos particulares de subrutas compuestas
     if (
       seg === "historial" &&
       i > 0 &&
@@ -184,13 +229,17 @@ export const Breadcrumbs = ({}: BreadcrumbsProps) => {
     });
   }
 
-  // Si por los filtros de ID no quedó ninguna miga válida
+  return migas;
+}
+
+export const Breadcrumbs = (_props: BreadcrumbsProps) => {
+  const location = useLocation();
+  const migas = construirMigas(location.pathname, location.state);
+
   if (migas.length === 0) {
     return null;
   }
 
-  // Si la ruta es solo 1 nivel (ej: /recetas, /checklist, /dashboard, /vencimientos)
-  // Muestra solo ese nombre ("Recetas", "Checklist Diario", etc.)
   return renderBreadcrumb(migas);
 };
 

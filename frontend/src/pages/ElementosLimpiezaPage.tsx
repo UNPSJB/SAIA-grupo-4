@@ -3,7 +3,6 @@ import { BASE_URL } from "../config";
 import { apiFetch } from "../features/auth/apiFetch";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
 import { ElementoLimpiezaForm } from "../features/elementosLimpieza/ElementoLimpiezaForm";
 import { ElementoLimpiezaDetalle } from "../features/elementosLimpieza/ElementoLimpiezaDetalle";
 import { ListadoElementosLimpieza } from "../features/elementosLimpieza/ListadoElementosLimpieza";
@@ -105,7 +104,7 @@ export default function ElementosLimpiezaPage() {
   };
 
   return (
-    <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+    <>
       <ListadoElementosLimpieza
         key={refrescar}
         onCrear={() => setVista("crear")}
@@ -223,6 +222,6 @@ export default function ElementosLimpiezaPage() {
           setError("");
         }}
       />
-    </Box>
+    </>
   );
 }
