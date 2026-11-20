@@ -14,3 +14,6 @@ class InsumoNoDisponible(BadRequest):
 
 class ErrorInesperado(BadRequest):
     DETAIL = ErrorCode.ERROR_INESPERADO
+
+class LoteNoVencido(BadRequest):
+    DETAIL = ErrorCode.LOTE_NO_VENCIDO

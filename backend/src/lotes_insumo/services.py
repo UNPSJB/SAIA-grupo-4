@@ -1,11 +1,11 @@
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from src.insumos.models import Insumo
 from src.insumos.exceptions import InsumoNoExiste
 from src.lotes_insumo.models import LoteInsumo
 from src.lotes_insumo import schemas, exceptions
-from src.lotes_insumo.constants import EstadoLote
+from src.lotes_insumo.constants import EstadoLote, Constantes
 from datetime import date, datetime
 
 
@@ -140,3 +140,31 @@ def inhabilitar_lote_insumo(
 
     db.refresh(db_lote)
     return db_lote
+
+def listar_alertas(db: Session) -> list[LoteInsumo]:
+    """Lotes activos (vigentes y vencidos), del que vence antes al que vence después.
+
+    Los inhabilitados quedan afuera: confirmada la baja, la alerta se resuelve sola.
+    El estado (vencido / próximo / vigente) lo calcula el provider con la regla única
+    de vencimientos.services.calcular_estado.
+    """
+    consulta = (
+        select(LoteInsumo)
+        .options(joinedload(LoteInsumo.insumo))  # evita una consulta por lote al armar el concepto
+        .where(LoteInsumo.activo.is_(True))
+        .order_by(LoteInsumo.fecha_vencimiento.asc(), LoteInsumo.id.asc())
+    )
+
+    return db.scalars(consulta).all()
+
+def dar_de_baja_lote_vencido(db: Session, lote_id: int, usuario_id: int) -> schemas.LoteInsumo:
+    # Confirmación de baja desde la alerta: solo aplica a lotes activos que ya vencieron.
+    # El motivo lo fija el service para que no dependa de lo que mande el cliente.
+    db_lote = leer_lote_insumo(db, lote_id)
+    if not db_lote.activo:
+        raise exceptions.LoteBaja()
+    if db_lote.estado != EstadoLote.VENCIDO:
+        raise exceptions.LoteNoVencido()
+
+    datos = schemas.LoteInsumoInhabilitar(motivo=Constantes.MOTIVO_BAJA_VENCIDO)
+    return inhabilitar_lote_insumo(db, lote_id, datos, usuario_id)

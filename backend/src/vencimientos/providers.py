@@ -143,6 +143,34 @@ class _ProveedorPersonal:
             )
         return vencimientos
 
+class _ProveedorLotesInsumo:
+    categoria = CategoriaVencimiento.LOTE_INSUMO
+
+    def listar(self, db: Session, hoy: date) -> list[schemas.Vencimiento]:
+        from src.lotes_insumo.services import listar_alertas
+
+        vencimientos = []
+        for lote in listar_alertas(db):
+            dias_restantes = (lote.fecha_vencimiento - hoy).days
+            vencimientos.append(
+                schemas.Vencimiento(
+                    id=f"{self.categoria.value}:{lote.id}",
+                    categoria=self.categoria,
+                    concepto=f"{lote.insumo.nombre} - {lote.codigo_lote}",
+                    entidad="Lotes de insumo",
+                    entidad_id=lote.id,
+                    fecha_vencimiento=lote.fecha_vencimiento,
+                    dias_restantes=dias_restantes,
+                    estado=_estado_de(dias_restantes),
+                    detalle=lote.codigo_lote,
+                    ruta_detalle=f"/lotes-insumo?detalle={lote.id}",
+                )
+            )
+        return vencimientos
+
+
+registrar(_ProveedorLotesInsumo())
+
 def _estado_de(dias_restantes: int):
     # Import diferido: services.py importa este modulo, asi que la importacion
     # tiene que ser aca adentro para no cerrar un ciclo. La regla vive una sola

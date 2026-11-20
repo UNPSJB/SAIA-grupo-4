@@ -44,4 +44,15 @@ class Constantes:
 
 class ErrorCode:
     CATEGORIA_NO_DISPONIBLE = "La categoria solicitada todavia no tiene vencimientos registrados. "
-    
+
+
+class CategoriaVencimiento(str, Enum):
+    PERSONAL = "personal"
+    EQUIPO = "equipo"
+    ELEMENTO_LIMPIEZA = "elemento_limpieza"
+    DOCUMENTO = "documento"
+    LOTE_INSUMO = "lote_insumo"                # lotes de insumo
+
+ETIQUETA_CATEGORIA: dict[str, str] = {
+    CategoriaVencimiento.LOTE_INSUMO.value: "Lotes de insumo",
+}

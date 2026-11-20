@@ -46,3 +46,11 @@ def inhabilitar_lote_insumo(
     usuario=Depends(requiere_administracion),
 ):
     return services.inhabilitar_lote_insumo(db, lote_id, datos, usuario.id)
+
+@router.patch("/{lote_id}/dar-baja-vencido", response_model=schemas.LoteInsumo)
+def dar_de_baja_lote_vencido(
+    lote_id: int,
+    db: Session = Depends(get_db),
+    usuario=Depends(requiere_administracion),
+):
+    return services.dar_de_baja_lote_vencido(db, lote_id, usuario.id)

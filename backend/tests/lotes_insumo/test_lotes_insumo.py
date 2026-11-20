@@ -472,3 +472,128 @@ def test_endpoints_sin_sesion_responden_401():
     assert client.patch(
         "/lotes-insumo/1/inhabilitar", json={"motivo": "Contaminación detectada"}
     ).status_code == 401
+
+
+MOTIVO_VENCIDO = "Descarte por fecha de vencimiento alcanzada"
+
+
+def vencimientos_de_lotes():
+    # {id_lote: vencimiento}, solo de la categoría lote_insumo del tablero consolidado
+    response = client.get("/vencimientos/")
+    assert response.status_code == 200
+    return {
+        v["entidad_id"]: v
+        for v in response.json()
+        if v["categoria"] == "lote_insumo"
+    }
+
+
+# Baja desde la alerta
+
+def test_dar_de_baja_lote_vencido():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(-1))
+
+    response = client.patch(f"/lotes-insumo/{lote['id']}/dar-baja-vencido")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["activo"] is False
+    assert data["estado"] == "inhabilitado"
+    assert data["motivo_inhabilitacion"] == MOTIVO_VENCIDO
+    assert data["fecha_inhabilitacion"] is not None
+    assert data["usuario_inhabilitacion_id"] is not None
+
+
+def test_dar_de_baja_lote_no_vencido_falla():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(10))
+
+    response = client.patch(f"/lotes-insumo/{lote['id']}/dar-baja-vencido")
+
+    assert response.status_code == 400
+    # El lote sigue activo
+    assert client.get(f"/lotes-insumo/{lote['id']}").json()["activo"] is True
+
+
+def test_dar_de_baja_lote_que_vence_hoy_falla():
+    # Vence hoy todavía no es vencido (la propiedad estado compara con <)
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(0))
+
+    response = client.patch(f"/lotes-insumo/{lote['id']}/dar-baja-vencido")
+
+    assert response.status_code == 400
+
+
+def test_dar_de_baja_lote_ya_dado_de_baja_falla():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(-1))
+    client.patch(f"/lotes-insumo/{lote['id']}/dar-baja-vencido")
+
+    response = client.patch(f"/lotes-insumo/{lote['id']}/dar-baja-vencido")
+
+    assert response.status_code == 400
+
+
+def test_dar_de_baja_lote_inexistente():
+    response = client.patch("/lotes-insumo/999999/dar-baja-vencido")
+
+    assert response.status_code == 404
+
+
+# Alertas en el tablero consolidado
+
+def test_alerta_de_lote_vencido_en_tablero():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(-3))
+
+    alerta = vencimientos_de_lotes()[lote["id"]]
+
+    assert alerta["estado"] == "vencido"
+    assert alerta["dias_restantes"] == -3
+
+
+def test_alerta_preventiva_de_lote_por_vencer():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(10))
+
+    alerta = vencimientos_de_lotes()[lote["id"]]
+
+    assert alerta["estado"] == "proximo"
+    assert alerta["dias_restantes"] == 10
+
+
+def test_lote_fuera_del_rango_de_aviso_es_vigente():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(40))
+
+    alerta = vencimientos_de_lotes()[lote["id"]]
+
+    assert alerta["estado"] == "vigente"
+
+
+def test_alerta_se_resuelve_al_confirmar_la_baja():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(-1))
+    assert lote["id"] in vencimientos_de_lotes()
+
+    client.patch(f"/lotes-insumo/{lote['id']}/dar-baja-vencido")
+
+    assert lote["id"] not in vencimientos_de_lotes()
+
+
+def test_lote_inhabilitado_manualmente_no_genera_alerta():
+    lote = crear_lote(crear_insumo()["id"], fecha=en_dias(5))
+    client.patch(
+        f"/lotes-insumo/{lote['id']}/inhabilitar",
+        json={"motivo": "Envase dañado en recepción"},
+    )
+
+    assert lote["id"] not in vencimientos_de_lotes()
+
+
+# Un lote vencido no se ofrece como activo
+
+def test_lote_vencido_no_aparece_como_activo():
+    insumo = crear_insumo()
+    vencido = crear_lote(insumo["id"], codigo="L-VENC", fecha=en_dias(-1))
+    vigente = crear_lote(insumo["id"], codigo="L-VIG", fecha=en_dias(30))
+
+    response = client.get("/lotes-insumo/", params={"estado": "activo"})
+
+    ids = [l["id"] for l in response.json()]
+    assert vigente["id"] in ids
+    assert vencido["id"] not in ids
