@@ -17,3 +17,11 @@ class ErrorInesperado(BadRequest):
 
 class LoteNoVencido(BadRequest):
     DETAIL = ErrorCode.LOTE_NO_VENCIDO
+
+
+class CodigoLoteDuplicado(BadRequest):
+    DETAIL = ErrorCode.CODIGO_LOTE_DUPLICADO
+
+
+class FechaVencimientoPasada(BadRequest):
+    DETAIL = ErrorCode.FECHA_VENCIMIENTO_PASADA

@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from src.insumos.models import Insumo
@@ -11,6 +11,22 @@ from datetime import date, datetime
 
 # operaciones CRUD para LoteInsumo
 
+def _verificar_codigo_lote_unico(
+    db: Session,
+    insumo_id: int,
+    codigo_lote: str,
+    excluir_lote_id: int | None = None,
+) -> None:
+    consulta = select(LoteInsumo.id).where(
+        LoteInsumo.insumo_id == insumo_id,
+        func.lower(LoteInsumo.codigo_lote) == codigo_lote.strip().lower(),
+    )
+    if excluir_lote_id is not None:
+        consulta = consulta.where(LoteInsumo.id != excluir_lote_id)
+    if db.scalar(consulta) is not None:
+        raise exceptions.CodigoLoteDuplicado()
+
+
 def crear_lote_insumo(db: Session, lote: schemas.LoteInsumoCreate) -> schemas.LoteInsumo:
     # Verifica que el insumo exista y este disponible
     db_insumo = db.scalar(select(Insumo).where(Insumo.id == lote.insumo_id))
@@ -18,9 +34,13 @@ def crear_lote_insumo(db: Session, lote: schemas.LoteInsumoCreate) -> schemas.Lo
         raise InsumoNoExiste()
     if not db_insumo.disponible:
         raise exceptions.InsumoNoDisponible()
+    if lote.fecha_vencimiento < date.today():
+        raise exceptions.FechaVencimientoPasada()
 
-    # Crea el lote (queda activo por defecto) y lo sube a la db
-    db_lote = LoteInsumo(**lote.model_dump())
+    _verificar_codigo_lote_unico(db, lote.insumo_id, lote.codigo_lote)
+
+    # Crea el lote (queda activo por defecto y con stock disponible igual al tamaño inicial)
+    db_lote = LoteInsumo(**lote.model_dump(), cantidad_actual=lote.cantidad_inicial)
     db.add(db_lote)
     try:
         db.commit()
@@ -59,10 +79,20 @@ def listar_lotes_insumo(
         hoy = date.today()
         if estado == EstadoLote.INHABILITADO:
             consulta = consulta.where(LoteInsumo.activo.is_(False))
+        elif estado == EstadoLote.AGOTADO:
+            consulta = consulta.where(LoteInsumo.activo.is_(True), LoteInsumo.cantidad_actual <= 0)
         elif estado == EstadoLote.VENCIDO:
-            consulta = consulta.where(LoteInsumo.activo.is_(True), LoteInsumo.fecha_vencimiento < hoy)
+            consulta = consulta.where(
+                LoteInsumo.activo.is_(True),
+                LoteInsumo.cantidad_actual > 0,
+                LoteInsumo.fecha_vencimiento < hoy,
+            )
         else:
-            consulta = consulta.where(LoteInsumo.activo.is_(True), LoteInsumo.fecha_vencimiento >= hoy)
+            consulta = consulta.where(
+                LoteInsumo.activo.is_(True),
+                LoteInsumo.cantidad_actual > 0,
+                LoteInsumo.fecha_vencimiento >= hoy,
+            )
 
     # Orden por fecha de vencimiento; el id desempata para que el resultado sea estable
     if orden == "desc":
@@ -79,6 +109,14 @@ def modificar_lote_insumo(db: Session, lote_id: int, lote: schemas.LoteInsumoUpd
         raise exceptions.LoteBaja()
 
     update_data = lote.model_dump(exclude_unset=True)
+
+    if "fecha_vencimiento" in update_data and update_data["fecha_vencimiento"] < date.today():
+        raise exceptions.FechaVencimientoPasada()
+
+    if "codigo_lote" in update_data:
+        _verificar_codigo_lote_unico(
+            db, db_lote.insumo_id, update_data["codigo_lote"], excluir_lote_id=lote_id
+        )
 
     if update_data:
         db.execute(update(LoteInsumo).where(LoteInsumo.id == lote_id).values(**update_data))
@@ -151,10 +189,26 @@ def listar_alertas(db: Session) -> list[LoteInsumo]:
     consulta = (
         select(LoteInsumo)
         .options(joinedload(LoteInsumo.insumo))  # evita una consulta por lote al armar el concepto
-        .where(LoteInsumo.activo.is_(True))
+        .where(LoteInsumo.activo.is_(True), LoteInsumo.cantidad_actual > 0)
         .order_by(LoteInsumo.fecha_vencimiento.asc(), LoteInsumo.id.asc())
     )
 
+    return db.scalars(consulta).all()
+
+
+def listar_lotes_disponibles_para_consumo(db: Session, insumo_id: int) -> list[LoteInsumo]:
+    """Lotes activos, no vencidos y con stock disponible, ordenados por FEFO."""
+    hoy = date.today()
+    consulta = (
+        select(LoteInsumo)
+        .where(
+            LoteInsumo.insumo_id == insumo_id,
+            LoteInsumo.activo.is_(True),
+            LoteInsumo.cantidad_actual > 0,
+            LoteInsumo.fecha_vencimiento >= hoy,
+        )
+        .order_by(LoteInsumo.fecha_vencimiento.asc(), LoteInsumo.id.asc())
+    )
     return db.scalars(consulta).all()
 
 def dar_de_baja_lote_vencido(db: Session, lote_id: int, usuario_id: int) -> schemas.LoteInsumo:
