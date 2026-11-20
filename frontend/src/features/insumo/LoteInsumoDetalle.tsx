@@ -40,6 +40,18 @@ export const LoteInsumoDetalle = ({
         { label: "Insumo", valor: insumo.nombre },
         { label: "Código de lote", valor: lote.codigo_lote },
         {
+          label: "Cantidad inicial",
+          valor: `${Number(lote.cantidad_inicial).toLocaleString("es-AR", {
+            maximumFractionDigits: 3,
+          })} ${insumo.unidad_medida?.simbolo || ""}`.trim(),
+        },
+        {
+          label: "Cantidad disponible",
+          valor: `${Number(lote.cantidad_actual).toLocaleString("es-AR", {
+            maximumFractionDigits: 3,
+          })} ${insumo.unidad_medida?.simbolo || ""}`.trim(),
+        },
+        {
           label: "Fecha de vencimiento",
           valor: formatearFechaSoloDia(lote.fecha_vencimiento),
         },

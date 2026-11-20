@@ -10,6 +10,7 @@ export type SubmitLoteResult =
 export interface LoteInsumoPayload {
   codigo_lote: string;
   fecha_vencimiento: string; // "YYYY-MM-DD", tal cual lo da <input type="date">
+  cantidad_inicial: string | number;
 }
 
 type FastApiError = {
@@ -49,6 +50,7 @@ export const useLoteInsumoSubmit = ({
             insumo_id: insumoId,
             codigo_lote: values.codigo_lote.trim(),
             fecha_vencimiento: values.fecha_vencimiento,
+            cantidad_inicial: Number(values.cantidad_inicial),
           }),
         });
 
@@ -74,7 +76,7 @@ export const useLoteInsumoSubmit = ({
                 mensajeError = "El insumo no existe.";
                 break;
               case 422:
-                mensajeError = "Revisá el código de lote y la fecha de vencimiento.";
+                mensajeError = "Revisá el código de lote, la fecha de vencimiento y la cantidad.";
                 break;
               case 500:
                 mensajeError = "Error interno del servidor.";

@@ -52,11 +52,6 @@ const formatearTipo = (categoria?: string | null) => {
   return ETIQUETAS_TIPO[clave] || categoria || "—";
 };
 
-const formatearConsumo = (consumo: number) =>
-  Number(consumo ?? 0).toLocaleString("es-AR", {
-    maximumFractionDigits: 3,
-  });
-
 // Arma el endpoint del listado: solo se manda la búsqueda si tiene valor.
 const construirEndpoint = (busqueda: string, estado: string) => {
   const params = new URLSearchParams();
@@ -154,12 +149,6 @@ export const ListadoInsumos = ({
       },
     },
     {
-      key: "consumo",
-      label: "Consumo",
-      render: (insumo) =>
-        `${formatearConsumo(insumo.consumo ?? 0)} ${insumo.unidad_medida.simbolo}`,
-    },
-    {
       key: "disponible",
       label: "Disponible",
       valorExportacion: (insumo) => (insumo.disponible ? "Activo" : "Inactivo"),
@@ -175,7 +164,13 @@ export const ListadoInsumos = ({
       exportable: false,
       align: "end",
       render: (insumo) => (
-                <RowActions>
+        <RowActions>
+          <RowActionButton
+            icon={FiPackage}
+            label='Ver lotes'
+            colorPalette='purple'
+            onClick={() => onVerLotes?.(insumo)}
+          />
           <RowActionButton
             icon={FiEdit2}
             label='Modificar'
@@ -195,12 +190,6 @@ export const ListadoInsumos = ({
             colorPalette='red'
             onClick={() => onEliminar?.(insumo)}
             visible={insumo.disponible}
-          />
-          <RowActionButton
-            icon={FiPackage}
-            label='Ver lotes'
-            colorPalette='purple'
-            onClick={() => onVerLotes?.(insumo)}
           />
           <RowActionButton
             icon={FiCheckCircle}

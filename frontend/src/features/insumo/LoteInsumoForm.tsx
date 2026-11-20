@@ -28,9 +28,15 @@ type LoteInsumoFormProps = {
   enModal?: boolean;
 };
 
+const obtenerHoyLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 const defaultValues: LoteInsumoFormValues = {
   codigo_lote: "",
   fecha_vencimiento: "",
+  cantidad_inicial: "",
 };
 
 export const LoteInsumoForm = ({
@@ -89,8 +95,17 @@ export const LoteInsumoForm = ({
           <TextField
             label='Fecha de vencimiento'
             type='date'
+            min={obtenerHoyLocal()}
             error={errors.fecha_vencimiento?.message}
             {...register("fecha_vencimiento")}
+          />
+          <TextField
+            label={`Cantidad / Tamaño de lote (${insumo.unidad_medida?.simbolo || "u"})`}
+            type='number'
+            step='any'
+            placeholder='Ej. 25'
+            error={errors.cantidad_inicial?.message}
+            {...register("cantidad_inicial")}
           />
 
           <FormActions>

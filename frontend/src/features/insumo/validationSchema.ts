@@ -7,6 +7,11 @@ const CLASES_SIN_INS = [
   "aromatizante/saborizante",
 ];
 
+const obtenerHoyLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 export const loteInsumoSchema = z.object({
   codigo_lote: z
     .string()
@@ -16,7 +21,17 @@ export const loteInsumoSchema = z.object({
   fecha_vencimiento: z
     .string()
     .min(1, "Por favor, ingrese la fecha de vencimiento")
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha de vencimiento no es válida"),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha de vencimiento no es válida")
+    .refine((val) => val >= obtenerHoyLocal(), {
+      message: "La fecha de vencimiento no puede ser anterior a hoy",
+    }),
+  cantidad_inicial: z
+    .string()
+    .trim()
+    .min(1, "Por favor, ingrese la cantidad inicial del lote")
+    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+      message: "La cantidad del lote debe ser mayor a 0",
+    }),
 });
 
 export type LoteInsumoFormValues = z.infer<typeof loteInsumoSchema>;

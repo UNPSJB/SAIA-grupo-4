@@ -1,4 +1,4 @@
-export type EstadoLote = "activo" | "vencido" | "inhabilitado";
+export type EstadoLote = "activo" | "vencido" | "inhabilitado" | "agotado";
 export type CodigoAlergenoCAA =
   | "TRIGO"
   | "AVENA"
@@ -57,7 +57,6 @@ export interface Insumo {
   nombre: string;
   unidad_medida_id: number;
   unidad_medida: UnidadMedida;
-  consumo: number;
   categoria: string;
   descripcion: string;
   disponible: boolean;
@@ -107,6 +106,8 @@ export interface LoteInsumo {
   insumo_id: number;
   codigo_lote: string;
   fecha_vencimiento: string; // "YYYY-MM-DD"
+  cantidad_inicial: number;
+  cantidad_actual: number;
   activo: boolean;
   estado: EstadoLote;
   motivo_inhabilitacion: string | null;

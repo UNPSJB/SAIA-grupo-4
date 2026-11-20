@@ -56,6 +56,7 @@ const tieneFiltros = (filtros: FiltrosLotes) =>
 
 const OPCIONES_ESTADO = [
   { label: "Activos", value: "activo" },
+  { label: "Agotados", value: "agotado" },
   { label: "Vencidos", value: "vencido" },
   { label: "Inhabilitados", value: "inhabilitado" },
 ];
@@ -143,6 +144,19 @@ export const ListadoLotesInsumo = ({
       render: (l) => l.codigo_lote,
     },
     {
+      key: "cantidad_actual",
+      label: "Cantidad disponible",
+      w: "170px",
+      valorExportacion: (l) =>
+        `${Number(l.cantidad_actual)} / ${Number(l.cantidad_inicial)} ${insumo.unidad_medida?.simbolo || ""}`.trim(),
+      render: (l) =>
+        `${Number(l.cantidad_actual).toLocaleString("es-AR", {
+          maximumFractionDigits: 3,
+        })} / ${Number(l.cantidad_inicial).toLocaleString("es-AR", {
+          maximumFractionDigits: 3,
+        })} ${insumo.unidad_medida?.simbolo || ""}`.trim(),
+    },
+    {
       key: "fecha_vencimiento",
       label: "Vencimiento",
       w: "180px",
@@ -191,7 +205,7 @@ export const ListadoLotesInsumo = ({
             label='Inhabilitar'
             colorPalette='red'
             onClick={() => onInhabilitarLote(l)}
-            visible={l.activo}
+            visible={l.activo && Number(l.cantidad_actual) > 0}
           />
         </RowActions>
       ),
