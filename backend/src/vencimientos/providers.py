@@ -169,8 +169,6 @@ class _ProveedorLotesInsumo:
         return vencimientos
 
 
-registrar(_ProveedorLotesInsumo())
-
 def _estado_de(dias_restantes: int):
     # Import diferido: services.py importa este modulo, asi que la importacion
     # tiene que ser aca adentro para no cerrar un ciclo. La regla vive una sola
@@ -186,3 +184,4 @@ registrar(_ProveedorElementosLimpieza())
 registrar(_ProveedorEquipos())
 registrar(_ProveedorDocumentos())
 registrar(_ProveedorPersonal())
+registrar(_ProveedorLotesInsumo())

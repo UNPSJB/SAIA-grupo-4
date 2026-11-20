@@ -104,6 +104,7 @@ from src.insumo_quimico.models import InsumoQuimico
 from src.insumos.models import Insumo
 from src.productos.models import Producto
 from src.lotes.models import Lote, ConsumoInsumoLote
+from src.lotes_insumo.models import LoteInsumo  # noqa: F401
 from src.recetas.constants import EstadoReceta
 from src.recetas.models import PasoEquipo, PasoInsumo, PasoReceta, Receta
 from src.recetas.services import _extraer_prefijo_producto

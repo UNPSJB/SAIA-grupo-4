@@ -507,6 +507,7 @@ def test_categoria_sin_proveedor_devuelve_400():
             CategoriaVencimiento.EQUIPO,
             CategoriaVencimiento.DOCUMENTO,
             CategoriaVencimiento.PERSONAL,
+            CategoriaVencimiento.LOTE_INSUMO,
         )
     ],
 )
@@ -637,6 +638,7 @@ def test_categorias_declaradas_en_el_contrato():
         "equipo",
         "elemento_limpieza",
         "documento",
+        "lote_insumo",
     }
 
 
@@ -644,15 +646,13 @@ def test_categorias_endpoint_solo_expone_las_con_provider():
     data = client.get("/vencimientos/categorias").json()
 
     # Orden alfabetico por etiqueta legible.
-<<<<<<< HEAD
-    assert [c["valor"] for c in data] == ["documento", "elemento_limpieza", "equipo", "personal"]
-    
-=======
-    valores = [c["valor"] for c in data]
-    assert "documento" in valores
-    assert "elemento_limpieza" in valores
-    assert "equipo" in valores
->>>>>>> origin/dev
+    assert [c["valor"] for c in data] == [
+        "documento",
+        "elemento_limpieza",
+        "equipo",
+        "lote_insumo",
+        "personal",
+    ]
 
 
 def test_categorias_endpoint_usa_la_etiqueta_legible():
@@ -686,6 +686,7 @@ def test_categorias_endpoint_lista_vacia_sin_datos():
         {"valor": "documento", "nombre": "Documentos", "total": 0},
         {"valor": "elemento_limpieza", "nombre": "Elementos de limpieza", "total": 0},
         {"valor": "equipo", "nombre": "Equipos", "total": 0},
+        {"valor": "lote_insumo", "nombre": "Lotes de insumo", "total": 0},
         {"valor": "personal", "nombre": "Personal", "total": 0},
     ]
 
