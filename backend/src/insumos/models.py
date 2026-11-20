@@ -14,7 +14,6 @@ class Insumo(ModeloBase):
     nombre: Mapped[str] = mapped_column(index=True)
     unidad_medida_id: Mapped[int] = mapped_column(ForeignKey("unidades_de_medidas.id"), index=True)
     categoria: Mapped[str] = mapped_column(index=True)
-    consumo: Mapped[Decimal] = mapped_column(Numeric(9, 3), default=Decimal("0"), server_default="0", nullable=False)
     descripcion: Mapped[Optional[str]] = mapped_column(nullable=True)
     disponible: Mapped[bool] = mapped_column(default=True)
     densidad_g_ml: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

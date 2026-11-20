@@ -45,7 +45,6 @@ class InsumoBase(BaseModel):
     nombre: Annotated[str, Field(min_length=1, max_length=50, description="El nombre del insumo es obligatorio")]
     unidad_medida_id: Annotated[int, Field(description="Unidad de medida asociada al insumo")]
     categoria: Annotated[Categoria, Field(description="Categoria a la que pertenece el insumo")]
-    consumo: Annotated[Decimal, Field(default=Decimal("0"), max_digits=9, decimal_places=3, ge=0, description="Consumo acumulado del insumo")] = Decimal("0")
     descripcion: Annotated[Optional[str], Field(default=None, max_length=200, description="Descripcion de insumo")]
     densidad_g_ml: Annotated[Optional[float], Field(default=None, gt=0, description="Densidad en g/ml para liquidos")] = None
     peso_unitario_g: Annotated[Optional[float], Field(default=None, gt=0, description="Peso unitario promedio en gramos")] = None
@@ -97,13 +96,6 @@ class InsumoBase(BaseModel):
 class InsumoCreate(InsumoBase):
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("consumo")
-    @classmethod
-    def validar_consumo_inicial_cero(cls, v: Decimal) -> Decimal:
-        if v > 0:
-            raise ValueError("Un insumo nuevo debe iniciar con consumo 0")
-        return v
-
     @model_validator(mode="after")
     def validar_atributos_aditivo(self):
         cat = (self.categoria.value if hasattr(self.categoria, "value") else str(self.categoria)).strip().lower()
@@ -140,7 +132,6 @@ class InsumoUpdate(BaseModel):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=100, description="El nombre del insumo es obligatorio")]
     unidad_medida_id: Annotated[Optional[int], Field(default=None, description="Unidad de medida asociada al insumo")]
     categoria: Annotated[Optional[Categoria], Field(default=None, description="Categoria a la que pertenece el insumo")]
-    consumo: Annotated[Optional[Decimal], Field(default=None, max_digits=9, decimal_places=3, ge=0, description="Consumo acumulado del insumo")] = None
     descripcion: Annotated[Optional[str], Field(default=None, max_length=200, description="Descripcion de insumo")]
     disponible: Annotated[Optional[bool], Field(default=None, description="Campo para verificar la baja logica")]
     densidad_g_ml: Annotated[Optional[float], Field(default=None, gt=0, description="Densidad en g/ml para liquidos")] = None

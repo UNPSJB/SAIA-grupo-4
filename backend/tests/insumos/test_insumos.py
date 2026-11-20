@@ -630,18 +630,6 @@ def test_validaciones_insumo_seguridad_y_envase():
     )
     assert res_espacios.status_code == 422
 
-    # Consumo inicial > 0 rechazado
-    res_consumo = client.post(
-        "/insumos/",
-        json={
-            "nombre": f"Consumo trucho {sufijo_unico()}",
-            "unidad_medida_id": u_masa,
-            "categoria": "materia prima",
-            "consumo": "25.000",
-        },
-    )
-    assert res_consumo.status_code == 422
-
     # Envase con datos nutricionales rechazado en creación
     res_envase = client.post(
         "/insumos/",
