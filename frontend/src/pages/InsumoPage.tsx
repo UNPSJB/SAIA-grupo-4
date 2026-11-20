@@ -1,7 +1,8 @@
 import { BASE_URL } from "../config";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
+import { apiFetch } from "../features/auth/apiFetch";
 import { InsumoForm } from "../features/insumo/InsumoForm";
 import { InsumoDetalle } from "../features/insumo/InsumoDetalle";
 import { ListadoInsumos } from "../features/insumo/ListadoInsumo";
@@ -18,10 +19,36 @@ type Vista = "listado" | "crear" | "modificar" | "ver" | "lotes";
 
 export default function InsumoPage() {
   const navigate = useNavigate();
+  const { insumoId } = useParams<{ insumoId?: string }>();
   const [vista, setVista] = useState<Vista>("listado");
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
     null,
   );
+
+  useEffect(() => {
+    if (!insumoId) {
+      setVista((prev) => (prev === "lotes" ? "listado" : prev));
+      return;
+    }
+    const idNum = Number(insumoId);
+    if (!Number.isFinite(idNum) || insumoSeleccionado?.id === idNum) {
+      setVista("lotes");
+      return;
+    }
+    let activo = true;
+    apiFetch(`${BASE_URL}/insumos/${idNum}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Insumo | null) => {
+        if (activo && data) {
+          setInsumoSeleccionado(data);
+          setVista("lotes");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [insumoId, insumoSeleccionado?.id]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [insumoEliminar, setInsumoEliminar] = useState<Insumo | null>(null);
@@ -71,7 +98,7 @@ export default function InsumoPage() {
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
       {/* Listado de insumos: se oculta mientras se miran los lotes de uno. */}
-      {vista !== "lotes" && (
+      {!insumoId && vista !== "lotes" && (
         <ListadoInsumos
           key={refescar}
           onVerUnidades={() =>
@@ -106,17 +133,20 @@ export default function InsumoPage() {
           onVerLotes={(insumo) => {
             setError("");
             setInsumoSeleccionado(insumo);
-            setVista("lotes");
+            navigate(`/insumos/${insumo.id}/lotes`);
           }}
         />
       )}
 
       {/* Lotes del insumo seleccionado, con el botón para registrar otro lote. */}
-      {vista === "lotes" && insumoSeleccionado && (
+      {(insumoId || vista === "lotes") && insumoSeleccionado && (
         <ListadoLotesInsumo
           insumo={insumoSeleccionado}
           refreshKey={refescar}
-          onVolver={() => setVista("listado")}
+          onVolver={() => {
+            setVista("listado");
+            navigate("/insumos");
+          }}
           onNuevoLote={() => {
             setError("");
             setInsumoLote(insumoSeleccionado);

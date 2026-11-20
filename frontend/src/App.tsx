@@ -219,6 +219,14 @@ function AppContent() {
               }
             />
             <Route
+              path='/insumos/:insumoId/lotes'
+              element={
+                <RequireAuth>
+                  <InsumoPage />
+                </RequireAuth>
+              }
+            />
+            <Route
               path='/productos'
               element={
                 <RequireAuth>
