@@ -1,6 +1,29 @@
+export interface LoteInsumoDisponible {
+  id: number;
+  insumo_id: number;
+  codigo_lote: string;
+  fecha_vencimiento: string;
+  cantidad_inicial: number;
+  cantidad_actual: number;
+}
+
+export interface DetalleLoteInsumoCreate {
+  lote_insumo_id: number;
+  cantidad: number;
+}
+
+export interface DetalleLoteInsumo {
+  id: number;
+  lote_insumo_id: number;
+  codigo_lote_insumo: string;
+  fecha_vencimiento: string;
+  cantidad: number;
+}
+
 export interface ConsumoInsumoCreate {
   insumo_id: number;
   cantidad_real_utilizada: number;
+  lotes: DetalleLoteInsumoCreate[];
 }
 
 export interface ConsumoInsumo {
@@ -10,6 +33,7 @@ export interface ConsumoInsumo {
   unidad_medida_simbolo: string;
   cantidad_teorica: number;
   cantidad_real_utilizada: number;
+  detalles_lotes: DetalleLoteInsumo[];
 }
 
 export interface InsumoTeoricoReceta {
@@ -17,6 +41,7 @@ export interface InsumoTeoricoReceta {
   nombre: string;
   unidad_medida_simbolo: string;
   cantidad_nominal_receta: number;
+  lotes_disponibles: LoteInsumoDisponible[];
 }
 
 export interface ProductoDisponibleLote {

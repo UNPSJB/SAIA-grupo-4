@@ -143,6 +143,20 @@ export const LoteDetalle = ({ lote, onCerrar }: LoteDetalleProps) => {
                           </Text>
                         </Text>
                       </HStack>
+                      {c.detalles_lotes && c.detalles_lotes.length > 0 && (
+                        <Box mt={2} pt={2} borderTop="1px dashed" borderColor="gray.200">
+                          <Text fontSize="2xs" fontWeight="semibold" color="gray.500" mb={1}>
+                            Lotes físicos descontados:
+                          </Text>
+                          <Flex gap={1.5} wrap="wrap">
+                            {c.detalles_lotes.map((d) => (
+                              <Badge key={d.id} colorPalette="teal" variant="subtle" fontSize="2xs">
+                                {d.codigo_lote_insumo}: {d.cantidad} {c.unidad_medida_simbolo}
+                              </Badge>
+                            ))}
+                          </Flex>
+                        </Box>
+                      )}
                     </Box>
                   );
                 })}

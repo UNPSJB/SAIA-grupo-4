@@ -30,8 +30,41 @@ import {
   TextField,
 } from "../../components/ui";
 import { lotesApi } from "./hooks/lotesApi";
-import { ConsumoInsumoCard } from "./components/ConsumoInsumoCard";
-import type { ProductoDisponibleLote } from "./types";
+import {
+  ConsumoInsumoCard,
+  type AsignacionLoteForm,
+} from "./components/ConsumoInsumoCard";
+import type { InsumoTeoricoReceta, ProductoDisponibleLote } from "./types";
+
+const EPS = 0.0001;
+
+const redondear3 = (n: number) => Math.round(n * 1000) / 1000;
+
+const sugerirAsignacionesFEFO = (
+  insumo: InsumoTeoricoReceta,
+  cantidadObjetivo: number,
+): AsignacionLoteForm[] => {
+  if (isNaN(cantidadObjetivo) || cantidadObjetivo <= 0) return [];
+  const lotes = insumo.lotes_disponibles ?? [];
+  if (lotes.length === 0) return [];
+
+  const resultado: AsignacionLoteForm[] = [];
+  let restante = redondear3(cantidadObjetivo);
+
+  for (const lote of lotes) {
+    if (restante <= EPS) break;
+    const disponible = Number(lote.cantidad_actual);
+    if (disponible <= EPS) continue;
+    const tomar = redondear3(Math.min(restante, disponible));
+    resultado.push({
+      lote_insumo_id: String(lote.id),
+      cantidad: String(tomar),
+    });
+    restante = redondear3(restante - tomar);
+  }
+
+  return resultado;
+};
 
 interface RegistrarLoteFormProps {
   onSuccess?: () => void;
@@ -76,8 +109,14 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
 
   // Consumos reales ingresados por el operador (indexados por insumo_id)
   const [consumosReales, setConsumosReales] = useState<Record<number, string>>({});
+  // Asignaciones multi-lote por insumo (indexadas por insumo_id)
+  const [asignacionesLotes, setAsignacionesLotes] = useState<
+    Record<number, AsignacionLoteForm[]>
+  >({});
   // Registro de insumos editados manualmente por el operador para no sobreescribir si recalcula
   const [insumosModificadosManual, setInsumosModificadosManual] = useState<Record<number, boolean>>({});
+  // Registro de insumos cuyas asignaciones de lote fueron editadas manualmente
+  const [lotesModificadosManual, setLotesModificadosManual] = useState<Record<number, boolean>>({});
 
   const [observaciones, setObservaciones] = useState("");
 
@@ -137,7 +176,9 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
       setFechaVencimiento("");
       setCantidadProducida("");
       setConsumosReales({});
+      setAsignacionesLotes({});
       setInsumosModificadosManual({});
+      setLotesModificadosManual({});
       return;
     }
 
@@ -162,13 +203,18 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     // 3. Sugerencia de código
     generarSugerenciaCodigo(id, fechaElaboracion);
 
-    // 4. Insumos iniciales (factor 1.0)
+    // 4. Insumos iniciales (factor 1.0) y sugerencia FEFO de lotes
     const iniciales: Record<number, string> = {};
+    const asignacionesIniciales: Record<number, AsignacionLoteForm[]> = {};
     prod.insumos_teoricos.forEach((ins) => {
-      iniciales[ins.insumo_id] = String(ins.cantidad_nominal_receta);
+      const cant = Number(ins.cantidad_nominal_receta);
+      iniciales[ins.insumo_id] = String(cant);
+      asignacionesIniciales[ins.insumo_id] = sugerirAsignacionesFEFO(ins, cant);
     });
     setConsumosReales(iniciales);
+    setAsignacionesLotes(asignacionesIniciales);
     setInsumosModificadosManual({});
+    setLotesModificadosManual({});
   };
 
   // Factor de escala proporcional: cantidad_producida / rendimiento_estandar
@@ -205,12 +251,43 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
       });
       return actualizados;
     });
+
+    setAsignacionesLotes((prev) => {
+      const actualizados = { ...prev };
+      productoSeleccionado.insumos_teoricos.forEach((ins) => {
+        if (!insumosModificadosManual[ins.insumo_id] && !lotesModificadosManual[ins.insumo_id]) {
+          const teorica = Math.round(ins.cantidad_nominal_receta * factor * 100) / 100;
+          actualizados[ins.insumo_id] = sugerirAsignacionesFEFO(ins, teorica);
+        }
+      });
+      return actualizados;
+    });
   };
 
   // Cuando el operador edita la cantidad real de un insumo
   const handleCambioConsumoReal = (insumoId: number, valor: string) => {
     setConsumosReales((prev) => ({ ...prev, [insumoId]: valor }));
     setInsumosModificadosManual((prev) => ({ ...prev, [insumoId]: true }));
+
+    const num = parseFloat(valor);
+    if (!isNaN(num) && num === 0) {
+      setAsignacionesLotes((prev) => ({ ...prev, [insumoId]: [] }));
+    } else if (!isNaN(num) && num > 0 && (asignacionesLotes[insumoId]?.length ?? 0) === 0) {
+      const insumo = productoSeleccionado?.insumos_teoricos.find(
+        (i) => i.insumo_id === insumoId,
+      );
+      if (insumo) {
+        setAsignacionesLotes((prev) => ({
+          ...prev,
+          [insumoId]: sugerirAsignacionesFEFO(insumo, num),
+        }));
+      }
+    }
+  };
+
+  const handleCambioAsignaciones = (insumoId: number, nuevas: AsignacionLoteForm[]) => {
+    setAsignacionesLotes((prev) => ({ ...prev, [insumoId]: nuevas }));
+    setLotesModificadosManual((prev) => ({ ...prev, [insumoId]: true }));
   };
 
   // Validación y guardado directo de lote (sin modal de confirmación)
@@ -244,9 +321,68 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
       errs.cantidadProducida = "Debe ingresar una cantidad mayor a cero.";
     }
 
-    if (Object.keys(errs).length > 0) {
+    let errorConsumoDetalle = "";
+    if (productoSeleccionado) {
+      for (const ins of productoSeleccionado.insumos_teoricos) {
+        const valRealStr = consumosReales[ins.insumo_id] ?? "";
+        const valReal = parseFloat(valRealStr);
+        if (valRealStr === "" || isNaN(valReal) || valReal < 0) {
+          errorConsumoDetalle = `Debe ingresar una cantidad real válida (>= 0) para ${ins.nombre}.`;
+          break;
+        }
+        if (valReal === 0) continue;
+
+        const asigs = asignacionesLotes[ins.insumo_id] ?? [];
+        if (asigs.length === 0) {
+          errorConsumoDetalle = `Debe asignar al menos un lote físico de ${ins.nombre} para cubrir ${valReal} ${ins.unidad_medida_simbolo}.`;
+          break;
+        }
+
+        const lotesUsados = new Set<string>();
+        let suma = 0;
+        for (const asig of asigs) {
+          if (!asig.lote_insumo_id) {
+            errorConsumoDetalle = `Seleccione un lote físico en todas las filas de ${ins.nombre}.`;
+            break;
+          }
+          if (lotesUsados.has(asig.lote_insumo_id)) {
+            errorConsumoDetalle = `No puede repetir el mismo lote físico dentro de ${ins.nombre}.`;
+            break;
+          }
+          lotesUsados.add(asig.lote_insumo_id);
+
+          const cantAsig = parseFloat(asig.cantidad);
+          if (isNaN(cantAsig) || cantAsig <= 0) {
+            errorConsumoDetalle = `Cada lote asignado en ${ins.nombre} debe tener una cantidad mayor a cero.`;
+            break;
+          }
+          const loteDisp = (ins.lotes_disponibles ?? []).find(
+            (l) => String(l.id) === asig.lote_insumo_id,
+          );
+          if (!loteDisp) {
+            errorConsumoDetalle = `Uno de los lotes seleccionados en ${ins.nombre} ya no está disponible.`;
+            break;
+          }
+          if (cantAsig > Number(loteDisp.cantidad_actual) + EPS) {
+            errorConsumoDetalle = `La cantidad asignada al lote ${loteDisp.codigo_lote} de ${ins.nombre} supera su stock disponible.`;
+            break;
+          }
+          suma += cantAsig;
+        }
+        if (errorConsumoDetalle) break;
+
+        if (Math.abs(suma - valReal) > EPS) {
+          errorConsumoDetalle = `En ${ins.nombre}, la suma de lotes (${redondear3(suma)}) debe coincidir exactamente con el consumo real declarado (${valReal} ${ins.unidad_medida_simbolo}).`;
+          break;
+        }
+      }
+    }
+
+    if (Object.keys(errs).length > 0 || errorConsumoDetalle) {
       setErrores(errs);
-      setErrorEnvio("Por favor, revise los campos marcados antes de guardar.");
+      setErrorEnvio(
+        errorConsumoDetalle || "Por favor, revise los campos marcados antes de guardar.",
+      );
       return;
     }
 
@@ -256,9 +392,17 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     try {
       const payloadConsumos = (productoSeleccionado?.insumos_teoricos ?? []).map((ins) => {
         const valReal = parseFloat(consumosReales[ins.insumo_id]);
+        const cantReal = !isNaN(valReal) && valReal >= 0 ? valReal : 0;
+        const asigs = cantReal === 0 ? [] : (asignacionesLotes[ins.insumo_id] ?? []);
         return {
           insumo_id: ins.insumo_id,
-          cantidad_real_utilizada: !isNaN(valReal) && valReal >= 0 ? valReal : 0,
+          cantidad_real_utilizada: cantReal,
+          lotes: asigs
+            .filter((a) => a.lote_insumo_id && parseFloat(a.cantidad) > 0)
+            .map((a) => ({
+              lote_insumo_id: parseInt(a.lote_insumo_id, 10),
+              cantidad: parseFloat(a.cantidad),
+            })),
         };
       });
 
@@ -485,13 +629,18 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                     {productoSeleccionado.insumos_teoricos.map((ins) => {
                       const teorica = Math.round(ins.cantidad_nominal_receta * factorEscala * 100) / 100;
                       const real = consumosReales[ins.insumo_id] ?? String(teorica);
+                      const asignaciones = asignacionesLotes[ins.insumo_id] ?? [];
                       return (
                         <ConsumoInsumoCard
                           key={ins.insumo_id}
                           insumo={ins}
                           cantidadTeorica={teorica}
                           cantidadReal={real}
+                          asignaciones={asignaciones}
                           onCambioCantidadReal={(v) => handleCambioConsumoReal(ins.insumo_id, v)}
+                          onCambioAsignaciones={(nuevas) =>
+                            handleCambioAsignaciones(ins.insumo_id, nuevas)
+                          }
                           disabled={guardando}
                         />
                       );
