@@ -65,6 +65,7 @@ export const lotesApi = {
     producto_id?: number;
     receta_id?: number;
     operador_id?: number;
+    codigo_lote_insumo?: string;  
     desde?: string;
     hasta?: string;
   }): Promise<Lote[]> => {
@@ -73,6 +74,7 @@ export const lotesApi = {
     if (params?.producto_id) query.set("producto_id", String(params.producto_id));
     if (params?.receta_id) query.set("receta_id", String(params.receta_id));
     if (params?.operador_id) query.set("operador_id", String(params.operador_id));
+    if (params?.codigo_lote_insumo) query.set("codigo_lote_insumo", params.codigo_lote_insumo); 
     if (params?.desde) query.set("desde", params.desde);
     if (params?.hasta) query.set("hasta", params.hasta);
 

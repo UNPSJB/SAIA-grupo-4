@@ -36,6 +36,7 @@ export default function HistorialLotesPage() {
   // Filtros borradores
   const [busqueda, setBusqueda] = useState("");
   const [productoIdFiltro, setProductoIdFiltro] = useState("");
+  const [loteInsumoFiltro, setLoteInsumoFiltro] = useState("");
   const [desdeFiltro, setDesdeFiltro] = useState("");
   const [hastaFiltro, setHastaFiltro] = useState("");
 
@@ -43,6 +44,7 @@ export default function HistorialLotesPage() {
   const [filtrosAplicados, setFiltrosAplicados] = useState({
     busqueda: "",
     producto_id: "",
+    lote_insumo: "",
     desde: "",
     hasta: "",
   });
@@ -95,6 +97,7 @@ export default function HistorialLotesPage() {
       const data = await lotesApi.getHistorialGeneral({
         busqueda: filtrosAplicados.busqueda || undefined,
         producto_id: filtrosAplicados.producto_id ? Number(filtrosAplicados.producto_id) : undefined,
+        codigo_lote_insumo: filtrosAplicados.lote_insumo || undefined,
         desde: filtrosAplicados.desde || undefined,
         hasta: filtrosAplicados.hasta || undefined,
       });
@@ -131,6 +134,7 @@ export default function HistorialLotesPage() {
     setFiltrosAplicados({
       busqueda: texto.trim(),
       producto_id: productoIdFiltro,
+      lote_insumo: loteInsumoFiltro.trim(),
       desde,
       hasta,
     });
@@ -140,11 +144,13 @@ export default function HistorialLotesPage() {
   const limpiarFiltros = () => {
     setBusqueda("");
     setProductoIdFiltro("");
+    setLoteInsumoFiltro("");
     setDesdeFiltro("");
     setHastaFiltro("");
     setFiltrosAplicados({
       busqueda: "",
       producto_id: "",
+      lote_insumo: "",
       desde: "",
       hasta: "",
     });
@@ -155,6 +161,7 @@ export default function HistorialLotesPage() {
     return (
       filtrosAplicados.busqueda !== "" ||
       filtrosAplicados.producto_id !== "" ||
+      filtrosAplicados.lote_insumo !== "" ||
       filtrosAplicados.desde !== "" ||
       filtrosAplicados.hasta !== ""
     );
@@ -219,6 +226,18 @@ export default function HistorialLotesPage() {
               label: p.nombre,
               value: String(p.id),
             }))}
+          />
+          <FiltroTexto
+            ariaLabel="Buscar por lote de insumo"
+            placeholder="Lote de insumo (ej. H-099)"
+            value={loteInsumoFiltro}
+            onChange={setLoteInsumoFiltro}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                aplicarFiltros();
+              }
+            }}
           />
           <Flex
             direction={{ base: "column", sm: "row" }}
@@ -285,9 +304,11 @@ export default function HistorialLotesPage() {
         <AlertMessage
           type="info"
           message={
-            hayFiltrosActivos
-              ? "No se encontraron lotes que coincidan con los filtros aplicados."
-              : "No hay lotes de producción registrados en el sistema."
+            filtrosAplicados.lote_insumo
+              ? `No existen lotes de producción vinculados al lote de insumo "${filtrosAplicados.lote_insumo}".`
+              : hayFiltrosActivos
+                ? "No se encontraron lotes que coincidan con los filtros aplicados."
+                : "No hay lotes de producción registrados en el sistema."
           }
         />
       ) : (
@@ -295,20 +316,22 @@ export default function HistorialLotesPage() {
           <ListadoLotes
             lotes={itemsPaginados}
             exportarLotes={lotes}
-          exportarFiltros={armarFiltros([
-            ["Búsqueda", filtrosAplicados.busqueda],
-            [
-              "Producto",
-              filtrosAplicados.producto_id &&
-                (productos.find((p) => String(p.id) === filtrosAplicados.producto_id)?.nombre ??
-                  filtrosAplicados.producto_id),
-            ],
-            ["Desde", filtrosAplicados.desde && formatearFecha(filtrosAplicados.desde)],
-            ["Hasta", filtrosAplicados.hasta && formatearFecha(filtrosAplicados.hasta)],
-          ])}
+            exportarFiltros={armarFiltros([
+              ["Búsqueda", filtrosAplicados.busqueda],
+              [
+                "Producto",
+                filtrosAplicados.producto_id &&
+                  (productos.find((p) => String(p.id) === filtrosAplicados.producto_id)?.nombre ??
+                    filtrosAplicados.producto_id),
+              ],
+              ["Lote de insumo", filtrosAplicados.lote_insumo],
+              ["Desde", filtrosAplicados.desde && formatearFecha(filtrosAplicados.desde)],
+              ["Hasta", filtrosAplicados.hasta && formatearFecha(filtrosAplicados.hasta)],
+            ])}
             onVer={setLoteSeleccionado}
             mostrarOperador={true}
             hayFiltrosActivos={hayFiltrosActivos}
+            codigoLoteInsumoFiltro={filtrosAplicados.lote_insumo}
           />
           <Box mt={4}>
             <TablePagination

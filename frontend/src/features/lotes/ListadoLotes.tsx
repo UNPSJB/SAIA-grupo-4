@@ -21,6 +21,8 @@ interface ListadoLotesProps {
   onVer: (lote: Lote) => void;
   mostrarOperador?: boolean;
   hayFiltrosActivos?: boolean;
+  /** Código de lote de insumo buscado: si viene, se muestra la coincidencia bajo el producto. */
+  codigoLoteInsumoFiltro?: string;
 }
 
 // Lotes cuyo producto no tiene vida útil cargada no tienen vencimiento.
@@ -33,6 +35,61 @@ const formatearFechaSoloDia = (fechaIso: string) => {
   return fechaIso;
 };
 
+interface CoincidenciaLoteInsumo {
+  codigo: string;
+  insumoNombre: string;
+}
+
+/**
+ * Busca en los consumos del lote de producción los lotes de insumo cuyo código
+ * coincide con el buscado (exacto, sin distinguir mayúsculas, igual que el backend).
+ */
+const obtenerCoincidencias = (
+  lote: Lote,
+  codigoBuscado: string,
+): CoincidenciaLoteInsumo[] => {
+  const buscado = codigoBuscado.trim().toLowerCase();
+  if (!buscado) return [];
+
+  const vistos = new Set<number>();
+  const coincidencias: CoincidenciaLoteInsumo[] = [];
+
+  for (const consumo of lote.consumos_insumos ?? []) {
+    for (const detalle of consumo.detalles_lotes ?? []) {
+      if (detalle.codigo_lote_insumo.trim().toLowerCase() !== buscado) continue;
+      if (vistos.has(detalle.lote_insumo_id)) continue;
+      vistos.add(detalle.lote_insumo_id);
+      coincidencias.push({
+        codigo: detalle.codigo_lote_insumo,
+        insumoNombre: consumo.insumo_nombre,
+      });
+    }
+  }
+  return coincidencias;
+};
+
+const IndicadorCoincidencia = ({
+  coincidencias,
+}: {
+  coincidencias: CoincidenciaLoteInsumo[];
+}) => {
+  if (coincidencias.length === 0) return null;
+  return (
+    <VStack align="flex-start" gap={1} mt={1}>
+      {coincidencias.map((c) => (
+        <Badge
+          key={`${c.insumoNombre}-${c.codigo}`}
+          colorPalette="orange"
+          variant="subtle"
+          whiteSpace="normal"
+        >
+          Insumo detectado: {c.codigo} ({c.insumoNombre})
+        </Badge>
+      ))}
+    </VStack>
+  );
+};
+
 export const ListadoLotes = ({
   lotes,
   exportarLotes = lotes,
@@ -41,6 +98,7 @@ export const ListadoLotes = ({
   onVer,
   mostrarOperador = true,
   hayFiltrosActivos = false,
+  codigoLoteInsumoFiltro = "",
 }: ListadoLotesProps) => {
   if (loading) {
     return <LoadingState message="Cargando listado de lotes..." />;
@@ -75,9 +133,14 @@ export const ListadoLotes = ({
       label: "Producto",
       valorExportacion: (l) => l.producto_nombre || `Producto #${l.producto_id}`,
       render: (l) => (
-        <Badge colorPalette="purple" variant="subtle">
-          {l.producto_nombre || `Producto #${l.producto_id}`}
-        </Badge>
+        <Box>
+          <Badge colorPalette="purple" variant="subtle">
+            {l.producto_nombre || `Producto #${l.producto_id}`}
+          </Badge>
+          <IndicadorCoincidencia
+            coincidencias={obtenerCoincidencias(l, codigoLoteInsumoFiltro)}
+          />
+        </Box>
       ),
     },
     {
@@ -171,6 +234,10 @@ export const ListadoLotes = ({
               <Text fontWeight="semibold" fontSize="md">
                 {l.producto_nombre || `Producto #${l.producto_id}`}
               </Text>
+
+              <IndicadorCoincidencia
+                coincidencias={obtenerCoincidencias(l, codigoLoteInsumoFiltro)}
+              />
 
               <Text fontSize="xs" color="gray.600">
                 Cantidad: <strong>{l.cantidad_producida} {l.unidad_medida_simbolo || ""}</strong>
