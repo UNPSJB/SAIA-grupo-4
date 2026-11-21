@@ -1111,12 +1111,13 @@ def test_no_se_puede_dar_de_baja_equipo_con_receta_activa(datos_base):
     res_act = client.post(f"/recetas/{rec_id}/activar")
     assert res_act.status_code == 200
 
-    # Intentar dar de baja el equipo via DELETE
+    # Intentar dar de baja el equipo via DELETE (CA 2: bloquea y lista asociaciones)
     res_del = client.delete(f"/equipos/{datos_base['equipo_id']}")
     assert res_del.status_code == 409
-    assert res_del.json()["detail"] == (
-        f"No se puede dar de baja el equipo '{datos_base['equipo_nombre']}' porque forma parte de la receta activa 'Receta Bloqueo Equipo'. Modificá o inhabilitá la receta antes de dar de baja el equipo."
-    )
+    detail = res_del.json()["detail"]
+    assert f"No se puede dar de baja el equipo '{datos_base['equipo_nombre']}'" in detail["code"]
+    assert len(detail["asociaciones"]) >= 1
+    assert any(a["tipo"] == "receta" for a in detail["asociaciones"])
 
     # Intentar dar de baja el equipo via PUT con activo=False
     res_put = client.put(f"/equipos/{datos_base['equipo_id']}", json={"activo": False})
@@ -1129,7 +1130,6 @@ def test_no_se_puede_dar_de_baja_equipo_con_receta_activa(datos_base):
     client.post(f"/recetas/{rec_id}/inhabilitar")
     res_del_ok = client.delete(f"/equipos/{datos_base['equipo_id']}")
     assert res_del_ok.status_code == 200
-
 
 def test_composicion_porcentual_endpoint(datos_base):
     res_receta = client.post("/recetas/", json={
