@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
@@ -22,6 +22,9 @@ class Equipo(ModeloBase):
     sector_id: Mapped[int] = mapped_column(ForeignKey("sectores.id"), nullable=False)
     ubicacion: Mapped[str | None] = mapped_column(String(100), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    tipo_baja: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    motivo_baja: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     frecuencia_calibracion_dias: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fecha_ultima_calibracion: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -44,6 +47,20 @@ class Equipo(ModeloBase):
         ),
     )
 
+    @property
+    def operable(self) -> bool:
+        from src.utils.operabilidad import evaluar_equipo
+        return evaluar_equipo(self).operable
+
+    @property
+    def estado_vencimiento(self) -> str:
+        from src.utils.operabilidad import evaluar_equipo
+        return evaluar_equipo(self).estado_vencimiento.value
+
+    @property
+    def motivos_no_operables(self) -> list[str]:
+        from src.utils.operabilidad import evaluar_equipo
+        return evaluar_equipo(self).motivos_no_operables
 
 class CalibracionEquipo(ModeloBase):
     __tablename__ = "calibraciones_equipos"

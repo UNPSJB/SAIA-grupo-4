@@ -1,6 +1,7 @@
 from typing import Annotated, Optional, List
 from src.equipos.models import Equipo, CalibracionEquipo
-from datetime import date
+from datetime import date, datetime
+from src.utils.operabilidad import AsociacionOperativa, EstadoVencimientoOperabilidad
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.sectores.schemas import Sector
@@ -87,6 +88,13 @@ class EquipoUpdate(BaseModel):
 class Equipo(EquipoBase):
     id: int
     activo: bool
+    operable: bool = True
+    estado_vencimiento: EstadoVencimientoOperabilidad = EstadoVencimientoOperabilidad.SIN_CONFIGURAR
+    motivos_no_operables: List[str] = Field(default_factory=list)
+    tipo_baja: Optional[str] = None
+    motivo_baja: Optional[str] = None
+    fecha_baja: Optional[datetime] = None
+    advertencias_asociaciones: List[AsociacionOperativa] = Field(default_factory=list)
     sector: Sector
     calibraciones: Optional[List[CalibracionEquipo]] = []
     model_config = ConfigDict(from_attributes=True)

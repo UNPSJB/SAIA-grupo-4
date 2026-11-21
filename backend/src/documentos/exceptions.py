@@ -41,9 +41,19 @@ class FormatoJSONInvalido(BadRequest):
     
 class DatosValidacionError(BadRequest):
     def __init__(self, errores: list):
+        errores_serializables = []
+        for err in errores:
+            item = dict(err)
+            if isinstance(item.get("ctx"), dict):
+                item["ctx"] = {
+                    k: str(v) if isinstance(v, BaseException) else v
+                    for k, v in item["ctx"].items()
+                }
+            errores_serializables.append(item)
+
         super().__init__(
             detail={
                 "code": ErrorCode.DATOS_VALIDACION_ERROR,
-                "errores": errores
+                "errores": errores_serializables,
             }
         )

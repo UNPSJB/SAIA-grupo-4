@@ -11,7 +11,14 @@ from src.tipo_elemento_limpieza.models import TipoElementoLimpieza
 from src.equipos.services import leer_equipo
 from src.sectores.services import leer_sector
 from src.utils.busqueda import condicion_busqueda
-
+from src.utils.operabilidad import (
+    EstadoVencimientoOperabilidad,
+    RecursoConAsociacionesActivas,
+    TipoBaja,
+    evaluar_elemento_limpieza,
+    obtener_asociaciones_elemento_limpieza,
+    registrar_baja_logica,
+)
 
 
 def _validar_tipo(db: Session, tipo_id: int) -> None:
@@ -85,6 +92,7 @@ def listar_elementos_limpieza(
     equipo_id: int | None = None,
     activo: bool | None = None,
     busqueda: str | None = None,
+    solo_operables: bool | None = False,
 ):
     query = select(ElementoLimpieza)
 
@@ -131,7 +139,10 @@ def listar_elementos_limpieza(
             or_(ElementoLimpieza.equipo_id == equipo_id, filtro_general)
         )
 
-    return db.scalars(query).all()
+    elementos = db.scalars(query).all()
+    if solo_operables:
+        elementos = [el for el in elementos if evaluar_elemento_limpieza(el).operable]
+    return elementos
 
 
 def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate) -> schemas.ElementoLimpiezaUpdate:
@@ -157,6 +168,10 @@ def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas
                 raise exceptions.ElementoActivo()
             else:
                 raise exceptions.ElementoBaja()
+        if elemento.activo is True:
+            update_data["tipo_baja"] = None
+            update_data["motivo_baja"] = None
+            update_data["fecha_baja"] = None    
 
     if update_data:
         db.execute(update(ElementoLimpieza).where(ElementoLimpieza.id == elemento_id).values(**update_data))
@@ -169,6 +184,38 @@ def modificar_elemento_limpieza(db: Session, elemento_id: int, elemento: schemas
     return db_elemento
 
 
-def eliminar_elemento_limpieza(db: Session, elemento_id: int) -> schemas.ElementoLimpiezaDelete:
-    elemento = schemas.ElementoLimpiezaUpdate(activo=False)
-    return modificar_elemento_limpieza(db, elemento_id, elemento)
+def eliminar_elemento_limpieza(
+    db: Session, elemento_id: int, motivo: str | None = None
+) -> ElementoLimpieza:
+    db_elemento = leer_elemento_limpieza(db, elemento_id)
+    if not db_elemento.activo:
+        raise exceptions.ElementoBaja()
+
+    estado_op = evaluar_elemento_limpieza(db_elemento)
+    asociaciones = obtener_asociaciones_elemento_limpieza(db, elemento_id)
+
+    if estado_op.operable and asociaciones:
+        resumen = ", ".join(a.nombre for a in asociaciones)
+        raise RecursoConAsociacionesActivas(
+            mensaje=(
+                f"No se puede dar de baja el elemento '{db_elemento.nombre}' porque "
+                f"tiene asociaciones operativas activas ({resumen})."
+            ),
+            asociaciones=asociaciones,
+        )
+
+    motivo_final = (motivo or "").strip() or (
+        "; ".join(estado_op.motivos_no_operables)
+        if estado_op.estado_vencimiento == EstadoVencimientoOperabilidad.VENCIDO
+        else "Baja manual"
+    )
+    registrar_baja_logica(db_elemento, tipo_baja=TipoBaja.MANUAL, motivo=motivo_final)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.ErrorInesperado()
+    db.refresh(db_elemento)
+    db_elemento.advertencias_asociaciones = asociaciones
+    return db_elemento

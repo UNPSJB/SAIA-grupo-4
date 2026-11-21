@@ -20,9 +20,10 @@ def read_equipos(
     activo: bool | None = None,
     sector_id: int | None = None,
     vencimiento: Literal["vencido", "proximo", "al_dia"] | None = None,
+    solo_operables: bool | None = False,
     db: Session = Depends(get_db),
 ):
-    return services.listar_equipos(db, busqueda, activo, sector_id, vencimiento)
+    return services.listar_equipos(db, busqueda, activo, sector_id, vencimiento, solo_operables)
 
 @router.get("/{equipo_id}", response_model=schemas.Equipo)
 def read_equipo(equipo_id: int, db: Session = Depends(get_db)):
@@ -33,8 +34,8 @@ def update_equipo(equipo_id: int, equipo: schemas.EquipoUpdate, db: Session = De
     return services.modificar_equipo(db, equipo_id, equipo)
 
 @router.delete("/{equipo_id}", response_model=schemas.Equipo)
-def delete_equipo(equipo_id: int, db: Session = Depends(get_db)):
-    return services.eliminar_equipo(db, equipo_id)
+def delete_equipo(equipo_id: int, motivo: str | None = None, db: Session = Depends(get_db)):
+    return services.eliminar_equipo(db, equipo_id, motivo=motivo)
 
 @router.post(
     "/{equipo_id}/calibraciones",

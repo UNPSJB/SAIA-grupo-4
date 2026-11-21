@@ -22,22 +22,26 @@ def leer_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
     return services.leer_elemento_limpieza(db, elemento_id)
 
 @router.delete("/{elemento_id}", response_model=schemas.ElementoLimpieza)
-def eliminar_elemento_limpieza(elemento_id: int, db: Session = Depends(get_db)):
-    return services.eliminar_elemento_limpieza(db, elemento_id)
-
+@router.delete("/{elemento_id}", response_model=schemas.ElementoLimpieza)
+def eliminar_elemento_limpieza(
+    elemento_id: int,
+    motivo: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return services.eliminar_elemento_limpieza(db, elemento_id, motivo=motivo)
 @router.put("/{elemento_id}", response_model=schemas.ElementoLimpieza)
-def modificar_elemento_limpieza(elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate, db: Session = Depends(get_db)):
-    return services.modificar_elemento_limpieza(db, elemento_id, elemento)
+def modificar_elemento_limpieza(elemento_id: int, elemento: schemas.ElementoLimpiezaUpdate, db: Session = Depends(get_db), solo_operables: bool | None = False):
+    return services.modificar_elemento_limpieza(db, elemento_id, elemento, solo_operables=solo_operables)
 
 # Los listados por sector/equipo se usan para asignar elementos (p. ej. en un
 # plan POES), por lo que nunca deben incluir elementos dados de baja.
 @router.get("/por-sector/{sector_id}", response_model=list[schemas.ElementoLimpieza])
-def listar_elementos_por_sector(sector_id: int, db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db, sector_id=sector_id, activo=True)
+def listar_elementos_por_sector(sector_id: int, db: Session = Depends(get_db), solo_operables: bool | None = False):
+    return services.listar_elementos_limpieza(db, sector_id=sector_id, activo=True, solo_operables=solo_operables)
 
 @router.get("/por-equipo/{equipo_id}", response_model=list[schemas.ElementoLimpieza])
-def listar_elementos_por_equipo(equipo_id: int, db: Session = Depends(get_db)):
-    return services.listar_elementos_limpieza(db, equipo_id=equipo_id, activo=True)
+def listar_elementos_por_equipo(equipo_id: int, db: Session = Depends(get_db), solo_operables: bool | None = False):
+    return services.listar_elementos_limpieza(db, equipo_id=equipo_id, activo=True, solo_operables=solo_operables)
 
 @router.get("/", response_model=list[schemas.ElementoLimpieza])
 def listar_elementos_limpieza(

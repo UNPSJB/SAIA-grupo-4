@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import Annotated, Optional
 from datetime import datetime
-
+from src.utils.operabilidad import AsociacionOperativa, EstadoVencimientoOperabilidad
 
 class TipoElementoLimpieza(BaseModel):
     id: int
@@ -67,6 +67,13 @@ class ElementoLimpieza(ElementoLimpiezaBase):
     id: int
     codigo: str
     fecha_ultimo_recambio: Optional[datetime]
+    operable: bool = True
+    estado_vencimiento: EstadoVencimientoOperabilidad = EstadoVencimientoOperabilidad.SIN_CONFIGURAR
+    motivos_no_operables: list[str] = Field(default_factory=list)
+    tipo_baja: Optional[str] = None
+    motivo_baja: Optional[str] = None
+    fecha_baja: Optional[datetime] = None
+    advertencias_asociaciones: list[AsociacionOperativa] = Field(default_factory=list)
     tipo: TipoElementoLimpieza
     sector: Optional[Sector]
     equipo: Optional[Equipo]

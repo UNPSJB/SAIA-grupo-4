@@ -7,7 +7,11 @@ from src.recambios import schemas, exceptions
 from src.recambios.constants import Constantes, EstadoRecambio
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.elementos_limpieza.services import leer_elemento_limpieza
-
+from src.utils.operabilidad import (
+    TipoBaja,
+    evaluar_elemento_limpieza,
+    intentar_reactivacion_automatica,
+)
 
 def calcular_estado(ultimo: date, frecuencia_dias: int, hoy: date) -> tuple[date, int, EstadoRecambio]:
     """Regla de semaforización: función pura, no depende de la base ni de la API.
@@ -63,7 +67,7 @@ def _validar_fecha_no_anterior(db: Session, elemento, fecha: date) -> None:
 
 def registrar_recambio(db: Session, datos: schemas.RecambioCreate) -> schemas.Recambio:
     db_elemento = leer_elemento_limpieza(db, datos.elemento_id)
-    if not db_elemento.activo:
+    if not db_elemento.activo and db_elemento.tipo_baja != TipoBaja.AUTOMATICA_VENCIMIENTO.value:
         raise exceptions.ElementoInactivo()
     if db_elemento.frecuencia_recambio_dias is None:
         raise exceptions.SinFrecuencia()
@@ -81,6 +85,10 @@ def registrar_recambio(db: Session, datos: schemas.RecambioCreate) -> schemas.Re
     )
     db.add(db_recambio)
     db_elemento.fecha_ultimo_recambio = fecha_dt
+    if not db_elemento.activo:
+        intentar_reactivacion_automatica(
+            db_elemento, evaluar_elemento_limpieza(db_elemento).estado_vencimiento
+        )
     # Un solo commit: historial y elemento se guardan juntos o no se guarda ninguno
     try:
         db.commit()

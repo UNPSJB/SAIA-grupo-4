@@ -16,6 +16,9 @@ class Documento(ModeloBase):
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+    tipo_baja: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    motivo_baja: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     versiones: Mapped[list["VersionDocumento"]] = relationship(
         "VersionDocumento",
@@ -27,6 +30,20 @@ class Documento(ModeloBase):
     def version_vigente(self) -> Optional["VersionDocumento"]:
         # next() es más eficiente que un for: frena apenas encuentra la versión True
         return next((v for v in self.versiones if v.es_vigente), None)
+    @property
+    def operable(self) -> bool:
+        from src.utils.operabilidad import evaluar_documento
+        return evaluar_documento(self).operable
+
+    @property
+    def estado_vencimiento(self) -> str:
+        from src.utils.operabilidad import evaluar_documento
+        return evaluar_documento(self).estado_vencimiento.value
+
+    @property
+    def motivos_no_operables(self) -> list[str]:
+        from src.utils.operabilidad import evaluar_documento
+        return evaluar_documento(self).motivos_no_operables
     
 class VersionDocumento(ModeloBase):
     __tablename__ = "versiones_documento"

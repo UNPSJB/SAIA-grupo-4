@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from src.database import engine
 from src.models import ModeloBase
+from src.utils.operabilidad import asegurar_columnas_baja_logica
 
 # Importamos la configuración validada por Pydantic
 from src.config import settings
@@ -63,6 +64,7 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    asegurar_columnas_baja_logica(engine)
     with Session(engine) as db:
         inicializar_capacidades_sistema(db)
         inicializar_vista_publica(db)

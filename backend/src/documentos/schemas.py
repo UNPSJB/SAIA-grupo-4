@@ -1,7 +1,8 @@
 import re
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator, Field
 from src.documentos.constants import ErrorCode, EstadoVencimiento, TipoDocumentoEnum
+from src.utils.operabilidad import AsociacionOperativa, EstadoVencimientoOperabilidad
 
 PATRON_VERSION = re.compile(r"^[vV]?(\d+)\.(\d+)$")
 
@@ -114,6 +115,13 @@ class DocumentoUpdate(BaseModel):
 class Documento(DocumentoBase):
     id: int
     activo: bool
+    operable: bool = True
+    estado_vencimiento: EstadoVencimientoOperabilidad = EstadoVencimientoOperabilidad.SIN_CONFIGURAR
+    motivos_no_operables: list[str] = Field(default_factory=list)
+    tipo_baja: str | None = None
+    motivo_baja: str | None = None
+    fecha_baja: datetime | None = None
+    advertencias_asociaciones: list[AsociacionOperativa] = Field(default_factory=list)
     fecha_creacion: datetime
     version_vigente: VersionDocumento | None = None  # Se mapea con el @property
 

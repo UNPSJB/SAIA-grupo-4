@@ -29,6 +29,7 @@ def listar_documentos(
     busqueda: str | None = None,
     tipo_documento: TipoDocumentoEnum | None = None,
     activo: bool | None = None,
+    solo_operables: bool | None = None,
     db: Session = Depends(get_db),
 ):
     """Devuelve los documentos con su historial completo, con filtros opcionales."""
@@ -37,6 +38,7 @@ def listar_documentos(
         busqueda=busqueda,
         tipo_documento=tipo_documento,
         activo=activo,
+        solo_operables=solo_operables,
     )
 
 
@@ -76,9 +78,9 @@ def modificar_documento(
 
 
 @router.delete("/{documento_id}", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_documento(documento_id: int, db: Session = Depends(get_db)):
+def eliminar_documento(documento_id: int, motivo: str | None = None, db: Session = Depends(get_db)):
     """Baja lógica del documento."""
-    services.eliminar_documento(db, documento_id)
+    services.eliminar_documento(db, documento_id, motivo=motivo)
     return None
 
 # ENDPOINTS de Versiones

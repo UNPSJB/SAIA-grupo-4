@@ -19,6 +19,16 @@ from sqlalchemy.orm import Session
 from src.equipos.models import Equipo, CalibracionEquipo
 from src.equipos.schemas import CalibracionEquipoCreate, AlertaCalibracion
 from src.utils.busqueda import condicion_busqueda
+from src.utils.operabilidad import (
+    EstadoVencimientoOperabilidad,
+    RecursoConAsociacionesActivas,
+    TipoBaja,
+    evaluar_equipo,
+    intentar_reactivacion_automatica,
+    limpiar_datos_baja,
+    obtener_asociaciones_equipo,
+    registrar_baja_logica,
+)
 
 UMBRAL_DIAS_PROXIMO = 15
 EXTENSIONES_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
@@ -73,6 +83,7 @@ def listar_equipos(
     activo: bool | None = None,
     sector_id: int | None = None,
     vencimiento: str | None = None,
+    solo_operables: bool | None =None
 ) -> List[Equipo]:
     consulta = select(Equipo)
 
@@ -110,7 +121,9 @@ def listar_equipos(
             )[2]
             == vencimiento
         ]
-
+    if solo_operables:
+        equipos = [eq for eq in equipos if evaluar_equipo(eq).operable]
+        
     return equipos
 
 
@@ -142,6 +155,9 @@ def modificar_equipo(db: Session, equipo_id: int, equipo: schemas.EquipoUpdate) 
         # El sector actual también debe estar activo.
         if not db_equipo.sector.activo:
             raise sector_exceptions.SectorInactivo()
+        update_data["tipo_baja"] = None
+        update_data["motivo_baja"] = None
+        update_data["fecha_baja"] = None
 
     # 2. EQUIPO ACTIVO:
     else:
@@ -237,25 +253,30 @@ def modificar_equipo(db: Session, equipo_id: int, equipo: schemas.EquipoUpdate) 
     return db_equipo
 
 
-def eliminar_equipo(db: Session, equipo_id: int) -> Equipo:
+def eliminar_equipo(
+    db: Session, equipo_id: int, motivo: str | None = None
+) -> Equipo:
     db_equipo = leer_equipo(db, equipo_id)
+    estado_op = evaluar_equipo(db_equipo)
+    asociaciones = obtener_asociaciones_equipo(db, equipo_id)
 
-    receta_activa = db.scalar(
-        select(Receta)
-        .join(PasoReceta, PasoReceta.receta_id == Receta.id)
-        .join(PasoEquipo, PasoEquipo.paso_id == PasoReceta.id)
-        .where(
-            PasoEquipo.equipo_id == equipo_id,
-            Receta.estado == EstadoReceta.ACTIVA,
+    if estado_op.operable and asociaciones:
+        resumen = ", ".join(a.nombre for a in asociaciones)
+        raise RecursoConAsociacionesActivas(
+            mensaje=(
+                f"No se puede dar de baja el equipo '{db_equipo.nombre}' porque "
+                f"tiene asociaciones operativas activas ({resumen})."
+            ),
+            asociaciones=asociaciones,
         )
+
+    motivo_final = (motivo or "").strip() or (
+        "; ".join(estado_op.motivos_no_operables)
+        if estado_op.estado_vencimiento == EstadoVencimientoOperabilidad.VENCIDO
+        else "Baja manual"
     )
-    if receta_activa:
-        raise exceptions.EquipoConRecetaActiva(
-            equipo_nombre=db_equipo.nombre,
-            receta_nombre=receta_activa.nombre_receta,
-        )
+    registrar_baja_logica(db_equipo, tipo_baja=TipoBaja.MANUAL, motivo=motivo_final)
 
-    db_equipo.activo = False
     try:
         db.commit()
         db.refresh(db_equipo)
@@ -265,6 +286,7 @@ def eliminar_equipo(db: Session, equipo_id: int) -> Equipo:
             detail="Error de integridad al intentar guardar el equipo."
         )
 
+    db_equipo.advertencias_asociaciones = asociaciones
     return db_equipo
 
 def calcular_semaforo_equipo(fecha_ultima: date, frecuencia_dias: int, fecha_ref: date | None = None) -> tuple[date, int, str]:
@@ -308,6 +330,11 @@ def registrar_calibracion(
     db.add(nueva_calibracion)
 
     db_equipo.fecha_ultima_calibracion = fecha_calibracion
+   
+    if not db_equipo.activo and db_equipo.sector and db_equipo.sector.activo:
+        intentar_reactivacion_automatica(
+            db_equipo, evaluar_equipo(db_equipo).estado_vencimiento
+        )
 
     try:
         db.commit()

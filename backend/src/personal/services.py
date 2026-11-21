@@ -13,6 +13,15 @@ from src.auth.services import (
     nombres_capacidades_activas,
 )
 from src.auth.utils import get_password_hash
+from src.utils.operabilidad import (
+    EstadoVencimientoOperabilidad,
+    RecursoConAsociacionesActivas,
+    TipoBaja,
+    evaluar_persona,
+    intentar_reactivacion_automatica,
+    obtener_asociaciones_persona,
+    registrar_baja_logica,
+)
 
 from src.personal.models import Persona, PersonaCapacidad, VencimientoPersonal
 from src.personal import schemas, exceptions
@@ -142,7 +151,7 @@ def vencimientos_con_estado(db_persona: Persona, hoy: date) -> List[schemas.Venc
     vencimientos.sort(key=lambda v: v.dias_restantes)
     return vencimientos
 
-def listar_personal(db: Session, busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None) -> List[schemas.PersonaConVencimientos]:
+def listar_personal(db: Session, busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None, solo_operables: bool | None = False) -> List[schemas.PersonaConVencimientos]:
     consulta = select(Persona)
     # Búsqueda libre: coincidencia parcial, sin mayúsculas ni acentos, en las columnas de texto visibles
     if busqueda and busqueda.strip():
@@ -161,6 +170,8 @@ def listar_personal(db: Session, busqueda: str | None = None, documento_id: int 
         # Filtro por estado: personas con al menos un vencimiento activo en ese estado.
         # Se filtra acá y no en la consulta porque el estado se calcula, no se guarda.
         if estado is not None and not any(v.estado == estado for v in vencimientos):
+            continue
+        if solo_operables and not evaluar_persona(db_persona).operable:
             continue
         datos = schemas.Persona.model_validate(db_persona).model_dump(exclude={"vencimientos"})
         personal.append(schemas.PersonaConVencimientos(**datos, vencimientos=vencimientos))
@@ -211,7 +222,7 @@ def modificar_vencimiento(db: Session, persona_id: int, vencimiento_id: int, ven
     db_vencimiento = leer_vencimiento(db, persona_id, vencimiento_id)
     update_data = vencimiento.model_dump(exclude_unset=True)
 
-    if not db_persona.activo:
+    if not db_persona.activo and db_persona.tipo_baja != TipoBaja.AUTOMATICA_VENCIMIENTO.value:
         raise exceptions.PersonaInactiva()
 
     if "fecha_vencimiento" in update_data and update_data["fecha_vencimiento"] is None:
@@ -225,6 +236,25 @@ def modificar_vencimiento(db: Session, persona_id: int, vencimiento_id: int, ven
 
     if update_data:
         db.execute(update(VencimientoPersonal).where(VencimientoPersonal.id == vencimiento_id).values(**update_data))
+    
+    db.flush()
+    db.refresh(db_persona)
+    if not db_persona.activo:
+        if intentar_reactivacion_automatica(
+            db_persona, evaluar_persona(db_persona).estado_vencimiento
+        ):
+            asignaciones_hist = db.scalars(
+                select(PersonaCapacidad).where(
+                    PersonaCapacidad.persona_id == persona_id,
+                    PersonaCapacidad.fecha_hasta.isnot(None),
+                )
+            ).all()
+            if asignaciones_hist:
+                ultima_baja = max(a.fecha_hasta for a in asignaciones_hist)
+                for vieja in asignaciones_hist:
+                    if vieja.fecha_hasta == ultima_baja:
+                        vieja.activo = True
+                        vieja.fecha_hasta = None
 
     try:
         db.commit()
@@ -316,6 +346,9 @@ def modificar_persona(db: Session, persona_id: int, persona: schemas.PersonaUpda
         # Si la persona está inactiva, SOLO permitimos reactivarla
         if update_data != {"activo": True}:
             raise exceptions.PersonaInactiva()
+        update_data["tipo_baja"] = None
+        update_data["motivo_baja"] = None
+        update_data["fecha_baja"] = None
 
         # Se busca el historial de capacidades que la persona tenía antes de ser dada de baja
         asignaciones_historicas = db.scalars(select(PersonaCapacidad).where(
@@ -410,20 +443,47 @@ def modificar_persona(db: Session, persona_id: int, persona: schemas.PersonaUpda
         raise exceptions.Conflict(detail="Error de integridad al actualizar la persona.")
     return db_persona
 
-def eliminar_persona(db: Session, persona_id: int) -> Persona:
+def eliminar_persona(
+    db: Session, persona_id: int, motivo: str | None = None
+) -> Persona:
     db_persona = leer_persona(db, persona_id)
-    
+
     validar_ultimo_administrador(db, persona_id)
 
-    db_persona.activo = False
-    db.execute(update(PersonaCapacidad).where(
-        PersonaCapacidad.persona_id == persona_id, PersonaCapacidad.activo == True
-    ).values(activo=False, fecha_hasta=datetime.now()))
-    
+    estado_op = evaluar_persona(db_persona)
+    asociaciones = obtener_asociaciones_persona(db, persona_id)
+
+    if estado_op.operable and asociaciones:
+        resumen = ", ".join(a.nombre for a in asociaciones)
+        raise RecursoConAsociacionesActivas(
+            mensaje=(
+                f"No se puede dar de baja a '{db_persona.nombre} {db_persona.apellido}' "
+                f"porque tiene asociaciones operativas activas ({resumen})."
+            ),
+            asociaciones=asociaciones,
+        )
+
+    motivo_final = (motivo or "").strip() or (
+        "; ".join(estado_op.motivos_no_operables)
+        if estado_op.estado_vencimiento == EstadoVencimientoOperabilidad.VENCIDO
+        else "Baja manual"
+    )
+    registrar_baja_logica(db_persona, tipo_baja=TipoBaja.MANUAL, motivo=motivo_final)
+    db.execute(
+        update(PersonaCapacidad)
+        .where(
+            PersonaCapacidad.persona_id == persona_id,
+            PersonaCapacidad.activo == True,
+        )
+        .values(activo=False, fecha_hasta=datetime.now())
+    )
+
     try:
         db.commit()
         db.refresh(db_persona)
     except IntegrityError:
         db.rollback()
         raise exceptions.Conflict(detail="Error de integridad al intentar eliminar la persona.")
+
+    db_persona.advertencias_asociaciones = asociaciones
     return db_persona

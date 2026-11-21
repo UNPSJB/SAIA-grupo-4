@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from src.utils.operabilidad import AsociacionOperativa, EstadoVencimientoOperabilidad
 from pydantic import BaseModel, ConfigDict, Field, EmailStr, model_validator
 from typing import Optional, Annotated, List
 from src.capacidades.schemas import Capacidad
@@ -82,6 +83,13 @@ class Persona(PersonaBase):
     id: int
     fecha_alta: datetime
     activo: bool
+    operable: bool = True
+    estado_vencimiento: EstadoVencimientoOperabilidad = EstadoVencimientoOperabilidad.SIN_CONFIGURAR
+    motivos_no_operables: List[str] = Field(default_factory=list)
+    tipo_baja: Optional[str] = None
+    motivo_baja: Optional[str] = None
+    fecha_baja: Optional[datetime] = None
+    advertencias_asociaciones: List[AsociacionOperativa] = Field(default_factory=list)
     capacidades: List[PersonaCapacidad] = []
     vencimientos: List[VencimientoPersonal] = []
     tiene_password: bool

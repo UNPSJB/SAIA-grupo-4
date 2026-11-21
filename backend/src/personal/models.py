@@ -18,6 +18,9 @@ class Persona(ModeloBase):
     telefono: Mapped[str | None] = mapped_column(String(50), nullable=True)
     fecha_alta: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    tipo_baja: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    motivo_baja: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    fecha_baja: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     capacidades: Mapped[list["PersonaCapacidad"]] = relationship("PersonaCapacidad", back_populates="persona")
     vencimientos: Mapped[list["VencimientoPersonal"]] = relationship("VencimientoPersonal", back_populates="persona")
@@ -33,6 +36,21 @@ class Persona(ModeloBase):
     @property
     def tiene_password(self) -> bool:
         return self.password_hash is not None
+
+    @property
+    def operable(self) -> bool:
+        from src.utils.operabilidad import evaluar_persona
+        return evaluar_persona(self).operable
+
+    @property
+    def estado_vencimiento(self) -> str:
+        from src.utils.operabilidad import evaluar_persona
+        return evaluar_persona(self).estado_vencimiento.value
+
+    @property
+    def motivos_no_operables(self) -> list[str]:
+        from src.utils.operabilidad import evaluar_persona
+        return evaluar_persona(self).motivos_no_operables
 
 class PersonaCapacidad(ModeloBase):
     __tablename__ = "personal_capacidad"

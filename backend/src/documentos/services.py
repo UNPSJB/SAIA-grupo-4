@@ -18,6 +18,15 @@ from src.documentos import schemas, exceptions
 from src.personal.models import Persona
 from src.personal import exceptions as personal_exceptions
 from src.utils.busqueda import condicion_busqueda
+from src.utils.operabilidad import (
+    EstadoVencimientoOperabilidad,
+    RecursoConAsociacionesActivas,
+    TipoBaja,
+    evaluar_documento,
+    intentar_reactivacion_automatica,
+    obtener_asociaciones_documento,
+    registrar_baja_logica,
+)
 
 # Carpeta local de evidencias
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -153,6 +162,7 @@ def listar_documentos(
     busqueda: str | None = None,
     tipo_documento: TipoDocumentoEnum | None = None,
     activo: bool | None = None,
+    solo_operables: bool | None = None
 ) -> List[Documento]:
     """Devuelve documentos, opcionalmente filtrados por texto, tipo y estado."""
     query = select(Documento)
@@ -171,7 +181,10 @@ def listar_documentos(
     if activo is not None:
         query = query.where(Documento.activo.is_(activo))
 
-    return db.scalars(query).all()
+    docs = db.scalars(query).all()
+    if solo_operables:
+        docs = [doc for doc in docs if evaluar_documento(doc).operable]
+    return docs
 
 def modificar_documento(db: Session, documento_id: int, documento: schemas.DocumentoUpdate) -> Documento:
     db_doc = leer_documento(db, documento_id)
@@ -181,6 +194,9 @@ def modificar_documento(db: Session, documento_id: int, documento: schemas.Docum
         # Si está inactivo, SOLO se permite reactivar
         if update_data != {"activo": True}:
             raise exceptions.DocumentoInactivo()
+        update_data["tipo_baja"] = None
+        update_data["motivo_baja"] = None
+        update_data["fecha_baja"] = None
     else:
         # Se bloquea la baja por PATCH
         if update_data.get("activo") is False:
@@ -201,19 +217,39 @@ def modificar_documento(db: Session, documento_id: int, documento: schemas.Docum
     
     return db_doc
 
-def eliminar_documento(db: Session, documento_id: int) -> Documento:
+def eliminar_documento(
+    db: Session, documento_id: int, motivo: str | None = None
+) -> Documento:
     db_doc = leer_documento(db, documento_id)
-    db_doc.activo = False
-    
+    estado_op = evaluar_documento(db_doc)
+    asociaciones = obtener_asociaciones_documento(db, documento_id)
+
+    if estado_op.operable and asociaciones:
+        resumen = ", ".join(a.nombre for a in asociaciones)
+        raise RecursoConAsociacionesActivas(
+            mensaje=(
+                f"No se puede dar de baja el documento '{db_doc.titulo}' porque "
+                f"tiene asociaciones operativas activas ({resumen})."
+            ),
+            asociaciones=asociaciones,
+        )
+
+    motivo_final = (motivo or "").strip() or (
+        "; ".join(estado_op.motivos_no_operables)
+        if estado_op.estado_vencimiento == EstadoVencimientoOperabilidad.VENCIDO
+        else "Baja manual"
+    )
+    registrar_baja_logica(db_doc, tipo_baja=TipoBaja.MANUAL, motivo=motivo_final)
+
     try:
         db.commit()
         db.refresh(db_doc)
     except IntegrityError:
         db.rollback()
         raise exceptions.Conflict(detail="Error de integridad al intentar dar de baja el documento.")
-    
-    return db_doc
 
+    db_doc.advertencias_asociaciones = asociaciones
+    return db_doc
 
 def _obtener_ultima_version(versiones: list[VersionDocumento]) -> tuple[tuple[int, int], str] | None:
     """Devuelve ((mayor, menor), texto_version) de la versión más alta del documento."""
@@ -326,7 +362,7 @@ def renovar_vigencia_version(
 ) -> Documento:
     
     db_doc = leer_documento(db, documento_id)
-    if not db_doc.activo:
+    if not db_doc.activo and db_doc.tipo_baja != TipoBaja.AUTOMATICA_VENCIMIENTO.value:
         raise exceptions.DocumentoInactivo()
 
     version_objetivo = db.scalar(
@@ -352,6 +388,11 @@ def renovar_vigencia_version(
         registrado_por_id=datos.registrado_por_id,
     )
     db.add(nueva_revision)
+
+    if not db_doc.activo:
+        intentar_reactivacion_automatica(
+            db_doc, evaluar_documento(db_doc).estado_vencimiento
+        )
 
     try:
         db.commit()

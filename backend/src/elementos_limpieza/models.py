@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import ForeignKey, DateTime, func
+from sqlalchemy import ForeignKey, DateTime, func, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship, relationship
 from src.models import ModeloBase
 
@@ -19,9 +19,27 @@ class ElementoLimpieza(ModeloBase):
         DateTime(timezone=True), nullable=True, server_default=func.now()
     )
     activo: Mapped[bool] = mapped_column(default=True)
+    tipo_baja: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    motivo_baja: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    fecha_baja: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     tipo: Mapped["TipoElementoLimpieza"] = relationship(back_populates="elementos")
     sector: Mapped[Optional["Sector"]] = relationship(back_populates="elementos_limpieza")
     equipo: Mapped[Optional["Equipo"]] = relationship(back_populates="elementos_limpieza")
     
     tareas_asociadas: Mapped[list["TareaElementoLimpieza"]] = relationship("TareaElementoLimpieza", back_populates="elemento_limpieza")
+
+    @property
+    def operable(self) -> bool:
+        from src.utils.operabilidad import evaluar_elemento_limpieza
+        return evaluar_elemento_limpieza(self).operable
+
+    @property
+    def estado_vencimiento(self) -> str:
+        from src.utils.operabilidad import evaluar_elemento_limpieza
+        return evaluar_elemento_limpieza(self).estado_vencimiento.value
+
+    @property
+    def motivos_no_operables(self) -> list[str]:
+        from src.utils.operabilidad import evaluar_elemento_limpieza
+        return evaluar_elemento_limpieza(self).motivos_no_operables

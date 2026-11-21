@@ -14,8 +14,8 @@ def crear_persona(persona: schemas.PersonaCreate, db: Session = Depends(get_db))
     return services.crear_persona(db, persona)
 
 @router.get("/", response_model=list[schemas.PersonaConVencimientos])
-def read_personal(busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None, db: Session = Depends(get_db)):
-    return services.listar_personal(db, busqueda, documento_id, estado)
+def read_personal(busqueda: str | None = None, documento_id: int | None = None, estado: EstadoVencimiento | None = None, db: Session = Depends(get_db), solo_operables: bool | None = False):
+    return services.listar_personal(db, busqueda, documento_id, estado, solo_operables)
 
 @router.get("/{persona_id}", response_model=schemas.PersonaConVencimientos)
 def read_persona(persona_id: int, db: Session = Depends(get_db)):
@@ -38,5 +38,5 @@ def update_persona(persona_id: int, persona: schemas.PersonaUpdate, db: Session 
     return services.modificar_persona(db, persona_id, persona)
 
 @router.delete("/{persona_id}", response_model=schemas.Persona)
-def delete_persona(persona_id: int, db: Session = Depends(get_db)):
-    return services.eliminar_persona(db, persona_id)
+def delete_persona(persona_id: int, motivo: str | None = None, db: Session = Depends(get_db)):
+    return services.eliminar_persona(db, persona_id, motivo)
