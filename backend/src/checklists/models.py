@@ -37,6 +37,10 @@ class EjecucionTarea(ModeloBase):
     __table_args__ = (
         UniqueConstraint('id_tarea', 'fecha_programada', name='uix_tarea_fecha_programada'),
     )
+    @property
+    def alertas_recursos(self) -> list:
+        from src.utils.operabilidad import alertas_de_ejecucion_checklist
+        return alertas_de_ejecucion_checklist(self)
     
 class EjecucionInsumoQuimico(ModeloBase):
     __tablename__ = "ejecuciones_insumos_quimicos"

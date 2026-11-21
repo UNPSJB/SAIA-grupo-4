@@ -91,6 +91,10 @@ class Receta(ModeloBase):
     def tiene_lotes(self, valor: bool) -> None:
         self._tiene_lotes = valor
 
+    @property
+    def alertas_recursos(self) -> list:
+        from src.utils.operabilidad import alertas_de_receta
+        return alertas_de_receta(self)
 
 class PasoReceta(ModeloBase):
     __tablename__ = "pasos_receta"
@@ -144,3 +148,8 @@ class PasoInsumo(ModeloBase):
     
     paso: Mapped["PasoReceta"] = relationship(back_populates="insumos")
     insumo: Mapped["Insumo"] = relationship()
+    
+    @property
+    def alertas_recursos(self) -> list:
+        from src.utils.operabilidad import alertas_de_receta
+        return alertas_de_receta(self)

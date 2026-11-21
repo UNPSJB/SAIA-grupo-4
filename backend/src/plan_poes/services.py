@@ -14,6 +14,14 @@ from src.sectores.models import Sector
 from src.insumo_quimico.models import InsumoQuimico
 from src.elementos_limpieza.models import ElementoLimpieza
 from src.personal import exceptions as personal_exceptions
+from src.utils.operabilidad import (
+    RecursoNoOperable,
+    alerta_desde_elemento,
+    alerta_desde_equipo,
+    alertas_de_tarea_poes,
+    evaluar_elemento_limpieza,
+    evaluar_equipo,
+)
 
 def _validar_autor(db: Session, persona_id: int):
     """Valida que la persona que elabora el plan exista y esté activa."""
@@ -50,11 +58,14 @@ def _clonar_tarea(tarea_antigua: TareaPOES) -> TareaPOES:
     )
     
 def _validar_recursos_activos(
-    db: Session, 
-    equipo_id: Optional[int] = None, 
-    sector_id: Optional[int] = None, 
-    insumos: Optional[list] = None, 
-    elementos: Optional[list] = None
+    db: Session,
+    equipo_id: Optional[int] = None,
+    sector_id: Optional[int] = None,
+    insumos: Optional[list] = None,
+    elementos: Optional[list] = None,
+    validar_operabilidad: bool = True,
+    equipos_existentes: set[int] | None = None,
+    elementos_existentes: set[int] | None = None,
 ):
     """Valida recursos y asegura la compatibilidad de sectores y equipos cruzados."""
     tarea_sector_id = None
@@ -65,14 +76,66 @@ def _validar_recursos_activos(
         equipo = db.scalar(select(Equipo).where(Equipo.id == equipo_id))
         if not equipo or not equipo.activo:
             raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.EQUIPO, recurso_id=equipo_id)
-        tarea_sector_id = equipo.sector_id 
-            
+        if validar_operabilidad and (equipos_existentes is None or equipo_id not in equipos_existentes):
+            alerta_eq = alerta_desde_equipo(equipo)
+            if alerta_eq:
+                raise RecursoNoOperable(
+                    f"El equipo '{equipo.nombre}' no es operable: {' '.join(alerta_eq.motivos)}",
+                    [alerta_eq],
+                )
+        tarea_sector_id = equipo.sector_id
+
     if sector_id:
         sector = db.scalar(select(Sector).where(Sector.id == sector_id))
         if not sector or not sector.activo:
             raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.SECTOR, recurso_id=sector_id)
         tarea_sector_id = sector.id
 
+    # Closure para evaluar compatibilidad con reglas de Herencia y Aislamiento
+    def es_recurso_compatible(recurso_db, es_insumo: bool) -> bool:
+        if getattr(recurso_db, "sector_id", None) is None and getattr(recurso_db, "equipo_id", None) is None:
+            return True
+        if getattr(recurso_db, "equipo_id", None) is not None:
+            return recurso_db.equipo_id == tarea_equipo_id
+        if getattr(recurso_db, "sector_id", None) is not None:
+            if es_insumo:
+                return recurso_db.sector_id == tarea_sector_id
+            else:
+                return tarea_equipo_id is None and recurso_db.sector_id == tarea_sector_id
+        return False
+
+    # Se validan Insumos Químicos
+    if insumos:
+        for insumo in insumos:
+            insumo_id = insumo.get("insumo_quimico_id") if isinstance(insumo, dict) else insumo.insumo_quimico_id
+            ins_db = db.scalar(select(InsumoQuimico).where(InsumoQuimico.id == insumo_id))
+
+            if not ins_db or not ins_db.activo:
+                raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.INSUMO_QUIMICO, recurso_id=insumo_id)
+
+            if not es_recurso_compatible(ins_db, es_insumo=True):
+                raise exceptions.RecursoIncompatible(tipo_recurso=TipoRecurso.INSUMO_QUIMICO, recurso_id=insumo_id)
+
+    # Se validan Elementos de Limpieza
+    if elementos:
+        for elemento in elementos:
+            elemento_id = elemento.get("elemento_limpieza_id") if isinstance(elemento, dict) else elemento.elemento_limpieza_id
+            elem_db = db.scalar(select(ElementoLimpieza).where(ElementoLimpieza.id == elemento_id))
+
+            if not elem_db or not elem_db.activo:
+                raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.ELEMENTO_LIMPIEZA, recurso_id=elemento_id)
+
+            if validar_operabilidad and (elementos_existentes is None or elemento_id not in elementos_existentes):
+                alerta_el = alerta_desde_elemento(elem_db)
+                if alerta_el:
+                    raise RecursoNoOperable(
+                        f"El elemento de limpieza '{elem_db.nombre}' no es operable: {' '.join(alerta_el.motivos)}",
+                        [alerta_el],
+                    )
+
+            if not es_recurso_compatible(elem_db, es_insumo=False):
+                raise exceptions.RecursoIncompatible(tipo_recurso=TipoRecurso.ELEMENTO_LIMPIEZA, recurso_id=elemento_id)
+    
     # Closure para evaluar compatibilidad con reglas de Herencia y Aislamiento
     def es_recurso_compatible(recurso_db, es_insumo: bool) -> bool:
         # 1. Recurso General (sin equipo ni sector)
@@ -113,6 +176,13 @@ def _validar_recursos_activos(
             elem_db = db.scalar(select(ElementoLimpieza).where(ElementoLimpieza.id == elemento_id))
             
             if not elem_db or not elem_db.activo:
+                if validar_operabilidad and (elementos_existentes is None or elemento_id not in elementos_existentes):
+                    alerta_el = alerta_desde_elemento(elem_db)
+                    if alerta_el:
+                        raise RecursoNoOperable(
+                            f"El elemento de limpieza '{elem_db.nombre}' no es operable: {' '.join(alerta_el.motivos)}",
+                            [alerta_el],
+                        )
                 raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.ELEMENTO_LIMPIEZA, recurso_id=elemento_id)
             
             if not es_recurso_compatible(elem_db, es_insumo=False):
@@ -213,13 +283,24 @@ def modificar_plan(db: Session, plan_id: int, plan: schemas.PlanPOESUpdate) -> P
 def activar_plan(db: Session, plan_id: int) -> PlanPOES:
     """Pasa el borrador a activo, sella su fecha de emisión, y archiva el plan anterior."""
     plan_borrador = obtener_plan_por_id(db, plan_id)
-    
+
     es_borrador = (plan_borrador.activo == False and plan_borrador.fecha_hasta is None)
     if not es_borrador:
         raise exceptions.PlanNoEsBorrador()
-        
+
     if not plan_borrador.tareas:
         raise exceptions.PlanSinTareas()
+
+    alertas_plan = []
+    for tarea in plan_borrador.tareas:
+        if tarea.activo:
+            alertas_plan.extend(alertas_de_tarea_poes(tarea))
+    if alertas_plan:
+        nombres = ", ".join(sorted({a.nombre for a in alertas_plan}))
+        raise RecursoNoOperable(
+            f"No se puede activar el plan porque contiene recursos no operables ({nombres}).",
+            alertas_plan,
+        )
 
     # Transacción Atómica
     try:
@@ -238,7 +319,7 @@ def activar_plan(db: Session, plan_id: int) -> PlanPOES:
     except IntegrityError:
         db.rollback()
         raise exceptions.Conflict(detail="Error al intentar activar el plan.")
-        
+
     return plan_borrador
 
 def descartar_borrador(db: Session, plan_id: int) -> None:
@@ -395,7 +476,7 @@ def agregar_tarea_a_plan(db: Session, plan_id: int, tarea: schemas.TareaPOESCrea
         raise exceptions.Conflict(detail="Error al agregar la tarea al plan.")
     return nueva_tarea
 
-def modificar_tarea(db: Session, tarea_id: int, tarea_update: schemas.TareaPOESUpdate) -> TareaPOES:
+def modificar_tarea(db: Session, tarea_id: int, tarea_update: schemas.TareaPOESUpdate, elementos_existentes= None) -> TareaPOES:
     """Actualiza una tarea. Permite modificar relaciones enviando las listas completas."""
     tarea = obtener_tarea_por_id(db, tarea_id)
 

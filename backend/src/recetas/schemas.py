@@ -5,11 +5,18 @@ from typing import Annotated, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.recetas.constants import EstadoReceta
+from src.utils.operabilidad import (
+    AlertaRecursoNoOperable,
+    EstadoVencimientoOperabilidad,
+)
 
 class EquipoResumenOut(BaseModel):
     id: int
     nombre: str
     activo: bool = True
+    operable: bool = True
+    estado_vencimiento: EstadoVencimientoOperabilidad = EstadoVencimientoOperabilidad.SIN_CONFIGURAR
+    motivos_no_operables: List[str] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
 
 class InsumoResumenOut(BaseModel):
@@ -133,6 +140,7 @@ class Receta(RecetaBase):
     pasos: List[PasoRecetaOut] = []
     
     model_config = ConfigDict(from_attributes=True)
+    alertas_recursos: List[AlertaRecursoNoOperable] = Field(default_factory=list)
 
 
 class ItemComposicionPorcentualOut(BaseModel):

@@ -16,6 +16,12 @@ from src.checklists.models import EjecucionTarea, EjecucionInsumoQuimico
 from src.checklists.constants import EstadoEjecucion
 from src.checklists import exceptions
 from src.checklists import schemas
+from src.personal.models import Persona, VencimientoPersonal
+from src.utils.operabilidad import (
+    RecursoNoOperable,
+    alerta_desde_persona,
+    alertas_de_tarea_poes,
+)
 
 # Carpeta local de evidencias. Se resuelve desde la raíz del proyecto (no desde el
 # CWD) para que el servidor escriba siempre en el mismo lugar, sin importar desde
@@ -169,6 +175,10 @@ def obtener_tareas_del_dia(db: Session, fecha: date = None) -> List[EjecucionTar
             EjecucionTarea.id_tarea.in_(ids_esperados)
         )
         .options(
+            # Trae el Operador y de ahí trae los vencimientos de sus documentos
+            selectinload(EjecucionTarea.operador)
+                .selectinload(Persona.vencimientos)
+                .selectinload(VencimientoPersonal.documento),
             # Trae la Tarea base y de ahí trae el Equipo asociado (ej: "Heladera 1")
             selectinload(EjecucionTarea.tarea).selectinload(TareaPOES.equipo),
             
@@ -190,6 +200,7 @@ def obtener_tareas_del_dia(db: Session, fecha: date = None) -> List[EjecucionTar
                 .selectinload(TareaPOES.elementos_limpieza)
                 # De esa tabla, viaja al catálogo para traer el nombre (ej: "Trapo rejilla")
                 .selectinload(TareaElementoLimpieza.elemento_limpieza)
+                
         )
     ).all()
     
@@ -228,43 +239,67 @@ def obtener_historial_ejecuciones(db: Session, fecha_desde: date, fecha_hasta: d
 
 def completar_ejecucion(db: Session, ejecucion_id: int, datos: schemas.CompletarEjecucion, foto: UploadFile | None = None) -> EjecucionTarea:
     """Procesamiento del completado, registro de consumos y guardado de foto local."""
-    
+
     ejecucion = db.scalars(
         select(EjecucionTarea)
         .where(EjecucionTarea.id == ejecucion_id)
-        .options(selectinload(EjecucionTarea.consumos_insumos))
+        .options(
+            selectinload(EjecucionTarea.consumos_insumos),
+            selectinload(EjecucionTarea.tarea).selectinload(TareaPOES.equipo),
+            selectinload(EjecucionTarea.tarea)
+                .selectinload(TareaPOES.elementos_limpieza)
+                .selectinload(TareaElementoLimpieza.elemento_limpieza),
+        )
     ).first()
-    
+
     if not ejecucion:
         raise exceptions.EjecucionNoEncontrada()
 
     if ejecucion.estado == EstadoEjecucion.COMPLETADA:
         raise exceptions.EjecucionInmutable()
-    
+
     if ejecucion.estado == EstadoEjecucion.NO_REALIZADA:
         raise exceptions.EjecucionVencida()
-    
-    ruta_foto = ejecucion.foto_url # Se mantiene la actual por si no envían una nueva
 
-    # foto opcional
+    alertas_bloqueo = []
+    if ejecucion.tarea is not None:
+        alertas_bloqueo.extend(alertas_de_tarea_poes(ejecucion.tarea))
+
+    operador = db.scalar(
+        select(Persona)
+        .options(
+            selectinload(Persona.vencimientos).selectinload(VencimientoPersonal.documento)
+        )
+        .where(Persona.id == datos.operador_id)
+    )
+    if operador is not None:
+        alerta_op = alerta_desde_persona(operador)
+        if alerta_op:
+            alertas_bloqueo.append(alerta_op)
+
+    if alertas_bloqueo:
+        nombres = ", ".join(sorted({a.nombre for a in alertas_bloqueo}))
+        raise RecursoNoOperable(
+            f"No se puede cerrar la tarea porque utiliza recursos u operadores no operables ({nombres}).",
+            alertas_bloqueo,
+        )
+
+    ruta_foto = ejecucion.foto_url
+
     if foto:
-        # `content_type` puede llegar en None: se normaliza antes de comparar.
-        if not (foto.content_type or "").startswith("image/"):  # Se valida que el archivo que se pasa es una imagen
+        if not (foto.content_type or "").startswith("image/"):
             raise exceptions.ArchivoInvalido()
         ruta_foto = _guardar_foto_local(ejecucion_id, foto)
 
-    # Se actualizan los datos de la ejecucion con los datos de cuando registra su realizacion
-    
     ejecucion.estado = EstadoEjecucion.COMPLETADA
     ejecucion.fecha_hora_ejecucion = datetime.now()
-    
+
     ejecucion.operador_id = datos.operador_id
     ejecucion.observaciones = datos.observaciones
     ejecucion.foto_url = ruta_foto
-    
-    # Registro de consumos
+
     for consumo in datos.consumos:
-        if consumo.cantidad_utilizada is not None and consumo.cantidad_utilizada > 0:   # Solo se registran los consumos mayores a 0
+        if consumo.cantidad_utilizada is not None and consumo.cantidad_utilizada > 0:
             _registrar_consumo(
                 db=db,
                 ejecucion_id=ejecucion.id,

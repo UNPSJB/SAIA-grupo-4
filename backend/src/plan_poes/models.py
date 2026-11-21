@@ -16,6 +16,11 @@ class PlanPOES(ModeloBase):
     
     elaborado_por: Mapped["Persona"] = relationship(back_populates="planes_elaborados")
     tareas: Mapped[list["TareaPOES"]] = relationship(back_populates="plan", cascade="all, delete-orphan")
+   
+    @property
+    def alertas_recursos(self) -> list:
+        from src.utils.operabilidad import alertas_de_plan_poes
+        return alertas_de_plan_poes(self)
 
 class TareaPOES(ModeloBase):
     __tablename__ = "tareas_poes"
@@ -51,6 +56,10 @@ class TareaPOES(ModeloBase):
     )
     
     ejecuciones: Mapped[list["EjecucionTarea"]] = relationship("EjecucionTarea", back_populates="tarea")
+    @property
+    def alertas_recursos(self) -> list:
+        from src.utils.operabilidad import alertas_de_tarea_poes
+        return alertas_de_tarea_poes(self)
   
 class TareaInsumoQuimico(ModeloBase):
     __tablename__ = "tareas_insumos_quimicos"

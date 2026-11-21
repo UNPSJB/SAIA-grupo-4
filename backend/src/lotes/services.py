@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from sqlalchemy import select, func, cast, String, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from src.insumos.models import Insumo
 from src.lotes import exceptions, schemas
@@ -15,6 +15,13 @@ from src.recetas.constants import EstadoReceta
 from src.recetas.models import Receta, PasoInsumo, PasoReceta
 from src.recetas.services import _extraer_prefijo_producto
 
+from src.personal.models import Persona, VencimientoPersonal
+from src.recetas.models import Receta, PasoEquipo, PasoInsumo, PasoReceta
+from src.utils.operabilidad import (
+    RecursoNoOperable,
+    alerta_desde_persona,
+    alertas_de_receta,
+)
 
 def generar_codigo_lote(db: Session, producto: Producto, fecha_elaboracion: datetime | date) -> str:
     """Genera el código de lote según regla LOT-{PREFIJO}-{YYYYMMDD}-{SEC}."""
@@ -55,7 +62,8 @@ def listar_productos_con_receta_activa(db: Session) -> List[schemas.ProductoDisp
         select(Producto)
         .options(
             joinedload(Producto.unidad_medida),
-            joinedload(Producto.recetas).joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+            selectinload(Producto.recetas).selectinload(Receta.pasos).selectinload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+            selectinload(Producto.recetas).selectinload(Receta.pasos).selectinload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
         )
         .where(Producto.activo.is_(True))
         .order_by(Producto.nombre.asc())
@@ -100,6 +108,7 @@ def listar_productos_con_receta_activa(db: Session) -> List[schemas.ProductoDisp
                 receta_nombre=receta_activa.nombre_receta,
                 rendimiento_estandar=receta_activa.rendimiento_estandar,
                 insumos_teoricos=insumos_teoricos,
+                alertas_recursos=alertas_de_receta(receta_activa),
             )
         )
 
@@ -134,10 +143,13 @@ def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lo
     receta_activa = db.scalar(
         select(Receta)
         .options(
-            joinedload(Receta.pasos)
-            .joinedload(PasoReceta.insumos)
+            selectinload(Receta.pasos)
+            .selectinload(PasoReceta.insumos)
             .joinedload(PasoInsumo.insumo)
-            .joinedload(Insumo.unidad_medida)
+            .joinedload(Insumo.unidad_medida),
+            selectinload(Receta.pasos)
+            .selectinload(PasoReceta.equipos)
+            .joinedload(PasoEquipo.equipo),
         )
         .where(
             Receta.producto_id == producto.id,
@@ -146,6 +158,27 @@ def crear_lote(db: Session, lote_in: schemas.LoteCreate, operador_id: int) -> Lo
     )
     if not receta_activa:
         raise exceptions.LoteSinRecetaActiva()
+    alertas_bloqueo = []
+    operador = db.scalar(
+        select(Persona)
+        .options(
+            joinedload(Persona.vencimientos).joinedload(VencimientoPersonal.documento)
+        )
+        .where(Persona.id == operador_id)
+    )
+    if operador is not None:
+        alerta_op = alerta_desde_persona(operador)
+        if alerta_op:
+            alertas_bloqueo.append(alerta_op)
+
+    alertas_bloqueo.extend(alertas_de_receta(receta_activa))
+
+    if alertas_bloqueo:
+        nombres = ", ".join(sorted({a.nombre for a in alertas_bloqueo}))
+        raise RecursoNoOperable(
+            f"No se puede registrar el lote porque hay operadores o recursos no operables ({nombres}).",
+            alertas_bloqueo,
+        )
 
     # Validar o generar código de lote
     codigo = (lote_in.codigo_lote or "").strip()
@@ -244,16 +277,22 @@ def obtener_lote_por_id(db: Session, lote_id: int) -> Lote:
         select(Lote)
         .options(
             joinedload(Lote.producto).joinedload(Producto.unidad_medida),
-            joinedload(Lote.receta),
-            joinedload(Lote.operador),
-            joinedload(Lote.consumos_insumos).joinedload(ConsumoInsumoLote.insumo).joinedload(Insumo.unidad_medida),
+            joinedload(Lote.receta)
+            .selectinload(Receta.pasos)
+            .selectinload(PasoReceta.equipos)
+            .joinedload(PasoEquipo.equipo),
+            joinedload(Lote.operador)
+            .selectinload(Persona.vencimientos)
+            .joinedload(VencimientoPersonal.documento),
+            selectinload(Lote.consumos_insumos)
+            .joinedload(ConsumoInsumoLote.insumo)
+            .joinedload(Insumo.unidad_medida),
         )
         .where(Lote.id == lote_id)
     )
     if not lote:
         raise exceptions.LoteNoEncontrado()
     return lote
-
 
 def _construir_query_lotes(
     busqueda: Optional[str] = None,
@@ -267,9 +306,16 @@ def _construir_query_lotes(
         select(Lote)
         .options(
             joinedload(Lote.producto).joinedload(Producto.unidad_medida),
-            joinedload(Lote.receta),
-            joinedload(Lote.operador),
-            joinedload(Lote.consumos_insumos).joinedload(ConsumoInsumoLote.insumo).joinedload(Insumo.unidad_medida),
+            joinedload(Lote.receta)
+            .selectinload(Receta.pasos)
+            .selectinload(PasoReceta.equipos)
+            .joinedload(PasoEquipo.equipo),
+            joinedload(Lote.operador)
+            .selectinload(Persona.vencimientos)
+            .joinedload(VencimientoPersonal.documento),
+            selectinload(Lote.consumos_insumos)
+            .joinedload(ConsumoInsumoLote.insumo)
+            .joinedload(Insumo.unidad_medida),
         )
         .order_by(Lote.fecha_elaboracion.desc(), Lote.id.desc())
     )

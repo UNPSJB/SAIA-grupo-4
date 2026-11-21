@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field
-
+from src.utils.operabilidad import AlertaRecursoNoOperable
 
 class ConsumoInsumoCreate(BaseModel):
     insumo_id: int
@@ -48,6 +48,7 @@ class Lote(LoteBase):
     consumos_insumos: list[ConsumoInsumoOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+    alertas_recursos: list[AlertaRecursoNoOperable] = Field(default_factory=list)
 
 
 class InsumoTeoricoRecetaOut(BaseModel):
@@ -74,3 +75,4 @@ class ProductoDisponibleLoteOut(BaseModel):
     insumos_teoricos: list[InsumoTeoricoRecetaOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+    alertas_recursos: list[AlertaRecursoNoOperable] = Field(default_factory=list)

@@ -19,6 +19,10 @@ from src.insumos.constants import Constantes as InsumoConstantes
 from src.insumos.models import Insumo 
 from src.productos.models import Producto
 from src.unidad_medida.services import convertir_a_gramos
+from src.utils.operabilidad import (
+    RecursoNoOperable,
+    alerta_desde_equipo,
+)
 
 # --- FUNCIONES AUXILIARES ---
 
@@ -82,22 +86,33 @@ def _estado_actual(receta: Receta) -> str:
     return receta.estado.value if hasattr(receta.estado, "value") else receta.estado
 
 
-def _validar_recursos_activos(db: Session, equipos: Optional[list] = None, insumos: Optional[list] = None):
-    """Valida que los equipos e insumos solicitados existan y estén activos en la base de datos."""
+def _validar_recursos_activos(
+    db: Session,
+    equipos: Optional[list] = None,
+    insumos: Optional[list] = None,
+    equipos_existentes: set[int] | None = None,
+):
+    """Valida que los equipos e insumos existan, estén activos y los equipos sean operables."""
     if equipos:
         for eq in equipos:
             eq_id = eq.get("equipo_id") if isinstance(eq, dict) else eq.equipo_id
             eq_db = db.scalar(select(Equipo).where(Equipo.id == eq_id))
             if not eq_db or not eq_db.activo:
                 raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.EQUIPO, recurso_id=eq_id)
-                
+            if equipos_existentes is None or eq_id not in equipos_existentes:
+                alerta_eq = alerta_desde_equipo(eq_db)
+                if alerta_eq:
+                    raise RecursoNoOperable(
+                        f"El equipo '{eq_db.nombre}' no se encuentra operable: {' '.join(alerta_eq.motivos)}",
+                        [alerta_eq],
+                    )
+
     if insumos:
         for ins in insumos:
             ins_id = ins.get("insumo_id") if isinstance(ins, dict) else ins.insumo_id
             ins_db = db.scalar(select(Insumo).where(Insumo.id == ins_id))
             if not ins_db or not ins_db.disponible:
                 raise exceptions.RecursoInactivo(tipo_recurso=TipoRecurso.INSUMO, recurso_id=ins_id)
-
 
 def _filtrar_recursos_unicos(recursos, id_key: str, modelo_orm):
     """Filtra duplicados basándose en 'id_key' y retorna una lista de instancias ORM."""
@@ -732,10 +747,10 @@ def agregar_paso_a_receta(db: Session, receta_id: int, paso_data: schemas.PasoRe
 
 def modificar_paso(db: Session, paso_id: int, paso_update: schemas.PasoRecetaUpdate) -> PasoReceta:
     paso = obtener_paso_por_id(db, paso_id)
-    
+
     if _estado_actual(paso.receta) != EstadoReceta.BORRADOR.value:
         raise exceptions.RecetaNoEsBorrador()
-        
+
     update_data = paso_update.model_dump(exclude_unset=True)
 
     if "numero_orden" in update_data and update_data["numero_orden"] != paso.numero_orden:
@@ -748,39 +763,39 @@ def modificar_paso(db: Session, paso_id: int, paso_update: schemas.PasoRecetaUpd
         )
         if paso_con_mismo_orden:
             raise exceptions.NumeroOrdenPasoDuplicado()
-            
-    # Validar recursos nuevos
+
+    equipos_previos = {pe.equipo_id for pe in paso.equipos}
     _validar_recursos_activos(
-        db, 
-        equipos=update_data.get("equipos"), 
-        insumos=update_data.get("insumos")
+        db,
+        equipos=update_data.get("equipos"),
+        insumos=update_data.get("insumos"),
+        equipos_existentes=equipos_previos,
     )
-    
+
     if "equipos" in update_data:
         nuevos_equipos = update_data.pop("equipos")
         paso.equipos.clear()
         if nuevos_equipos:
             paso.equipos.extend(_filtrar_recursos_unicos(nuevos_equipos, "equipo_id", PasoEquipo))
-            
+
     if "insumos" in update_data:
         nuevos_insumos = update_data.pop("insumos")
         paso.insumos.clear()
         if nuevos_insumos:
             paso.insumos.extend(_filtrar_recursos_unicos(nuevos_insumos, "insumo_id", PasoInsumo))
-            
+
     if update_data:
         for key, value in update_data.items():
             setattr(paso, key, value)
-            
+
     try:
         db.commit()
         db.refresh(paso)
     except IntegrityError:
         db.rollback()
         raise exceptions.NumeroOrdenPasoDuplicado()
-        
-    return paso
 
+    return paso
 
 def eliminar_paso(db: Session, paso_id: int) -> None:
     """Borrado físico del paso, ya que la receta se encuentra en estado borrador."""

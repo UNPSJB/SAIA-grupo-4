@@ -54,6 +54,11 @@ class Lote(ModeloBase):
         if self.operador:
             return f"{self.operador.nombre} {self.operador.apellido}".strip()
         return ""
+   
+    @property
+    def alertas_recursos(self) -> list:
+        from src.utils.operabilidad import alertas_de_lote
+        return alertas_de_lote(self)
 
 
 class ConsumoInsumoLote(ModeloBase):

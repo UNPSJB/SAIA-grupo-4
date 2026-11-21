@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from src.utils.operabilidad import AlertaRecursoNoOperable
 
 class TipoPOES(str, Enum):
     PRE_OPERACIONAL = "pre_operacional"
@@ -141,6 +142,7 @@ class TareaPOES(TareaPOESBase):
     insumos_quimicos: List[TareaInsumoQuimico] = []
     elementos_limpieza: List[TareaElementoLimpieza] = []
     model_config = ConfigDict(from_attributes=True)
+    alertas_recursos: List[AlertaRecursoNoOperable] = Field(default_factory=list)
 
 
 # --- PLAN POES ---
@@ -150,6 +152,7 @@ class PlanPOESBase(BaseModel):
 
 class PlanPOESCreate(PlanPOESBase):
     elaborado_por_id: Annotated[int, Field(gt=0)]
+    alertas_recursos: List[AlertaRecursoNoOperable] = Field(default_factory=list)
 
 class PlanPOESUpdate(BaseModel):
     nombre: Annotated[Optional[str], Field(default=None, min_length=1, max_length=150)]

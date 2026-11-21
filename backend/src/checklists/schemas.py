@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from src.checklists.constants import EstadoEjecucion
+from src.utils.operabilidad import AlertaRecursoNoOperable
 
 # Schemas auxiliares para armar el checklist
 
@@ -70,6 +71,8 @@ class EjecucionTarea(BaseModel):
     tarea: TareaParaChecklist
     consumos_insumos: List[ConsumoEjecucionChecklist] = []
     model_config = ConfigDict(from_attributes=True)
+    alertas_recursos: List[AlertaRecursoNoOperable] = Field(default_factory=list)
+    
 
 class RegistroConsumoQuimico(BaseModel):
     insumo_quimico_id: int
