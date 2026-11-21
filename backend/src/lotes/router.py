@@ -89,6 +89,7 @@ def listar_historial_general(
     producto_id: Optional[int] = None,
     receta_id: Optional[int] = None,
     operador_id: Optional[int] = None,
+    codigo_lote_insumo: Optional[str] = None,   
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -100,6 +101,7 @@ def listar_historial_general(
         producto_id=producto_id,
         receta_id=receta_id,
         operador_id=operador_id,
+        codigo_lote_insumo=codigo_lote_insumo,   
         desde=desde,
         hasta=hasta,
     )

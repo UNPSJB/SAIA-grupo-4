@@ -352,6 +352,7 @@ def _construir_query_lotes(
     producto_id: Optional[int] = None,
     receta_id: Optional[int] = None,
     operador_id: Optional[int] = None,
+    codigo_lote_insumo: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ):
@@ -379,6 +380,18 @@ def _construir_query_lotes(
 
     if operador_id is not None:
         query = query.where(Lote.operador_id == operador_id)
+
+    if codigo_lote_insumo and codigo_lote_insumo.strip():
+        codigo = codigo_lote_insumo.strip().lower()
+        query = query.where(
+            Lote.consumos_insumos.any(
+                ConsumoInsumoLote.detalles_lotes.any(
+                    DetalleConsumoLoteInsumo.lote_insumo.has(
+                        func.lower(LoteInsumo.codigo_lote) == codigo
+                    )
+                )
+            )
+        )
 
     if desde is not None:
         query = query.where(Lote.fecha_elaboracion >= datetime.combine(desde, time.min))
@@ -424,6 +437,7 @@ def listar_historial_lotes(
     producto_id: Optional[int] = None,
     receta_id: Optional[int] = None,
     operador_id: Optional[int] = None,
+    codigo_lote_insumo: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ) -> List[Lote]:
@@ -433,6 +447,7 @@ def listar_historial_lotes(
         producto_id=producto_id,
         receta_id=receta_id,
         operador_id=operador_id,
+        codigo_lote_insumo=codigo_lote_insumo,
         desde=desde,
         hasta=hasta,
     )
