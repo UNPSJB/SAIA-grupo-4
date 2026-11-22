@@ -217,7 +217,7 @@ def _receta_tiene_lotes(db: Session, receta_id: int) -> bool:
 
 
 def _puede_editar_overrides(db: Session, receta: Receta) -> bool:
-    if receta.estado == EstadoReceta.INHABILITADA:
+    if receta.estado == EstadoReceta.ARCHIVADA:
         return False
     if receta.estado == EstadoReceta.ACTIVA and _receta_tiene_lotes(db, receta.id):
         return False
@@ -434,8 +434,8 @@ def actualizar_overrides_aplicabilidad(
     """Actualiza o restablece los overrides manuales de aplicabilidad de rotulado frontal en una receta."""
     receta = _obtener_receta_con_relaciones(db, receta_id)
 
-    if receta.estado == EstadoReceta.INHABILITADA:
-        raise exceptions.RecetaInhabilitadaNoEditableAplicabilidad()
+    if receta.estado == EstadoReceta.ARCHIVADA:
+        raise exceptions.RecetaArchivadaNoEditableAplicabilidad()
     if receta.estado == EstadoReceta.ACTIVA and _receta_tiene_lotes(db, receta.id):
         raise exceptions.RecetaConLotesNoEditableAplicabilidad()
 

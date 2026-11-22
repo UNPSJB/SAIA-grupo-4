@@ -1,8 +1,5 @@
 import { BASE_URL } from "../config";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box, Button } from "@chakra-ui/react";
-import { FiArrowLeft } from "react-icons/fi";
 import { DocumentoPersonalForm } from "../features/documentosPersonal/DocumentoPersonalForm";
 import { ListadoDocumentosPersonal } from "../features/documentosPersonal/ListadoDocumentoPersonal";
 import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
@@ -13,7 +10,6 @@ import type { DocumentoPersonal } from "../features/documentosPersonal/types";
 type Vista = "listado" | "crear" | "modificar";
 
 export default function DocumentoPersonalPage() {
-  const navigate = useNavigate();
   const [vista, setVista] = useState<Vista>("listado");
   const [documentoSeleccionado, setDocumentoSeleccionado] =
     useState<DocumentoPersonal | null>(null);
@@ -65,16 +61,6 @@ export default function DocumentoPersonalPage() {
 
   return (
     <>
-      <Box mb={4} textAlign='left'>
-        <Button
-          variant='ghost'
-          colorPalette='green'
-          onClick={() => navigate("/personal")}
-        >
-          <FiArrowLeft /> Volver a Personal
-        </Button>
-      </Box>
-
       <ListadoDocumentosPersonal
         key={refrescar}
         onCrear={() => setVista("crear")}

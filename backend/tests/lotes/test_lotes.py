@@ -208,7 +208,7 @@ def test_crear_lote_exitoso_con_escalado_dinamico(datos_produccion):
 def test_crear_lote_falla_si_producto_sin_receta_activa(datos_produccion, session):
     # Desactivar la receta
     receta = session.scalar(select(Receta).where(Receta.id == datos_produccion["receta_id"]))
-    receta.estado = EstadoReceta.INHABILITADA
+    receta.estado = EstadoReceta.ARCHIVADA
     session.commit()
 
     payload = {
@@ -300,7 +300,7 @@ def test_receta_con_lotes_es_inmutable_y_su_baja_pasa_a_inhabilitada(datos_produ
     session.expire_all()
     receta_db = session.scalar(select(Receta).where(Receta.id == receta_id))
     assert receta_db is not None
-    assert receta_db.estado == EstadoReceta.INHABILITADA
+    assert receta_db.estado == EstadoReceta.ARCHIVADA
     assert receta_db.fecha_baja is not None
 
 
@@ -472,6 +472,125 @@ def test_consumo_falla_por_lote_vencido_o_inhabilitado(datos_produccion, session
         ],
     })
     assert res.status_code == 400
+
+
+def test_consumo_con_conversion_de_unidades_compatible_y_rechazo_incompatible(datos_produccion, session):
+    """El operador puede informar consumos/lotes en kg/g/mg sobre un insumo en g y el backend convierte a g."""
+    lote_a = LoteInsumo(
+        insumo_id=datos_produccion["insumo1_id"],
+        codigo_lote="L-CONV-A",
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        cantidad_inicial=Decimal("1000.000"),
+        cantidad_actual=Decimal("1000.000"),
+        activo=True,
+    )
+    lote_b = LoteInsumo(
+        insumo_id=datos_produccion["insumo1_id"],
+        codigo_lote="L-CONV-B",
+        fecha_vencimiento=date.today() + timedelta(days=45),
+        cantidad_inicial=Decimal("1000.000"),
+        cantidad_actual=Decimal("1000.000"),
+        activo=True,
+    )
+    session.add_all([lote_a, lote_b])
+    session.commit()
+    session.refresh(lote_a)
+    session.refresh(lote_b)
+
+    # 1. Unidad incompatible (L en insumo de masa) debe fallar con 400
+    res_bad = client.post("/lotes/", json={
+        "producto_id": datos_produccion["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": (date.today() + timedelta(days=5)).isoformat(),
+        "cantidad_producida": 100.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 500,
+                "unidad": "L",
+                "lotes": [{"lote_insumo_id": lote_a.id, "cantidad": 500, "unidad": "L"}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0,
+                "lotes": [],
+            },
+        ],
+    })
+    assert res_bad.status_code == 400
+
+    # 2. Conversión válida: 0.5 kg (500 g) = 0.3 kg (300 g) del lote A + 200 g del lote B
+    res_ok = client.post("/lotes/", json={
+        "producto_id": datos_produccion["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": (date.today() + timedelta(days=5)).isoformat(),
+        "cantidad_producida": 100.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 0.5,
+                "unidad": "kg",
+                "lotes": [
+                    {"lote_insumo_id": lote_a.id, "cantidad": 0.3, "unidad": "kg"},
+                    {"lote_insumo_id": lote_b.id, "cantidad": 200, "unidad": "g"},
+                ],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0,
+                "lotes": [],
+            },
+        ],
+    })
+    assert res_ok.status_code == 201, res_ok.text
+    data = res_ok.json()
+    consumo_ins1 = next(c for c in data["consumos_insumos"] if c["insumo_id"] == datos_produccion["insumo1_id"])
+    assert consumo_ins1["cantidad_real_utilizada"] == 500.0
+    session.expire_all()
+    assert session.get(LoteInsumo, lote_a.id).cantidad_actual == Decimal("700.000")
+    assert session.get(LoteInsumo, lote_b.id).cantidad_actual == Decimal("800.000")
+
+
+def test_lote_desacopla_masa_tanda_g_y_cantidad_producida_comercial(datos_produccion, session):
+    """masa_tanda_g escala la cantidad teórica de insumos mientras cantidad_producida guarda las unidades comerciales."""
+    lote_ins1 = LoteInsumo(
+        insumo_id=datos_produccion["insumo1_id"],
+        codigo_lote="L-DESC-1",
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        cantidad_inicial=Decimal("500.000"),
+        cantidad_actual=Decimal("500.000"),
+        activo=True,
+    )
+    session.add(lote_ins1)
+    session.commit()
+    session.refresh(lote_ins1)
+
+    # Receta tiene rendimiento_estandar=10; masa_tanda_g=20 => factor 2x (nominal insumo1=5500 => teorica=11000)
+    # Producto comercializado: 4 paquetes finales
+    res = client.post("/lotes/", json={
+        "producto_id": datos_produccion["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": (date.today() + timedelta(days=5)).isoformat(),
+        "masa_tanda_g": 20.0,
+        "cantidad_producida": 4.0,
+        "consumos": [
+            {
+                "insumo_id": datos_produccion["insumo1_id"],
+                "cantidad_real_utilizada": 100.0,
+                "lotes": [{"lote_insumo_id": lote_ins1.id, "cantidad": 100.0}],
+            },
+            {
+                "insumo_id": datos_produccion["insumo2_id"],
+                "cantidad_real_utilizada": 0,
+                "lotes": [],
+            },
+        ],
+    })
+    assert res.status_code == 201, res.text
+    data = res.json()
+    assert float(data["cantidad_producida"]) == 4.0
+    consumo_ins1 = next(c for c in data["consumos_insumos"] if c["insumo_id"] == datos_produccion["insumo1_id"])
+    assert consumo_ins1["cantidad_teorica"] == 11000.0
 
 
 def _registrar_produccion(datos, lote_harina_id, lote_levadura_id, cant_harina=100.0, cant_levadura=10.0):

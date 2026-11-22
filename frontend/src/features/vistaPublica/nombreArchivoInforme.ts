@@ -3,6 +3,8 @@ import type { IndicadoresPublicos } from "./types";
 
 const fechaArchivo = (fecha: string) => formatearFecha(fecha).replace(/\//g, "-");
 
+export const NOMBRE_BASE_QR = "saia-vista-publica-qr";
+
 /**
  * Nombre sugerido al guardar el informe de la vista pública como PDF.
  * Ej: "Indicadores SAIA - 15-10-2026 al 13-11-2026".

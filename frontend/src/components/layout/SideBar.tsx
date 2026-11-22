@@ -40,6 +40,7 @@ import {
 } from "./navItems";
 
 import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
+import { SCROLLBAR_OCULTA_CSS } from "./espaciado";
 
 const isActiveRoute = (pathname: string, to: string) => {
   if (pathname === to) return true;
@@ -331,11 +332,7 @@ export const SideBar = ({
       flexShrink={0}
       overflowY='auto'
       overflowX='hidden'
-      css={{
-        scrollbarWidth: "none",
-        msOverflowStyle: "none",
-        "&::-webkit-scrollbar": { display: "none" },
-      }}
+      css={SCROLLBAR_OCULTA_CSS}
       transition='width 0.25s ease'
       display={display}
     >
@@ -482,13 +479,13 @@ export const SideBar = ({
               px={2}
               mt={2}
             >
-              Lotes
+              Produccion
             </Text>
           )}
 
           {loteColapsable ? (
             <NavSection
-              label='Lotes'
+              label='Lotes de Produccion'
               icon={FiBox}
               items={loteItems}
               isCollapsed={isCollapsed}

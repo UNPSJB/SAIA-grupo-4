@@ -15,6 +15,18 @@ export interface FiltroAplicado {
   valor: string;
 }
 
+export interface DatosEstablecimientoPdf {
+  nombre?: string | null;
+  logoSrc?: string | null;
+  pieInformes?: string | null;
+  direccion?: string | null;
+  localidad?: string | null;
+  provincia?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  sitioWeb?: string | null;
+}
+
 export interface OpcionesExportacion<T> {
   formato: FormatoExportacion;
   titulo: string;
@@ -23,6 +35,8 @@ export interface OpcionesExportacion<T> {
   filtros?: FiltroAplicado[];
   /** Base del nombre del archivo. Si no se indica se usa el título. */
   nombreBase?: string;
+  /** Datos del establecimiento para la cabecera del PDF. */
+  establecimiento?: DatosEstablecimientoPdf;
 }
 
 /** Tabla ya normalizada a texto, común a CSV y PDF. */

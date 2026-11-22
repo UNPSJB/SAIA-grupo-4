@@ -23,9 +23,10 @@ import {
 } from "react-icons/fi";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { AlertMessage } from "../../components/ui";
+import { useConfiguracion } from "../configuracion/useConfiguracion";
+import { NOMBRE_BASE_QR } from "./nombreArchivoInforme";
 
 const TAMANIO_QR_DESCARGA = 1024;
-const NOMBRE_BASE_QR = "saia-vista-publica-qr";
 
 type FormatoDescarga = "png" | "pdf";
 
@@ -48,55 +49,12 @@ function descargarArchivo(dataUrl: string, nombre: string) {
   enlace.remove();
 }
 
-async function descargarPdf(dataUrl: string, url: string) {
-  const { jsPDF } = await import("jspdf");
-  const documento = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
-  const anchoPagina = documento.internal.pageSize.getWidth();
-
-  documento.setProperties({
-    title: "Vista pública de cumplimiento - SAIA-4",
-  });
-
-  documento.setFont("helvetica", "bold");
-  documento.setFontSize(18);
-  documento.setTextColor(31, 41, 55);
-  documento.text("Vista pública de cumplimiento", anchoPagina / 2, 30, {
-    align: "center",
-  });
-
-  documento.setFont("helvetica", "normal");
-  documento.setFontSize(11);
-  documento.setTextColor(75, 85, 99);
-  documento.text("SAIA-4", anchoPagina / 2, 39, { align: "center" });
-
-  documento.addImage(dataUrl, "PNG", 55, 52, 100, 100);
-
-  documento.setFontSize(10);
-  documento.setTextColor(55, 65, 81);
-  documento.text(
-    "Escaneá este código QR para consultar los indicadores públicos.",
-    anchoPagina / 2,
-    164,
-    { align: "center" },
-  );
-
-  documento.setFontSize(7);
-  documento.setTextColor(107, 114, 128);
-  const lineasUrl = documento.splitTextToSize(url, 170);
-  documento.text(lineasUrl, anchoPagina / 2, 174, { align: "center" });
-
-  documento.save(`${NOMBRE_BASE_QR}.pdf`);
-}
-
 export function EnlacePublicoCard({
   url,
   activo,
   onImprimir,
 }: EnlacePublicoCardProps) {
+  const { configuracion, logoSrc } = useConfiguracion();
   const [copiado, setCopiado] = useState(false);
   const [errorCopiado, setErrorCopiado] = useState<string | null>(null);
   const [descargando, setDescargando] = useState<FormatoDescarga | null>(null);
@@ -160,8 +118,15 @@ export function EnlacePublicoCard({
     setDescargando("pdf");
 
     try {
-      const dataUrl = obtenerQrPng();
-      await descargarPdf(dataUrl, url);
+      const qrDataUrl = obtenerQrPng();
+      const { descargarQrPdf } = await import("./generarQrPdf");
+      await descargarQrPdf({
+        qrDataUrl,
+        url,
+        activo,
+        configuracion,
+        logoSrc,
+      });
     } catch {
       setErrorDescarga(
         "No se pudo generar el PDF del código QR. Intentá nuevamente.",

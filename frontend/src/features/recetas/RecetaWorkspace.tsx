@@ -53,7 +53,7 @@ import type { PasoReceta, Receta } from "./types";
 const estadoInfo: Record<Receta["estado"], { texto: string; color: string }> = {
   BORRADOR: { texto: "Borrador", color: "orange" },
   ACTIVA: { texto: "Activa", color: "green" },
-  INHABILITADA: { texto: "Archivada", color: "red" },
+  ARCHIVADA: { texto: "Archivada", color: "red" },
 };
 
 const Chip = ({
@@ -175,23 +175,7 @@ export default function RecetaWorkspace({
   }, [id, initialReceta, recetaId]);
 
   const volver = () => {
-    if (receta?.estado === "BORRADOR") {
-      navigate("/recetas", {
-        state: {
-          from: "/nueva-receta",
-          label: "Nueva Receta",
-          origen: "nueva-receta",
-        },
-      });
-    } else {
-      navigate("/recetas", {
-        state: {
-          from: receta?.id ? `/recetas/${receta.id}` : "/recetas",
-          label: "Receta Activa",
-          origen: "receta-activa",
-        },
-      });
-    }
+    navigate("/recetas");
   };
 
   const pasosOrdenados = useMemo(
@@ -292,7 +276,7 @@ export default function RecetaWorkspace({
 
   const esBorrador = receta.estado === "BORRADOR";
   const esActiva = receta.estado === "ACTIVA";
-  const esInhabilitada = receta.estado === "INHABILITADA";
+  const esArchivada = receta.estado === "ARCHIVADA";
   const estado = estadoInfo[receta.estado];
   const pasos = pasosOrdenados;
   const tienePasos = pasos.length > 0;
@@ -515,9 +499,13 @@ export default function RecetaWorkspace({
             display='flex'
             alignItems='center'
             gap={2}
+            flexWrap='wrap'
           >
             <Icon as={FiBookOpen} />
             {receta.nombre_receta}
+            <Badge colorPalette='gray' variant='surface' size='sm'>
+              v{receta.version}
+            </Badge>
           </Heading>
           <HStack gap={2} flexWrap='wrap'>
             {puedeModificar && (
@@ -536,7 +524,7 @@ export default function RecetaWorkspace({
             <Button variant='ghost' colorPalette='yellow' onClick={volver}>
               <FiList /> Listado
             </Button>
-            {(esActiva || esInhabilitada) && (
+            {(esActiva || esArchivada) && (
               <Button
                 variant='ghost'
                 colorPalette='blue'
@@ -648,7 +636,7 @@ export default function RecetaWorkspace({
           </Dato>
         </VStack>
 
-        {esInhabilitada && (
+        {esArchivada && (
           <AlertMessage
             type='info'
             message='La receta está archivada. Para volver a usarla, copiala desde el listado de recetas.'
@@ -793,7 +781,7 @@ export default function RecetaWorkspace({
       <AlertConfirm
         open={confirmarActivar}
         title='Activar receta'
-        message='¿Está seguro que desea activar esta receta? Si ya existe otra receta ACTIVA para este producto, se inhabilitará automáticamente.'
+        message='¿Está seguro que desea activar esta receta? Si ya existe otra receta ACTIVA para este producto, se archivará automáticamente.'
         loading={activando}
         loadingText='Activando...'
         confirmLabel='Activar'
@@ -833,7 +821,7 @@ export default function RecetaWorkspace({
         }}
       />
 
-      {(esActiva || esInhabilitada) && <FichaRecetaPrint receta={receta} />}
+      {(esActiva || esArchivada) && <FichaRecetaPrint receta={receta} />}
     </>
   );
 }

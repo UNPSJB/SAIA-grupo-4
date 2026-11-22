@@ -1,4 +1,4 @@
-import { Box, HStack, Input, Text, VStack } from "@chakra-ui/react";
+import { Box, HStack, Input, NativeSelect, Text, VStack } from "@chakra-ui/react";
 import type { InputHTMLAttributes } from "react";
 
 export interface ResourceItem {
@@ -13,6 +13,14 @@ export interface InputConfig {
   placeholder?: string;
   /** Texto informativo que se muestra junto al input (ej: unidad de medida) */
   hint?: string;
+  /** Selector opcional de unidad compatible (masa: kg/g/mg; volumen: L/ml) */
+  selectUnit?: {
+    value: string;
+    options: string[];
+    onChange: (value: string) => void;
+  };
+  /** Nota breve de conversión (ej: "= 0.5 kg") */
+  helperNote?: string;
   inputProps?: Omit<
     InputHTMLAttributes<HTMLInputElement>,
     "size" | "onChange" | "value"
@@ -88,9 +96,30 @@ export const ResourceDetailSection = ({
                       placeholder={input.placeholder}
                       {...input.inputProps}
                     />
-                    {input.hint && (
-                      <Text fontSize="sm" color="gray.600" minW={8}>
-                        {input.hint}
+                    {input.selectUnit && input.selectUnit.options.length > 0 ? (
+                      <NativeSelect.Root size="xs" w="68px" disabled={disabled}>
+                        <NativeSelect.Field
+                          value={input.selectUnit.value}
+                          onChange={(e) => input.selectUnit!.onChange(e.target.value)}
+                        >
+                          {input.selectUnit.options.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
+                    ) : (
+                      input.hint && (
+                        <Text fontSize="sm" color="gray.600" minW={8}>
+                          {input.hint}
+                        </Text>
+                      )
+                    )}
+                    {input.helperNote && (
+                      <Text fontSize="xs" color="gray.500">
+                        {input.helperNote}
                       </Text>
                     )}
                   </HStack>

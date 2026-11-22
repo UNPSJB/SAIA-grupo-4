@@ -133,9 +133,12 @@ def _crear_insumo(
 
 
 def _crear_receta(session, producto_id: int, rendimiento_g: float, insumos_cant: list[tuple[Insumo, float]]) -> Receta:
+    from src.recetas.services import _siguiente_version_receta
+
     receta = Receta(
         codigo_receta=generar_str("REC"),
         nombre_receta=generar_str("Receta Sellos"),
+        version=_siguiente_version_receta(session, producto_id),
         producto_id=producto_id,
         rendimiento_estandar=Decimal(str(rendimiento_g)),
         estado=EstadoReceta.ACTIVA,

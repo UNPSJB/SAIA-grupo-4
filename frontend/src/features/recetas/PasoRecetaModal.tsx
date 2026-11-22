@@ -165,16 +165,19 @@ export const PasoRecetaForm = ({
     opcionesInsumos,
     opcionesEquipos,
     unidadesPorInsumo,
+    infoUnidadesPorInsumo,
     loading: catalogosCargando,
     error: errorCatalogos,
   } = usePasoCatalogs({ modo, paso });
 
   const {
     consumos,
+    unidadesSeleccionadas,
     cantidades,
     erroresConsumo,
     erroresCantidad,
     actualizarConsumo,
+    actualizarUnidad,
     actualizarCantidad,
     aplicarSeleccionInsumos,
     aplicarSeleccionEquipos,
@@ -217,10 +220,12 @@ export const PasoRecetaForm = ({
     formMethods,
     estadoRecursos: {
       consumos,
+      unidadesSeleccionadas,
       cantidades,
       setErroresConsumo,
       setErroresCantidad,
     },
+    infoUnidadesPorInsumo,
     setSuccess,
     onValidationError: (campos) => {
       const indice = PASOS.findIndex((seccionPaso) =>
@@ -455,7 +460,10 @@ export const PasoRecetaForm = ({
                         consumos={consumos}
                         erroresConsumo={erroresConsumo}
                         unidadesPorInsumo={unidadesPorInsumo}
+                        infoUnidadesPorInsumo={infoUnidadesPorInsumo}
+                        unidadesSeleccionadas={unidadesSeleccionadas}
                         onActualizarConsumo={actualizarConsumo}
+                        onActualizarUnidad={actualizarUnidad}
                         disabled={esModoVer}
                       />
                     ) : (

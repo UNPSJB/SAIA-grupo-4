@@ -4,7 +4,7 @@ import re
 from typing import List, Optional
 import unicodedata
 
-from sqlalchemy import select, cast, String
+from sqlalchemy import func, literal, select, cast, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -80,6 +80,14 @@ def _generar_codigo_receta(db: Session, producto: Producto) -> str:
 
 def _estado_actual(receta: Receta) -> str:
     return receta.estado.value if hasattr(receta.estado, "value") else receta.estado
+
+
+def _siguiente_version_receta(db: Session, producto_id: int) -> int:
+    """Devuelve el próximo número de versión correlativo para el producto dado."""
+    ultima = db.scalar(
+        select(func.max(Receta.version)).where(Receta.producto_id == producto_id)
+    )
+    return (ultima or 0) + 1
 
 
 def _validar_recursos_activos(db: Session, equipos: Optional[list] = None, insumos: Optional[list] = None):
@@ -267,6 +275,60 @@ def obtener_receta_activa_por_id(db: Session, receta_id: int) -> Receta:
     return receta
 
 
+def obtener_receta_consultable_por_id(db: Session, receta_id: int) -> Receta:
+    """Obtiene una receta ACTIVA o ARCHIVADA para consulta de ficha técnica por operador."""
+    receta = db.scalar(
+        select(Receta)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+        )
+        .where(
+            Receta.id == receta_id,
+            Receta.estado.in_([EstadoReceta.ACTIVA, EstadoReceta.ARCHIVADA]),
+        )
+    )
+    if not receta:
+        raise exceptions.RecetaNoEncontrada()
+    return receta
+
+
+def obtener_historial_recetas_producto(db: Session, producto_id: int) -> List[Receta]:
+    """Lista las versiones ARCHIVADAS de un producto ordenadas de la más reciente a la más antigua."""
+    query = (
+        select(Receta)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+        )
+        .where(
+            Receta.producto_id == producto_id,
+            Receta.estado == EstadoReceta.ARCHIVADA,
+        )
+        .order_by(Receta.version.desc(), Receta.fecha_baja.desc())
+    )
+    return list(db.scalars(query).unique().all())
+
+
+def _filtro_busqueda_receta(termino: str):
+    return (
+        Receta.codigo_receta.ilike(termino)
+        | Receta.nombre_receta.ilike(termino)
+        | Producto.nombre.ilike(termino)
+        | literal("v").concat(cast(Receta.version, String)).ilike(termino)
+        | cast(Receta.rendimiento_estandar, String).ilike(termino)
+        | cast(Receta.tiempo_estimado_total, String).ilike(termino)
+        | Receta.pasos.any(
+            PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
+            | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
+        )
+    )
+
+
 def listar_recetas(
     db: Session,
     busqueda: Optional[str] = None,
@@ -288,17 +350,7 @@ def listar_recetas(
 
     if busqueda and busqueda.strip():
         termino = f"%{busqueda.strip()}%"
-        query = query.where(
-            Receta.codigo_receta.ilike(termino)
-            | Receta.nombre_receta.ilike(termino)
-            | Producto.nombre.ilike(termino)
-            | cast(Receta.rendimiento_estandar, String).ilike(termino)
-            | cast(Receta.tiempo_estimado_total, String).ilike(termino)
-            | Receta.pasos.any(
-                PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
-                | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
-            )
-        )
+        query = query.where(_filtro_busqueda_receta(termino))
 
     if estado:
         query = query.where(Receta.estado == estado)
@@ -354,17 +406,7 @@ def obtener_recetas_activas(
 
     if busqueda and busqueda.strip():
         termino = f"%{busqueda.strip()}%"
-        query = query.where(
-            Receta.codigo_receta.ilike(termino)
-            | Receta.nombre_receta.ilike(termino)
-            | Producto.nombre.ilike(termino)
-            | cast(Receta.rendimiento_estandar, String).ilike(termino)
-            | cast(Receta.tiempo_estimado_total, String).ilike(termino)
-            | Receta.pasos.any(
-                PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
-                | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
-            )
-        )
+        query = query.where(_filtro_busqueda_receta(termino))
 
     if producto_id:
         query = query.where(Receta.producto_id == producto_id)
@@ -389,6 +431,7 @@ def crear_receta_borrador(db: Session, receta: schemas.RecetaCreate, usuario_id:
     nueva_receta = Receta(
         codigo_receta=codigo_receta,
         nombre_receta=receta.nombre_receta,
+        version=_siguiente_version_receta(db, receta.producto_id),
         producto_id=receta.producto_id,
         rendimiento_estandar=receta.rendimiento_estandar,
         tamano_porcion=receta.tamano_porcion,
@@ -416,8 +459,8 @@ def modificar_receta(db: Session, receta_id: int, receta_update: schemas.RecetaU
     receta = obtener_receta_por_id(db, receta_id)
 
     estado_actual = _estado_actual(receta)
-    if estado_actual == EstadoReceta.INHABILITADA.value:
-        raise exceptions.RecetaInhabilitadaNoEditable()
+    if estado_actual == EstadoReceta.ARCHIVADA.value:
+        raise exceptions.RecetaArchivadaNoEditable()
     if estado_actual == EstadoReceta.ACTIVA.value and receta.tiene_lotes:
         raise exceptions.RecetaConLotesNoEditable()
 
@@ -437,7 +480,7 @@ def modificar_receta(db: Session, receta_id: int, receta_update: schemas.RecetaU
 
 
 def activar_receta(db: Session, receta_id: int) -> Receta:
-    """Pasa un borrador a estado ACTIVA, inhabilitando la receta activa anterior de ese producto (si existía)."""
+    """Pasa un borrador a estado ACTIVA, archivando la receta activa anterior de ese producto (si existía)."""
     receta = obtener_receta_por_id(db, receta_id)
 
     estado_actual = _estado_actual(receta)
@@ -457,7 +500,7 @@ def activar_receta(db: Session, receta_id: int) -> Receta:
         _validar_recursos_activos(db, equipos=paso.equipos, insumos=paso.insumos)
 
     try:
-        # Si ya había una receta ACTIVA para este mismo producto, pasa a INHABILITADA
+        # Si ya había una receta ACTIVA para este mismo producto, pasa a ARCHIVADA
         receta_vigente = db.scalar(
             select(Receta).where(
                 Receta.producto_id == receta.producto_id,
@@ -465,7 +508,7 @@ def activar_receta(db: Session, receta_id: int) -> Receta:
             )
         )
         if receta_vigente:
-            receta_vigente.estado = EstadoReceta.INHABILITADA
+            receta_vigente.estado = EstadoReceta.ARCHIVADA
             receta_vigente.fecha_baja = datetime.now()
 
         receta.estado = EstadoReceta.ACTIVA
@@ -479,14 +522,14 @@ def activar_receta(db: Session, receta_id: int) -> Receta:
     return receta
 
 
-def inhabilitar_receta(db: Session, receta_id: int) -> Receta:
+def archivar_receta(db: Session, receta_id: int) -> Receta:
     receta = obtener_receta_por_id(db, receta_id)
 
     estado_actual = _estado_actual(receta)
     if estado_actual != EstadoReceta.ACTIVA.value:
         raise exceptions.RecetaNoActiva()
 
-    receta.estado = EstadoReceta.INHABILITADA
+    receta.estado = EstadoReceta.ARCHIVADA
     receta.fecha_baja = datetime.now()
     try:
         db.commit()
@@ -564,6 +607,7 @@ def clonar_receta(db: Session, receta_id: int, usuario_id: int) -> Receta:
     nueva_receta = Receta(
         codigo_receta=_generar_codigo_receta(db, producto),
         nombre_receta=origen.nombre_receta,
+        version=_siguiente_version_receta(db, origen.producto_id),
         producto_id=origen.producto_id,
         rendimiento_estandar=origen.rendimiento_estandar,
         tamano_porcion=origen.tamano_porcion,
@@ -649,17 +693,17 @@ def eliminar_receta(db: Session, receta_id: int) -> dict:
                 db.rollback()
                 raise exceptions.RecetaNoEditable()
         else:
-            receta.estado = EstadoReceta.INHABILITADA
+            receta.estado = EstadoReceta.ARCHIVADA
             receta.fecha_baja = datetime.now()
             try:
                 db.commit()
                 db.refresh(receta)
-                return {"resultado": "inhabilitada"}
+                return {"resultado": "archivada"}
             except IntegrityError:
                 db.rollback()
                 raise exceptions.RecetaNoEditable()
 
-    elif estado_actual == EstadoReceta.INHABILITADA.value:
+    elif estado_actual == EstadoReceta.ARCHIVADA.value:
         if not receta.tiene_lotes:
             try:
                 db.delete(receta)

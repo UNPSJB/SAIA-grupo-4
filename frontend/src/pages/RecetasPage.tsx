@@ -41,7 +41,7 @@ import type { FiltrosReceta, Receta } from "../features/recetas/types";
 const OPCIONES_ESTADO_RECETA = [
   { label: "Borrador", value: "BORRADOR" },
   { label: "Activa", value: "ACTIVA" },
-  { label: "Inhabilitada", value: "INHABILITADA" },
+  { label: "Archivada", value: "ARCHIVADA" },
 ];
 
 interface FiltrosEstado {
@@ -190,7 +190,9 @@ export default function RecetasPage() {
     try {
       await recetasApi.clonarReceta(recetaCopiar.id);
       setRecetaCopiar(null);
-      navigate("/nueva-receta");
+      navigate("/nueva-receta", {
+        state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+      });
     } catch (e) {
       setErrorCopiar(
         e instanceof Error ? e.message : "No se pudo copiar la receta.",
@@ -235,7 +237,19 @@ export default function RecetasPage() {
   ]);
 
   const columnas: ColumnDef<Receta>[] = [
-    { key: "codigo_receta", label: "Código", render: (r) => r.codigo_receta },
+    {
+      key: "codigo_receta",
+      label: "Código",
+      valorExportacion: (r) => `${r.codigo_receta} (v${r.version})`,
+      render: (r) => (
+        <HStack gap={1.5} wrap="wrap">
+          <Text>{r.codigo_receta}</Text>
+          <Badge colorPalette="gray" variant="surface" size="sm">
+            v{r.version}
+          </Badge>
+        </HStack>
+      ),
+    },
     {
       key: "nombre_receta",
       label: "Nombre",
@@ -408,12 +422,12 @@ export default function RecetasPage() {
         const tienePasos = (r.pasos?.length ?? 0) > 0;
         const puedeVerFicha =
           r.estado === "ACTIVA" ||
-          r.estado === "INHABILITADA" ||
+          r.estado === "ARCHIVADA" ||
           (r.estado === "BORRADOR" &&
             tienePasos &&
             Number(r.rendimiento_estandar) > 0);
         const puedeDuplicar =
-          r.estado === "INHABILITADA" ||
+          r.estado === "ARCHIVADA" ||
           (r.estado === "ACTIVA" && Boolean(r.tiene_lotes));
         const puedeEditar =
           r.estado === "BORRADOR" || (r.estado === "ACTIVA" && !r.tiene_lotes);

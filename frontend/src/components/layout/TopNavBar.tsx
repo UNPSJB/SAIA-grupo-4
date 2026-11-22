@@ -179,6 +179,7 @@ export const TopNavBar = ({
                         navigate("/configuracion", {
                           state: {
                             fromPathname: location.pathname,
+                            fromSearch: location.search,
                             fromState: location.state,
                           },
                         });

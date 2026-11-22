@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { BASE_URL, ITEMS_POR_PAGINA } from "../../config";
+import { BASE_URL } from "../../config";
+
+const ITEMS_POR_PAGINA_PERSONAL = 6;
 import {
   Badge,
   Box,
@@ -126,7 +128,7 @@ export const ListadoPersonal = ({
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Persona>({
       endpoint: construirEndpoint(aplicados, busquedaAplicada),
-      pageSize: ITEMS_POR_PAGINA,
+      pageSize: ITEMS_POR_PAGINA_PERSONAL,
       errorMessage: "No se pudo cargar la lista de personal.",
     });
 
@@ -388,7 +390,7 @@ export const ListadoPersonal = ({
           <TablePagination
             count={data.length}
             page={page}
-            pageSize={ITEMS_POR_PAGINA}
+            pageSize={ITEMS_POR_PAGINA_PERSONAL}
             onPageChange={setPage}
             labelSingular='persona'
             labelPlural='personas'

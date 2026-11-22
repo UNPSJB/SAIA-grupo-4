@@ -32,7 +32,7 @@ import { AlertConfirm } from "../ui";
 import { useAuth } from "../../features/auth/useAuth";
 import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
-import { PAGE_PX, PAGE_PY } from "./espaciado";
+import { PAGE_PX, PAGE_PY, SCROLLBAR_OCULTA_CSS } from "./espaciado";
 
 // Un ítem de la navegación del operador. Se recibe como lista para poder sumar secciones nuevas en el futuro sin tocar este componente.
 export interface OperadorNavItem {
@@ -191,6 +191,7 @@ export const OperadorLayout = ({
         flexShrink={0}
         overflowY="auto"
         overflowX="hidden"
+        css={SCROLLBAR_OCULTA_CSS}
         transition="width 0.25s ease"
         display={{ base: "none", md: "flex" }}
       >
@@ -304,7 +305,11 @@ export const OperadorLayout = ({
                 </HStack>
               </Drawer.Header>
 
-              <Drawer.Body>
+              <Drawer.Body
+                overflowY="auto"
+                overflowX="hidden"
+                css={SCROLLBAR_OCULTA_CSS}
+              >
                 <Text
                   fontSize="sm"
                   fontWeight="semibold"
@@ -316,10 +321,6 @@ export const OperadorLayout = ({
                 </Text>
                 {renderItems(() => setMenuAbierto(false))}
               </Drawer.Body>
-
-              <Drawer.Footer borderColor="whiteAlpha.300">
-                {bloqueUsuario()}
-              </Drawer.Footer>
             </Drawer.Content>
           </Drawer.Positioner>
         </Portal>

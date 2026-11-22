@@ -1656,10 +1656,10 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         # (cabecera, lista_pasos)
         (
             (
-                "Pan de Campo Tradicional v1",
+                "Pan de Campo Tradicional",
                 prod_pc,
                 f"REC-{pref_pc}-001",
-                EstadoReceta.INHABILITADA,
+                EstadoReceta.ARCHIVADA,
                 Decimal("21500.00"),
                 180,
                 60,
@@ -1705,7 +1705,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
         (
             (
-                "Pan de Campo Tradicional v2",
+                "Pan de Campo Tradicional",
                 prod_pc,
                 f"REC-{pref_pc}-002",
                 EstadoReceta.ACTIVA,
@@ -1855,7 +1855,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 "Torta Humeda de Chocolate",
                 prod_tc,
                 f"REC-{pref_tc}-001",
-                EstadoReceta.INHABILITADA,
+                EstadoReceta.ARCHIVADA,
                 Decimal("15600.00"),
                 150,
                 75,
@@ -1943,7 +1943,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
         (
             (
-                "Torta de Chocolate Artesanal v2",
+                "Torta de Chocolate Artesanal",
                 prod_tc,
                 f"REC-{pref_tc}-002",
                 EstadoReceta.ACTIVA,
@@ -1992,7 +1992,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
         (
             (
-                "Medialunas de Manteca Portenas",
+                "Medialunas de Manteca",
                 prod_med,
                 f"REC-{pref_med}-001",
                 EstadoReceta.BORRADOR,
@@ -2090,10 +2090,10 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
         (
             (
-                "Pepas de Membrillo Clasicas v1",
+                "Pepas de Membrillo Clasicas",
                 prod_pm,
                 f"REC-{pref_pm}-001",
-                EstadoReceta.INHABILITADA,
+                EstadoReceta.ARCHIVADA,
                 Decimal("12000.00"),
                 95,
                 40,
@@ -2133,14 +2133,14 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                     "Mezcla de secos y levadura",
                     "Pesar harina, sal y azucar junto con la levadura fresca.",
                     [(eq_balanza_plat, 1)],
-                    [(ins_harina, Decimal("12.000")), (ins_sal, Decimal("220.000")), (ins_azucar, Decimal("400.000")), (ins_levadura, Decimal("300.000"))],
+                    [(ins_harina, Decimal("12.000")), (ins_sal, Decimal("220.000")), (ins_azucar, Decimal("0.400")), (ins_levadura, Decimal("300.000"))],
                 ),
                 (
                     2,
                     "Amasado con leche y manteca",
                     "Incorporar leche fluida y manteca pomada hasta lograr masa elastica.",
                     [(eq_amasadora, 1)],
-                    [(ins_leche, Decimal("5.000")), (ins_manteca, Decimal("800.000"))],
+                    [(ins_leche, Decimal("5.000")), (ins_manteca, Decimal("0.800"))],
                 ),
                 (
                     3,
@@ -2154,16 +2154,16 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     ]
 
     tamano_porcion_por_receta = {
-        "Pan de Campo Tradicional v1": Decimal("50.00"),
-        "Pan de Campo Tradicional v2": Decimal("50.00"),
+        "Pan de Campo Tradicional": Decimal("50.00"),
         "Galletas de Vainilla Clasicas": Decimal("30.00"),
         "Bizcochos Salados Crocantes": Decimal("30.00"),
         "Torta Humeda de Chocolate": Decimal("60.00"),
-        "Torta de Chocolate Artesanal v2": Decimal("60.00"),
+        "Torta de Chocolate Artesanal": Decimal("60.00"),
         "Pan de Molde Lacteado": Decimal("50.00"),
     }
 
     recetas_creadas = []
+    version_por_producto: dict[int, int] = {}
     for cabecera, pasos_info in definicion_recetas:
         (
             nombre,
@@ -2178,12 +2178,15 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         fecha_creacion = datetime.combine(hoy - timedelta(days=dias_atras), time(9, 0))
         fecha_baja = (
             datetime.combine(hoy - timedelta(days=max(1, dias_atras - 20)), time(14, 0))
-            if estado == EstadoReceta.INHABILITADA
+            if estado == EstadoReceta.ARCHIVADA
             else None
         )
+        version_actual = version_por_producto.get(prod.id, 0) + 1
+        version_por_producto[prod.id] = version_actual
         receta = Receta(
             codigo_receta=codigo,
             nombre_receta=nombre,
+            version=version_actual,
             producto_id=prod.id,
             rendimiento_estandar=rendimiento,
             tamano_porcion=tamano_porcion_por_receta.get(nombre),
@@ -2226,17 +2229,18 @@ def _crear_lotes(db, personas, recetas, hoy):
 
     recetas_activas = {r.codigo_receta: r for r in recetas if r.estado == EstadoReceta.ACTIVA}
 
+    # (codigo_receta, dias_atras, masa_tanda_g, cantidad_producida_comercial, idx_op, obs)
     datos_lotes = [
-        ("REC-PC-002", 6, Decimal("50.00"), 0, "Produccion matutina de Pan de Campo. Miga esponjosa."),
-        ("REC-GV-001", 5, Decimal("120.00"), 1, "Galletas dulces clasicas. Empaquetado completo."),
-        ("REC-PI-001", 4, Decimal("60.00"), 2, "Pan integral multicereal con abundante sesamo."),
-        ("REC-BS-001", 4, Decimal("50.00"), 3, "Bizcochos salados de textura crocante tradicional."),
-        ("REC-TC-002", 3, Decimal("18.00"), 0, "Tortas de chocolate para venta directa en confiteria."),
-        ("REC-PC-002", 3, Decimal("55.00"), 1, "Pan de campo con fermentacion en frio extendida."),
-        ("REC-GV-001", 2, Decimal("100.00"), 2, "Lote para reposicion de galletas en salon de ventas."),
-        ("REC-PI-001", 1, Decimal("60.00"), 3, "Pan integral elaborado a primera hora del turno."),
-        ("REC-BS-001", 0, Decimal("50.00"), 0, "Lote fresco del dia en control de calidad final."),
-        ("REC-TC-002", 0, Decimal("20.00"), 1, "Elaboracion especial de tortas de chocolate del dia."),
+        ("REC-PC-002", 6, Decimal("29000.00"), Decimal("29.00"), 0, "Produccion matutina de Pan de Campo (1 tanda). Miga esponjosa."),
+        ("REC-GV-001", 5, Decimal("20000.00"), Decimal("666.00"), 1, "Galletas dulces clasicas (1 tanda completa). Empaquetado completo."),
+        ("REC-PI-001", 4, Decimal("26500.00"), Decimal("26.50"), 2, "Pan integral multicereal con abundante sesamo (1 tanda)."),
+        ("REC-BS-001", 4, Decimal("21000.00"), Decimal("21000.00"), 3, "Bizcochos salados de textura crocante tradicional (1 tanda)."),
+        ("REC-TC-002", 3, Decimal("18500.00"), Decimal("18.50"), 0, "Tortas de chocolate para venta directa en confiteria (1 tanda)."),
+        ("REC-PC-002", 3, Decimal("58000.00"), Decimal("58.00"), 1, "Pan de campo con fermentacion en frio extendida (2 tandas)."),
+        ("REC-GV-001", 2, Decimal("10000.00"), Decimal("333.00"), 2, "Lote para reposicion de galletas en salon de ventas (0.5 tanda)."),
+        ("REC-PI-001", 1, Decimal("53000.00"), Decimal("53.00"), 3, "Pan integral elaborado a primera hora del turno (2 tandas)."),
+        ("REC-BS-001", 0, Decimal("10500.00"), Decimal("10500.00"), 0, "Lote fresco del dia en control de calidad final (0.5 tanda)."),
+        ("REC-TC-002", 0, Decimal("37000.00"), Decimal("37.00"), 1, "Elaboracion especial de tortas de chocolate del dia (2 tandas)."),
     ]
 
     lotes_creados = []
@@ -2270,7 +2274,7 @@ def _crear_lotes(db, personas, recetas, hoy):
     db.add_all(lotes_insumo_seed)
     db.flush()
 
-    for codigo_receta, dias_atras, cantidad, idx_op, obs in datos_lotes:
+    for codigo_receta, dias_atras, masa_tanda_g, cantidad, idx_op, obs in datos_lotes:
         receta = recetas_activas.get(codigo_receta)
         if not receta:
             continue
@@ -2290,7 +2294,7 @@ def _crear_lotes(db, personas, recetas, hoy):
         codigo_lote = f"LOT-{prefijo_prod}-{fecha_str}-{sec:03d}"
 
         rendimiento = float(receta.rendimiento_estandar) if receta.rendimiento_estandar > 0 else 1.0
-        factor_escala = float(cantidad) / rendimiento
+        factor_escala = float(masa_tanda_g) / rendimiento
 
         mapa_nominal: dict[int, float] = {}
         for paso in receta.pasos:
@@ -2299,7 +2303,7 @@ def _crear_lotes(db, personas, recetas, hoy):
 
         consumos_orm = []
         for ins_id, nominal in mapa_nominal.items():
-            teorica = round(nominal * factor_escala, 3)
+            teorica = round(nominal * factor_escala, 2)
             restante = Decimal(str(teorica))
             detalles_orm: list[DetalleConsumoLoteInsumo] = []
             for li in lotes_por_insumo.get(ins_id, []):

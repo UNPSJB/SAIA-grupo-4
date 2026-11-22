@@ -202,6 +202,11 @@ export function ExpedienteRotuloPrintShell({
                   aprobación ni certificación sanitaria oficial.
                 </Text>
               </Box>
+              {configuracion.pie_informes && (
+                <Text fontSize="2xs" color="gray.600" textAlign="center" mt={1}>
+                  {configuracion.pie_informes}
+                </Text>
+              )}
             </td>
           </tr>
         </tfoot>

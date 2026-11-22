@@ -1,8 +1,5 @@
 import { BASE_URL } from "../config";
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Box, Button } from "@chakra-ui/react";
-import { FiArrowLeft } from "react-icons/fi";
 import { UnidadMedidaForm } from "../features/unidadMedida/UnidadMedidaForm";
 import { UnidadMedidaDetalle } from "../features/unidadMedida/UnidadMedidaDetalle";
 import { ListadoUnidadMedida } from "../features/unidadMedida/ListadoUnidadMedida";
@@ -14,8 +11,6 @@ import type { UnidadMedida } from "../features/unidadMedida/types";
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
 export default function UnidadMedidaPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [vista, setVista] = useState<Vista>("listado");
   const [unidadSeleccionada, setUnidadSeleccionada] =
     useState<UnidadMedida | null>(null);
@@ -63,25 +58,8 @@ export default function UnidadMedidaPage() {
     }
   };
 
-  // El listado de unidades se abre desde Insumos y desde Insumos Químicos; el
-  // origen viaja en el state para poder ofrecer el botón de volver correcto.
-  const origen = location.state as { from?: string; label?: string } | null;
-  const volverA = origen?.from;
-  const volverLabel = origen?.label;
-
   return (
     <>
-      {volverA && (
-        <Box mb={4} textAlign='left'>
-          <Button
-            variant='ghost'
-            colorPalette='green'
-            onClick={() => navigate(volverA)}
-          >
-            <FiArrowLeft /> Volver a {volverLabel}
-          </Button>
-        </Box>
-      )}
       <ListadoUnidadMedida
         key={refrescar}
         onCrear={() => {

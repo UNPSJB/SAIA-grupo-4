@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
+import { Badge, Box, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import {
-  FiArrowLeft,
   FiCalendar,
   FiCheckCircle,
   FiClock,
@@ -162,7 +161,14 @@ export default function HistorialVersionesPage() {
             label="Ver PDF"
             title="Ver el PDF de esta versión"
             colorPalette="orange"
-            onClick={() => navigate(`/documentos/${documentoId}/versiones/${v.id}/pdf`)}
+            onClick={() =>
+              navigate(`/documentos/${documentoId}/versiones/${v.id}/pdf`, {
+                state: {
+                  from: `/documentos/${documentoId}/historial`,
+                  label: "Historial de versiones",
+                },
+              })
+            }
             visible={!!v.archivo_url}
           />
           <RowActionButton
@@ -230,26 +236,17 @@ export default function HistorialVersionesPage() {
 
   return (
     <ListadoContainer>
-      {/* Título + volver al listado */}
       <HStack justify="space-between" align="center" flexWrap="wrap" gap={2} mb={6}>
         <Heading size="xl" color="green" display="flex" alignItems="center" gap={2}>
           <Icon as={FiClock} />
           Historial de Versiones
         </Heading>
-        <Button variant="outline" colorPalette="green" onClick={() => navigate("/documentos")}>
-          <FiArrowLeft /> Volver al listado
-        </Button>
       </HStack>
 
       {loading && <LoadingState message="Cargando historial..." />}
 
       {!loading && error && (
-        <VStack gap={4} align="stretch">
-          <AlertMessage type="error" message={error} />
-          <Button variant="outline" colorPalette="green" alignSelf="flex-start" onClick={() => navigate("/documentos")}>
-            <FiArrowLeft /> Volver al listado
-          </Button>
-        </VStack>
+        <AlertMessage type="error" message={error} />
       )}
 
       {!loading && !error && documento && (
