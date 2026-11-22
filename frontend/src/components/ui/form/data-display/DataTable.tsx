@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Table } from "@chakra-ui/react";
+import { useConfiguracion } from "../../../../features/configuracion/useConfiguracion";
 import { ExportarMenu } from "../../ExportarMenu";
 import {
   exportarListado,
@@ -106,6 +107,8 @@ export const DataTable = <T,>({
   hideTableOnMobile = false,
   minW,
 }: DataTableProps<T>) => {
+  const { configuracion, logoSrc } = useConfiguracion();
+
   const exportar = (formato: FormatoExportacion) =>
     exportarListado({
       formato,
@@ -114,6 +117,17 @@ export const DataTable = <T,>({
       datos: exportarItems ?? [],
       filtros: exportarFiltros,
       nombreBase: exportarNombreArchivo,
+      establecimiento: {
+        nombre: configuracion.nombre_establecimiento,
+        logoSrc,
+        pieInformes: configuracion.pie_informes,
+        direccion: configuracion.direccion,
+        localidad: configuracion.localidad,
+        provincia: configuracion.provincia,
+        telefono: configuracion.telefono,
+        email: configuracion.email,
+        sitioWeb: configuracion.sitio_web,
+      },
     });
 
   return (

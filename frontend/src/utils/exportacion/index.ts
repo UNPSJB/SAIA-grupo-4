@@ -40,6 +40,7 @@ export const exportarListado = async <T>({
   datos,
   filtros = [],
   nombreBase,
+  establecimiento,
 }: OpcionesExportacion<T>): Promise<void> => {
   if (columnas.length === 0) throw new Error("No hay columnas para exportar.");
 
@@ -54,7 +55,7 @@ export const exportarListado = async <T>({
 
   // pdf.ts se carga bajo demanda junto con jsPDF.
   const { generarPdf } = await import("./pdf");
-  descargar(await generarPdf({ titulo, tabla, filtros, fecha }), nombre);
+  descargar(await generarPdf({ titulo, tabla, filtros, fecha, establecimiento }), nombre);
 };
 
 /**

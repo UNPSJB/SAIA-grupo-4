@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
-import { Badge, Box, Heading, HStack, Text, VStack } from "@chakra-ui/react";
+import { Badge, Box, Heading, HStack, Image, Text, VStack } from "@chakra-ui/react";
+import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 
 interface InformePrintLayoutProps {
   /** Título principal del informe. Ej: "Dashboard Consolidado". */
@@ -28,6 +29,10 @@ export function InformePrintLayout({
   etiqueta,
   children,
 }: InformePrintLayoutProps) {
+  const { configuracion, logoSrc } = useConfiguracion();
+  const nombreEstablecimiento =
+    configuracion.nombre_establecimiento?.trim() || "SAIA-4";
+
   // Se calcula al montar el componente; el informe se monta cuando la pantalla tiene datos.
   const fechaGeneracion = useMemo(
     () =>
@@ -142,20 +147,31 @@ export function InformePrintLayout({
         pb={3}
         mb={4}
       >
-        <VStack align="start" gap={0.5}>
-          <Text
-            fontSize="xs"
-            fontWeight="bold"
-            textTransform="uppercase"
-            letterSpacing="wider"
-            color="gray.600"
-          >
-            SAIA · Sistema de Apoyo para la Inocuidad Alimentaria
-          </Text>
-          <Heading size="xl" color="green.800" fontWeight="extrabold">
-            {titulo}
-          </Heading>
-        </VStack>
+        <HStack align="center" gap={3}>
+          {logoSrc && (
+            <Image
+              src={logoSrc}
+              alt={nombreEstablecimiento}
+              maxH="42px"
+              maxW="100px"
+              objectFit="contain"
+            />
+          )}
+          <VStack align="start" gap={0.5}>
+            <Text
+              fontSize="xs"
+              fontWeight="bold"
+              textTransform="uppercase"
+              letterSpacing="wider"
+              color="gray.600"
+            >
+              {nombreEstablecimiento} · Sistema de Apoyo para la Inocuidad Alimentaria
+            </Text>
+            <Heading size="xl" color="green.800" fontWeight="extrabold">
+              {titulo}
+            </Heading>
+          </VStack>
+        </HStack>
         <VStack align="end" gap={1}>
           {etiqueta && (
             <Badge
@@ -184,6 +200,44 @@ export function InformePrintLayout({
       </HStack>
 
       {children}
+
+      {(configuracion.pie_informes ||
+        configuracion.direccion ||
+        configuracion.telefono ||
+        configuracion.email) && (
+        <Box
+          mt={5}
+          pt={2.5}
+          borderTopWidth="1px"
+          borderColor="gray.300"
+          className="no-cortar"
+        >
+          {configuracion.pie_informes && (
+            <Text fontSize="2xs" fontWeight="medium" color="gray.700">
+              {configuracion.pie_informes}
+            </Text>
+          )}
+          {(configuracion.direccion ||
+            configuracion.localidad ||
+            configuracion.provincia ||
+            configuracion.telefono ||
+            configuracion.email ||
+            configuracion.sitio_web) && (
+            <Text fontSize="2xs" color="gray.600" mt={0.5}>
+              {[
+                configuracion.direccion,
+                configuracion.localidad,
+                configuracion.provincia,
+                configuracion.telefono,
+                configuracion.email,
+                configuracion.sitio_web,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Text>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }
