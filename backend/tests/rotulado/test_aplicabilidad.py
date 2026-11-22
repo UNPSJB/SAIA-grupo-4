@@ -139,9 +139,12 @@ def setup_datos(session):
 
 
 def crear_receta_con_insumos(session, producto, insumos_cantidades, usuario_id=1) -> Receta:
+    from src.recetas.services import _siguiente_version_receta
+
     r = Receta(
         codigo_receta=generar_str("REC"),
         nombre_receta=f"Receta de {producto.nombre}",
+        version=_siguiente_version_receta(session, producto.id),
         producto_id=producto.id,
         rendimiento_estandar=1000.0,
         estado=EstadoReceta.ACTIVA,
@@ -382,7 +385,7 @@ def test_bloqueo_inmutabilidad_con_lotes_y_receta_inhabilitada(session, setup_da
 
     # Receta inhabilitada sin lotes también rechaza modificaciones
     receta_inh = crear_receta_con_insumos(session, prod, [(setup_datos["harina"], 500)])
-    receta_inh.estado = EstadoReceta.INHABILITADA
+    receta_inh.estado = EstadoReceta.ARCHIVADA
     session.commit()
 
     res_get_inh = client.get(f"/recetas/{receta_inh.id}/aplicabilidad-frontal")
@@ -562,7 +565,7 @@ def test_versionado_normativa_y_asociacion_recetas(session, setup_datos):
     inhabilitada = crear_receta_con_insumos(
         session, prod, [(setup_datos["harina"], 500), (setup_datos["cafeina"], 10)]
     )
-    inhabilitada.estado = EstadoReceta.INHABILITADA
+    inhabilitada.estado = EstadoReceta.ARCHIVADA
     inhabilitada.normativa_rotulado_id = id_v1
     session.commit()
 

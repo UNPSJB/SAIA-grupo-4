@@ -172,6 +172,14 @@ export const RecetaDetalle = ({ receta, onCerrar }: RecetaDetalleProps) => {
       icono: FiClock,
       items: [
         { label: "Código", valor: receta.codigo_receta },
+        {
+          label: "Versión",
+          valor: (
+            <Badge colorPalette="gray" variant="surface">
+              v{receta.version}
+            </Badge>
+          ),
+        },
         { label: "Nombre", valor: receta.nombre_receta },
         {
           label: "Producto",

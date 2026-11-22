@@ -45,6 +45,7 @@ const NOMBRES_RUTA: Record<string, string> = {
   "historial-planes": "Historial de planes",
   recetas: "Recetas",
   "nueva-receta": "Nueva Receta",
+  "receta-workspace": "Receta",
   lotes: "Lotes",
   "historial-lotes": "Historial de Lotes",
   "vista-publica": "Vista pública",
@@ -221,6 +222,37 @@ export function construirMigas(
     });
     migas.push({ nombre: legible("rotulo"), to: pathname, esLink: false });
     return migas;
+  }
+
+  // Historial de versiones de recetas (operador): /recetas/historial/:productoId
+  if (segmentos[0] === "recetas" && segmentos[1] === "historial") {
+    return [
+      { nombre: legible("recetas"), to: "/recetas", esLink: true },
+      { nombre: "Historial de versiones", to: pathname, esLink: false },
+    ];
+  }
+
+  // Ficha técnica de receta viniendo desde historial de versiones (u otro origen intermedio con padre)
+  if (
+    segmentos[0] === "recetas" &&
+    (segmentos.length === 2 || segmentos[2] === "ficha-tecnica") &&
+    dynamicFrom &&
+    dynamicLabel &&
+    dynamicFrom !== "/recetas" &&
+    origenState?.padre?.nombre &&
+    origenState?.padre?.to
+  ) {
+    const migaPadre = migaDesdePadre(origenState.padre)!;
+    return [
+      migaPadre,
+      {
+        nombre: "Historial de versiones",
+        to: dynamicFrom,
+        esLink: true,
+        state: { from: migaPadre.to, label: "Historial de versiones" },
+      },
+      { nombre: "Ficha Técnica", to: pathname, esLink: false },
+    ];
   }
 
   // Visor PDF de un documento: muestra "Gestión documental / [Historial de versiones /] Visor PDF"

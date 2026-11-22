@@ -4,7 +4,7 @@ from enum import Enum
 class EstadoReceta(str, Enum):
     BORRADOR = "BORRADOR"
     ACTIVA = "ACTIVA"
-    INHABILITADA = "INHABILITADA"
+    ARCHIVADA = "ARCHIVADA"
 
 
 class ErrorCode:
@@ -12,7 +12,7 @@ class ErrorCode:
     RECETA_NO_ENCONTRADA = "La receta no fue encontrada."
     RECETA_NO_ES_BORRADOR = "La acción requiere que la receta se encuentre en estado BORRADOR."
     RECETA_NO_ACTIVA = "La acción requiere que la receta se encuentre en estado ACTIVA."
-    RECETA_INHABILITADA_NO_EDITABLE = "No se puede modificar una receta en estado INHABILITADA."
+    RECETA_ARCHIVADA_NO_EDITABLE = "No se puede modificar una receta en estado ARCHIVADA."
     RECETA_CON_LOTES_NO_EDITABLE = "No se puede modificar la receta porque tiene lotes asociados."
     RECETA_NO_EDITABLE = "No se puede modificar la receta en su estado actual."
     RECETA_SIN_PASOS = "No se puede activar una receta que no tiene pasos asignados."

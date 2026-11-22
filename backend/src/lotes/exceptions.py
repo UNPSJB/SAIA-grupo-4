@@ -84,3 +84,7 @@ class BalanceConsumoLoteInvalido(BadRequest):
 
 class StockLoteInsumoInsuficiente(BadRequest):
     DETAIL = ErrorCode.STOCK_LOTE_INSUMO_INSUFICIENTE
+
+
+class UnidadConsumoInvalida(BadRequest):
+    DETAIL = ErrorCode.UNIDAD_CONSUMO_INVALIDA

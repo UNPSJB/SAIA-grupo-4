@@ -118,6 +118,7 @@ class RecetaUpdate(BaseModel):
 class Receta(RecetaBase):
     id: int
     codigo_receta: str
+    version: int
     producto_id: int
     producto: Optional[ProductoResumenOut] = None
     producto_nombre: Optional[str] = None

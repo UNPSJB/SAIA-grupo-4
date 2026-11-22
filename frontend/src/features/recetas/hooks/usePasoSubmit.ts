@@ -7,6 +7,10 @@ import type {
 import type { PasoReceta, PasoRecetaCreatePayload } from "../types";
 import { recetasApi } from "./recetaApi";
 import type { UsePasoFormStateReturn } from "./usePasoFormState";
+import {
+  convertirEntreUnidades,
+  type InfoUnidadInsumo,
+} from "../utils/unidadesPaso";
 
 interface UsePasoSubmitArgs {
   modo: "crear" | "modificar" | "ver";
@@ -20,10 +24,12 @@ interface UsePasoSubmitArgs {
   estadoRecursos: Pick<
     UsePasoFormStateReturn,
     | "consumos"
+    | "unidadesSeleccionadas"
     | "cantidades"
     | "setErroresConsumo"
     | "setErroresCantidad"
   >;
+  infoUnidadesPorInsumo?: Record<number, InfoUnidadInsumo>;
   setSuccess: Dispatch<SetStateAction<boolean>>;
   /** Avisa qué campos fallaron para que el formulario pueda saltar al paso correcto. */
   onValidationError?: (campos: string[]) => void;
@@ -45,12 +51,14 @@ export const usePasoSubmit = ({
   onGuardado,
   formMethods,
   estadoRecursos,
+  infoUnidadesPorInsumo,
   setSuccess,
   onValidationError,
 }: UsePasoSubmitArgs) => {
   const { handleSubmit, clearErrors, setError } = formMethods;
   const {
     consumos,
+    unidadesSeleccionadas,
     cantidades,
     setErroresConsumo,
     setErroresCantidad,
@@ -141,12 +149,27 @@ export const usePasoSubmit = ({
         numero_orden: values.numero_orden,
         titulo: values.titulo.trim(),
         instrucciones: values.instrucciones.trim(),
-        insumos: (values.insumos ?? []).map((id) => ({
-          insumo_id: id,
-          cantidad_consumo_estimada: Number(
+        insumos: (values.insumos ?? []).map((id) => {
+          const valorIngresado = Number(
             (consumos[String(id)] ?? "").trim().replace(",", "."),
-          ),
-        })),
+          );
+          const info = infoUnidadesPorInsumo?.[id];
+          const unidadElegida =
+            unidadesSeleccionadas?.[String(id)] ?? info?.unidadDefault;
+          const cantidadBase =
+            info && unidadElegida
+              ? convertirEntreUnidades(
+                  valorIngresado,
+                  unidadElegida,
+                  info.simboloBase,
+                )
+              : valorIngresado;
+
+          return {
+            insumo_id: id,
+            cantidad_consumo_estimada: cantidadBase,
+          };
+        }),
         equipos: (values.equipos ?? []).map((id) => ({
           equipo_id: id,
           cantidad: Math.max(

@@ -11,19 +11,26 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { FiLayers, FiPlus, FiTrash2 } from "react-icons/fi";
+import {
+  convertirEntreUnidades,
+  obtenerInfoUnidadInsumo,
+} from "../../recetas/utils/unidadesPaso";
 import type { InsumoTeoricoReceta } from "../types";
 
 export interface AsignacionLoteForm {
   lote_insumo_id: string;
   cantidad: string;
+  unidad?: string;
 }
 
 interface ConsumoInsumoCardProps {
   insumo: InsumoTeoricoReceta;
   cantidadTeorica: number;
   cantidadReal: string;
+  unidadReal: string;
   asignaciones: AsignacionLoteForm[];
   onCambioCantidadReal: (valor: string) => void;
+  onCambioUnidadReal: (unidad: string) => void;
   onCambioAsignaciones: (nuevas: AsignacionLoteForm[]) => void;
   disabled?: boolean;
 }
@@ -80,47 +87,68 @@ export function ConsumoInsumoCard({
   insumo,
   cantidadTeorica,
   cantidadReal,
+  unidadReal,
   asignaciones,
   onCambioCantidadReal,
+  onCambioUnidadReal,
   onCambioAsignaciones,
   disabled = false,
 }: ConsumoInsumoCardProps) {
+  const infoUnidad = obtenerInfoUnidadInsumo({
+    simbolo: insumo.unidad_medida_simbolo,
+    tipo_magnitud: insumo.unidad_medida_tipo ?? undefined,
+  });
+  const unidadBase = infoUnidad.simboloBase || insumo.unidad_medida_simbolo;
+  const tieneSelectorUnidad = infoUnidad.opcionesUnidad.length > 0;
+  const unidadRealActiva = tieneSelectorUnidad
+    ? unidadReal || infoUnidad.unidadDefault
+    : unidadBase;
+
   const cantRealNum = parseFloat(cantidadReal);
-  const cantRealValida = !isNaN(cantRealNum) && cantRealNum >= 0 ? cantRealNum : 0;
+  const cantRealBase =
+    !isNaN(cantRealNum) && cantRealNum >= 0
+      ? convertirEntreUnidades(cantRealNum, unidadRealActiva, unidadBase)
+      : 0;
   const esCero = !isNaN(cantRealNum) && cantRealNum === 0;
-  const difiere = !isNaN(cantRealNum) && Math.abs(cantRealNum - cantidadTeorica) > EPS;
+  const difiere = !isNaN(cantRealNum) && Math.abs(cantRealBase - cantidadTeorica) > EPS;
 
   const lotesDisponibles = insumo.lotes_disponibles ?? [];
 
-  const sumaAsignada = asignaciones.reduce((acc, a) => {
+  const sumaAsignadaBase = asignaciones.reduce((acc, a) => {
     const n = parseFloat(a.cantidad);
-    return acc + (!isNaN(n) && n > 0 ? n : 0);
+    if (isNaN(n) || n <= 0) return acc;
+    const u = tieneSelectorUnidad ? a.unidad || infoUnidad.unidadDefault : unidadBase;
+    return acc + convertirEntreUnidades(n, u, unidadBase);
   }, 0);
 
-  const diferencia = redondear3(sumaAsignada - cantRealValida);
+  const diferenciaBase = redondear3(sumaAsignadaBase - cantRealBase);
   const tieneAlgunLoteValido = asignaciones.some(
     (a) => Boolean(a.lote_insumo_id) && parseFloat(a.cantidad) > 0,
   );
   const estaBalanceado = esCero
     ? asignaciones.length === 0
-    : cantRealValida > 0 && tieneAlgunLoteValido && Math.abs(diferencia) <= EPS;
+    : cantRealBase > 0 && tieneAlgunLoteValido && Math.abs(diferenciaBase) <= EPS;
 
   const handleAgregarFila = () => {
     const idsUsados = new Set(asignaciones.map((a) => a.lote_insumo_id).filter(Boolean));
     const siguienteLote = lotesDisponibles.find((l) => !idsUsados.has(String(l.id)));
-    const faltante = Math.max(0, redondear3(cantRealValida - sumaAsignada));
-    const sugerido =
-      siguienteLote && faltante > 0
-        ? String(redondear3(Math.min(faltante, Number(siguienteLote.cantidad_actual))))
-        : faltante > 0
-          ? String(faltante)
-          : "";
+    const faltanteBase = Math.max(0, redondear3(cantRealBase - sumaAsignadaBase));
+    const unidadFila = tieneSelectorUnidad ? infoUnidad.unidadDefault : unidadBase;
+    const sugeridoBase =
+      siguienteLote && faltanteBase > 0
+        ? redondear3(Math.min(faltanteBase, Number(siguienteLote.cantidad_actual)))
+        : faltanteBase;
+    const sugeridoEnUnidadFila =
+      sugeridoBase > 0
+        ? redondear3(convertirEntreUnidades(sugeridoBase, unidadBase, unidadFila))
+        : 0;
 
     onCambioAsignaciones([
       ...asignaciones,
       {
         lote_insumo_id: siguienteLote ? String(siguienteLote.id) : "",
-        cantidad: sugerido,
+        cantidad: sugeridoEnUnidadFila > 0 ? String(sugeridoEnUnidadFila) : "",
+        unidad: unidadFila,
       },
     ]);
   };
@@ -130,9 +158,25 @@ export function ConsumoInsumoCard({
     campo: keyof AsignacionLoteForm,
     valor: string,
   ) => {
-    const nuevas = asignaciones.map((fila, idx) =>
-      idx === index ? { ...fila, [campo]: valor } : fila,
-    );
+    const nuevas = asignaciones.map((fila, idx) => {
+      if (idx !== index) return fila;
+      if (campo === "unidad") {
+        const unidadAnterior = fila.unidad || infoUnidad.unidadDefault;
+        if (unidadAnterior !== valor) {
+          const actualStr = (fila.cantidad ?? "").trim();
+          const actualNum = parseFloat(actualStr);
+          if (actualStr !== "" && !isNaN(actualNum) && actualNum >= 0) {
+            const convertido = convertirEntreUnidades(
+              actualNum,
+              unidadAnterior,
+              valor,
+            );
+            return { ...fila, unidad: valor, cantidad: String(convertido) };
+          }
+        }
+      }
+      return { ...fila, [campo]: valor };
+    });
     onCambioAsignaciones(nuevas);
   };
 
@@ -169,7 +213,7 @@ export function ConsumoInsumoCard({
         </HStack>
         <HStack gap={1.5} wrap="wrap">
           <Badge colorPalette="gray" variant="subtle" fontSize="2xs">
-            Estimado: {formatearNumero(cantidadTeorica)} {insumo.unidad_medida_simbolo}
+            Estimado: {formatearNumero(cantidadTeorica)} {unidadBase}
           </Badge>
           {difiere && (
             <Badge colorPalette="orange" variant="outline" fontSize="2xs">
@@ -179,7 +223,7 @@ export function ConsumoInsumoCard({
         </HStack>
       </Flex>
 
-      <Flex justify="space-between" align="center" gap={3} mb={3}>
+      <Flex justify="space-between" align="center" gap={3} wrap="wrap" mb={3}>
         <Text fontSize="xs" color="gray.600">
           Consumo real utilizado:
         </Text>
@@ -188,7 +232,7 @@ export function ConsumoInsumoCard({
             type="text"
             inputMode="decimal"
             size="sm"
-            w={{ base: "110px", md: "130px" }}
+            w={{ base: "100px", md: "120px" }}
             textAlign="right"
             fontWeight="bold"
             value={cantidadReal}
@@ -201,9 +245,27 @@ export function ConsumoInsumoCard({
             borderRadius="md"
             bg="gray.50"
           />
-          <Text fontSize="xs" fontWeight="semibold" color="gray.600" minW="25px">
-            {insumo.unidad_medida_simbolo}
-          </Text>
+          {tieneSelectorUnidad ? (
+            <NativeSelect.Root size="sm" w="68px" disabled={disabled}>
+              <NativeSelect.Field
+                bg="gray.50"
+                fontWeight="semibold"
+                value={unidadRealActiva}
+                onChange={(e) => onCambioUnidadReal(e.target.value)}
+              >
+                {infoUnidad.opcionesUnidad.map((op) => (
+                  <option key={op} value={op}>
+                    {op}
+                  </option>
+                ))}
+              </NativeSelect.Field>
+              <NativeSelect.Indicator />
+            </NativeSelect.Root>
+          ) : (
+            <Text fontSize="xs" fontWeight="semibold" color="gray.600" minW="25px">
+              {unidadBase}
+            </Text>
+          )}
         </HStack>
       </Flex>
 
@@ -211,7 +273,7 @@ export function ConsumoInsumoCard({
       {esCero ? (
         <Box bg="gray.50" px={3} py={2} borderRadius="md" border="1px dashed" borderColor="gray.200">
           <Text fontSize="xs" color="gray.500">
-            Sin consumo real declarado (0 {insumo.unidad_medida_simbolo}): no se descontará ningún lote físico.
+            Sin consumo real declarado (0 {unidadBase}): no se descontará ningún lote físico.
           </Text>
         </Box>
       ) : (
@@ -222,16 +284,16 @@ export function ConsumoInsumoCard({
             </Text>
             {estaBalanceado ? (
               <Badge colorPalette="green" variant="subtle" fontSize="2xs">
-                Balanceado ({formatearNumero(sumaAsignada)} / {formatearNumero(cantRealValida)}{" "}
-                {insumo.unidad_medida_simbolo})
+                Balanceado ({formatearNumero(redondear3(sumaAsignadaBase))} /{" "}
+                {formatearNumero(redondear3(cantRealBase))} {unidadBase})
               </Badge>
-            ) : diferencia < -EPS ? (
+            ) : diferenciaBase < -EPS ? (
               <Badge colorPalette="orange" variant="subtle" fontSize="2xs">
-                Faltan {formatearNumero(Math.abs(diferencia))} {insumo.unidad_medida_simbolo}
+                Faltan {formatearNumero(Math.abs(diferenciaBase))} {unidadBase}
               </Badge>
             ) : (
               <Badge colorPalette="red" variant="subtle" fontSize="2xs">
-                Exceso +{formatearNumero(diferencia)} {insumo.unidad_medida_simbolo}
+                Exceso +{formatearNumero(diferenciaBase)} {unidadBase}
               </Badge>
             )}
           </Flex>
@@ -246,11 +308,17 @@ export function ConsumoInsumoCard({
                 const loteSel = lotesDisponibles.find(
                   (l) => String(l.id) === asig.lote_insumo_id,
                 );
+                const unidadFila = tieneSelectorUnidad
+                  ? asig.unidad || infoUnidad.unidadDefault
+                  : unidadBase;
                 const cantAsigNum = parseFloat(asig.cantidad);
+                const cantAsigBase =
+                  !isNaN(cantAsigNum) && cantAsigNum > 0
+                    ? convertirEntreUnidades(cantAsigNum, unidadFila, unidadBase)
+                    : 0;
                 const superaStock =
                   loteSel != null &&
-                  !isNaN(cantAsigNum) &&
-                  cantAsigNum > Number(loteSel.cantidad_actual) + EPS;
+                  cantAsigBase > Number(loteSel.cantidad_actual) + EPS;
                 const duplicado = Boolean(
                   asig.lote_insumo_id &&
                     asignaciones.filter((a) => a.lote_insumo_id === asig.lote_insumo_id)
@@ -296,7 +364,7 @@ export function ConsumoInsumoCard({
                             .map((l) => (
                               <option key={l.id} value={String(l.id)}>
                                 {l.codigo_lote} — Disp: {formatearNumero(l.cantidad_actual)}{" "}
-                                {insumo.unidad_medida_simbolo} (Vto:{" "}
+                                {unidadBase} (Vto:{" "}
                                 {formatearFechaCorta(l.fecha_vencimiento)})
                               </option>
                             ))}
@@ -315,8 +383,8 @@ export function ConsumoInsumoCard({
                           inputMode="decimal"
                           size="sm"
                           flex={{ base: "1", md: "initial" }}
-                          maxW={{ base: "150px", md: "100px" }}
-                          w={{ base: "full", md: "100px" }}
+                          maxW={{ base: "130px", md: "95px" }}
+                          w={{ base: "full", md: "95px" }}
                           bg="white"
                           textAlign="right"
                           fontWeight="semibold"
@@ -335,9 +403,28 @@ export function ConsumoInsumoCard({
                           disabled={disabled}
                           placeholder="0"
                         />
-                        <Text fontSize="xs" color="gray.600" minW="22px" flexShrink={0}>
-                          {insumo.unidad_medida_simbolo}
-                        </Text>
+                        {tieneSelectorUnidad ? (
+                          <NativeSelect.Root size="sm" w="66px" disabled={disabled}>
+                            <NativeSelect.Field
+                              bg="white"
+                              value={unidadFila}
+                              onChange={(e) =>
+                                handleActualizarFila(idx, "unidad", e.target.value)
+                              }
+                            >
+                              {infoUnidad.opcionesUnidad.map((op) => (
+                                <option key={op} value={op}>
+                                  {op}
+                                </option>
+                              ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator />
+                          </NativeSelect.Root>
+                        ) : (
+                          <Text fontSize="xs" color="gray.600" minW="22px" flexShrink={0}>
+                            {unidadBase}
+                          </Text>
+                        )}
                         <IconButton
                           aria-label="Quitar lote"
                           size="sm"
@@ -356,7 +443,7 @@ export function ConsumoInsumoCard({
                       <Text fontSize="2xs" color="red.600" mt={1}>
                         {duplicado
                           ? "Este lote ya fue seleccionado en otra fila."
-                          : `Supera el stock disponible (${formatearNumero(loteSel!.cantidad_actual)} ${insumo.unidad_medida_simbolo}).`}
+                          : `Supera el stock disponible (${formatearNumero(loteSel!.cantidad_actual)} ${unidadBase}).`}
                       </Text>
                     )}
                   </Box>

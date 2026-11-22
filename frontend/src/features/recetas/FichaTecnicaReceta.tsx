@@ -6,9 +6,12 @@ import {
   Box,
   Button,
   Card,
+  Flex,
   Heading,
   HStack,
   Icon,
+  IconButton,
+  Input,
   SimpleGrid,
   Text,
   VStack,
@@ -21,16 +24,24 @@ import {
   FiFileText,
   FiHash,
   FiPackage,
+  FiPlus,
   FiPrinter,
+  FiRotateCcw,
+  FiSliders,
   FiTag,
   FiTool,
 } from "react-icons/fi";
 
-import { AlertMessage, LoadingState } from "../../components/ui";
+import { AlertMessage, FormModal, LoadingState } from "../../components/ui";
 import { ListadoContainer } from "../../components/layout";
 import { useAuth } from "../auth/useAuth";
+import { RegistrarLoteForm } from "../lotes/RegistrarLoteForm";
 import { recetasApi } from "./hooks/recetaApi";
 import { imprimirFichaReceta } from "./utils/imprimirFichaReceta";
+import {
+  calcularFactorEscala,
+  formatearCantidadEscalada,
+} from "./utils/escalarReceta";
 import { FichaRecetaPrint } from "./FichaRecetaPrint";
 import { TablaComposicionPorcentual } from "./components/TablaComposicionPorcentual";
 import { TablaInformacionNutricional } from "./components/TablaInformacionNutricional";
@@ -100,6 +111,9 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
   const [aplicabilidad, setAplicabilidad] =
     useState<AplicabilidadFrontalOut | null>(null);
   const [sellos, setSellos] = useState<SellosAdvertenciaOut | null>(null);
+  const [cantidadObjetivo, setCantidadObjetivo] = useState<string>("");
+  const [crearLoteAbierto, setCrearLoteAbierto] = useState(false);
+  const [loteCreadoExito, setLoteCreadoExito] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -138,9 +152,10 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
         setAplicabilidad(dataAplica);
         setSellos(dataSellos);
       } else {
-        // En modo operador, consultamos la receta activa
-        const dataReceta = await recetasApi.obtenerRecetaActiva(recetaId);
+        // En modo operador, consultamos la receta (ACTIVA o ARCHIVADA)
+        const dataReceta = await recetasApi.obtenerRecetaConsultable(recetaId);
         setReceta(dataReceta);
+        setCantidadObjetivo(String(dataReceta.rendimiento_estandar));
       }
     } catch (e: any) {
       setError(
@@ -159,11 +174,22 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     cargarDatos();
   }, [recetaId, esModoAdmin]);
 
+  useEffect(() => {
+    if (!loteCreadoExito) return;
+    const timer = setTimeout(() => setLoteCreadoExito(false), 4000);
+    return () => clearTimeout(timer);
+  }, [loteCreadoExito]);
+
   const pasosOrdenados = useMemo(() => {
     return [...(receta?.pasos ?? [])].sort(
       (a, b) => a.numero_orden - b.numero_orden,
     );
   }, [receta?.pasos]);
+
+  const factorEscala = useMemo(() => {
+    if (esModoAdmin || !receta) return 1.0;
+    return calcularFactorEscala(cantidadObjetivo, Number(receta.rendimiento_estandar));
+  }, [esModoAdmin, receta, cantidadObjetivo]);
 
   // Consolidación de insumos y equipos para la vista previa general
   const { insumosGenerales, equiposGenerales } = useMemo(() => {
@@ -305,73 +331,113 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     texto: receta.estado,
     color: "gray",
   };
-  const rendimientoTexto = `${receta.rendimiento_estandar} g`;
+  const unidadRendimiento = "g";
+  const rendimientoTexto = `${receta.rendimiento_estandar} ${unidadRendimiento}`;
+  const cantidadObjetivoNum = parseFloat(cantidadObjetivo);
+  const cantidadObjetivoInvalida =
+    !esModoAdmin && (cantidadObjetivo.trim() === "" || isNaN(cantidadObjetivoNum) || cantidadObjetivoNum <= 0);
+  const estaEscalada = !esModoAdmin && Math.abs(factorEscala - 1) > 0.0001;
 
   return (
     <>
       <Box
-        p={{ base: 4, md: 6 }}
-        bg='gray.100'
-        minH='100vh'
         w='100%'
         className='no-print'
         _print={{ display: "none" }}
       >
-        <Box w='100%'>
-          {/* Barra de Navegación Superior */}
-          <HStack
-            justify='space-between'
-            align='center'
-            flexWrap='wrap'
-            gap={3}
-            mb={3}
+        {/* Barra de Navegación Superior */}
+        <HStack
+          justify='space-between'
+          align='center'
+          flexWrap='wrap'
+          gap={3}
+          mb={3}
+        >
+          <Button
+            variant='outline'
+            colorPalette='green'
+            size='sm'
+            onClick={handleVolver}
           >
-            <Button
-              variant='outline'
-              colorPalette='green'
-              onClick={handleVolver}
-            >
-              <FiArrowLeft />{" "}
-              {esModoAdmin ? "Volver a Recetas" : "Volver al catálogo"}
-            </Button>
+            <FiArrowLeft />{" "}
+            {esModoAdmin ? "Volver a Recetas" : "Volver al catálogo"}
+          </Button>
 
-            <HStack gap={2} flexWrap='wrap'>
-              {esModoAdmin && (
-                <Button
-                  colorPalette='teal'
-                  variant='outline'
-                  onClick={() =>
-                    navigate(`/productos/${receta.producto_id}/rotulo`, {
-                      state: {
-                        from: `/recetas/${receta.id}/ficha-tecnica`,
-                        label: "Ficha Técnica",
-                        padre: { nombre: "Recetas", to: "/recetas" },
-                      },
-                    })
-                  }
-                >
-                  <FiTag /> Completar Rótulo CAA
-                </Button>
-              )}
+          <HStack gap={2} flexWrap='wrap' flexShrink={0}>
+            {esModoAdmin && (
               <Button
-                colorPalette='blue'
+                size='sm'
+                colorPalette='teal'
                 variant='outline'
-                onClick={() => imprimirFichaReceta(receta)}
+                onClick={() =>
+                  navigate(`/productos/${receta.producto_id}/rotulo`, {
+                    state: {
+                      from: `/recetas/${receta.id}/ficha-tecnica`,
+                      label: "Ficha Técnica",
+                      padre: { nombre: "Recetas", to: "/recetas" },
+                    },
+                  })
+                }
               >
-                <FiPrinter /> Imprimir / Descargar PDF
+                <FiTag /> Completar Rótulo CAA
               </Button>
-            </HStack>
+            )}
+            <IconButton
+              display={{ base: "inline-flex", md: "none" }}
+              aria-label='Imprimir o descargar PDF'
+              title='Imprimir o descargar PDF'
+              size='sm'
+              variant='outline'
+              colorPalette='blue'
+              onClick={() => imprimirFichaReceta(receta)}
+            >
+              <FiPrinter />
+            </IconButton>
+            <Button
+              display={{ base: "none", md: "inline-flex" }}
+              size='sm'
+              colorPalette='blue'
+              variant='outline'
+              onClick={() => imprimirFichaReceta(receta)}
+            >
+              <FiPrinter /> Imprimir / Descargar PDF
+            </Button>
           </HStack>
+        </HStack>
 
-          {/* Título de la Receta */}
-          <HStack align='baseline' gap={3} flexWrap='wrap' mb={2}>
-            <Heading size='2xl' color='green.700'>
-              {receta.nombre_receta}
-            </Heading>
-            <Badge colorPalette='teal' fontSize='sm' px={2.5} py={0.5}>
-              {receta.codigo_receta}
-            </Badge>
-          </HStack>
+        {/* Cabecera Superior */}
+        <HStack
+          align='baseline'
+          gap={2.5}
+          flexWrap='wrap'
+          mb={2}
+        >
+          <Heading size={{ base: "xl", md: "2xl" }} color='green.700'>
+            {receta.nombre_receta}
+          </Heading>
+          <Badge colorPalette='teal' fontSize='sm' px={2.5} py={0.5}>
+            {receta.codigo_receta}
+          </Badge>
+          <Badge
+            colorPalette='gray'
+            variant='surface'
+            fontSize='sm'
+            px={2.5}
+            py={0.5}
+            fontWeight='semibold'
+          >
+            v{receta.version}
+          </Badge>
+        </HStack>
+
+        {!esModoAdmin && loteCreadoExito && (
+          <Box mb={3}>
+            <AlertMessage
+              type='success'
+              message='¡Lote de producción registrado exitosamente! Podés consultarlo en la sección Mis Lotes.'
+            />
+          </Box>
+        )}
 
           {/* Chips informativos */}
           <HStack gap={2} mb={4} flexWrap='wrap'>
@@ -410,6 +476,15 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               colorPalette='gray'
             />
           </HStack>
+
+          {receta.estado === "ARCHIVADA" && (
+            <Box mb={4}>
+              <AlertMessage
+                type="warning"
+                message={`Versión histórica (v${receta.version} — Archivada): esta receta es de solo lectura y no se encuentra vigente para producción.`}
+              />
+            </Box>
+          )}
 
           {receta.observaciones && (
             <Box
@@ -482,8 +557,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                     (receta.estado === "ACTIVA" && !receta.tiene_lotes))
                 }
                 motivoSoloLectura={
-                  receta.estado === "INHABILITADA"
-                    ? "Receta inhabilitada: solo lectura"
+                  receta.estado === "ARCHIVADA"
+                    ? "Receta archivada: solo lectura"
                     : "Receta con lotes asociados: solo lectura"
                 }
               />
@@ -497,9 +572,125 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
             </Box>
           )}
 
-          {/* Resumen General de Insumos y Equipos (solo en modo operador) */}
+          {/* Selector de cantidad a elaborar y Resumen de Insumos/Equipos (solo en modo operador) */}
           {!esModoAdmin && (
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={6}>
+            <>
+              {receta.estado === "ACTIVA" && (
+              <Card.Root
+                variant="outline"
+                bg="white"
+                shadow="xs"
+                mb={4}
+                borderColor={estaEscalada ? "green.300" : "gray.200"}
+                borderLeft="4px solid"
+                borderLeftColor={estaEscalada ? "green.500" : "blue.400"}
+              >
+                <Card.Body py={3} px={4}>
+                  <Flex
+                    direction={{ base: "column", md: "row" }}
+                    justify="space-between"
+                    align={{ base: "stretch", md: "center" }}
+                    gap={3}
+                  >
+                    <VStack align="start" gap={0.5}>
+                      <HStack gap={2} wrap="wrap">
+                        <Icon as={FiSliders} color="green.600" />
+                        <Text fontWeight="bold" fontSize="sm" color="gray.800">
+                          Calcular insumos para otra cantidad
+                        </Text>
+                        <Badge
+                          colorPalette="blue"
+                          variant="outline"
+                          fontSize="xs"
+                        >
+                          Factor: {factorEscala.toFixed(2)}x
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="xs" color="gray.500">
+                        Rendimiento estándar de la receta: {rendimientoTexto}. Modificá la cantidad para recalcular los insumos.
+                      </Text>
+                      {cantidadObjetivoInvalida && (
+                        <Text fontSize="xs" color="orange.600" fontWeight="medium">
+                          Ingresá una cantidad mayor a 0 para escalar (mostrando valores estándar 1.00x).
+                        </Text>
+                      )}
+                    </VStack>
+
+                    <Flex gap={2} align="center" wrap="wrap" justify={{ base: "flex-start", md: "flex-end" }}>
+                      <HStack gap={1.5}>
+                        <Input
+                          type="number"
+                          step="any"
+                          min={0}
+                          size="sm"
+                          w={{ base: "110px", sm: "130px" }}
+                          textAlign="right"
+                          fontWeight="bold"
+                          bg="gray.50"
+                          value={cantidadObjetivo}
+                          onChange={(e) => setCantidadObjetivo(e.target.value)}
+                          aria-label="Cantidad a elaborar"
+                        />
+                        <Badge colorPalette="green" variant="subtle" px={2.5} py={1.5} fontSize="xs">
+                          {unidadRendimiento}
+                        </Badge>
+                      </HStack>
+
+                      <HStack gap={1}>
+                        {[0.5, 1, 2].map((mult) => (
+                          <Button
+                            key={mult}
+                            type="button"
+                            size="xs"
+                            variant="outline"
+                            colorPalette="gray"
+                            onClick={() =>
+                              setCantidadObjetivo(
+                                String(
+                                  Math.round(Number(receta.rendimiento_estandar) * mult * 100) / 100,
+                                ),
+                              )
+                            }
+                          >
+                            {mult}x
+                          </Button>
+                        ))}
+                        {(estaEscalada || cantidadObjetivoInvalida) && (
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="ghost"
+                            colorPalette="green"
+                            onClick={() => setCantidadObjetivo(String(receta.rendimiento_estandar))}
+                          >
+                            <FiRotateCcw />
+                            Restablecer
+                          </Button>
+                        )}
+                      </HStack>
+
+                      {receta.estado === "ACTIVA" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          colorPalette="green"
+                          variant="solid"
+                          w={{ base: "full", sm: "auto" }}
+                          onClick={() => {
+                            setLoteCreadoExito(false);
+                            setCrearLoteAbierto(true);
+                          }}
+                        >
+                          <FiPlus /> Nuevo lote
+                        </Button>
+                      )}
+                    </Flex>
+                  </Flex>
+                </Card.Body>
+              </Card.Root>
+              )}
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={6}>
               {/* Tarjeta de Insumos Generales */}
               <Card.Root variant='outline' bg='white' shadow='xs'>
                 <Card.Header pb={2}>
@@ -533,8 +724,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                               {ins.pasos.join(", ")}
                             </Text>
                           </VStack>
-                          <Badge colorPalette='blue' variant='subtle'>
-                            {ins.total} {ins.unidad}
+                          <Badge colorPalette="blue" variant="subtle">
+                            {formatearCantidadEscalada(ins.total, factorEscala)} {ins.unidad}
                           </Badge>
                         </HStack>
                       ))}
@@ -586,6 +777,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                 </Card.Body>
               </Card.Root>
             </SimpleGrid>
+            </>
           )}
 
           {/* Secuencia Ordenada de Pasos */}
@@ -677,9 +869,13 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                                   variant='outline'
                                   size='sm'
                                 >
-                                  {pi.insumo?.nombre ??
-                                    `Insumo #${pi.insumo_id}`}{" "}
-                                  ({pi.cantidad_consumo_estimada}{" "}
+                                  {pi.insumo?.nombre ?? `Insumo #${pi.insumo_id}`} (
+                                  {!esModoAdmin
+                                    ? formatearCantidadEscalada(
+                                        Number(pi.cantidad_consumo_estimada) || 0,
+                                        factorEscala,
+                                      )
+                                    : pi.cantidad_consumo_estimada}{" "}
                                   {pi.insumo?.unidad_medida ?? ""})
                                 </Badge>
                               ))}
@@ -731,7 +927,6 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               </VStack>
             )}
           </Box>
-        </Box>
       </Box>
 
       {/* Componente de Impresión Exclusivo (A4, tema claro) */}
@@ -745,7 +940,33 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
           esModoAdmin && aplicabilidad?.dictamen === "APLICA" ? sellos : null
         }
         esModoAdmin={esModoAdmin}
+        factorEscala={factorEscala}
+        cantidadObjetivo={
+          !esModoAdmin && !cantidadObjetivoInvalida ? cantidadObjetivoNum : null
+        }
       />
+      {/* Modal de Registro de Lote precargado desde la Ficha Técnica (Operador) */}
+      {!esModoAdmin && crearLoteAbierto && (
+        <FormModal
+          open={crearLoteAbierto}
+          onClose={() => setCrearLoteAbierto(false)}
+          showClose
+        >
+          <RegistrarLoteForm
+            productoIdInicial={receta.producto_id}
+            masaTandaInicial={
+              !cantidadObjetivoInvalida
+                ? cantidadObjetivoNum
+                : Number(receta.rendimiento_estandar)
+            }
+            onSuccess={() => {
+              setCrearLoteAbierto(false);
+              setLoteCreadoExito(true);
+            }}
+            onCancelar={() => setCrearLoteAbierto(false)}
+          />
+        </FormModal>
+      )}
     </>
   );
 };

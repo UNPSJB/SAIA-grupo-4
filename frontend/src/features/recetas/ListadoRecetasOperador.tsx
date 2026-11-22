@@ -9,7 +9,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { FiBookOpen, FiPrinter } from "react-icons/fi";
+import { FiBookOpen, FiClock, FiFileText, FiPrinter } from "react-icons/fi";
 
 import {
   AlertMessage,
@@ -137,6 +137,7 @@ export const ListadoRecetasOperador = () => {
         const query = filtrosAplicados.busqueda.trim().toLowerCase();
         const coincideCodigo = r.codigo_receta?.toLowerCase().includes(query);
         const coincideNombre = r.nombre_receta?.toLowerCase().includes(query);
+        const coincideVersion = r.version != null && `v${r.version}`.toLowerCase().includes(query);
         const coincideProd = r.producto?.nombre?.toLowerCase().includes(query);
         const coincideRend = String(r.rendimiento_estandar ?? "")
           .toLowerCase()
@@ -158,6 +159,7 @@ export const ListadoRecetasOperador = () => {
         if (
           !coincideCodigo &&
           !coincideNombre &&
+          !coincideVersion &&
           !coincideProd &&
           !coincideRend &&
           !coincideTiempo &&
@@ -179,6 +181,16 @@ export const ListadoRecetasOperador = () => {
   const verFicha = (r: Receta) => {
     navigate(`/recetas/${r.id}`, {
       state: { from: "/recetas", label: "Ficha Técnica" },
+    });
+  };
+
+  const verHistorial = (r: Receta) => {
+    navigate(`/recetas/historial/${r.producto_id}`, {
+      state: {
+        from: "/recetas",
+        label: "Historial de Versiones",
+        productoNombre: r.producto?.nombre,
+      },
     });
   };
 
@@ -238,13 +250,20 @@ export const ListadoRecetasOperador = () => {
     {
       key: "codigo_receta",
       label: "Código",
-      w: "140px",
-      valorExportacion: (r) => r.codigo_receta,
-      render: (r) => <Text>{r.codigo_receta}</Text>,
+      w: "160px",
+      valorExportacion: (r) => `${r.codigo_receta} (v${r.version})`,
+      render: (r) => (
+        <HStack gap={1.5} wrap='wrap'>
+          <Text>{r.codigo_receta}</Text>
+          <Badge colorPalette='gray' variant='surface' size='sm'>
+            v{r.version}
+          </Badge>
+        </HStack>
+      ),
     },
     {
       key: "nombre_receta",
-      label: "Receta",
+      label: "Nombre",
       valorExportacion: (r) => r.nombre_receta,
       render: (r) => {
         const coincidencias = obtenerCoincidenciasRecursos(
@@ -320,15 +339,15 @@ export const ListadoRecetasOperador = () => {
       key: "acciones",
       label: "Acciones",
       exportable: false,
-      w: "130px",
+      w: "160px",
       align: "end",
       render: (r) => (
         <RowActions>
           <RowActionButton
-            icon={FiBookOpen}
+            icon={FiFileText}
             label='Ver ficha técnica'
             title='Ver ficha técnica completa'
-            colorPalette='green'
+            colorPalette='purple'
             onClick={() => verFicha(r)}
           />
           <RowActionButton
@@ -338,6 +357,13 @@ export const ListadoRecetasOperador = () => {
             colorPalette='blue'
             onClick={() => void handleImprimir(r)}
           />
+          <RowActionButton
+            icon={FiClock}
+            label='Historial'
+            title='Ver historial de versiones archivadas'
+            colorPalette='yellow'
+            onClick={() => verHistorial(r)}
+          />
         </RowActions>
       ),
     },
@@ -345,7 +371,7 @@ export const ListadoRecetasOperador = () => {
 
   return (
     <ListadoContainer>
-      <ListadoHeader title='Catálogo de Recetas' icon={FiBookOpen} />
+      <ListadoHeader title='Recetas' icon={FiBookOpen} />
 
       <Box
         mb={4}
@@ -376,8 +402,8 @@ export const ListadoRecetasOperador = () => {
           )}
         >
           <FiltroTexto
-            ariaLabel='Buscar por código, receta, producto, insumo o equipo'
-            placeholder='Código, receta, producto, insumo o equipo...'
+            ariaLabel='Buscar por código, nombre, producto, insumo o equipo'
+            placeholder='Código, nombre, producto, insumo o equipo...'
             value={borradorFiltros.busqueda}
             onChange={(v) =>
               setBorradorFiltros((prev) => ({ ...prev, busqueda: v }))
@@ -448,9 +474,14 @@ export const ListadoRecetasOperador = () => {
                 <Card.Root key={r.id} variant='outline'>
                   <Card.Body gap={2}>
                     <HStack justify='space-between' align='flex-start' gap={2}>
-                      <Text fontWeight='bold' color='green.700'>
-                        {r.codigo_receta}
-                      </Text>
+                      <HStack gap={1.5} wrap='wrap'>
+                        <Text fontWeight='bold' color='green.700'>
+                          {r.codigo_receta}
+                        </Text>
+                        <Badge colorPalette='gray' variant='surface' size='sm'>
+                          v{r.version}
+                        </Badge>
+                      </HStack>
                       <Badge
                         colorPalette='purple'
                         variant='subtle'
@@ -511,6 +542,15 @@ export const ListadoRecetasOperador = () => {
                         aria-label='Imprimir ficha'
                       >
                         <FiPrinter />
+                      </Button>
+                      <Button
+                        colorPalette='yellow'
+                        variant='subtle'
+                        onClick={() => verHistorial(r)}
+                        aria-label='Ver historial de versiones'
+                        title='Historial de versiones'
+                      >
+                        <FiClock />
                       </Button>
                     </HStack>
                   </Card.Body>

@@ -4,6 +4,10 @@ import type { Equipo } from "../../equipos/types";
 import type { Insumo } from "../../insumo/types";
 import type { PasoReceta } from "../types";
 import { recetasApi } from "./recetaApi";
+import {
+  obtenerInfoUnidadInsumo,
+  type InfoUnidadInsumo,
+} from "../utils/unidadesPaso";
 
 interface UsePasoCatalogsArgs {
   modo: "crear" | "modificar" | "ver";
@@ -106,6 +110,23 @@ export const usePasoCatalogs = ({ modo, paso }: UsePasoCatalogsArgs) => {
     return mapa;
   }, [insumos, paso]);
 
+  const infoUnidadesPorInsumo = useMemo<Record<number, InfoUnidadInsumo>>(() => {
+    const mapa: Record<number, InfoUnidadInsumo> = {};
+    insumos.forEach((i) => {
+      mapa[i.id] = obtenerInfoUnidadInsumo(i.unidad_medida);
+    });
+    if (paso?.insumos) {
+      paso.insumos.forEach((pi) => {
+        if (!mapa[pi.insumo_id] && pi.insumo?.unidad_medida) {
+          mapa[pi.insumo_id] = obtenerInfoUnidadInsumo({
+            simbolo: pi.insumo.unidad_medida,
+          });
+        }
+      });
+    }
+    return mapa;
+  }, [insumos, paso]);
+
   const opcionesEquipos = useMemo<CheckboxGroupOption[]>(() => {
     const filtrados = equipos.filter(
       (e) => e.activo || (esEdicion && idsEquiposDelPaso.has(e.id)),
@@ -135,6 +156,7 @@ export const usePasoCatalogs = ({ modo, paso }: UsePasoCatalogsArgs) => {
     opcionesInsumos,
     opcionesEquipos,
     unidadesPorInsumo,
+    infoUnidadesPorInsumo,
     loading,
     error,
   };

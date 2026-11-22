@@ -36,10 +36,12 @@ const inicializarCantidades = (equipos: PasoEquipo[]): Record<string, string> =>
 
 export interface UsePasoFormStateReturn {
   consumos: Record<string, string>;
+  unidadesSeleccionadas: Record<string, string>;
   cantidades: Record<string, string>;
   erroresConsumo: Record<string, string>;
   erroresCantidad: Record<string, string>;
   actualizarConsumo: (id: number, texto: string) => void;
+  actualizarUnidad: (id: number, unidad: string) => void;
   actualizarCantidad: (id: number, texto: string) => void;
   aplicarSeleccionInsumos: (ids: number[]) => void;
   aplicarSeleccionEquipos: (ids: number[]) => void;
@@ -65,6 +67,9 @@ export const usePasoFormState = ({
   const [consumos, setConsumos] = useState<Record<string, string>>(() =>
     esEdicion ? inicializarConsumos(paso?.insumos ?? []) : {},
   );
+  const [unidadesSeleccionadas, setUnidadesSeleccionadas] = useState<
+    Record<string, string>
+  >({});
 
   const [cantidades, setCantidades] = useState<Record<string, string>>(() =>
     esEdicion ? inicializarCantidades(paso?.equipos ?? []) : {},
@@ -86,6 +91,10 @@ export const usePasoFormState = ({
     });
   }, []);
 
+  const actualizarUnidad = useCallback((id: number, unidad: string) => {
+    setUnidadesSeleccionadas((prev) => ({ ...prev, [String(id)]: unidad }));
+  }, []);
+
   const actualizarCantidad = useCallback((id: number, texto: string) => {
     setCantidades((prev) => ({ ...prev, [String(id)]: texto }));
     setErroresCantidad((prev) => {
@@ -97,6 +106,7 @@ export const usePasoFormState = ({
 
   const aplicarSeleccionInsumos = useCallback((ids: number[]) => {
     setConsumos((prev) => conservarSolo(prev, ids));
+    setUnidadesSeleccionadas((prev) => conservarSolo(prev, ids));
     setErroresConsumo({});
   }, []);
 
@@ -113,10 +123,12 @@ export const usePasoFormState = ({
 
   return {
     consumos,
+    unidadesSeleccionadas,
     cantidades,
     erroresConsumo,
     erroresCantidad,
     actualizarConsumo,
+    actualizarUnidad,
     actualizarCantidad,
     aplicarSeleccionInsumos,
     aplicarSeleccionEquipos,

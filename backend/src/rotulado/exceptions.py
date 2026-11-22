@@ -16,5 +16,5 @@ class RecetaConLotesNoEditableAplicabilidad(Conflict):
     )
 
 
-class RecetaInhabilitadaNoEditableAplicabilidad(Conflict):
-    DETAIL = "No se pueden modificar los overrides de una receta inhabilitada."
+class RecetaArchivadaNoEditableAplicabilidad(Conflict):
+    DETAIL = "No se pueden modificar los overrides de una receta archivada."

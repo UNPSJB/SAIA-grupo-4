@@ -22,6 +22,7 @@ import type {
   SellosAdvertenciaOut,
 } from "./types";
 import { useConfiguracion } from "../configuracion/useConfiguracion";
+import { formatearCantidadEscalada } from "./utils/escalarReceta";
 import {
   SeccionAplicabilidadPrint,
   SeccionComposicionPrint,
@@ -52,6 +53,8 @@ export interface FichaRecetaPrintProps {
   aplicabilidad?: AplicabilidadFrontalOut | null;
   sellos?: SellosAdvertenciaOut | null;
   esModoAdmin?: boolean;
+  factorEscala?: number;
+  cantidadObjetivo?: number | null;
 }
 
 const consolidarRecursosParaPrint = (pasos: PasoReceta[] = []) => {
@@ -128,6 +131,8 @@ export const FichaRecetaPrint = ({
   aplicabilidad,
   sellos,
   esModoAdmin = false,
+  factorEscala = 1,
+  cantidadObjetivo = null,
 }: FichaRecetaPrintProps) => {
   const { insumos, equipos, pasosOrdenados } = useMemo(
     () => consolidarRecursosParaPrint(receta.pasos ?? []),
@@ -145,10 +150,12 @@ export const FichaRecetaPrint = ({
   );
   const { configuracion, logoSrc } = useConfiguracion();
   const nombreEstablecimiento = configuracion.nombre_establecimiento || "SAIA-4";
-  const unidadRendimiento = receta.producto?.unidad_medida?.simbolo || "";
-  const rendimientoStr = unidadRendimiento
-    ? `${receta.rendimiento_estandar} ${unidadRendimiento}`
-    : `${receta.rendimiento_estandar} g`;
+  const unidadRendimiento = "g";
+  const rendimientoStr = `${receta.rendimiento_estandar} ${unidadRendimiento}`;
+  const estaEscalada = !esModoAdmin && Math.abs(factorEscala - 1) > 0.0001 && cantidadObjetivo != null;
+  const rendimientoMostrado = estaEscalada
+    ? `${Number(cantidadObjetivo).toLocaleString("es-AR", { maximumFractionDigits: 2 })} ${unidadRendimiento} (Estándar: ${rendimientoStr} · ${factorEscala.toFixed(2)}x)`
+    : rendimientoStr;
 
   return (
     <Box
@@ -256,23 +263,38 @@ export const FichaRecetaPrint = ({
        </VStack>
      </HStack>
         <VStack align="end" gap={1}>
-          <Badge
-            colorPalette={receta.estado === "INHABILITADA" ? "red" : "teal"}
-            variant="surface"
-            fontSize="sm"
-            px={2.5}
-            py={1}
-            borderRadius="md"
-            fontWeight="bold"
-            borderWidth="1px"
-            borderColor={receta.estado === "INHABILITADA" ? "red.200" : "teal.200"}
-          >
-            {receta.codigo_receta}
-          </Badge>
+          <HStack gap={1.5}>
+            <Badge
+              colorPalette={receta.estado === "ARCHIVADA" ? "red" : "teal"}
+              variant="surface"
+              fontSize="sm"
+              px={2.5}
+              py={1}
+              borderRadius="md"
+              fontWeight="bold"
+              borderWidth="1px"
+              borderColor={receta.estado === "ARCHIVADA" ? "red.200" : "teal.200"}
+            >
+              {receta.codigo_receta}
+            </Badge>
+            <Badge
+              colorPalette="gray"
+              variant="surface"
+              fontSize="sm"
+              px={2}
+              py={1}
+              borderRadius="md"
+              fontWeight="bold"
+              borderWidth="1px"
+              borderColor="gray.300"
+            >
+              v{receta.version}
+            </Badge>
+          </HStack>
           <Text
             fontSize="2xs"
-            color={receta.estado === "INHABILITADA" ? "red.600" : "gray.600"}
-            fontWeight={receta.estado === "INHABILITADA" ? "bold" : "normal"}
+            color={receta.estado === "ARCHIVADA" ? "red.600" : "gray.600"}
+            fontWeight={receta.estado === "ARCHIVADA" ? "bold" : "normal"}
           >
             Impreso: {fechaHoy} · Estado: {receta.estado}
           </Text>
@@ -300,10 +322,10 @@ export const FichaRecetaPrint = ({
         </Box>
         <Box>
           <Text fontSize="2xs" fontWeight="bold" textTransform="uppercase" color="gray.500">
-            Rendimiento estándar
+            {estaEscalada ? "Cantidad calculada" : "Rendimiento estándar"}
           </Text>
           <Text fontSize="sm" fontWeight="semibold" color="gray.800">
-            {rendimientoStr}
+            {rendimientoMostrado}
           </Text>
         </Box>
         <Box>
@@ -523,7 +545,7 @@ export const FichaRecetaPrint = ({
                         {ins.nombre}
                       </Table.Cell>
                       <Table.Cell fontSize="xs" py={1.5} textAlign="right" fontWeight="medium">
-                        {ins.cantidadTotal} {ins.unidad}
+                        {formatearCantidadEscalada(ins.cantidadTotal, factorEscala)} {ins.unidad}
                       </Table.Cell>
                       <Table.Cell fontSize="2xs" color="gray.600" py={1.5}>
                         Paso{ins.pasos.length > 1 ? "s" : ""} {ins.pasos.join(", ")}
@@ -656,10 +678,15 @@ export const FichaRecetaPrint = ({
                       </Text>
                       {paso.insumos && paso.insumos.length > 0
                         ? paso.insumos
-                            .map(
-                              (i) =>
-                                `${i.insumo?.nombre ?? `Insumo #${i.insumo_id}`} (${i.cantidad_consumo_estimada} ${i.insumo?.unidad_medida ?? ""})`,
-                            )
+                            .map((i) => {
+                              const cant = !esModoAdmin
+                                ? formatearCantidadEscalada(
+                                    Number(i.cantidad_consumo_estimada) || 0,
+                                    factorEscala,
+                                  )
+                                : i.cantidad_consumo_estimada;
+                              return `${i.insumo?.nombre ?? `Insumo #${i.insumo_id}`} (${cant} ${i.insumo?.unidad_medida ?? ""})`;
+                            })
                             .join(", ")
                         : "Ninguno"}
                     </Box>
