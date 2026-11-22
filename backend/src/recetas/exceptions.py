@@ -16,8 +16,8 @@ class RecetaNoActiva(BadRequest):
     DETAIL = ErrorCode.RECETA_NO_ACTIVA
 
 
-class RecetaInhabilitadaNoEditable(BadRequest):
-    DETAIL = ErrorCode.RECETA_INHABILITADA_NO_EDITABLE
+class RecetaArchivadaNoEditable(BadRequest):
+    DETAIL = ErrorCode.RECETA_ARCHIVADA_NO_EDITABLE
 
 
 class RecetaConLotesNoEditable(BadRequest):

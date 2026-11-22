@@ -10,10 +10,14 @@ from src.recetas.constants import EstadoReceta
 
 class Receta(ModeloBase):
     __tablename__ = "recetas"
+    __table_args__ = (
+        UniqueConstraint("producto_id", "version", name="uq_receta_producto_version"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     codigo_receta: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     nombre_receta: Mapped[str] = mapped_column(String(150), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     # Relación 1 a N con Producto (pueden existir varios borradores/históricos y 1 activa por producto)
     producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"), nullable=False, index=True)

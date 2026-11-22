@@ -141,14 +141,14 @@ def modificar_receta(receta_id: int, receta: schemas.RecetaUpdate, db: Session =
 
 @router.post("/{receta_id}/activar", response_model=schemas.Receta, dependencies=[Depends(requiere_administracion)])
 def activar_receta(receta_id: int, db: Session = Depends(get_db)):
-    """Pasa una receta de BORRADOR a ACTIVA, inhabilitando la activa anterior del mismo producto."""
+    """Pasa una receta de BORRADOR a ACTIVA, archivando la activa anterior del mismo producto."""
     return services.activar_receta(db, receta_id)
 
 
-@router.post("/{receta_id}/inhabilitar", response_model=schemas.Receta, dependencies=[Depends(requiere_administracion)])
-def inhabilitar_receta(receta_id: int, db: Session = Depends(get_db)):
-    """Pasa una receta de ACTIVA a INHABILITADA."""
-    return services.inhabilitar_receta(db, receta_id)
+@router.post("/{receta_id}/archivar", response_model=schemas.Receta, dependencies=[Depends(requiere_administracion)])
+def archivar_receta(receta_id: int, db: Session = Depends(get_db)):
+    """Pasa una receta de ACTIVA a ARCHIVADA."""
+    return services.archivar_receta(db, receta_id)
 
 
 @router.post("/{receta_id}/pasar-a-borrador", response_model=schemas.Receta, dependencies=[Depends(requiere_administracion)])
@@ -175,7 +175,7 @@ def clonar_receta(
 
 @router.delete("/{receta_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(requiere_administracion)])
 def eliminar_receta(receta_id: int, db: Session = Depends(get_db)):
-    """Elimina físicamente la receta (si es borrador o activa sin lotes), o la inhabilita si tiene lotes asociados."""
+    """Elimina físicamente la receta (si es borrador o activa sin lotes), o la archiva si tiene lotes asociados."""
     services.eliminar_receta(db, receta_id)
     return None
 

@@ -424,7 +424,7 @@ def test_retomar_receta_que_no_es_borrador_falla(datos_base):
 
 # ACTIVACIÓN Y REEMPLAZO ATÓMICO POR PRODUCTO
 
-def test_activar_receta_inhabilita_anterior_del_mismo_producto(datos_base):
+def test_activar_receta_archiva_anterior_del_mismo_producto(datos_base):
     prod_a = datos_base["producto_id"]
     prod_b = datos_base["otro_producto_id"]
 
@@ -455,13 +455,59 @@ def test_activar_receta_inhabilita_anterior_del_mismo_producto(datos_base):
 
     # 4. V1 del Producto A debió pasar a INHABILITADA
     r1_final = client.get(f"/recetas/{r1['id']}").json()
-    assert r1_final["estado"] == EstadoReceta.INHABILITADA.value
+    assert r1_final["estado"] == EstadoReceta.ARCHIVADA.value
     assert r1_final["fecha_baja"] is not None
 
     # 5. La receta activa del Producto B NO debe verse afectada
     r_otro_final = client.get(f"/recetas/{r_otro['id']}").json()
     assert r_otro_final["estado"] == EstadoReceta.ACTIVA.value
     assert r_otro_final["fecha_baja"] is None
+
+
+def test_versionado_recetas_al_crear_clonar_y_activar(datos_base):
+    prod_id = datos_base["producto_id"]
+
+    # 1. Primera receta del producto nace en version 1
+    r1 = client.post("/recetas/", json={
+        "nombre_receta": "Bizcochos Salados Crocantes",
+        "producto_id": prod_id,
+        "rendimiento_estandar": 100,
+    }).json()
+    assert r1["version"] == 1
+    assert r1["nombre_receta"] == "Bizcochos Salados Crocantes"
+
+    client.post(f"/recetas/{r1['id']}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Mezclado",
+        "instrucciones": "Mezclar ingredientes secos",
+    })
+    assert client.post(f"/recetas/{r1['id']}/activar").status_code == 200
+
+    # 2. Clonar r1 crea borrador con version 2 y conserva exactamente el nombre sin sufijo
+    r2_res = client.post(f"/recetas/{r1['id']}/clonar")
+    assert r2_res.status_code == 201, r2_res.text
+    r2 = r2_res.json()
+    assert r2["version"] == 2
+    assert r2["estado"] == EstadoReceta.BORRADOR.value
+    assert r2["nombre_receta"] == "Bizcochos Salados Crocantes"
+
+    # 3. Activar r2 archiva automáticamente r1 y mantiene una sola activa
+    act2 = client.post(f"/recetas/{r2['id']}/activar")
+    assert act2.status_code == 200
+    assert act2.json()["estado"] == EstadoReceta.ACTIVA.value
+    assert act2.json()["version"] == 2
+
+    r1_post = client.get(f"/recetas/{r1['id']}").json()
+    assert r1_post["estado"] == EstadoReceta.ARCHIVADA.value
+    assert r1_post["version"] == 1
+
+    # 4. Clonar la histórica v1 existiendo ya v2 debe asignar version 3 (sin colisión)
+    r3_res = client.post(f"/recetas/{r1['id']}/clonar")
+    assert r3_res.status_code == 201, r3_res.text
+    r3 = r3_res.json()
+    assert r3["version"] == 3
+    assert r3["nombre_receta"] == "Bizcochos Salados Crocantes"
+    assert r3["estado"] == EstadoReceta.BORRADOR.value
 
 
 # EDICIÓN, ESTADOS E INMUTABILIDAD CON LOTES
@@ -491,9 +537,9 @@ def test_modificar_receta_borrador_y_activa_sin_lotes(datos_base):
     assert res_patch2.json()["nombre_receta"] == "Editada en Activa"
 
 
-def test_modificar_receta_inhabilitada_falla(datos_base):
+def test_modificar_receta_archivada_falla(datos_base):
     res = client.post("/recetas/", json={
-        "nombre_receta": "Para Inhabilitar",
+        "nombre_receta": "Para Archivar",
         "producto_id": datos_base["producto_id"],
         "rendimiento_estandar": 50,
     })
@@ -501,13 +547,13 @@ def test_modificar_receta_inhabilitada_falla(datos_base):
 
     client.post(f"/recetas/{receta_id}/pasos", json={"numero_orden": 1, "titulo": "Paso 1", "instrucciones": "Instrucciones de prueba"})
     client.post(f"/recetas/{receta_id}/activar")
-    res_inh = client.post(f"/recetas/{receta_id}/inhabilitar")
+    res_inh = client.post(f"/recetas/{receta_id}/archivar")
     assert res_inh.status_code == 200
     assert res_inh.json()["fecha_baja"] is not None
 
     res_patch = client.patch(f"/recetas/{receta_id}", json={"nombre_receta": "Intento edición"})
     assert res_patch.status_code == 400
-    assert res_patch.json()["detail"] == ErrorCode.RECETA_INHABILITADA_NO_EDITABLE
+    assert res_patch.json()["detail"] == ErrorCode.RECETA_ARCHIVADA_NO_EDITABLE
 
 
 def test_pasar_a_borrador_exitoso_y_falla_si_no_esta_activa(datos_base):
@@ -1087,7 +1133,7 @@ def test_no_se_puede_dar_de_baja_insumo_con_receta_activa(datos_base):
     )
 
     # Si inhabilitamos la receta, ahora sí debe permitir dar de baja el insumo
-    client.post(f"/recetas/{rec_id}/inhabilitar")
+    client.post(f"/recetas/{rec_id}/archivar")
     res_del_ok = client.delete(f"/insumos/{datos_base['insumo_id']}")
     assert res_del_ok.status_code == 200
 
@@ -1126,7 +1172,7 @@ def test_no_se_puede_dar_de_baja_equipo_con_receta_activa(datos_base):
     )
 
     # Si inhabilitamos la receta, ahora sí debe permitir dar de baja el equipo
-    client.post(f"/recetas/{rec_id}/inhabilitar")
+    client.post(f"/recetas/{rec_id}/archivar")
     res_del_ok = client.delete(f"/equipos/{datos_base['equipo_id']}")
     assert res_del_ok.status_code == 200
 

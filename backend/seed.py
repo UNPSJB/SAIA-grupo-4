@@ -1656,10 +1656,10 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         # (cabecera, lista_pasos)
         (
             (
-                "Pan de Campo Tradicional v1",
+                "Pan de Campo Tradicional",
                 prod_pc,
                 f"REC-{pref_pc}-001",
-                EstadoReceta.INHABILITADA,
+                EstadoReceta.ARCHIVADA,
                 Decimal("21500.00"),
                 180,
                 60,
@@ -1705,7 +1705,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         ),
         (
             (
-                "Pan de Campo Tradicional v2",
+                "Pan de Campo Tradicional",
                 prod_pc,
                 f"REC-{pref_pc}-002",
                 EstadoReceta.ACTIVA,
@@ -1855,7 +1855,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 "Torta Humeda de Chocolate",
                 prod_tc,
                 f"REC-{pref_tc}-001",
-                EstadoReceta.INHABILITADA,
+                EstadoReceta.ARCHIVADA,
                 Decimal("15600.00"),
                 150,
                 75,
@@ -2093,7 +2093,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
                 "Pepas de Membrillo Clasicas v1",
                 prod_pm,
                 f"REC-{pref_pm}-001",
-                EstadoReceta.INHABILITADA,
+                EstadoReceta.ARCHIVADA,
                 Decimal("12000.00"),
                 95,
                 40,
@@ -2154,8 +2154,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     ]
 
     tamano_porcion_por_receta = {
-        "Pan de Campo Tradicional v1": Decimal("50.00"),
-        "Pan de Campo Tradicional v2": Decimal("50.00"),
+        "Pan de Campo Tradicional": Decimal("50.00"),
         "Galletas de Vainilla Clasicas": Decimal("30.00"),
         "Bizcochos Salados Crocantes": Decimal("30.00"),
         "Torta Humeda de Chocolate": Decimal("60.00"),
@@ -2164,6 +2163,7 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
     }
 
     recetas_creadas = []
+    version_por_producto: dict[int, int] = {}
     for cabecera, pasos_info in definicion_recetas:
         (
             nombre,
@@ -2178,12 +2178,15 @@ def _crear_recetas(db, personas, productos, equipos, insumos, hoy):
         fecha_creacion = datetime.combine(hoy - timedelta(days=dias_atras), time(9, 0))
         fecha_baja = (
             datetime.combine(hoy - timedelta(days=max(1, dias_atras - 20)), time(14, 0))
-            if estado == EstadoReceta.INHABILITADA
+            if estado == EstadoReceta.ARCHIVADA
             else None
         )
+        version_actual = version_por_producto.get(prod.id, 0) + 1
+        version_por_producto[prod.id] = version_actual
         receta = Receta(
             codigo_receta=codigo,
             nombre_receta=nombre,
+            version=version_actual,
             producto_id=prod.id,
             rendimiento_estandar=rendimiento,
             tamano_porcion=tamano_porcion_por_receta.get(nombre),
