@@ -1,6 +1,15 @@
+from enum import StrEnum
+
+
 class LoteConstants:
     PREFIJO_CODIGO = "LOT"
     DIGITOS_SECUENCIA = 3
+
+
+class EstadoLoteProduccion(StrEnum):
+    ACTIVO = "activo"
+    RETENIDO = "retenido"
+    VENCIDO = "vencido"
 
 
 class ErrorCode:
@@ -26,3 +35,4 @@ class ErrorCode:
     BALANCE_CONSUMO_LOTE_INVALIDO = "La suma de las cantidades tomadas de los lotes físicos debe coincidir exactamente con la cantidad real consumida."
     STOCK_LOTE_INSUMO_INSUFICIENTE = "La cantidad asignada supera el stock disponible del lote físico de insumo."
     UNIDAD_CONSUMO_INVALIDA = "La unidad de medida indicada no es compatible con la unidad base del insumo."
+    LOTE_YA_RETENIDO = "El lote de producción ya se encuentra retenido."

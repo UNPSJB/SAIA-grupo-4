@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.lotes.constants import EstadoLoteProduccion
 from src.models import ModeloBase
 
 
@@ -21,10 +22,20 @@ class Lote(ModeloBase):
     cantidad_producida: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Auditoría de retención preventiva
+    motivo_retencion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fecha_retencion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    usuario_retencion_id: Mapped[int | None] = mapped_column(
+        ForeignKey("personal.id"), nullable=True
+    )
+
     # Relaciones
     producto: Mapped["Producto"] = relationship("Producto", back_populates="lotes")
     receta: Mapped["Receta"] = relationship("Receta", back_populates="lotes")
-    operador: Mapped["Persona"] = relationship("Persona")
+    operador: Mapped["Persona"] = relationship("Persona", foreign_keys=[operador_id])
+    usuario_retencion: Mapped["Persona | None"] = relationship(
+        "Persona", foreign_keys=[usuario_retencion_id]
+    )
     consumos_insumos: Mapped[list["ConsumoInsumoLote"]] = relationship(
         "ConsumoInsumoLote",
         back_populates="lote",
@@ -54,6 +65,14 @@ class Lote(ModeloBase):
         if self.operador:
             return f"{self.operador.nombre} {self.operador.apellido}".strip()
         return ""
+
+    @property
+    def estado(self) -> EstadoLoteProduccion:
+        if self.fecha_retencion is not None:
+            return EstadoLoteProduccion.RETENIDO
+        if self.fecha_vencimiento and self.fecha_vencimiento < date.today():
+            return EstadoLoteProduccion.VENCIDO
+        return EstadoLoteProduccion.ACTIVO
 
 
 class ConsumoInsumoLote(ModeloBase):

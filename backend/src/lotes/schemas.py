@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field
+from src.lotes.constants import EstadoLoteProduccion
 
 
 class DetalleLoteInsumoCreate(BaseModel):
@@ -59,11 +60,31 @@ class LoteCreate(LoteBase):
     consumos: list[ConsumoInsumoCreate] = []
 
 
+class PersonalResumen(BaseModel):
+    id: int
+    nombre: str
+    apellido: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LoteRetener(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    motivo: str = Field(..., min_length=10, max_length=500)
+
+
 class Lote(LoteBase):
     id: int
     receta_id: int
     operador_id: int
     fecha_registro_sistema: datetime
+
+    estado: EstadoLoteProduccion = EstadoLoteProduccion.ACTIVO
+    motivo_retencion: Optional[str] = None
+    fecha_retencion: Optional[datetime] = None
+    usuario_retencion_id: Optional[int] = None
+    usuario_retencion: Optional[PersonalResumen] = None
 
     producto_nombre: Optional[str] = None
     unidad_medida_simbolo: Optional[str] = None

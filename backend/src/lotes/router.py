@@ -9,6 +9,7 @@ from src.capacidades.constants import RolesSistema
 from src.exceptions import PermissionDenied
 from src.database import get_db
 from src.lotes import schemas, services
+from src.lotes.constants import EstadoLoteProduccion
 from src.personal.models import Persona
 
 router = APIRouter(prefix="/lotes", tags=["Lotes de Producción"])
@@ -89,7 +90,8 @@ def listar_historial_general(
     producto_id: Optional[int] = None,
     receta_id: Optional[int] = None,
     operador_id: Optional[int] = None,
-    codigo_lote_insumo: Optional[str] = None,   
+    codigo_lote_insumo: Optional[str] = None,
+    estado: Optional[EstadoLoteProduccion] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -101,7 +103,8 @@ def listar_historial_general(
         producto_id=producto_id,
         receta_id=receta_id,
         operador_id=operador_id,
-        codigo_lote_insumo=codigo_lote_insumo,   
+        codigo_lote_insumo=codigo_lote_insumo,
+        estado=estado,
         desde=desde,
         hasta=hasta,
     )
@@ -124,3 +127,17 @@ def obtener_detalle_lote(
     if not es_admin and lote.operador_id != current_user.id:
         raise PermissionDenied()
     return lote
+
+
+@router.patch(
+    "/{lote_id}/retener",
+    response_model=schemas.Lote,
+)
+def retener_lote(
+    lote_id: int,
+    datos: schemas.LoteRetener,
+    db: Session = Depends(get_db),
+    usuario: Persona = Depends(requiere_administracion),
+):
+    """Marca un lote de producción en estado RETENIDO registrando motivo, fecha y administrador."""
+    return services.retener_lote(db, lote_id, datos, usuario.id)

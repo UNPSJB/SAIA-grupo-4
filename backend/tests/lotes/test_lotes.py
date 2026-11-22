@@ -733,3 +733,160 @@ def test_filtro_lote_insumo_no_duplica_producciones_con_mismo_codigo_en_dos_insu
     res = client.get("/lotes/", params={"codigo_lote_insumo": "L-COMUN"})
     assert res.status_code == 200
     assert [lote["id"] for lote in res.json()] == [prod]
+
+
+# --- Retención preventiva de lotes de producción ---
+
+
+def _retener_lote(lote_id: int, motivo: str = "Posible desviación microbiológica en análisis"):
+    return client.patch(f"/lotes/{lote_id}/retener", json={"motivo": motivo})
+
+
+def test_retener_lote_exitoso_y_auditoria(datos_produccion):
+    lote_id = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+
+    res = _retener_lote(lote_id, "Posible contaminación detectada en control")
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["estado"] == "retenido"
+    assert data["motivo_retencion"] == "Posible contaminación detectada en control"
+    assert data["fecha_retencion"] is not None
+    fecha = datetime.fromisoformat(data["fecha_retencion"])
+    assert abs((datetime.now() - fecha).total_seconds()) < 60
+    persona = data["usuario_retencion"]
+    assert persona is not None
+    assert persona["id"] == data["usuario_retencion_id"]
+    assert persona["nombre"]
+    assert persona["apellido"]
+    assert set(persona) == {"id", "nombre", "apellido"}
+
+
+def test_retener_lote_persiste_en_detalle_e_historial(datos_produccion):
+    lote_id = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    assert _retener_lote(lote_id, "Retención preventiva por olor anómalo").status_code == 200
+
+    res_det = client.get(f"/lotes/{lote_id}")
+    assert res_det.status_code == 200
+    assert res_det.json()["estado"] == "retenido"
+    assert res_det.json()["motivo_retencion"] == "Retención preventiva por olor anómalo"
+
+    res_hist = client.get("/lotes/")
+    assert res_hist.status_code == 200
+    lote_hist = next(l for l in res_hist.json() if l["id"] == lote_id)
+    assert lote_hist["estado"] == "retenido"
+
+
+def test_precedencia_estados_lote_produccion(datos_produccion, session):
+    from src.lotes.models import Lote as LoteModel
+
+    lote_id = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    lote = session.get(LoteModel, lote_id)
+    assert lote.estado == "activo"
+
+    # Vencido si fecha_vencimiento < hoy y sin retención ni baja
+    lote.fecha_vencimiento = date.today() - timedelta(days=1)
+    session.commit()
+    assert lote.estado == "vencido"
+
+    # Retenido prima sobre vencido
+    lote.fecha_retencion = datetime.now()
+    lote.motivo_retencion = "Retención preventiva por auditoría"
+    session.commit()
+    assert lote.estado == "retenido"
+
+
+def test_retener_lote_sin_motivo_o_motivo_corto_falla_422(datos_produccion):
+    lote_id = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    assert client.patch(f"/lotes/{lote_id}/retener", json={}).status_code == 422
+    for motivo in ["", "corto", " " * 10]:
+        assert _retener_lote(lote_id, motivo).status_code == 422
+
+    assert client.get(f"/lotes/{lote_id}").json()["estado"] == "activo"
+
+
+def test_retener_lote_inexistente_falla_404(datos_produccion):
+    assert _retener_lote(999999).status_code == 404
+
+
+def test_retener_lote_ya_retenido_falla_400_y_no_pisa_motivo(datos_produccion):
+    lote_id = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    assert _retener_lote(lote_id, "Motivo original de retención").status_code == 200
+    res_dup = _retener_lote(lote_id, "Segundo intento de retención")
+    assert res_dup.status_code == 400
+
+    detalle = client.get(f"/lotes/{lote_id}").json()
+    assert detalle["motivo_retencion"] == "Motivo original de retención"
+
+
+def test_retener_lote_requiere_permiso_administracion_403(datos_produccion):
+    from src.auth.dependencies import get_current_user
+    from src.personal.models import Persona
+
+    lote_id = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    operador = Persona(
+        id=9999,
+        nombre="Operador",
+        apellido="SinAdmin",
+        dni="99887766",
+        email="op_sin_admin@test.com",
+        password_hash="x",
+        activo=True,
+    )
+    app.dependency_overrides[get_current_user] = lambda: operador
+    try:
+        res = _retener_lote(lote_id, "Intento sin permiso de administrador")
+        assert res.status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_filtrar_historial_lotes_por_estado(datos_produccion, session):
+    from src.lotes.models import Lote as LoteModel
+
+    lote_activo = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    lote_retenido = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_a_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+    lote_vencido = _registrar_produccion(
+        datos_produccion,
+        datos_produccion["lote_ins1_b_id"],
+        datos_produccion["lote_ins2_id"],
+    )
+
+    assert _retener_lote(lote_retenido, "Retenido para test de filtro").status_code == 200
+    session.get(LoteModel, lote_vencido).fecha_vencimiento = date.today() - timedelta(days=1)
+    session.commit()
+
+    assert _ids(client.get("/lotes/", params={"estado": "activo"})) == {lote_activo}
+    assert _ids(client.get("/lotes/", params={"estado": "retenido"})) == {lote_retenido}
+    assert _ids(client.get("/lotes/", params={"estado": "vencido"})) == {lote_vencido}

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from src.insumos.models import Insumo
 from src.lotes import exceptions, schemas
-from src.lotes.constants import LoteConstants
+from src.lotes.constants import EstadoLoteProduccion, LoteConstants
 from src.lotes.models import ConsumoInsumoLote, DetalleConsumoLoteInsumo, Lote
 from src.lotes_insumo.constants import EstadoLote
 from src.lotes_insumo.models import LoteInsumo
@@ -415,6 +415,7 @@ def obtener_lote_por_id(db: Session, lote_id: int) -> Lote:
             joinedload(Lote.producto).joinedload(Producto.unidad_medida),
             joinedload(Lote.receta),
             joinedload(Lote.operador),
+            joinedload(Lote.usuario_retencion),
             joinedload(Lote.consumos_insumos)
             .joinedload(ConsumoInsumoLote.insumo)
             .joinedload(Insumo.unidad_medida),
@@ -435,6 +436,7 @@ def _construir_query_lotes(
     receta_id: Optional[int] = None,
     operador_id: Optional[int] = None,
     codigo_lote_insumo: Optional[str] = None,
+    estado: Optional[EstadoLoteProduccion] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ):
@@ -444,6 +446,7 @@ def _construir_query_lotes(
             joinedload(Lote.producto).joinedload(Producto.unidad_medida),
             joinedload(Lote.receta),
             joinedload(Lote.operador),
+            joinedload(Lote.usuario_retencion),
             joinedload(Lote.consumos_insumos)
             .joinedload(ConsumoInsumoLote.insumo)
             .joinedload(Insumo.unidad_medida),
@@ -480,6 +483,21 @@ def _construir_query_lotes(
 
     if hasta is not None:
         query = query.where(Lote.fecha_elaboracion <= datetime.combine(hasta, time.max))
+
+    if estado is not None:
+        hoy = date.today()
+        if estado == EstadoLoteProduccion.RETENIDO:
+            query = query.where(Lote.fecha_retencion.is_not(None))
+        elif estado == EstadoLoteProduccion.VENCIDO:
+            query = query.where(
+                Lote.fecha_retencion.is_(None),
+                Lote.fecha_vencimiento < hoy,
+            )
+        else:
+            query = query.where(
+                Lote.fecha_retencion.is_(None),
+                Lote.fecha_vencimiento >= hoy,
+            )
 
     if busqueda:
         termino = f"%{busqueda.strip()}%"
@@ -520,6 +538,7 @@ def listar_historial_lotes(
     receta_id: Optional[int] = None,
     operador_id: Optional[int] = None,
     codigo_lote_insumo: Optional[str] = None,
+    estado: Optional[EstadoLoteProduccion] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ) -> List[Lote]:
@@ -530,7 +549,32 @@ def listar_historial_lotes(
         receta_id=receta_id,
         operador_id=operador_id,
         codigo_lote_insumo=codigo_lote_insumo,
+        estado=estado,
         desde=desde,
         hasta=hasta,
     )
     return list(db.scalars(query).unique().all())
+
+
+def retener_lote(
+    db: Session,
+    lote_id: int,
+    datos: schemas.LoteRetener,
+    usuario_id: int,
+) -> Lote:
+    """Marca un lote de producción en estado RETENIDO con motivo, fecha y administrador."""
+    db_lote = obtener_lote_por_id(db, lote_id)
+    if db_lote.fecha_retencion is not None:
+        raise exceptions.LoteYaRetenido()
+
+    db_lote.motivo_retencion = datos.motivo
+    db_lote.fecha_retencion = datetime.now()
+    db_lote.usuario_retencion_id = usuario_id
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.LoteErrorIntegridad()
+
+    return obtener_lote_por_id(db, lote_id)

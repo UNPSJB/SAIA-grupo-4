@@ -88,3 +88,7 @@ class StockLoteInsumoInsuficiente(BadRequest):
 
 class UnidadConsumoInvalida(BadRequest):
     DETAIL = ErrorCode.UNIDAD_CONSUMO_INVALIDA
+
+
+class LoteYaRetenido(BadRequest):
+    DETAIL = ErrorCode.LOTE_YA_RETENIDO
