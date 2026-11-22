@@ -10,6 +10,7 @@ export interface LoteInsumoDisponible {
 export interface DetalleLoteInsumoCreate {
   lote_insumo_id: number;
   cantidad: number;
+  unidad?: string;
 }
 
 export interface DetalleLoteInsumo {
@@ -23,6 +24,7 @@ export interface DetalleLoteInsumo {
 export interface ConsumoInsumoCreate {
   insumo_id: number;
   cantidad_real_utilizada: number;
+  unidad?: string;
   lotes: DetalleLoteInsumoCreate[];
 }
 
@@ -40,6 +42,7 @@ export interface InsumoTeoricoReceta {
   insumo_id: number;
   nombre: string;
   unidad_medida_simbolo: string;
+  unidad_medida_tipo?: string | null;
   cantidad_nominal_receta: number;
   lotes_disponibles: LoteInsumoDisponible[];
 }

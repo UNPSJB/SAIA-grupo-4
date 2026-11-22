@@ -34,6 +34,10 @@ import {
   ConsumoInsumoCard,
   type AsignacionLoteForm,
 } from "./components/ConsumoInsumoCard";
+import {
+  convertirEntreUnidades,
+  obtenerInfoUnidadInsumo,
+} from "../recetas/utils/unidadesPaso";
 import type { InsumoTeoricoReceta, ProductoDisponibleLote } from "./types";
 
 const EPS = 0.0001;
@@ -48,6 +52,10 @@ const sugerirAsignacionesFEFO = (
   const lotes = insumo.lotes_disponibles ?? [];
   if (lotes.length === 0) return [];
 
+  const infoUnidad = obtenerInfoUnidadInsumo({
+    simbolo: insumo.unidad_medida_simbolo,
+    tipo_magnitud: insumo.unidad_medida_tipo ?? undefined,
+  });
   const resultado: AsignacionLoteForm[] = [];
   let restante = redondear3(cantidadObjetivo);
 
@@ -59,6 +67,7 @@ const sugerirAsignacionesFEFO = (
     resultado.push({
       lote_insumo_id: String(lote.id),
       cantidad: String(tomar),
+      unidad: infoUnidad.unidadDefault,
     });
     restante = redondear3(restante - tomar);
   }
@@ -67,11 +76,18 @@ const sugerirAsignacionesFEFO = (
 };
 
 interface RegistrarLoteFormProps {
+  productoIdInicial?: number;
+  cantidadInicial?: number;
   onSuccess?: () => void;
   onCancelar?: () => void;
 }
 
-export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormProps) => {
+export const RegistrarLoteForm = ({
+  productoIdInicial,
+  cantidadInicial,
+  onSuccess,
+  onCancelar,
+}: RegistrarLoteFormProps) => {
   const [productos, setProductos] = useState<ProductoDisponibleLote[]>([]);
   const [cargandoProductos, setCargandoProductos] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
@@ -109,6 +125,8 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
 
   // Consumos reales ingresados por el operador (indexados por insumo_id)
   const [consumosReales, setConsumosReales] = useState<Record<number, string>>({});
+  // Unidad elegida por el operador para el consumo real de cada insumo
+  const [unidadesReales, setUnidadesReales] = useState<Record<number, string>>({});
   // Asignaciones multi-lote por insumo (indexadas por insumo_id)
   const [asignacionesLotes, setAsignacionesLotes] = useState<
     Record<number, AsignacionLoteForm[]>
@@ -124,27 +142,6 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
   const [errorEnvio, setErrorEnvio] = useState("");
   const [exitoMsg, setExitoMsg] = useState("");
   const [errores, setErrores] = useState<Record<string, string>>({});
-
-  // Carga inicial de productos con receta activa
-  useEffect(() => {
-    const cargar = async () => {
-      setCargandoProductos(true);
-      setErrorCarga("");
-      try {
-        const datos = await lotesApi.getProductosDisponibles();
-        setProductos(datos);
-      } catch (err: any) {
-        setErrorCarga(err.message || "Error al cargar productos con receta activa.");
-      } finally {
-        setCargandoProductos(false);
-      }
-    };
-    cargar();
-  }, []);
-
-  const productoSeleccionado = useMemo(() => {
-    return productos.find((p) => p.id === productoId) || null;
-  }, [productos, productoId]);
 
   // Autocalcular sugerencia de código de lote
   const generarSugerenciaCodigo = useCallback(
@@ -163,11 +160,79 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     [],
   );
 
-  // Al seleccionar un producto:
-  // 1. Precargar cantidad producida con rendimiento estándar de la receta
-  // 2. Autocalcular fecha de vencimiento si producto tiene dias_vida_util
-  // 3. Autogenerar sugerencia de código de lote
-  // 4. Inicializar consumos reales con las cantidades teóricas iniciales
+  // Inicializa producto, cantidad (estándar o escalada), vencimiento, código, consumos y sugerencias FEFO
+  const inicializarProducto = useCallback(
+    (prod: ProductoDisponibleLote, cantidadBase?: number) => {
+      setProductoId(prod.id);
+      setErrorEnvio("");
+      setExitoMsg("");
+
+      const rendimiento = Number(prod.rendimiento_estandar) || 1;
+      const cantidadUsada =
+        cantidadBase != null && cantidadBase > 0 ? cantidadBase : rendimiento;
+      const factor = cantidadUsada / rendimiento;
+
+      setCantidadProducida(String(cantidadUsada));
+
+      if (prod.dias_vida_util) {
+        setFechaVencimiento(calcularVencimientoLocal(fechaElaboracion, prod.dias_vida_util));
+      } else {
+        setFechaVencimiento("");
+      }
+
+      generarSugerenciaCodigo(prod.id, fechaElaboracion);
+
+      const iniciales: Record<number, string> = {};
+      const unidadesIniciales: Record<number, string> = {};
+      const asignacionesIniciales: Record<number, AsignacionLoteForm[]> = {};
+      prod.insumos_teoricos.forEach((ins) => {
+        const teorica =
+          Math.round(Number(ins.cantidad_nominal_receta) * factor * 100) / 100;
+        const info = obtenerInfoUnidadInsumo({
+          simbolo: ins.unidad_medida_simbolo,
+          tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
+        });
+        iniciales[ins.insumo_id] = String(teorica);
+        unidadesIniciales[ins.insumo_id] = info.unidadDefault;
+        asignacionesIniciales[ins.insumo_id] = sugerirAsignacionesFEFO(ins, teorica);
+      });
+      setConsumosReales(iniciales);
+      setUnidadesReales(unidadesIniciales);
+      setAsignacionesLotes(asignacionesIniciales);
+      setInsumosModificadosManual({});
+      setLotesModificadosManual({});
+    },
+    [fechaElaboracion, generarSugerenciaCodigo],
+  );
+
+  // Carga inicial de productos con receta activa (y precarga si viene desde ficha técnica)
+  useEffect(() => {
+    const cargar = async () => {
+      setCargandoProductos(true);
+      setErrorCarga("");
+      try {
+        const datos = await lotesApi.getProductosDisponibles();
+        setProductos(datos);
+        if (productoIdInicial != null) {
+          const prodInicial = datos.find((p) => p.id === productoIdInicial);
+          if (prodInicial) {
+            inicializarProducto(prodInicial, cantidadInicial);
+          }
+        }
+      } catch (err: any) {
+        setErrorCarga(err.message || "Error al cargar productos con receta activa.");
+      } finally {
+        setCargandoProductos(false);
+      }
+    };
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const productoSeleccionado = useMemo(() => {
+    return productos.find((p) => p.id === productoId) || null;
+  }, [productos, productoId]);
+
   const handleSeleccionarProducto = (idStr: string) => {
     const id = parseInt(idStr, 10);
     if (isNaN(id) || id <= 0) {
@@ -185,36 +250,7 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     const prod = productos.find((p) => p.id === id);
     if (!prod) return;
 
-    setProductoId(id);
-    setErrorEnvio("");
-    setExitoMsg("");
-
-    // 1. Rendimiento estándar
-    const rendimiento = Number(prod.rendimiento_estandar) || 1;
-    setCantidadProducida(String(rendimiento));
-
-    // 2. Vencimiento según vida útil
-    if (prod.dias_vida_util) {
-      setFechaVencimiento(calcularVencimientoLocal(fechaElaboracion, prod.dias_vida_util));
-    } else {
-      setFechaVencimiento("");
-    }
-
-    // 3. Sugerencia de código
-    generarSugerenciaCodigo(id, fechaElaboracion);
-
-    // 4. Insumos iniciales (factor 1.0) y sugerencia FEFO de lotes
-    const iniciales: Record<number, string> = {};
-    const asignacionesIniciales: Record<number, AsignacionLoteForm[]> = {};
-    prod.insumos_teoricos.forEach((ins) => {
-      const cant = Number(ins.cantidad_nominal_receta);
-      iniciales[ins.insumo_id] = String(cant);
-      asignacionesIniciales[ins.insumo_id] = sugerirAsignacionesFEFO(ins, cant);
-    });
-    setConsumosReales(iniciales);
-    setAsignacionesLotes(asignacionesIniciales);
-    setInsumosModificadosManual({});
-    setLotesModificadosManual({});
+    inicializarProducto(prod);
   };
 
   // Factor de escala proporcional: cantidad_producida / rendimiento_estandar
@@ -243,10 +279,17 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     setConsumosReales((prev) => {
       const actualizados = { ...prev };
       productoSeleccionado.insumos_teoricos.forEach((ins) => {
-        // Si el operador no lo modificó manualmente, se escala automáticamente
+        // Si el operador no lo modificó manualmente, se escala automáticamente en la unidad elegida
         if (!insumosModificadosManual[ins.insumo_id]) {
           const teorica = Math.round(ins.cantidad_nominal_receta * factor * 100) / 100;
-          actualizados[ins.insumo_id] = String(teorica);
+          const info = obtenerInfoUnidadInsumo({
+            simbolo: ins.unidad_medida_simbolo,
+            tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
+          });
+          const unidadBase = info.simboloBase || ins.unidad_medida_simbolo;
+          const unidadElegida = unidadesReales[ins.insumo_id] || info.unidadDefault;
+          const teoricaEnUnidad = convertirEntreUnidades(teorica, unidadBase, unidadElegida);
+          actualizados[ins.insumo_id] = String(teoricaEnUnidad);
         }
       });
       return actualizados;
@@ -277,9 +320,46 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
         (i) => i.insumo_id === insumoId,
       );
       if (insumo) {
+        const info = obtenerInfoUnidadInsumo({
+          simbolo: insumo.unidad_medida_simbolo,
+          tipo_magnitud: insumo.unidad_medida_tipo ?? undefined,
+        });
+        const unidadReal = unidadesReales[insumoId] || info.unidadDefault;
+        const numEnBase = convertirEntreUnidades(
+          num,
+          unidadReal,
+          info.simboloBase || insumo.unidad_medida_simbolo,
+        );
         setAsignacionesLotes((prev) => ({
           ...prev,
-          [insumoId]: sugerirAsignacionesFEFO(insumo, num),
+          [insumoId]: sugerirAsignacionesFEFO(insumo, numEnBase),
+        }));
+      }
+    }
+  };
+
+  const handleCambioUnidadReal = (insumoId: number, nuevaUnidad: string) => {
+    const insumo = productoSeleccionado?.insumos_teoricos.find(
+      (i) => i.insumo_id === insumoId,
+    );
+    const info = insumo
+      ? obtenerInfoUnidadInsumo({
+          simbolo: insumo.unidad_medida_simbolo,
+          tipo_magnitud: insumo.unidad_medida_tipo ?? undefined,
+        })
+      : null;
+    const unidadAnterior = unidadesReales[insumoId] || info?.unidadDefault || nuevaUnidad;
+
+    setUnidadesReales((prev) => ({ ...prev, [insumoId]: nuevaUnidad }));
+
+    if (unidadAnterior !== nuevaUnidad) {
+      const actualStr = (consumosReales[insumoId] ?? "").trim();
+      const actualNum = parseFloat(actualStr);
+      if (actualStr !== "" && !isNaN(actualNum) && actualNum >= 0) {
+        const convertido = convertirEntreUnidades(actualNum, unidadAnterior, nuevaUnidad);
+        setConsumosReales((prev) => ({
+          ...prev,
+          [insumoId]: String(convertido),
         }));
       }
     }
@@ -324,6 +404,16 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
     let errorConsumoDetalle = "";
     if (productoSeleccionado) {
       for (const ins of productoSeleccionado.insumos_teoricos) {
+        const info = obtenerInfoUnidadInsumo({
+          simbolo: ins.unidad_medida_simbolo,
+          tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
+        });
+        const unidadBase = info.simboloBase || ins.unidad_medida_simbolo;
+        const unidadReal =
+          info.opcionesUnidad.length > 0
+            ? unidadesReales[ins.insumo_id] || info.unidadDefault
+            : unidadBase;
+
         const valRealStr = consumosReales[ins.insumo_id] ?? "";
         const valReal = parseFloat(valRealStr);
         if (valRealStr === "" || isNaN(valReal) || valReal < 0) {
@@ -332,14 +422,16 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
         }
         if (valReal === 0) continue;
 
+        const valRealBase = convertirEntreUnidades(valReal, unidadReal, unidadBase);
+
         const asigs = asignacionesLotes[ins.insumo_id] ?? [];
         if (asigs.length === 0) {
-          errorConsumoDetalle = `Debe asignar al menos un lote físico de ${ins.nombre} para cubrir ${valReal} ${ins.unidad_medida_simbolo}.`;
+          errorConsumoDetalle = `Debe asignar al menos un lote físico de ${ins.nombre} para cubrir ${redondear3(valRealBase)} ${unidadBase}.`;
           break;
         }
 
         const lotesUsados = new Set<string>();
-        let suma = 0;
+        let sumaBase = 0;
         for (const asig of asigs) {
           if (!asig.lote_insumo_id) {
             errorConsumoDetalle = `Seleccione un lote físico en todas las filas de ${ins.nombre}.`;
@@ -363,16 +455,21 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
             errorConsumoDetalle = `Uno de los lotes seleccionados en ${ins.nombre} ya no está disponible.`;
             break;
           }
-          if (cantAsig > Number(loteDisp.cantidad_actual) + EPS) {
+          const unidadFila =
+            info.opcionesUnidad.length > 0
+              ? asig.unidad || info.unidadDefault
+              : unidadBase;
+          const cantAsigBase = convertirEntreUnidades(cantAsig, unidadFila, unidadBase);
+          if (cantAsigBase > Number(loteDisp.cantidad_actual) + EPS) {
             errorConsumoDetalle = `La cantidad asignada al lote ${loteDisp.codigo_lote} de ${ins.nombre} supera su stock disponible.`;
             break;
           }
-          suma += cantAsig;
+          sumaBase += cantAsigBase;
         }
         if (errorConsumoDetalle) break;
 
-        if (Math.abs(suma - valReal) > EPS) {
-          errorConsumoDetalle = `En ${ins.nombre}, la suma de lotes (${redondear3(suma)}) debe coincidir exactamente con el consumo real declarado (${valReal} ${ins.unidad_medida_simbolo}).`;
+        if (Math.abs(sumaBase - valRealBase) > EPS) {
+          errorConsumoDetalle = `En ${ins.nombre}, la suma de lotes (${redondear3(sumaBase)} ${unidadBase}) debe coincidir exactamente con el consumo real declarado (${redondear3(valRealBase)} ${unidadBase}).`;
           break;
         }
       }
@@ -391,17 +488,31 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
 
     try {
       const payloadConsumos = (productoSeleccionado?.insumos_teoricos ?? []).map((ins) => {
+        const info = obtenerInfoUnidadInsumo({
+          simbolo: ins.unidad_medida_simbolo,
+          tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
+        });
+        const unidadBase = info.simboloBase || ins.unidad_medida_simbolo;
+        const unidadReal =
+          info.opcionesUnidad.length > 0
+            ? unidadesReales[ins.insumo_id] || info.unidadDefault
+            : unidadBase;
         const valReal = parseFloat(consumosReales[ins.insumo_id]);
         const cantReal = !isNaN(valReal) && valReal >= 0 ? valReal : 0;
         const asigs = cantReal === 0 ? [] : (asignacionesLotes[ins.insumo_id] ?? []);
         return {
           insumo_id: ins.insumo_id,
           cantidad_real_utilizada: cantReal,
+          unidad: unidadReal,
           lotes: asigs
             .filter((a) => a.lote_insumo_id && parseFloat(a.cantidad) > 0)
             .map((a) => ({
               lote_insumo_id: parseInt(a.lote_insumo_id, 10),
               cantidad: parseFloat(a.cantidad),
+              unidad:
+                info.opcionesUnidad.length > 0
+                  ? a.unidad || info.unidadDefault
+                  : unidadBase,
             })),
         };
       });
@@ -629,6 +740,11 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                     {productoSeleccionado.insumos_teoricos.map((ins) => {
                       const teorica = Math.round(ins.cantidad_nominal_receta * factorEscala * 100) / 100;
                       const real = consumosReales[ins.insumo_id] ?? String(teorica);
+                      const infoU = obtenerInfoUnidadInsumo({
+                        simbolo: ins.unidad_medida_simbolo,
+                        tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
+                      });
+                      const unidadReal = unidadesReales[ins.insumo_id] ?? infoU.unidadDefault;
                       const asignaciones = asignacionesLotes[ins.insumo_id] ?? [];
                       return (
                         <ConsumoInsumoCard
@@ -636,8 +752,10 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                           insumo={ins}
                           cantidadTeorica={teorica}
                           cantidadReal={real}
+                          unidadReal={unidadReal}
                           asignaciones={asignaciones}
                           onCambioCantidadReal={(v) => handleCambioConsumoReal(ins.insumo_id, v)}
+                          onCambioUnidadReal={(u) => handleCambioUnidadReal(ins.insumo_id, u)}
                           onCambioAsignaciones={(nuevas) =>
                             handleCambioAsignaciones(ins.insumo_id, nuevas)
                           }
