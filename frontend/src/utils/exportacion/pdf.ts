@@ -1,3 +1,4 @@
+import { formatearFechaHora } from "../fecha";
 import type { FiltroAplicado, TablaExportable } from "./tipos";
 
 interface OpcionesPdf {
@@ -9,10 +10,6 @@ interface OpcionesPdf {
 
 const MARGEN = 12;
 
-const dos = (n: number) => String(n).padStart(2, "0");
-/** 09/11/2026 17:42 */
-const fechaHora = (f: Date) =>
-  `${dos(f.getDate())}/${dos(f.getMonth() + 1)}/${f.getFullYear()} ${dos(f.getHours())}:${dos(f.getMinutes())}`;
 const COLOR_ENCABEZADO: [number, number, number] = [47, 133, 90]; // green.600
 
 /**
@@ -54,7 +51,7 @@ export const generarPdf = async ({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text(`Exportado el ${fechaHora(fecha)}`, MARGEN, y);
+  doc.text(`Exportado el ${formatearFechaHora(fecha)}`, MARGEN, y);
 
   // Filtros
   y += 5;

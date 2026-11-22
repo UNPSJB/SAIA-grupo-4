@@ -21,3 +21,10 @@ export const formatearFechaISO = (iso: string | null | undefined): string => {
     year: "numeric",
   });
 };
+
+const dosDigitos = (n: number) => String(n).padStart(2, "0");
+
+/** "09/11/2026 17:42" */
+export const formatearFechaHora = (fecha: Date): string =>
+  `${dosDigitos(fecha.getDate())}/${dosDigitos(fecha.getMonth() + 1)}/${fecha.getFullYear()} ` +
+  `${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`;

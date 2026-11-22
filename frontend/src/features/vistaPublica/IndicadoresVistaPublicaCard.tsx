@@ -10,7 +10,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { FiAlertTriangle, FiSliders } from "react-icons/fi";
+import { FiAlertTriangle, FiSave, FiSliders } from "react-icons/fi";
 import type { IndicadorCatalogo } from "./types";
 
 interface IndicadoresVistaPublicaCardProps {
@@ -133,6 +133,7 @@ export function IndicadoresVistaPublicaCard({
               disabled={!hayCambios || guardando}
               onClick={onGuardar}
             >
+              <FiSave />
               Guardar cambios
             </Button>
           </Flex>
