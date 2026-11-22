@@ -10,6 +10,7 @@ class DetalleLoteInsumoCreate(BaseModel):
         Decimal,
         Field(gt=0, max_digits=10, decimal_places=3, description="Cantidad descontada del lote físico"),
     ]
+    unidad: Optional[str] = None
 
 
 class DetalleLoteInsumoOut(BaseModel):
@@ -25,6 +26,7 @@ class DetalleLoteInsumoOut(BaseModel):
 class ConsumoInsumoCreate(BaseModel):
     insumo_id: int
     cantidad_real_utilizada: Annotated[float, Field(ge=0, description="Cantidad real consumida (debe ser mayor o igual a cero)")]
+    unidad: Optional[str] = None
     lotes: list[DetalleLoteInsumoCreate] = []
 
 
@@ -85,6 +87,7 @@ class InsumoTeoricoRecetaOut(BaseModel):
     insumo_id: int
     nombre: str
     unidad_medida_simbolo: str
+    unidad_medida_tipo: Optional[str] = None
     cantidad_nominal_receta: float
     lotes_disponibles: list[LoteInsumoDisponibleOut] = []
 

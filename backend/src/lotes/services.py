@@ -17,6 +17,8 @@ from src.productos.models import Producto
 from src.recetas.constants import EstadoReceta
 from src.recetas.models import Receta, PasoInsumo, PasoReceta
 from src.recetas.services import _extraer_prefijo_producto
+from src.unidad_medida.constants import Factores
+from src.unidad_medida.models import UnidadMedida
 
 
 def generar_codigo_lote(db: Session, producto: Producto, fecha_elaboracion: datetime | date) -> str:
@@ -78,10 +80,15 @@ def listar_productos_con_receta_activa(db: Session) -> List[schemas.ProductoDisp
                     continue
                 ins_id = pi.insumo_id
                 if ins_id not in insumos_agrupados:
+                    um = pi.insumo.unidad_medida
+                    tipo_mag = None
+                    if um and um.tipo_magnitud is not None:
+                        tipo_mag = um.tipo_magnitud.value if hasattr(um.tipo_magnitud, "value") else str(um.tipo_magnitud)
                     insumos_agrupados[ins_id] = {
                         "insumo_id": ins_id,
                         "nombre": pi.insumo.nombre,
-                        "unidad_medida_simbolo": pi.insumo.unidad_medida.simbolo if pi.insumo.unidad_medida else "",
+                        "unidad_medida_simbolo": um.simbolo if um else "",
+                        "unidad_medida_tipo": tipo_mag,
                         "cantidad_nominal_receta": 0.0,
                     }
                 insumos_agrupados[ins_id]["cantidad_nominal_receta"] += float(pi.cantidad_consumo_estimada)
@@ -197,11 +204,47 @@ def _calcular_mapa_nominal_receta(receta_activa: Receta) -> dict[int, float]:
     return mapa_nominal
 
 
+def _convertir_a_unidad_base_insumo(
+    cantidad: float,
+    unidad_origen: Optional[str],
+    unidad_base: Optional[UnidadMedida],
+) -> float:
+    """Convierte una cantidad desde `unidad_origen` hacia la unidad base real del insumo."""
+    if not unidad_origen or not unidad_origen.strip() or not unidad_base:
+        return cantidad
+
+    origen = unidad_origen.strip().lower()
+    base_simbolo = (unidad_base.simbolo or "").strip().lower()
+    base_nombre = (unidad_base.nombre or "").strip().lower()
+    if origen in (base_simbolo, base_nombre):
+        return cantidad
+
+    tipo = getattr(unidad_base, "tipo_magnitud", "")
+    magnitud = (tipo.value if hasattr(tipo, "value") else str(tipo or "")).strip().lower()
+
+    if magnitud == "masa" or base_simbolo in Factores.MASA_A_GRAMOS:
+        factor_origen = Factores.MASA_A_GRAMOS.get(origen)
+        factor_base = Factores.MASA_A_GRAMOS.get(base_simbolo) or Factores.MASA_A_GRAMOS.get(base_nombre)
+        if factor_origen is not None and factor_base is not None:
+            return (cantidad * factor_origen) / factor_base
+        raise exceptions.UnidadConsumoInvalida()
+
+    if magnitud == "volumen" or base_simbolo in Factores.VOLUMEN_A_ML:
+        factor_origen = Factores.VOLUMEN_A_ML.get(origen)
+        factor_base = Factores.VOLUMEN_A_ML.get(base_simbolo) or Factores.VOLUMEN_A_ML.get(base_nombre)
+        if factor_origen is not None and factor_base is not None:
+            return (cantidad * factor_origen) / factor_base
+        raise exceptions.UnidadConsumoInvalida()
+
+    raise exceptions.UnidadConsumoInvalida()
+
+
 def _descontar_lotes_insumo(
     db: Session,
     insumo_id: int,
     cant_real: float,
     lotes_asignados: list[schemas.DetalleLoteInsumoCreate],
+    unidad_base: Optional[UnidadMedida] = None,
 ) -> list[DetalleConsumoLoteInsumo]:
     """Valida balance, vigencia y stock de los lotes físicos asignados y descuenta en la sesión."""
     if cant_real == 0:
@@ -216,12 +259,23 @@ def _descontar_lotes_insumo(
     if len(lote_ids) != len(set(lote_ids)):
         raise exceptions.LoteInsumoDuplicado()
 
-    suma_lotes = sum(float(item.cantidad) for item in lotes_asignados)
+    cantidades_base: list[Decimal] = []
+    for item in lotes_asignados:
+        conv = _convertir_a_unidad_base_insumo(
+            float(item.cantidad),
+            item.unidad,
+            unidad_base,
+        )
+        cantidades_base.append(Decimal(str(round(conv, 3))))
+
+    suma_lotes = sum(float(c) for c in cantidades_base)
     if abs(suma_lotes - cant_real) > 0.001:
         raise exceptions.BalanceConsumoLoteInvalido()
 
     detalles_orm: list[DetalleConsumoLoteInsumo] = []
-    for item in lotes_asignados:
+    for item, cant_desc in zip(lotes_asignados, cantidades_base):
+        if cant_desc <= 0:
+            raise exceptions.BalanceConsumoLoteInvalido()
         lote_insumo = db.scalar(
             select(LoteInsumo).where(LoteInsumo.id == item.lote_insumo_id)
         )
@@ -231,14 +285,14 @@ def _descontar_lotes_insumo(
             raise exceptions.LoteInsumoNoPertenece()
         if lote_insumo.estado != EstadoLote.ACTIVO:
             raise exceptions.LoteInsumoInactivoOVencido()
-        if item.cantidad > lote_insumo.cantidad_actual:
+        if cant_desc > lote_insumo.cantidad_actual:
             raise exceptions.StockLoteInsumoInsuficiente()
 
-        lote_insumo.cantidad_actual = lote_insumo.cantidad_actual - item.cantidad
+        lote_insumo.cantidad_actual = lote_insumo.cantidad_actual - cant_desc
         detalles_orm.append(
             DetalleConsumoLoteInsumo(
                 lote_insumo_id=lote_insumo.id,
-                cantidad=item.cantidad,
+                cantidad=cant_desc,
             )
         )
     return detalles_orm
@@ -271,7 +325,11 @@ def _construir_consumos_lote(
 
     consumos_orm: list[ConsumoInsumoLote] = []
     for c in insumos_recibidos:
-        insumo_db = db.scalar(select(Insumo).where(Insumo.id == c.insumo_id))
+        insumo_db = db.scalar(
+            select(Insumo)
+            .options(joinedload(Insumo.unidad_medida))
+            .where(Insumo.id == c.insumo_id)
+        )
         if not insumo_db:
             raise exceptions.InsumoNoEncontrado()
         if not insumo_db.disponible:
@@ -279,15 +337,26 @@ def _construir_consumos_lote(
         if c.insumo_id not in mapa_nominal:
             raise exceptions.InsumoNoPerteneceAReceta()
 
-        cant_real = round(float(c.cantidad_real_utilizada), 3)
-        detalles_orm = _descontar_lotes_insumo(db, c.insumo_id, cant_real, c.lotes)
+        cant_real_convertida = _convertir_a_unidad_base_insumo(
+            float(c.cantidad_real_utilizada),
+            c.unidad,
+            insumo_db.unidad_medida,
+        )
+        cant_real = round(cant_real_convertida, 3)
+        detalles_orm = _descontar_lotes_insumo(
+            db,
+            c.insumo_id,
+            cant_real,
+            c.lotes,
+            unidad_base=insumo_db.unidad_medida,
+        )
         teorica = round(mapa_nominal[c.insumo_id] * factor_escala, 4)
 
         consumos_orm.append(
             ConsumoInsumoLote(
                 insumo_id=c.insumo_id,
                 cantidad_teorica=teorica,
-                cantidad_real_utilizada=round(float(c.cantidad_real_utilizada), 4),
+                cantidad_real_utilizada=round(cant_real_convertida, 4),
                 detalles_lotes=detalles_orm,
             )
         )

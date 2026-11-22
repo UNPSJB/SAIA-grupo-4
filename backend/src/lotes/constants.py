@@ -25,3 +25,4 @@ class ErrorCode:
     LOTE_INSUMO_DUPLICADO = "No se puede asignar el mismo lote físico dos veces para un mismo insumo."
     BALANCE_CONSUMO_LOTE_INVALIDO = "La suma de las cantidades tomadas de los lotes físicos debe coincidir exactamente con la cantidad real consumida."
     STOCK_LOTE_INSUMO_INSUFICIENTE = "La cantidad asignada supera el stock disponible del lote físico de insumo."
+    UNIDAD_CONSUMO_INVALIDA = "La unidad de medida indicada no es compatible con la unidad base del insumo."
