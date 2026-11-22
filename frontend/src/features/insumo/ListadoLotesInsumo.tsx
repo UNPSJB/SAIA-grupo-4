@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, HStack, Box } from "@chakra-ui/react";
-import { FiArrowLeft, FiEye, FiList, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiArrowUpRight, FiEye, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -28,8 +28,6 @@ import { COLOR_ESTADO_LOTE, ETIQUETA_ESTADO_LOTE } from "./estadoLote";
 interface ListadoLotesInsumoProps {
   /** Insumo cuyos lotes se listan. */
   insumo: Insumo;
-  /** Vuelve al listado de insumos. */
-  onVolver: () => void;
   /** Abre el alta de un lote para este insumo. */
   onNuevoLote: () => void;
   /** Abre el detalle de un lote. */
@@ -102,7 +100,6 @@ const construirEndpoint = (insumoId: number, filtros: FiltrosLotes) => {
 
 export const ListadoLotesInsumo = ({
   insumo,
-  onVolver,
   onNuevoLote,
   onVerLote,
   onInhabilitarLote,
@@ -133,14 +130,15 @@ export const ListadoLotesInsumo = ({
   };
 
   // Trazabilidad inversa: lleva al historial de producción ya filtrado por el
-  // código de este lote de insumo.
+  // código de este lote de insumo, conservando el recorrido para los breadcrumbs.
   const verProducciones = (lote: LoteInsumo) => {
     navigate(
       `/historial-lotes?codigo_lote_insumo=${encodeURIComponent(lote.codigo_lote)}`,
       {
         state: {
-          volverA: `/insumos/${insumo.id}/lotes`,
-          volverEtiqueta: `Volver a lotes de ${insumo.nombre}`,
+          padre: { nombre: "Insumos", to: "/insumos" },
+          from: `/insumos/${insumo.id}/lotes`,
+          label: `Lotes de ${insumo.nombre}`,
         },
       },
     );
@@ -211,16 +209,16 @@ export const ListadoLotesInsumo = ({
       render: (l) => (
         <RowActions>
           <RowActionButton
+            icon={FiArrowUpRight}
+            label='Ver producciones'
+            colorPalette='blue'
+            onClick={() => verProducciones(l)}
+          />
+          <RowActionButton
             icon={FiEye}
             label='Ver'
             colorPalette='yellow'
             onClick={() => onVerLote(l)}
-          />
-          <RowActionButton
-            icon={FiList}
-            label='Ver producciones'
-            colorPalette='blue'
-            onClick={() => verProducciones(l)}
           />
           <RowActionButton
             icon={FiTrash2}
@@ -238,17 +236,12 @@ export const ListadoLotesInsumo = ({
     <ListadoContainer>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader title={`Lotes de ${insumo.nombre}`} icon={FiPackage} />
-        <HStack gap={2}>
-          <Button variant='outline' colorPalette='green' onClick={onVolver}>
-            <FiArrowLeft /> Volver a insumos
+        {/* El backend no permite registrar lotes de un insumo dado de baja. */}
+        {insumo.disponible && (
+          <Button colorPalette='green' onClick={onNuevoLote}>
+            <FiPlus /> Nuevo lote
           </Button>
-          {/* El backend no permite registrar lotes de un insumo dado de baja. */}
-          {insumo.disponible && (
-            <Button colorPalette='green' onClick={onNuevoLote}>
-              <FiPlus /> Nuevo lote
-            </Button>
-          )}
-        </HStack>
+        )}
       </HStack>
 
       <Box mb={4}>
@@ -259,8 +252,8 @@ export const ListadoLotesInsumo = ({
           loading={loading}
         >
           <FiltroTexto
-            ariaLabel='Buscar lote por código'
-            placeholder='Código de lote'
+            ariaLabel='Buscar lote por código o consumo'
+            placeholder='Código de lote o consumo...'
             value={borrador.codigo}
             onChange={(valor) => setBorrador({ ...borrador, codigo: valor })}
             onKeyDown={(e) => {

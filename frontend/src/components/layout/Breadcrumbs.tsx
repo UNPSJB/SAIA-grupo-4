@@ -11,6 +11,7 @@ interface MigaItem {
   nombre: string;
   to: string;
   esLink: boolean;
+  state?: unknown;
 }
 
 // Mapa de nombres legibles para cada segmento de ruta
@@ -140,7 +141,12 @@ function construirMigas(pathname: string, state: unknown): MigaItem[] {
         esLink: true,
       });
     }
-    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({
+      nombre: dynamicLabel,
+      to: dynamicFrom,
+      esLink: true,
+      state: { label: dynamicLabel },
+    });
     migas.push({ nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false });
     return migas;
   }
@@ -161,7 +167,12 @@ function construirMigas(pathname: string, state: unknown): MigaItem[] {
         esLink: true,
       });
     }
-    migas.push({ nombre: dynamicLabel, to: dynamicFrom, esLink: true });
+    migas.push({
+      nombre: dynamicLabel,
+      to: dynamicFrom,
+      esLink: true,
+      state: { label: dynamicLabel },
+    });
     migas.push({ nombre: legible("rotulo"), to: pathname, esLink: false });
     return migas;
   }
@@ -222,6 +233,20 @@ function construirMigas(pathname: string, state: unknown): MigaItem[] {
       continue;
     }
 
+    if (
+      seg === "lotes" &&
+      segmentos[0] === "insumos" &&
+      typeof origenState?.label === "string" &&
+      origenState.label.trim() !== ""
+    ) {
+      migas.push({
+        nombre: origenState.label,
+        to: pathAcumulado,
+        esLink: puedeTenerLink,
+      });
+      continue;
+    }
+
     migas.push({
       nombre: legible(seg),
       to: pathAcumulado,
@@ -269,6 +294,7 @@ function renderBreadcrumb(migas: MigaItem[]) {
                   <Breadcrumb.Link asChild>
                     <RouterLink
                       to={miga.to}
+                      state={miga.state}
                       style={{
                         fontSize: "sm",
                         fontWeight: "normal",

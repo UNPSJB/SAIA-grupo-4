@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Box,
-  Button,
   Flex,
   HStack,
   Input,
   Text,
 } from "@chakra-ui/react";
-import { FiArrowLeft, FiClock } from "react-icons/fi";
+import { FiClock } from "react-icons/fi";
 import {
   AlertMessage,
   FiltroSelect,
@@ -22,6 +21,7 @@ import { BASE_URL, ITEMS_POR_PAGINA } from "../config";
 import { apiFetch } from "../features/auth/apiFetch";
 import { lotesApi } from "../features/lotes/hooks/lotesApi";
 import { ListadoLotes } from "../features/lotes/ListadoLotes";
+import { FiltroLoteInsumoAutocomplete } from "../features/lotes/components/FiltroLoteInsumoAutocomplete";
 import { armarFiltros } from "../utils/exportacion";
 import { formatearFecha } from "../utils/fecha";
 import { LoteDetalle } from "../features/lotes/LoteDetalle";
@@ -34,11 +34,7 @@ export default function HistorialLotesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const loteInsumoInicial = searchParams.get("codigo_lote_insumo")?.trim() ?? "";
 
-  // Destino de vuelta: solo existe si se llegó desde otra pantalla (por ejemplo
-  // los lotes de un insumo). Con una URL escrita a mano no hay botón.
-  const navigate = useNavigate();
   const location = useLocation();
-  const origen = location.state as { volverA?: string; volverEtiqueta?: string } | null;
 
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,8 +122,17 @@ export default function HistorialLotesPage() {
     cargarHistorial();
   }, [cargarHistorial]);
 
-  const aplicarFiltros = (busquedaManual?: string) => {
-    const texto = typeof busquedaManual === "string" ? busquedaManual : busqueda;
+  const aplicarFiltros = (overrides?: {
+    busqueda?: string;
+    loteInsumo?: string;
+  }) => {
+    const texto =
+      typeof overrides?.busqueda === "string" ? overrides.busqueda : busqueda;
+    const loteInsumo = (
+      typeof overrides?.loteInsumo === "string"
+        ? overrides.loteInsumo
+        : loteInsumoFiltro
+    ).trim();
     let desde = desdeFiltro;
     let hasta = hastaFiltro;
 
@@ -143,8 +148,6 @@ export default function HistorialLotesPage() {
       hasta = desde;
       setHastaFiltro(desde);
     }
-
-    const loteInsumo = loteInsumoFiltro.trim();
 
     setFiltrosAplicados({
       busqueda: texto.trim(),
@@ -200,18 +203,6 @@ export default function HistorialLotesPage() {
     <ListadoContainer>
       <ListadoHeader title="Historial de Lotes" icon={FiClock} />
 
-      {origen?.volverA && (
-        <Button
-          variant="outline"
-          colorPalette="green"
-          size="sm"
-          mb={4}
-          onClick={() => navigate(origen.volverA as string)}
-        >
-          <FiArrowLeft /> {origen.volverEtiqueta ?? "Volver"}
-        </Button>
-      )}
-
       <Box
         mb={6}
         w="100%"
@@ -234,7 +225,7 @@ export default function HistorialLotesPage() {
         }}
       >
         <FiltrosBar
-          onAplicar={aplicarFiltros}
+          onAplicar={() => aplicarFiltros()}
           onLimpiar={limpiarFiltros}
           hayFiltrosActivos={hayFiltrosActivos}
         >
@@ -246,7 +237,7 @@ export default function HistorialLotesPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                aplicarFiltros(e.currentTarget.value);
+                aplicarFiltros({ busqueda: e.currentTarget.value });
               }
             }}
           />
@@ -260,17 +251,14 @@ export default function HistorialLotesPage() {
               value: String(p.id),
             }))}
           />
-          <FiltroTexto
-            ariaLabel="Buscar por lote de insumo"
-            placeholder="Lote de insumo (ej. H-099)"
+          <FiltroLoteInsumoAutocomplete
             value={loteInsumoFiltro}
             onChange={setLoteInsumoFiltro}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                aplicarFiltros();
-              }
+            onSeleccionarYFiltrar={(codigo) => {
+              setLoteInsumoFiltro(codigo);
+              aplicarFiltros({ loteInsumo: codigo });
             }}
+            onEnterSinLista={() => aplicarFiltros()}
           />
           <Flex
             direction={{ base: "column", sm: "row" }}

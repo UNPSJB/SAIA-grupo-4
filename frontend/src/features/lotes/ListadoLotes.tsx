@@ -75,16 +75,16 @@ const IndicadorCoincidencia = ({
 }) => {
   if (coincidencias.length === 0) return null;
   return (
-    <VStack align="flex-start" gap={1} mt={1}>
+    <VStack align="flex-start" gap={0.5} mt={0.5}>
       {coincidencias.map((c) => (
-        <Badge
+        <Text
           key={`${c.insumoNombre}-${c.codigo}`}
-          colorPalette="orange"
-          variant="subtle"
-          whiteSpace="normal"
+          fontSize="xs"
+          color="blue.600"
+          fontWeight="medium"
         >
-          Insumo detectado: {c.codigo} ({c.insumoNombre})
-        </Badge>
+          Coincidencia: Lote &ldquo;{c.codigo}&rdquo; ({c.insumoNombre})
+        </Text>
       ))}
     </VStack>
   );

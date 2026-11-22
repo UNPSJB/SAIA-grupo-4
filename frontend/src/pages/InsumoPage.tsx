@@ -173,7 +173,9 @@ export default function InsumoPage() {
           onVerLotes={(insumo) => {
             setError("");
             setInsumoSeleccionado(insumo);
-            navigate(`/insumos/${insumo.id}/lotes`);
+            navigate(`/insumos/${insumo.id}/lotes`, {
+              state: { label: `Lotes de ${insumo.nombre}` },
+            });
           }}
         />
       )}
@@ -183,10 +185,6 @@ export default function InsumoPage() {
         <ListadoLotesInsumo
           insumo={insumoSeleccionado}
           refreshKey={refescar}
-          onVolver={() => {
-            setVista("listado");
-            navigate("/insumos");
-          }}
           onNuevoLote={() => {
             setError("");
             setInsumoLote(insumoSeleccionado);
