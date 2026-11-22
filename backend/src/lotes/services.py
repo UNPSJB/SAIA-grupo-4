@@ -113,17 +113,25 @@ def listar_productos_con_receta_activa(db: Session) -> List[schemas.ProductoDisp
                 )
             )
 
+        prod_um = prod.unidad_medida
+        prod_tipo_mag = None
+        if prod_um and prod_um.tipo_magnitud is not None:
+            prod_tipo_mag = prod_um.tipo_magnitud.value if hasattr(prod_um.tipo_magnitud, "value") else str(prod_um.tipo_magnitud)
+
         resultado.append(
             schemas.ProductoDisponibleLoteOut(
                 id=prod.id,
                 nombre=prod.nombre,
                 descripcion=prod.descripcion,
-                unidad_medida_simbolo=prod.unidad_medida.simbolo if prod.unidad_medida else "",
+                unidad_medida_simbolo=prod_um.simbolo if prod_um else "",
+                unidad_medida_tipo=prod_tipo_mag,
                 dias_vida_util=prod.dias_vida_util,
                 receta_id=receta_activa.id,
                 receta_codigo=receta_activa.codigo_receta,
                 receta_nombre=receta_activa.nombre_receta,
+                receta_version=receta_activa.version,
                 rendimiento_estandar=receta_activa.rendimiento_estandar,
+                tamano_porcion=receta_activa.tamano_porcion,
                 insumos_teoricos=insumos_teoricos,
             )
         )
@@ -310,7 +318,12 @@ def _construir_consumos_lote(
         if receta_activa.rendimiento_estandar > 0
         else 1.0
     )
-    factor_escala = float(lote_in.cantidad_producida) / rendimiento
+    base_escala = (
+        float(lote_in.masa_tanda_g)
+        if lote_in.masa_tanda_g is not None
+        else float(lote_in.cantidad_producida)
+    )
+    factor_escala = base_escala / rendimiento
 
     insumos_recibidos = lote_in.consumos or []
     ids_insumos = [item.insumo_id for item in insumos_recibidos]

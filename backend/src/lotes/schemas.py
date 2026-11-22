@@ -52,6 +52,10 @@ class LoteBase(BaseModel):
 
 
 class LoteCreate(LoteBase):
+    masa_tanda_g: Optional[Annotated[Decimal, Field(gt=0)]] = Field(
+        default=None,
+        description="Masa base de tanda elaborada en gramos para escalar los insumos teóricos",
+    )
     consumos: list[ConsumoInsumoCreate] = []
 
 
@@ -99,12 +103,15 @@ class ProductoDisponibleLoteOut(BaseModel):
     nombre: str
     descripcion: str
     unidad_medida_simbolo: str
+    unidad_medida_tipo: Optional[str] = None
     dias_vida_util: Optional[int] = None
 
     receta_id: int
     receta_codigo: str
     receta_nombre: str
+    receta_version: int = 1
     rendimiento_estandar: Decimal
+    tamano_porcion: Optional[Decimal] = None
 
     insumos_teoricos: list[InsumoTeoricoRecetaOut] = []
 
