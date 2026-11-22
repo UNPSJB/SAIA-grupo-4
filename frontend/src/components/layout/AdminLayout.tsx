@@ -39,7 +39,7 @@ import { useAuth } from "../../features/auth/useAuth";
 import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 import { TopNavBar, TOP_NAV_BAR_HEIGHT } from "./TopNavBar";
 import { SideBar, type NavItem as SideBarNavItem } from "./SideBar";
-import { PAGE_PX, PAGE_PY } from "./espaciado";
+import { PAGE_PX, PAGE_PY, SCROLLBAR_OCULTA_CSS } from "./espaciado";
 
 // Un ítem de la navegación del admin (solo links, sin children).
 export interface AdminNavItem {
@@ -104,16 +104,12 @@ export const AdminLayout = ({
   title = "SAIA-4",
   brandIcon = FiShield,
 }: AdminLayoutProps) => {
-  const { usuario, logout } = useAuth();
+  const { logout } = useAuth();
   const { configuracion, logoSrc } = useConfiguracion();
 const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
   const { pathname } = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [cerrarSesionAbierto, setCerrarSesionAbierto] = useState(false);
-
-  const nombreUsuario = usuario
-    ? `${usuario.nombre} ${usuario.apellido}`.trim()
-    : "";
 
   // Renderizado de ítems para el Drawer móvil (lista plana)
   const renderMobileItems = (onNavigate?: () => void) => (
@@ -155,37 +151,6 @@ const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
     </VStack>
   );
 
-  const bloqueUsuario = (onCerrarSesion?: () => void) => (
-    <VStack align="stretch" gap={2}>
-      <Flex
-        align="center"
-        justify="flex-start"
-        gap={2}
-        px={2}
-      >
-        <Icon as={FiUser} boxSize={5} color="white" flexShrink={0} />
-        <Text color="white" fontSize="sm" truncate>
-          {nombreUsuario}
-        </Text>
-      </Flex>
-
-      <Button
-        variant="ghost"
-        color="white"
-        w="100%"
-        justifyContent="flex-start"
-        onClick={() => {
-          onCerrarSesion?.();
-          setCerrarSesionAbierto(true);
-        }}
-        _hover={{ bg: "whiteAlpha.200" }}
-      >
-        <Icon as={FiX} />
-        Cerrar sesión
-      </Button>
-    </VStack>
-  );
-
   return (
     <Flex minH="100vh" w="100%">
       {/* SideBar de escritorio (usando el componente SideBar existente) */}
@@ -197,7 +162,6 @@ const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
         checklistColapsable={checklistColapsable}
         loteItems={loteItems}
         loteColapsable={loteColapsable}
-        username={nombreUsuario}
         display={{ base: "none", md: "flex" }}
       />
 
@@ -253,7 +217,11 @@ const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
                 </HStack>
               </Drawer.Header>
 
-              <Drawer.Body>
+              <Drawer.Body
+                overflowY="auto"
+                overflowX="hidden"
+                css={SCROLLBAR_OCULTA_CSS}
+              >
                 <Text
                   fontSize="sm"
                   fontWeight="semibold"
@@ -265,10 +233,6 @@ const nombreEstablecimiento = configuracion.nombre_establecimiento || title;
                 </Text>
                 {renderMobileItems(() => setMenuAbierto(false))}
               </Drawer.Body>
-
-              <Drawer.Footer borderColor="whiteAlpha.300">
-                {bloqueUsuario(() => setMenuAbierto(false))}
-              </Drawer.Footer>
             </Drawer.Content>
           </Drawer.Positioner>
         </Portal>
