@@ -1,5 +1,5 @@
 import { Badge, Box, Button, Card, HStack, Text, VStack } from "@chakra-ui/react";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiSlash } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -10,6 +10,10 @@ import {
   type ColumnDef,
 } from "../../components/ui";
 import type { FiltroAplicado } from "../../utils/exportacion";
+import {
+  COLOR_ESTADO_LOTE_PRODUCCION,
+  ETIQUETA_ESTADO_LOTE_PRODUCCION,
+} from "./estadoLoteProduccion";
 import type { Lote } from "./types";
 
 interface ListadoLotesProps {
@@ -19,6 +23,7 @@ interface ListadoLotesProps {
   exportarFiltros?: FiltroAplicado[];
   loading?: boolean;
   onVer: (lote: Lote) => void;
+  onRetener?: (lote: Lote) => void;
   mostrarOperador?: boolean;
   hayFiltrosActivos?: boolean;
   /** Código de lote de insumo buscado: si viene, se muestra la coincidencia bajo el producto. */
@@ -96,6 +101,7 @@ export const ListadoLotes = ({
   exportarFiltros = [],
   loading = false,
   onVer,
+  onRetener,
   mostrarOperador = true,
   hayFiltrosActivos = false,
   codigoLoteInsumoFiltro = "",
@@ -175,6 +181,19 @@ export const ListadoLotes = ({
           <TextoSinValor>{SIN_ESPECIFICAR}</TextoSinValor>
         ),
     },
+    {
+      key: "estado",
+      label: "Estado",
+      valorExportacion: (l) => ETIQUETA_ESTADO_LOTE_PRODUCCION[l.estado ?? "activo"],
+      render: (l) => {
+        const estado = l.estado ?? "activo";
+        return (
+          <Badge colorPalette={COLOR_ESTADO_LOTE_PRODUCCION[estado]}>
+            {ETIQUETA_ESTADO_LOTE_PRODUCCION[estado]}
+          </Badge>
+        );
+      },
+    },
   ];
 
   if (mostrarOperador) {
@@ -197,6 +216,13 @@ export const ListadoLotes = ({
           label="Ver detalle"
           colorPalette="yellow"
           onClick={() => onVer(l)}
+        />
+        <RowActionButton
+          icon={FiSlash}
+          label="Retener"
+          colorPalette="orange"
+          onClick={() => onRetener?.(l)}
+          visible={Boolean(onRetener) && l.estado !== "retenido"}
         />
       </RowActions>
     ),
@@ -226,9 +252,14 @@ export const ListadoLotes = ({
                 <Text fontWeight="bold" color="green.700" truncate>
                   {l.codigo_lote}
                 </Text>
-                <Badge colorPalette="purple" variant="subtle" flexShrink={0}>
-                  {l.receta_codigo}
-                </Badge>
+                <HStack gap={1.5} flexShrink={0}>
+                  <Badge colorPalette={COLOR_ESTADO_LOTE_PRODUCCION[l.estado ?? "activo"]}>
+                    {ETIQUETA_ESTADO_LOTE_PRODUCCION[l.estado ?? "activo"]}
+                  </Badge>
+                  <Badge colorPalette="purple" variant="subtle">
+                    {l.receta_codigo}
+                  </Badge>
+                </HStack>
               </HStack>
 
               <Text fontWeight="semibold" fontSize="md">
@@ -259,15 +290,26 @@ export const ListadoLotes = ({
                 )}
               </Text>
 
-              <Button
-                mt={1}
-                colorPalette="yellow"
-                variant="outline"
-                w="100%"
-                onClick={() => onVer(l)}
-              >
-                <FiEye /> Ver detalle
-              </Button>
+              <HStack mt={1} gap={2}>
+                <Button
+                  flex={1}
+                  colorPalette="yellow"
+                  variant="outline"
+                  onClick={() => onVer(l)}
+                >
+                  <FiEye /> Ver detalle
+                </Button>
+                {onRetener && l.estado !== "retenido" && (
+                  <Button
+                    flex={1}
+                    colorPalette="red"
+                    variant="outline"
+                    onClick={() => onRetener(l)}
+                  >
+                    <FiSlash /> Retener
+                  </Button>
+                )}
+              </HStack>
             </Card.Body>
           </Card.Root>
         ))}

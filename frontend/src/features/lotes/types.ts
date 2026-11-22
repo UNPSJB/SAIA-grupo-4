@@ -74,6 +74,14 @@ export interface LoteCreatePayload {
   consumos: ConsumoInsumoCreate[];
 }
 
+export type EstadoLoteProduccion = "activo" | "vencido" | "retenido";
+
+export interface PersonalResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+}
+
 export interface Lote {
   id: number;
   codigo_lote: string;
@@ -85,6 +93,12 @@ export interface Lote {
   fecha_registro_sistema: string;
   cantidad_producida: number;
   observaciones?: string | null;
+
+  estado: EstadoLoteProduccion;
+  motivo_retencion?: string | null;
+  fecha_retencion?: string | null;
+  usuario_retencion_id?: number | null;
+  usuario_retencion?: PersonalResumen | null;
 
   producto_nombre?: string;
   unidad_medida_simbolo?: string;

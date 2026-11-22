@@ -65,7 +65,8 @@ export const lotesApi = {
     producto_id?: number;
     receta_id?: number;
     operador_id?: number;
-    codigo_lote_insumo?: string;  
+    codigo_lote_insumo?: string;
+    estado?: string;
     desde?: string;
     hasta?: string;
   }): Promise<Lote[]> => {
@@ -74,7 +75,8 @@ export const lotesApi = {
     if (params?.producto_id) query.set("producto_id", String(params.producto_id));
     if (params?.receta_id) query.set("receta_id", String(params.receta_id));
     if (params?.operador_id) query.set("operador_id", String(params.operador_id));
-    if (params?.codigo_lote_insumo) query.set("codigo_lote_insumo", params.codigo_lote_insumo); 
+    if (params?.codigo_lote_insumo) query.set("codigo_lote_insumo", params.codigo_lote_insumo);
+    if (params?.estado) query.set("estado", params.estado);
     if (params?.desde) query.set("desde", params.desde);
     if (params?.hasta) query.set("hasta", params.hasta);
 
@@ -87,5 +89,14 @@ export const lotesApi = {
   getLotePorId: async (id: number): Promise<Lote> => {
     const res = await apiFetch(`${BASE_URL}/lotes/${id}`);
     return handleResponse<Lote>(res, "No se pudo cargar el detalle del lote.");
+  },
+
+  retenerLote: async (id: number, motivo: string): Promise<Lote> => {
+    const res = await apiFetch(`${BASE_URL}/lotes/${id}/retener`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivo: motivo.trim() }),
+    });
+    return handleResponse<Lote>(res, "No se pudo retener el lote de producción.");
   },
 };

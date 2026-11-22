@@ -6,8 +6,12 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { FiBox, FiClock, FiEye, FiLayers, FiUser } from "react-icons/fi";
+import { FiBox, FiClock, FiEye, FiLayers, FiSlash, FiUser } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
+import {
+  COLOR_ESTADO_LOTE_PRODUCCION,
+  ETIQUETA_ESTADO_LOTE_PRODUCCION,
+} from "./estadoLoteProduccion";
 import type { Lote } from "./types";
 
 interface LoteDetalleProps {
@@ -21,6 +25,17 @@ const formatearFechaSoloDia = (fechaIso: string) => {
   if (anio && mes && dia) return `${dia}/${mes}/${anio}`;
   return fechaIso;
 };
+
+const formatearFechaHora = (fechaIso?: string | null) =>
+  fechaIso
+    ? new Date(fechaIso).toLocaleString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
 
 export const LoteDetalle = ({ lote, onCerrar }: LoteDetalleProps) => {
   const secciones: SeccionDetalle[] = [
@@ -51,6 +66,14 @@ export const LoteDetalle = ({ lote, onCerrar }: LoteDetalleProps) => {
         {
           label: "Receta",
           valor: `${lote.receta_codigo} - ${lote.receta_nombre}`,
+        },
+        {
+          label: "Estado",
+          valor: (
+            <Badge colorPalette={COLOR_ESTADO_LOTE_PRODUCCION[lote.estado ?? "activo"]}>
+              {ETIQUETA_ESTADO_LOTE_PRODUCCION[lote.estado ?? "activo"]}
+            </Badge>
+          ),
         },
       ],
     },
@@ -83,6 +106,27 @@ export const LoteDetalle = ({ lote, onCerrar }: LoteDetalleProps) => {
         },
       ],
     },
+    ...(lote.estado === "retenido" || lote.fecha_retencion || lote.motivo_retencion
+      ? [
+          {
+            titulo: "Información de Retención",
+            icono: FiSlash,
+            items: [
+              { label: "Motivo", valor: lote.motivo_retencion || "—" },
+              {
+                label: "Retenido por",
+                valor: lote.usuario_retencion
+                  ? `${lote.usuario_retencion.nombre} ${lote.usuario_retencion.apellido}`
+                  : "—",
+              },
+              {
+                label: "Fecha y hora",
+                valor: formatearFechaHora(lote.fecha_retencion),
+              },
+            ],
+          },
+        ]
+      : []),
     {
       titulo: "Consumo de Insumos (Teórico vs. Real)",
       icono: FiLayers,

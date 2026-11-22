@@ -22,11 +22,18 @@ import { apiFetch } from "../features/auth/apiFetch";
 import { lotesApi } from "../features/lotes/hooks/lotesApi";
 import { ListadoLotes } from "../features/lotes/ListadoLotes";
 import { FiltroLoteInsumoAutocomplete } from "../features/lotes/components/FiltroLoteInsumoAutocomplete";
-import { armarFiltros } from "../utils/exportacion";
+import { armarFiltros, etiquetaOpcion } from "../utils/exportacion";
 import { formatearFecha } from "../utils/fecha";
 import { LoteDetalle } from "../features/lotes/LoteDetalle";
+import { RetenerLoteModal } from "../features/lotes/RetenerLoteModal";
 import type { Lote } from "../features/lotes/types";
 import type { Producto } from "../features/productos/types";
+
+const OPCIONES_ESTADO = [
+  { label: "Activo", value: "activo" },
+  { label: "Retenido", value: "retenido" },
+  { label: "Vencido", value: "vencido" },
+];
 
 export default function HistorialLotesPage() {
   // Si se llega desde "Ver producciones" de un lote de insumo, el código viene
@@ -46,6 +53,7 @@ export default function HistorialLotesPage() {
   const [busqueda, setBusqueda] = useState("");
   const [productoIdFiltro, setProductoIdFiltro] = useState("");
   const [loteInsumoFiltro, setLoteInsumoFiltro] = useState(loteInsumoInicial);
+  const [estadoFiltro, setEstadoFiltro] = useState("");
   const [desdeFiltro, setDesdeFiltro] = useState("");
   const [hastaFiltro, setHastaFiltro] = useState("");
 
@@ -54,12 +62,14 @@ export default function HistorialLotesPage() {
     busqueda: "",
     producto_id: "",
     lote_insumo: loteInsumoInicial,
+    estado: "",
     desde: "",
     hasta: "",
   });
 
   const [page, setPage] = useState(1);
   const [loteSeleccionado, setLoteSeleccionado] = useState<Lote | null>(null);
+  const [loteRetener, setLoteRetener] = useState<Lote | null>(null);
 
   const hoy = useMemo(() => {
     const d = new Date();
@@ -107,6 +117,7 @@ export default function HistorialLotesPage() {
         busqueda: filtrosAplicados.busqueda || undefined,
         producto_id: filtrosAplicados.producto_id ? Number(filtrosAplicados.producto_id) : undefined,
         codigo_lote_insumo: filtrosAplicados.lote_insumo || undefined,
+        estado: filtrosAplicados.estado || undefined,
         desde: filtrosAplicados.desde || undefined,
         hasta: filtrosAplicados.hasta || undefined,
       });
@@ -153,6 +164,7 @@ export default function HistorialLotesPage() {
       busqueda: texto.trim(),
       producto_id: productoIdFiltro,
       lote_insumo: loteInsumo,
+      estado: estadoFiltro,
       desde,
       hasta,
     });
@@ -168,12 +180,14 @@ export default function HistorialLotesPage() {
     setBusqueda("");
     setProductoIdFiltro("");
     setLoteInsumoFiltro("");
+    setEstadoFiltro("");
     setDesdeFiltro("");
     setHastaFiltro("");
     setFiltrosAplicados({
       busqueda: "",
       producto_id: "",
       lote_insumo: "",
+      estado: "",
       desde: "",
       hasta: "",
     });
@@ -186,6 +200,7 @@ export default function HistorialLotesPage() {
       filtrosAplicados.busqueda !== "" ||
       filtrosAplicados.producto_id !== "" ||
       filtrosAplicados.lote_insumo !== "" ||
+      filtrosAplicados.estado !== "" ||
       filtrosAplicados.desde !== "" ||
       filtrosAplicados.hasta !== ""
     );
@@ -259,6 +274,13 @@ export default function HistorialLotesPage() {
               aplicarFiltros({ loteInsumo: codigo });
             }}
             onEnterSinLista={() => aplicarFiltros()}
+          />
+          <FiltroSelect
+            ariaLabel="Filtrar por estado"
+            placeholder="Todos los estados"
+            value={estadoFiltro}
+            onChange={setEstadoFiltro}
+            options={OPCIONES_ESTADO}
           />
           <Flex
             direction={{ base: "column", sm: "row" }}
@@ -346,11 +368,13 @@ export default function HistorialLotesPage() {
                     filtrosAplicados.producto_id),
               ],
               ["Lote de insumo", filtrosAplicados.lote_insumo],
+              ["Estado", etiquetaOpcion(OPCIONES_ESTADO, filtrosAplicados.estado)],
               ["Desde", filtrosAplicados.desde && formatearFecha(filtrosAplicados.desde)],
               ["Hasta", filtrosAplicados.hasta && formatearFecha(filtrosAplicados.hasta)],
             ])}
             onVer={setLoteSeleccionado}
-            mostrarOperador={true}
+            onRetener={setLoteRetener}
+            mostrarOperador={false}
             hayFiltrosActivos={hayFiltrosActivos}
             codigoLoteInsumoFiltro={filtrosAplicados.lote_insumo}
           />
@@ -371,6 +395,17 @@ export default function HistorialLotesPage() {
         <LoteDetalle
           lote={loteSeleccionado}
           onCerrar={() => setLoteSeleccionado(null)}
+        />
+      )}
+
+      {loteRetener && (
+        <RetenerLoteModal
+          lote={loteRetener}
+          onCancelar={() => setLoteRetener(null)}
+          onRetenido={() => {
+            setLoteRetener(null);
+            cargarHistorial();
+          }}
         />
       )}
     </ListadoContainer>
