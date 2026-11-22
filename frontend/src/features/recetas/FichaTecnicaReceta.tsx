@@ -345,23 +345,32 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
         className='no-print'
         _print={{ display: "none" }}
       >
-        {/* Barra de Navegación Superior */}
+        {/* Cabecera Superior */}
         <HStack
           justify='space-between'
-          align='center'
-          flexWrap='wrap'
+          align='flex-start'
+          flexWrap={{ base: esModoAdmin ? "wrap" : "nowrap", md: "wrap" }}
           gap={3}
-          mb={3}
+          mb={2}
         >
-          <Button
-            variant='outline'
-            colorPalette='green'
-            size='sm'
-            onClick={handleVolver}
-          >
-            <FiArrowLeft />{" "}
-            {esModoAdmin ? "Volver a Recetas" : "Volver al catálogo"}
-          </Button>
+          <HStack align='baseline' gap={2.5} flexWrap='wrap' flex='1' minW={0}>
+            <Heading size={{ base: "xl", md: "2xl" }} color='green.700'>
+              {receta.nombre_receta}
+            </Heading>
+            <Badge colorPalette='teal' fontSize='sm' px={2.5} py={0.5}>
+              {receta.codigo_receta}
+            </Badge>
+            <Badge
+              colorPalette='gray'
+              variant='surface'
+              fontSize='sm'
+              px={2.5}
+              py={0.5}
+              fontWeight='semibold'
+            >
+              v{receta.version}
+            </Badge>
+          </HStack>
 
           <HStack gap={2} flexWrap='wrap' flexShrink={0}>
             {esModoAdmin && (
@@ -403,31 +412,6 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               <FiPrinter /> Imprimir / Descargar PDF
             </Button>
           </HStack>
-        </HStack>
-
-        {/* Cabecera Superior */}
-        <HStack
-          align='baseline'
-          gap={2.5}
-          flexWrap='wrap'
-          mb={2}
-        >
-          <Heading size={{ base: "xl", md: "2xl" }} color='green.700'>
-            {receta.nombre_receta}
-          </Heading>
-          <Badge colorPalette='teal' fontSize='sm' px={2.5} py={0.5}>
-            {receta.codigo_receta}
-          </Badge>
-          <Badge
-            colorPalette='gray'
-            variant='surface'
-            fontSize='sm'
-            px={2.5}
-            py={0.5}
-            fontWeight='semibold'
-          >
-            v{receta.version}
-          </Badge>
         </HStack>
 
         {!esModoAdmin && loteCreadoExito && (

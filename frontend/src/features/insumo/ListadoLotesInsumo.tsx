@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, Button, HStack, Box } from "@chakra-ui/react";
-import { FiArrowLeft, FiEye, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiEye, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -101,7 +101,7 @@ const construirEndpoint = (insumoId: number, filtros: FiltrosLotes) => {
 
 export const ListadoLotesInsumo = ({
   insumo,
-  onVolver,
+  onVolver: _onVolver,
   onNuevoLote,
   onVerLote,
   onInhabilitarLote,
@@ -216,17 +216,11 @@ export const ListadoLotesInsumo = ({
     <ListadoContainer>
       <HStack justify='space-between' mb={6} align='center'>
         <ListadoHeader title={`Lotes de ${insumo.nombre}`} icon={FiPackage} />
-        <HStack gap={2}>
-          <Button variant='outline' colorPalette='green' onClick={onVolver}>
-            <FiArrowLeft /> Volver a insumos
+        {insumo.disponible && (
+          <Button colorPalette='green' onClick={onNuevoLote}>
+            <FiPlus /> Nuevo lote
           </Button>
-          {/* El backend no permite registrar lotes de un insumo dado de baja. */}
-          {insumo.disponible && (
-            <Button colorPalette='green' onClick={onNuevoLote}>
-              <FiPlus /> Nuevo lote
-            </Button>
-          )}
-        </HStack>
+        )}
       </HStack>
 
       <Box mb={4}>

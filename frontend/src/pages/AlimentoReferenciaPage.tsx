@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Box, Button } from "@chakra-ui/react";
-import { FiArrowLeft } from "react-icons/fi";
+import { Box } from "@chakra-ui/react";
 import { AlertDelete, FormModal } from "../components/ui";
 import { AlimentoReferenciaDetalle } from "../features/alimentoReferencia/AlimentoReferenciaDetalle";
 import { AlimentoReferenciaForm } from "../features/alimentoReferencia/AlimentoReferenciaForm";
@@ -12,8 +10,6 @@ import type { AlimentoReferencia } from "../features/alimentoReferencia/types";
 type Vista = "listado" | "crear" | "modificar" | "ver";
 
 export default function AlimentoReferenciaPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [vista, setVista] = useState<Vista>("listado");
   const [seleccionado, setSeleccionado] = useState<AlimentoReferencia | null>(
     null,
@@ -24,10 +20,6 @@ export default function AlimentoReferenciaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [refrescar, setRefrescar] = useState(0);
-
-  const origen = location.state as { from?: string; label?: string } | null;
-  const volverA = origen?.from;
-  const volverLabel = origen?.label;
 
   const confirmarEliminar = () => {
     handleDeleteAlimentoReferencia({
@@ -44,18 +36,6 @@ export default function AlimentoReferenciaPage() {
 
   return (
     <Box w='full'>
-      {volverA && (
-        <Box mb={4} textAlign='left'>
-          <Button
-            variant='outline'
-            colorPalette='green'
-            onClick={() => navigate(volverA)}
-          >
-            <FiArrowLeft /> Volver a {volverLabel}
-          </Button>
-        </Box>
-      )}
-
       <ListadoAlimentoReferencia
         key={refrescar}
         onCrear={() => {

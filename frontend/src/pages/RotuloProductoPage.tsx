@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  useLocation,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -17,7 +12,6 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import {
-  FiArrowLeft,
   FiChevronDown,
   FiEdit3,
   FiEye,
@@ -44,19 +38,8 @@ type ModoImpresionRotulo = "borrador" | "respaldo";
 
 export default function RotuloProductoPage() {
   const { productoId } = useParams<{ productoId: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const idNumerico = Number(productoId);
-
-  const origenState = location.state as {
-    from?: string;
-    label?: string;
-    padre?: { nombre: string; to: string };
-  } | null;
-  const origen = origenState?.from;
-  const labelOrigen = origenState?.label ?? "Productos";
-  const padreOrigen = origenState?.padre;
 
   const modoInicial: ModoVistaRotulo =
     searchParams.get("vista") === "previa" ? "previa" : "editar";
@@ -147,7 +130,7 @@ export default function RotuloProductoPage() {
     } else {
       nextParams.delete("vista");
     }
-    setSearchParams(nextParams, { replace: true, state: location.state });
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleGuardar = async (payload: RotuloProductoUpdate) => {
@@ -231,117 +214,6 @@ export default function RotuloProductoPage() {
         w='100%'
       >
         <VStack align='stretch' gap={5} w='100%'>
-          <HStack
-            justify='space-between'
-            align='flex-start'
-            flexWrap='wrap'
-            gap={3}
-          >
-            <Button
-              variant='outline'
-              colorPalette='green'
-              onClick={() =>
-                navigate(
-                  origen || "/productos",
-                  padreOrigen
-                    ? { state: { from: padreOrigen.to, label: padreOrigen.nombre } }
-                    : undefined,
-                )
-              }
-            >
-              <FiArrowLeft /> Volver a {labelOrigen}
-            </Button>
-
-            {!loading && !errorCarga && rotulo && (
-              <VStack align='end' gap={2}>
-                <HStack
-                  bg='white'
-                  p={1}
-                  borderRadius='md'
-                  borderWidth='1px'
-                  borderColor='gray.200'
-                  gap={1}
-                >
-                  <Button
-                    size='sm'
-                    variant={modoVista === "editar" ? "solid" : "ghost"}
-                    colorPalette='green'
-                    onClick={() => cambiarModoVista("editar")}
-                  >
-                    <FiEdit3 /> Editar datos
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant={modoVista === "previa" ? "solid" : "ghost"}
-                    colorPalette='green'
-                    onClick={() => cambiarModoVista("previa")}
-                  >
-                    <FiEye /> Previsualizar borrador
-                  </Button>
-                </HStack>
-
-                {modoVista === "previa" && (
-                  <Menu.Root>
-                    <Menu.Trigger asChild>
-                      <Button
-                        size='sm'
-                        variant='outline'
-                        colorPalette='blue'
-                        disabled={
-                          !vistaPrevia || cargandoPreview || cargandoRespaldo
-                        }
-                      >
-                        <FiPrinter />
-                        {cargandoRespaldo
-                          ? "Generando respaldo..."
-                          : "Exportar / Imprimir PDF"}
-                        <FiChevronDown />
-                      </Button>
-                    </Menu.Trigger>
-                    <Portal>
-                      <Menu.Positioner>
-                        <Menu.Content minW='270px'>
-                          <Menu.Item
-                            value='borrador'
-                            onSelect={handleImprimirBorrador}
-                            disabled={!vistaPrevia || cargandoRespaldo}
-                          >
-                            <FiPrinter />
-                            <Box>
-                              <Text fontWeight='medium'>
-                                Imprimir / Guardar borrador PDF
-                              </Text>
-                              <Text fontSize='xs' color='gray.500'>
-                                Solo maqueta del rótulo (cara informativa y
-                                principal)
-                              </Text>
-                            </Box>
-                          </Menu.Item>
-                          <Menu.Item
-                            value='respaldo'
-                            onSelect={() => void handleExportarConRespaldo()}
-                            disabled={!vistaPrevia || cargandoRespaldo}
-                          >
-                            <FiFileText />
-                            <Box>
-                              <Text fontWeight='medium'>
-                                Exportar PDF con respaldo de cálculo
-                              </Text>
-                              <Text fontSize='xs' color='gray.500'>
-                                Maqueta + anexos de receta, composición,
-                                nutrición y sellos
-                              </Text>
-                            </Box>
-                          </Menu.Item>
-                        </Menu.Content>
-                      </Menu.Positioner>
-                    </Portal>
-                  </Menu.Root>
-                )}
-              </VStack>
-            )}
-          </HStack>
-
           {loading && <LoadingState message='Cargando datos del rótulo...' />}
 
           {!loading && errorCarga && (
@@ -352,16 +224,27 @@ export default function RotuloProductoPage() {
             <>
               <HStack
                 justify='space-between'
-                align='center'
+                align='flex-start'
                 flexWrap='wrap'
                 gap={3}
               >
                 <HStack gap={3} align='center' flexWrap='wrap'>
                   <FiTag size={26} color='#2f855a' />
-                  <VStack align='start' gap={0}>
-                    <Heading size='xl' color='green.700'>
-                      Rótulo Reglamentario — {rotulo.producto_nombre}
-                    </Heading>
+                  <VStack align='start' gap={0.5}>
+                    <HStack gap={2.5} align='center' flexWrap='wrap'>
+                      <Heading size='xl' color='green.700'>
+                        Rótulo Reglamentario — {rotulo.producto_nombre}
+                      </Heading>
+                      <Badge
+                        colorPalette={rotulo.guardado_en_bd ? "teal" : "gray"}
+                        variant='subtle'
+                        size='md'
+                      >
+                        {rotulo.guardado_en_bd
+                          ? "Rótulo registrado"
+                          : "Sin guardar aún"}
+                      </Badge>
+                    </HStack>
                     <Text fontSize='sm' color='gray.600'>
                       Código Alimentario Argentino (Cap. V) y Ley 27.642 de
                       Promoción de la Alimentación Saludable
@@ -369,17 +252,92 @@ export default function RotuloProductoPage() {
                   </VStack>
                 </HStack>
 
-                <HStack gap={2}>
-                  <Badge
-                    colorPalette={rotulo.guardado_en_bd ? "teal" : "gray"}
-                    variant='subtle'
-                    size='md'
+                <VStack align='end' gap={2}>
+                  <HStack
+                    bg='white'
+                    p={1}
+                    borderRadius='md'
+                    borderWidth='1px'
+                    borderColor='gray.200'
+                    gap={1}
                   >
-                    {rotulo.guardado_en_bd
-                      ? "Rótulo registrado"
-                      : "Sin guardar aún"}
-                  </Badge>
-                </HStack>
+                    <Button
+                      size='sm'
+                      variant={modoVista === "editar" ? "solid" : "ghost"}
+                      colorPalette='green'
+                      onClick={() => cambiarModoVista("editar")}
+                    >
+                      <FiEdit3 /> Editar datos
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant={modoVista === "previa" ? "solid" : "ghost"}
+                      colorPalette='green'
+                      onClick={() => cambiarModoVista("previa")}
+                    >
+                      <FiEye /> Previsualizar borrador
+                    </Button>
+                  </HStack>
+
+                  {modoVista === "previa" && (
+                    <Menu.Root>
+                      <Menu.Trigger asChild>
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          colorPalette='blue'
+                          disabled={
+                            !vistaPrevia || cargandoPreview || cargandoRespaldo
+                          }
+                        >
+                          <FiPrinter />
+                          {cargandoRespaldo
+                            ? "Generando respaldo..."
+                            : "Exportar / Imprimir PDF"}
+                          <FiChevronDown />
+                        </Button>
+                      </Menu.Trigger>
+                      <Portal>
+                        <Menu.Positioner>
+                          <Menu.Content minW='270px'>
+                            <Menu.Item
+                              value='borrador'
+                              onSelect={handleImprimirBorrador}
+                              disabled={!vistaPrevia || cargandoRespaldo}
+                            >
+                              <FiPrinter />
+                              <Box>
+                                <Text fontWeight='medium'>
+                                  Imprimir / Guardar borrador PDF
+                                </Text>
+                                <Text fontSize='xs' color='gray.500'>
+                                  Solo maqueta del rótulo (cara informativa y
+                                  principal)
+                                </Text>
+                              </Box>
+                            </Menu.Item>
+                            <Menu.Item
+                              value='respaldo'
+                              onSelect={() => void handleExportarConRespaldo()}
+                              disabled={!vistaPrevia || cargandoRespaldo}
+                            >
+                              <FiFileText />
+                              <Box>
+                                <Text fontWeight='medium'>
+                                  Exportar PDF con respaldo de cálculo
+                                </Text>
+                                <Text fontSize='xs' color='gray.500'>
+                                  Maqueta + anexos de receta, composición,
+                                  nutrición y sellos
+                                </Text>
+                              </Box>
+                            </Menu.Item>
+                          </Menu.Content>
+                        </Menu.Positioner>
+                      </Portal>
+                    </Menu.Root>
+                  )}
+                </VStack>
               </HStack>
 
               {modoVista === "editar" ? (

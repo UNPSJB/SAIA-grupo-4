@@ -1,9 +1,9 @@
 import { ITEMS_POR_PAGINA } from "../config";
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/useAuth";
-import { FiArrowLeft, FiClock, FiCopy, FiEye, FiUser, FiChevronDown, FiChevronUp } from "react-icons/fi";
-import { Badge, Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
+import { FiClock, FiCopy, FiEye, FiUser, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { Badge, Box, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import {
   AlertConfirm,
   AlertMessage,
@@ -195,10 +195,7 @@ const TareaDesplegable = ({
 
 export default function HistorialPlanesPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { usuario } = useAuth();
-  const origen = (location.state as { origen?: string } | null)?.origen;
-  const desdeNuevoPlan = origen === "nuevo-plan";
   const { loading, error: errorPlanes, planes } = usePlanData();
   const { catalogs, error: errorCatalogos } = usePlanCatalogs();
 
@@ -518,16 +515,6 @@ export default function HistorialPlanesPage() {
           <Icon as={FiClock} />
           Historial de Planes POES
         </Heading>
-        <Button
-          variant='outline'
-          colorPalette='green'
-          onClick={() =>
-            navigate(desdeNuevoPlan ? "/nuevo-plan" : "/plan-poes")
-          }
-        >
-          <FiArrowLeft />{" "}
-          {desdeNuevoPlan ? "Volver al nuevo plan" : "Volver al plan vigente"}
-        </Button>
       </HStack>
 
       <Box mb={4}>

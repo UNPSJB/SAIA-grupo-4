@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra-ui/react";
-import { FiArrowLeft, FiDownload, FiExternalLink, FiFileText } from "react-icons/fi";
+import { FiDownload, FiExternalLink, FiFileText } from "react-icons/fi";
 
 import { AlertMessage, LoadingState } from "../components/ui";
 import { TOP_NAV_BAR_HEIGHT } from "../components/layout";
@@ -15,22 +15,9 @@ import {
 
 // Visor de PDF del documento (versión vigente o histórica). Vista propia dentro de la app. Ofrece descargar el archivo y "Abrir en pestaña nueva" para quien prefiera el visor nativo del navegador a pantalla completa.
 export default function VisorPdfPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const params = useParams<{ id: string; versionId: string }>();
   const documentoId = Number(params.id);
   const versionId = Number(params.versionId);
-
-  const volver = () => {
-    const from = (location.state as { from?: string } | null)?.from;
-    if (from) {
-      navigate(from);
-    } else if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/documentos");
-    }
-  };
 
   const { documento, loading, error } = useDocumentoDetalle({
     documentoId,
@@ -64,16 +51,11 @@ export default function VisorPdfPage() {
       overflow="hidden"
     >
       <HStack justify="space-between" flexWrap="wrap" gap={3} flexShrink={0}>
-        <HStack gap={3} flexWrap="wrap">
-          <Button variant="outline" colorPalette="green" onClick={volver}>
-            <FiArrowLeft /> Volver
-          </Button>
-          <Heading size="lg" color="green" display="flex" alignItems="center" gap={2} flexWrap="wrap">
-            <Icon as={FiFileText} />
-            {documento?.titulo ?? "Documento"}
-            {version && <Text fontSize="md" color="gray.500" fontWeight="normal">· {version.version}</Text>}
-          </Heading>
-        </HStack>
+        <Heading size="lg" color="green" display="flex" alignItems="center" gap={2} flexWrap="wrap">
+          <Icon as={FiFileText} />
+          {documento?.titulo ?? "Documento"}
+          {version && <Text fontSize="md" color="gray.500" fontWeight="normal">· {version.version}</Text>}
+        </Heading>
 
         {urlPdf && (
           <HStack gap={2} flexWrap="wrap">
