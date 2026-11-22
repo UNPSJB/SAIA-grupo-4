@@ -28,6 +28,18 @@ def obtener_receta_activa(receta_id: int, db: Session = Depends(get_db)):
     return services.obtener_receta_activa_por_id(db, receta_id)
 
 
+@router.get("/productos/{producto_id}/historial", response_model=list[schemas.Receta], dependencies=[Depends(requiere_operacion)])
+def listar_historial_recetas_producto(producto_id: int, db: Session = Depends(get_db)):
+    """Lista las versiones archivadas de las recetas de un producto para consulta del operador."""
+    return services.obtener_historial_recetas_producto(db, producto_id)
+
+
+@router.get("/consulta/{receta_id}", response_model=schemas.Receta, dependencies=[Depends(requiere_operacion)])
+def obtener_receta_consultable(receta_id: int, db: Session = Depends(get_db)):
+    """Obtiene la ficha técnica de una receta ACTIVA o ARCHIVADA para consulta del operador."""
+    return services.obtener_receta_consultable_por_id(db, receta_id)
+
+
 # RUTAS DE GESTIÓN Y ADMINISTRACIÓN (REQUIEREN ADMINISTRACIÓN)
 
 @router.get("/", response_model=list[schemas.Receta], dependencies=[Depends(requiere_administracion)])

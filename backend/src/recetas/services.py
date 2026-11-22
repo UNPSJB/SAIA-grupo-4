@@ -4,7 +4,7 @@ import re
 from typing import List, Optional
 import unicodedata
 
-from sqlalchemy import func, select, cast, String
+from sqlalchemy import func, literal, select, cast, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -275,6 +275,60 @@ def obtener_receta_activa_por_id(db: Session, receta_id: int) -> Receta:
     return receta
 
 
+def obtener_receta_consultable_por_id(db: Session, receta_id: int) -> Receta:
+    """Obtiene una receta ACTIVA o ARCHIVADA para consulta de ficha técnica por operador."""
+    receta = db.scalar(
+        select(Receta)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+        )
+        .where(
+            Receta.id == receta_id,
+            Receta.estado.in_([EstadoReceta.ACTIVA, EstadoReceta.ARCHIVADA]),
+        )
+    )
+    if not receta:
+        raise exceptions.RecetaNoEncontrada()
+    return receta
+
+
+def obtener_historial_recetas_producto(db: Session, producto_id: int) -> List[Receta]:
+    """Lista las versiones ARCHIVADAS de un producto ordenadas de la más reciente a la más antigua."""
+    query = (
+        select(Receta)
+        .options(
+            joinedload(Receta.usuario_creador),
+            joinedload(Receta.producto).joinedload(Producto.unidad_medida),
+            joinedload(Receta.pasos).joinedload(PasoReceta.equipos).joinedload(PasoEquipo.equipo),
+            joinedload(Receta.pasos).joinedload(PasoReceta.insumos).joinedload(PasoInsumo.insumo).joinedload(Insumo.unidad_medida),
+        )
+        .where(
+            Receta.producto_id == producto_id,
+            Receta.estado == EstadoReceta.ARCHIVADA,
+        )
+        .order_by(Receta.version.desc(), Receta.fecha_baja.desc())
+    )
+    return list(db.scalars(query).unique().all())
+
+
+def _filtro_busqueda_receta(termino: str):
+    return (
+        Receta.codigo_receta.ilike(termino)
+        | Receta.nombre_receta.ilike(termino)
+        | Producto.nombre.ilike(termino)
+        | literal("v").concat(cast(Receta.version, String)).ilike(termino)
+        | cast(Receta.rendimiento_estandar, String).ilike(termino)
+        | cast(Receta.tiempo_estimado_total, String).ilike(termino)
+        | Receta.pasos.any(
+            PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
+            | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
+        )
+    )
+
+
 def listar_recetas(
     db: Session,
     busqueda: Optional[str] = None,
@@ -296,17 +350,7 @@ def listar_recetas(
 
     if busqueda and busqueda.strip():
         termino = f"%{busqueda.strip()}%"
-        query = query.where(
-            Receta.codigo_receta.ilike(termino)
-            | Receta.nombre_receta.ilike(termino)
-            | Producto.nombre.ilike(termino)
-            | cast(Receta.rendimiento_estandar, String).ilike(termino)
-            | cast(Receta.tiempo_estimado_total, String).ilike(termino)
-            | Receta.pasos.any(
-                PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
-                | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
-            )
-        )
+        query = query.where(_filtro_busqueda_receta(termino))
 
     if estado:
         query = query.where(Receta.estado == estado)
@@ -362,17 +406,7 @@ def obtener_recetas_activas(
 
     if busqueda and busqueda.strip():
         termino = f"%{busqueda.strip()}%"
-        query = query.where(
-            Receta.codigo_receta.ilike(termino)
-            | Receta.nombre_receta.ilike(termino)
-            | Producto.nombre.ilike(termino)
-            | cast(Receta.rendimiento_estandar, String).ilike(termino)
-            | cast(Receta.tiempo_estimado_total, String).ilike(termino)
-            | Receta.pasos.any(
-                PasoReceta.insumos.any(PasoInsumo.insumo.has(Insumo.nombre.ilike(termino)))
-                | PasoReceta.equipos.any(PasoEquipo.equipo.has(Equipo.nombre.ilike(termino)))
-            )
-        )
+        query = query.where(_filtro_busqueda_receta(termino))
 
     if producto_id:
         query = query.where(Receta.producto_id == producto_id)

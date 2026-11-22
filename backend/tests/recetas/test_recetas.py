@@ -1617,6 +1617,45 @@ def test_calculo_nutricional_guardas_estado_incompleto(setup_nutricion):
     assert all(f["valor_100g"] is None for f in body["filas"])
 
 
+def test_historial_y_consulta_recetas_operador(datos_base):
+    prod_id = datos_base["producto_id"]
+
+    # v1 activa -> luego archivada al activar v2 -> v3 borrador
+    r1 = client.post("/recetas/", json={
+        "nombre_receta": "Pan Historico",
+        "producto_id": prod_id,
+        "rendimiento_estandar": 1000,
+    }).json()
+    client.post(f"/recetas/{r1['id']}/pasos", json={
+        "numero_orden": 1,
+        "titulo": "Amasado",
+        "instrucciones": "Amasar 10 minutos",
+    })
+    assert client.post(f"/recetas/{r1['id']}/activar").status_code == 200
+
+    r2 = client.post(f"/recetas/{r1['id']}/clonar").json()
+    assert client.post(f"/recetas/{r2['id']}/activar").status_code == 200
+
+    r3_borrador = client.post(f"/recetas/{r2['id']}/clonar").json()
+
+    # Historial debe devolver solo r1 (ARCHIVADA), nunca r2 (ACTIVA) ni r3 (BORRADOR)
+    res_hist = client.get(f"/recetas/productos/{prod_id}/historial")
+    assert res_hist.status_code == 200, res_hist.text
+    hist_ids = [r["id"] for r in res_hist.json()]
+    assert hist_ids == [r1["id"]]
+
+    # Consulta permite ACTIVA y ARCHIVADA, pero rechaza BORRADOR con 404
+    assert client.get(f"/recetas/consulta/{r1['id']}").status_code == 200
+    assert client.get(f"/recetas/consulta/{r2['id']}").status_code == 200
+    assert client.get(f"/recetas/consulta/{r3_borrador['id']}").status_code == 404
+
+    # Buscador por versión ("v2") encuentra r2
+    res_busq_v2 = client.get("/recetas/", params={"busqueda": "v2"})
+    assert res_busq_v2.status_code == 200
+    assert r2["id"] in [r["id"] for r in res_busq_v2.json()]
+    assert r1["id"] not in [r["id"] for r in res_busq_v2.json()]
+
+
 
 
 
