@@ -52,11 +52,14 @@ export interface ProductoDisponibleLote {
   nombre: string;
   descripcion: string;
   unidad_medida_simbolo: string;
+  unidad_medida_tipo?: string | null;
   dias_vida_util?: number | null;
   receta_id: number;
   receta_codigo: string;
   receta_nombre: string;
+  receta_version?: number;
   rendimiento_estandar: number | string;
+  tamano_porcion?: number | string | null;
   insumos_teoricos: InsumoTeoricoReceta[];
 }
 
@@ -65,6 +68,7 @@ export interface LoteCreatePayload {
   codigo_lote?: string;
   fecha_elaboracion: string;
   fecha_vencimiento: string;
+  masa_tanda_g?: number;
   cantidad_producida: number;
   observaciones?: string;
   consumos: ConsumoInsumoCreate[];

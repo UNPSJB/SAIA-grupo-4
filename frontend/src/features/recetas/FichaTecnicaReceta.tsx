@@ -315,7 +315,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
     texto: receta.estado,
     color: "gray",
   };
-  const unidadRendimiento = receta.producto?.unidad_medida?.simbolo || "g";
+  const unidadRendimiento = "g";
   const rendimientoTexto = `${receta.rendimiento_estandar} ${unidadRendimiento}`;
   const cantidadObjetivoNum = parseFloat(cantidadObjetivo);
   const cantidadObjetivoInvalida =
@@ -887,7 +887,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
         >
           <RegistrarLoteForm
             productoIdInicial={receta.producto_id}
-            cantidadInicial={
+            masaTandaInicial={
               !cantidadObjetivoInvalida
                 ? cantidadObjetivoNum
                 : Number(receta.rendimiento_estandar)

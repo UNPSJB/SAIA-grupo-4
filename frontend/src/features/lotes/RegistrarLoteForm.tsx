@@ -75,16 +75,36 @@ const sugerirAsignacionesFEFO = (
   return resultado;
 };
 
+const sugerirCantidadProducida = (
+  prod: ProductoDisponibleLote,
+  masaG: number,
+): string => {
+  if (isNaN(masaG) || masaG <= 0) return "";
+  const infoProd = obtenerInfoUnidadInsumo({
+    simbolo: prod.unidad_medida_simbolo,
+    tipo_magnitud: prod.unidad_medida_tipo ?? undefined,
+  });
+  if (infoProd.tipoMagnitud === "masa") {
+    const conv = convertirEntreUnidades(masaG, "g", prod.unidad_medida_simbolo);
+    return String(Math.round(conv * 1000) / 1000);
+  }
+  const porcion = prod.tamano_porcion != null ? Number(prod.tamano_porcion) : 0;
+  if (porcion > 0) {
+    return String(Math.floor(masaG / porcion));
+  }
+  return "";
+};
+
 interface RegistrarLoteFormProps {
   productoIdInicial?: number;
-  cantidadInicial?: number;
+  masaTandaInicial?: number;
   onSuccess?: () => void;
   onCancelar?: () => void;
 }
 
 export const RegistrarLoteForm = ({
   productoIdInicial,
-  cantidadInicial,
+  masaTandaInicial,
   onSuccess,
   onCancelar,
 }: RegistrarLoteFormProps) => {
@@ -120,8 +140,11 @@ export const RegistrarLoteForm = ({
   // Fecha de vencimiento (YYYY-MM-DD)
   const [fechaVencimiento, setFechaVencimiento] = useState<string>("");
 
-  // Cantidad producida
+  // Base de tanda / masa elaborada (en gramos de receta)
+  const [masaTandaG, setMasaTandaG] = useState<string>("");
+  // Cantidad comercial final producida (en unidad del producto)
   const [cantidadProducida, setCantidadProducida] = useState<string>("");
+  const [cantidadProducidaEditadaManual, setCantidadProducidaEditadaManual] = useState(false);
 
   // Consumos reales ingresados por el operador (indexados por insumo_id)
   const [consumosReales, setConsumosReales] = useState<Record<number, string>>({});
@@ -168,11 +191,13 @@ export const RegistrarLoteForm = ({
       setExitoMsg("");
 
       const rendimiento = Number(prod.rendimiento_estandar) || 1;
-      const cantidadUsada =
+      const masaUsada =
         cantidadBase != null && cantidadBase > 0 ? cantidadBase : rendimiento;
-      const factor = cantidadUsada / rendimiento;
+      const factor = masaUsada / rendimiento;
 
-      setCantidadProducida(String(cantidadUsada));
+      setMasaTandaG(String(masaUsada));
+      setCantidadProducida(sugerirCantidadProducida(prod, masaUsada));
+      setCantidadProducidaEditadaManual(false);
 
       if (prod.dias_vida_util) {
         setFechaVencimiento(calcularVencimientoLocal(fechaElaboracion, prod.dias_vida_util));
@@ -216,7 +241,7 @@ export const RegistrarLoteForm = ({
         if (productoIdInicial != null) {
           const prodInicial = datos.find((p) => p.id === productoIdInicial);
           if (prodInicial) {
-            inicializarProducto(prodInicial, cantidadInicial);
+            inicializarProducto(prodInicial, masaTandaInicial);
           }
         }
       } catch (err: any) {
@@ -239,7 +264,9 @@ export const RegistrarLoteForm = ({
       setProductoId(null);
       setCodigoLote("");
       setFechaVencimiento("");
+      setMasaTandaG("");
       setCantidadProducida("");
+      setCantidadProducidaEditadaManual(false);
       setConsumosReales({});
       setAsignacionesLotes({});
       setInsumosModificadosManual({});
@@ -253,28 +280,31 @@ export const RegistrarLoteForm = ({
     inicializarProducto(prod);
   };
 
-  // Factor de escala proporcional: cantidad_producida / rendimiento_estandar
+  // Factor de escala proporcional: masa_tanda_g / rendimiento_estandar
   const factorEscala = useMemo(() => {
     if (!productoSeleccionado) return 1.0;
-    const cantNum = parseFloat(cantidadProducida);
+    const masaNum = parseFloat(masaTandaG);
     const rendNum = Number(productoSeleccionado.rendimiento_estandar);
-    if (isNaN(cantNum) || cantNum <= 0 || isNaN(rendNum) || rendNum <= 0) {
+    if (isNaN(masaNum) || masaNum <= 0 || isNaN(rendNum) || rendNum <= 0) {
       return 1.0;
     }
-    return cantNum / rendNum;
-  }, [cantidadProducida, productoSeleccionado]);
+    return masaNum / rendNum;
+  }, [masaTandaG, productoSeleccionado]);
 
-  // Cuando cambia cantidad producida, recalcular cantidades teóricas y actualizar
-  // consumos reales para aquellos insumos que el operador NO haya editado manualmente
-  const handleCambioCantidadProducida = (valor: string) => {
-    setCantidadProducida(valor);
+  // Cuando cambia la masa base de tanda (en g), recalcular insumos y sugerir cantidad comercial si no fue editada manualmente
+  const handleCambioMasaTanda = (valor: string) => {
+    setMasaTandaG(valor);
     if (!productoSeleccionado) return;
 
-    const cantNum = parseFloat(valor);
+    const masaNum = parseFloat(valor);
     const rendNum = Number(productoSeleccionado.rendimiento_estandar);
-    const factor = !isNaN(cantNum) && cantNum > 0 && !isNaN(rendNum) && rendNum > 0
-      ? cantNum / rendNum
+    const factor = !isNaN(masaNum) && masaNum > 0 && !isNaN(rendNum) && rendNum > 0
+      ? masaNum / rendNum
       : 1.0;
+
+    if (!cantidadProducidaEditadaManual && !isNaN(masaNum) && masaNum > 0) {
+      setCantidadProducida(sugerirCantidadProducida(productoSeleccionado, masaNum));
+    }
 
     setConsumosReales((prev) => {
       const actualizados = { ...prev };
@@ -305,6 +335,12 @@ export const RegistrarLoteForm = ({
       });
       return actualizados;
     });
+  };
+
+  // Cambiar cantidad producida comercial NO altera masa base ni insumos teóricos (refleja mermas)
+  const handleCambioCantidadProducida = (valor: string) => {
+    setCantidadProducida(valor);
+    setCantidadProducidaEditadaManual(true);
   };
 
   // Cuando el operador edita la cantidad real de un insumo
@@ -396,9 +432,13 @@ export const RegistrarLoteForm = ({
     } else if (fechaElabSoloDia && fechaVencimiento < fechaElabSoloDia) {
       errs.fechaVencimiento = "La fecha de vencimiento no puede ser anterior a la fecha de elaboración.";
     }
+    const masaNum = parseFloat(masaTandaG);
+    if (isNaN(masaNum) || masaNum <= 0) {
+      errs.masaTandaG = "Debe ingresar una masa base de tanda mayor a cero.";
+    }
     const cantNum = parseFloat(cantidadProducida);
     if (isNaN(cantNum) || cantNum <= 0) {
-      errs.cantidadProducida = "Debe ingresar una cantidad mayor a cero.";
+      errs.cantidadProducida = "Debe ingresar la cantidad producida final mayor a cero.";
     }
 
     let errorConsumoDetalle = "";
@@ -526,6 +566,7 @@ export const RegistrarLoteForm = ({
         codigo_lote: codigoLote.trim(),
         fecha_elaboracion: fechaElabFormat,
         fecha_vencimiento: fechaVencimiento,
+        masa_tanda_g: masaNum,
         cantidad_producida: cantNum,
         observaciones: observaciones.trim() || undefined,
         consumos: payloadConsumos,
@@ -598,9 +639,12 @@ export const RegistrarLoteForm = ({
                         <Text fontSize="xs" fontWeight="bold" color="green.900" truncate>
                           [{productoSeleccionado.receta_codigo}] {productoSeleccionado.receta_nombre}
                         </Text>
+                        <Badge colorPalette="gray" variant="surface" size="sm" flexShrink={0}>
+                          v{productoSeleccionado.receta_version ?? 1}
+                        </Badge>
                       </HStack>
                       <Badge colorPalette="teal" size="sm" variant="subtle" flexShrink={0}>
-                        Rend.: {productoSeleccionado.rendimiento_estandar} {productoSeleccionado.unidad_medida_simbolo}
+                        Rend.: {productoSeleccionado.rendimiento_estandar} g
                       </Badge>
                     </Flex>
                     {productoSeleccionado.dias_vida_util != null && (
@@ -687,37 +731,76 @@ export const RegistrarLoteForm = ({
                   </Box>
                 </Flex>
 
-                {/* 4. Cantidad Producida con unidad de medida */}
-                <Field.Root required>
-                  <Field.Label fontSize="md" fontFamily="sans-serif">
-                    Cantidad Producida
-                  </Field.Label>
-                  <HStack>
-                    <Input
-                      type="number"
-                      step="any"
-                      min={0}
-                      value={cantidadProducida}
-                      onChange={(e) => handleCambioCantidadProducida(e.target.value)}
-                      placeholder="Ej. 10.5"
-                      fontSize="md"
-                      fontWeight="bold"
-                    />
-                    <Badge colorPalette="green" fontSize="sm" px={3} py={2} borderRadius="md">
-                      {productoSeleccionado.unidad_medida_simbolo}
-                    </Badge>
-                  </HStack>
-                  {errores.cantidadProducida ? (
-                    <Text color="red.500" fontSize="sm" mt={1}>
-                      {errores.cantidadProducida}
-                    </Text>
-                  ) : (
-                    <Text fontSize="xs" color="gray.500" mt={1}>
-                      Rendimiento estándar nominal: {productoSeleccionado.rendimiento_estandar} {productoSeleccionado.unidad_medida_simbolo}.
-                      Los insumos teóricos se escalan proporcionalmente a esta cantidad.
-                    </Text>
-                  )}
-                </Field.Root>
+                {/* 4. Desacople: Base de tanda (g) + Cantidad Producida Final (unidad del producto) */}
+                <Flex gap={4} direction={{ base: "column", sm: "row" }}>
+                  <Box flex={1}>
+                    <Field.Root required>
+                      <Field.Label fontSize="md" fontFamily="sans-serif">
+                        Base de tanda (Masa elaborada)
+                      </Field.Label>
+                      <HStack>
+                        <Input
+                          type="number"
+                          step="any"
+                          min={0}
+                          value={masaTandaG}
+                          onChange={(e) => handleCambioMasaTanda(e.target.value)}
+                          placeholder={String(productoSeleccionado.rendimiento_estandar)}
+                          fontSize="md"
+                          fontWeight="bold"
+                        />
+                        <Badge colorPalette="teal" fontSize="sm" px={3} py={2} borderRadius="md">
+                          g
+                        </Badge>
+                      </HStack>
+                      {errores.masaTandaG ? (
+                        <Text color="red.500" fontSize="sm" mt={1}>
+                          {errores.masaTandaG}
+                        </Text>
+                      ) : (
+                        <Text fontSize="xs" color="gray.500" mt={1}>
+                          Rendimiento estándar de la receta: {productoSeleccionado.rendimiento_estandar} g. Escala los insumos teóricos.
+                        </Text>
+                      )}
+                    </Field.Root>
+                  </Box>
+
+                  <Box flex={1}>
+                    <Field.Root required>
+                      <Field.Label fontSize="md" fontFamily="sans-serif">
+                        Cantidad producida final
+                      </Field.Label>
+                      <HStack>
+                        <Input
+                          type="number"
+                          step="any"
+                          min={0}
+                          value={cantidadProducida}
+                          onChange={(e) => handleCambioCantidadProducida(e.target.value)}
+                          placeholder={`Ej. 40`}
+                          fontSize="md"
+                          fontWeight="bold"
+                        />
+                        <Badge colorPalette="green" fontSize="sm" px={3} py={2} borderRadius="md">
+                          {productoSeleccionado.unidad_medida_simbolo}
+                        </Badge>
+                      </HStack>
+                      {errores.cantidadProducida ? (
+                        <Text color="red.500" fontSize="sm" mt={1}>
+                          {errores.cantidadProducida}
+                        </Text>
+                      ) : (
+                        <Text fontSize="xs" color="gray.500" mt={1}>
+                          {productoSeleccionado.tamano_porcion != null &&
+                          Number(productoSeleccionado.tamano_porcion) > 0 &&
+                          productoSeleccionado.unidad_medida_tipo?.toLowerCase() !== "masa"
+                            ? `Sugerido con porción de ${productoSeleccionado.tamano_porcion} g. Editable por mermas.`
+                            : "Cantidad comercial terminada que ingresa al lote (editable por mermas)."}
+                        </Text>
+                      )}
+                    </Field.Root>
+                  </Box>
+                </Flex>
 
                 <Separator my={2} borderColor="gray.200" />
 

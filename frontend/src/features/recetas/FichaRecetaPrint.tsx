@@ -150,7 +150,7 @@ export const FichaRecetaPrint = ({
   );
   const { configuracion, logoSrc } = useConfiguracion();
   const nombreEstablecimiento = configuracion.nombre_establecimiento || "SAIA-4";
-  const unidadRendimiento = receta.producto?.unidad_medida?.simbolo || "g";
+  const unidadRendimiento = "g";
   const rendimientoStr = `${receta.rendimiento_estandar} ${unidadRendimiento}`;
   const estaEscalada = !esModoAdmin && Math.abs(factorEscala - 1) > 0.0001 && cantidadObjetivo != null;
   const rendimientoMostrado = estaEscalada
