@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import {
   Box,
   Button,
-  Container,
   VStack,
   Text,
   Center,
@@ -166,7 +165,7 @@ export default function ChecklistPage({
           color='white'
           boxShadow='sm'
         >
-          <Container maxW='container.lg' px={0}>
+          <Box w='full'>
             <HStack justify='space-between' align='center'>
               <HStack gap={2.5}>
                 <FiShield size={22} strokeWidth={2.5} />
@@ -185,13 +184,12 @@ export default function ChecklistPage({
                 Cerrar sesión
               </Button>
             </HStack>
-          </Container>
+          </Box>
         </Box>
       )}
 
       {/* contenido principal */}
-      <Box>
-        <Container maxW='container.lg' px={0}>
+      <Box w='full'>
           <ChecklistHeader
             nombreOperario={
               usuario ? `${usuario.nombre} ${usuario.apellido}`.trim() : ""
@@ -289,7 +287,6 @@ export default function ChecklistPage({
               onCancel={() => setCerrarSesionAbierto(false)}
             />
           )}
-        </Container>
       </Box>
     </Box>
   );

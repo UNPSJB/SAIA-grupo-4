@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Box, Button, Container, VStack, Text, Center, HStack } from "@chakra-ui/react";
+import { Box, Button, VStack, Text, Center, HStack } from "@chakra-ui/react";
 import { FiInbox, FiArchive } from "react-icons/fi";
 
 import { AlertMessage, LoadingState } from "../components/ui";
@@ -93,7 +93,7 @@ export default function HistorialChecklistPage() {
     <>
       {/* Contenido principal. Esta vista solo se alcanza desde el SideBar, que ya
           aporta la marca institucional, por eso no lleva barra propia. */}
-      <Container maxW="container.lg" px={0}>
+      <Box w="full">
         {/* Título de la sección */}
         <Box mb={5}>
           <HStack gap={2} mb={1}>
@@ -154,7 +154,7 @@ export default function HistorialChecklistPage() {
             )}
           </VStack>
         )}
-      </Container>
+      </Box>
     </>
   );
 }

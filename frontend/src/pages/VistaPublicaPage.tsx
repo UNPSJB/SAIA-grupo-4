@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Card,
-  Container,
   HStack,
   Icon,
   Text,
@@ -108,7 +107,7 @@ export default function VistaPublicaPage() {
 
   if (!estado) {
     return (
-      <Container maxW='container.xl' py={8}>
+      <Box w='full' py={4}>
         <VStack align='stretch' gap={4}>
           <AlertMessage
             type='error'
@@ -121,16 +120,15 @@ export default function VistaPublicaPage() {
             </Button>
           </Box>
         </VStack>
-      </Container>
+      </Box>
     );
   }
 
   const url = construirUrlPublica(estado.token);
 
   return (
-    <Box>
-      <Container maxW='container.xl'>
-        <VStack align='stretch' gap={6}>
+    <Box w='full'>
+      <VStack align='stretch' gap={6}>
           <Box>
             <HStack gap={2} mb={1}>
               <Icon as={FiGlobe} color='green.600' boxSize={6} />
@@ -203,8 +201,7 @@ export default function VistaPublicaPage() {
               </HStack>
             </Card.Body>
           </Card.Root>
-        </VStack>
-      </Container>
+      </VStack>
 
       <AlertConfirm
         open={confirmarDesactivar}
