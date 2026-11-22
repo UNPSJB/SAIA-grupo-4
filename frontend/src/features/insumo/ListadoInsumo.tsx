@@ -52,16 +52,37 @@ const formatearTipo = (categoria?: string | null) => {
   return ETIQUETAS_TIPO[clave] || categoria || "—";
 };
 
-// Arma el endpoint del listado: solo se manda la búsqueda si tiene valor.
-const construirEndpoint = (busqueda: string, estado: string) => {
+// Arma el endpoint del listado: solo se manda cada filtro si tiene valor.
+const construirEndpoint = (
+  busqueda: string,
+  estado: string,
+  tipo: string,
+  nutricion: string,
+) => {
   const params = new URLSearchParams();
   if (busqueda) params.set("busqueda", busqueda);
   if (estado === "disponible") params.set("disponible", "true");
   if (estado === "no_disponible") params.set("disponible", "false");
+  if (tipo) params.set("categoria", tipo);
+  if (nutricion) params.set("nutricion", nutricion);
 
   const query = params.toString();
   return `${BASE_URL}/insumos/${query ? `?${query}` : ""}`;
 };
+
+const OPCIONES_TIPO = [
+  { label: "Materia Prima", value: "materia prima" },
+  { label: "Aditivo", value: "aditivo" },
+  { label: "Envase", value: "envase" },
+  { label: "Otro", value: "otro" },
+];
+
+const OPCIONES_NUTRICION = [
+  { label: "Completa", value: "completa" },
+  { label: "Completa (modificada)", value: "modificada" },
+  { label: "Pendiente", value: "pendiente" },
+  { label: "No aplica (Envase)", value: "no_aplica" },
+];
 
 const OPCIONES_ESTADO = [
   { label: "Activos", value: "disponible" },
@@ -82,22 +103,40 @@ export const ListadoInsumos = ({
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
+  const [tipo, setTipo] = useState("");
+  const [tipoAplicado, setTipoAplicado] = useState("");
+
+  const [nutricion, setNutricion] = useState("");
+  const [nutricionAplicada, setNutricionAplicada] = useState("");
+
   const [estado, setEstado] = useState("");
   const [estadoAplicado, setEstadoAplicado] = useState("");
 
-  const hayFiltros = busqueda.trim() !== "" || estado !== "";
-  const hayAplicados = busquedaAplicada !== "" || estadoAplicado !== "";
+  const hayFiltros =
+    busqueda.trim() !== "" || tipo !== "" || nutricion !== "" || estado !== "";
+  const hayAplicados =
+    busquedaAplicada !== "" ||
+    tipoAplicado !== "" ||
+    nutricionAplicada !== "" ||
+    estadoAplicado !== "";
 
   // La página vuelve a 1 sola cuando cambia el endpoint (lo resuelve el hook)
   const { data, loading, error, page, setPage, itemsPaginados } =
     useListadoData<Insumo>({
-      endpoint: construirEndpoint(busquedaAplicada, estadoAplicado),
+      endpoint: construirEndpoint(
+        busquedaAplicada,
+        estadoAplicado,
+        tipoAplicado,
+        nutricionAplicada,
+      ),
       pageSize: ITEMS_POR_PAGINA,
       errorMessage: "No se pudo cargar la lista de insumos.",
     });
 
   const aplicar = () => {
     setBusquedaAplicada(busqueda.trim());
+    setTipoAplicado(tipo);
+    setNutricionAplicada(nutricion);
     setEstadoAplicado(estado);
     setPage(1);
   };
@@ -105,6 +144,10 @@ export const ListadoInsumos = ({
   const limpiar = () => {
     setBusqueda("");
     setBusquedaAplicada("");
+    setTipo("");
+    setTipoAplicado("");
+    setNutricion("");
+    setNutricionAplicada("");
     setEstado("");
     setEstadoAplicado("");
     setPage(1);
@@ -112,6 +155,8 @@ export const ListadoInsumos = ({
 
   const filtrosExportacion = armarFiltros([
     ["Búsqueda", busquedaAplicada],
+    ["Tipo", etiquetaOpcion(OPCIONES_TIPO, tipoAplicado)],
+    ["Nutrición", etiquetaOpcion(OPCIONES_NUTRICION, nutricionAplicada)],
     ["Estado", etiquetaOpcion(OPCIONES_ESTADO, estadoAplicado)],
   ]);
 
@@ -150,7 +195,7 @@ export const ListadoInsumos = ({
     },
     {
       key: "disponible",
-      label: "Disponible",
+      label: "Estado",
       valorExportacion: (insumo) => (insumo.disponible ? "Activo" : "Inactivo"),
       render: (insumo) => (
         <Badge colorPalette={insumo.disponible ? "green" : "red"}>
@@ -236,12 +281,26 @@ export const ListadoInsumos = ({
         >
           <FiltroTexto
             ariaLabel='Buscar insumo'
-            placeholder='Nombre o unidad de medida'
+            placeholder='Nombre, tipo, unidad o nutrición...'
             value={busqueda}
             onChange={setBusqueda}
             onKeyDown={(e) => {
               if (e.key === "Enter") aplicar();
             }}
+          />
+          <FiltroSelect
+            ariaLabel='Tipo de insumo'
+            placeholder='Todos los tipos'
+            options={OPCIONES_TIPO}
+            value={tipo}
+            onChange={setTipo}
+          />
+          <FiltroSelect
+            ariaLabel='Estado nutricional del insumo'
+            placeholder='Toda la nutrición'
+            options={OPCIONES_NUTRICION}
+            value={nutricion}
+            onChange={setNutricion}
           />
           <FiltroSelect
             ariaLabel='Estado del insumo'
