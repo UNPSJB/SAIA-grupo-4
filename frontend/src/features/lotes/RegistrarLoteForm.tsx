@@ -12,6 +12,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import {
+  FiAlertTriangle,
   FiBox,
   FiRefreshCw,
   FiSave,
@@ -41,8 +42,13 @@ import {
 import type { InsumoTeoricoReceta, ProductoDisponibleLote } from "./types";
 
 const EPS = 0.0001;
+const UMBRAL_DESVIO_EXTREMO_PCT = 20;
 
 const redondear3 = (n: number) => Math.round(n * 1000) / 1000;
+const formatearCantidad = (n: number) => {
+  const r = redondear3(n);
+  return Number.isInteger(r) ? String(r) : String(r);
+};
 
 const sugerirAsignacionesFEFO = (
   insumo: InsumoTeoricoReceta,
@@ -154,10 +160,6 @@ export const RegistrarLoteForm = ({
   const [asignacionesLotes, setAsignacionesLotes] = useState<
     Record<number, AsignacionLoteForm[]>
   >({});
-  // Registro de insumos editados manualmente por el operador para no sobreescribir si recalcula
-  const [insumosModificadosManual, setInsumosModificadosManual] = useState<Record<number, boolean>>({});
-  // Registro de insumos cuyas asignaciones de lote fueron editadas manualmente
-  const [lotesModificadosManual, setLotesModificadosManual] = useState<Record<number, boolean>>({});
 
   const [observaciones, setObservaciones] = useState("");
 
@@ -224,8 +226,6 @@ export const RegistrarLoteForm = ({
       setConsumosReales(iniciales);
       setUnidadesReales(unidadesIniciales);
       setAsignacionesLotes(asignacionesIniciales);
-      setInsumosModificadosManual({});
-      setLotesModificadosManual({});
     },
     [fechaElaboracion, generarSugerenciaCodigo],
   );
@@ -269,8 +269,6 @@ export const RegistrarLoteForm = ({
       setCantidadProducidaEditadaManual(false);
       setConsumosReales({});
       setAsignacionesLotes({});
-      setInsumosModificadosManual({});
-      setLotesModificadosManual({});
       return;
     }
 
@@ -291,7 +289,38 @@ export const RegistrarLoteForm = ({
     return masaNum / rendNum;
   }, [masaTandaG, productoSeleccionado]);
 
-  // Cuando cambia la masa base de tanda (en g), recalcular insumos y sugerir cantidad comercial si no fue editada manualmente
+  // Comparación no bloqueante entre cantidad producida final y teórico derivado de la masa
+  const desvioCantidadProducida = useMemo(() => {
+    if (!productoSeleccionado) return null;
+    const masaNum = parseFloat(masaTandaG);
+    if (isNaN(masaNum) || masaNum <= 0) return null;
+    const teoricoStr = sugerirCantidadProducida(productoSeleccionado, masaNum);
+    if (!teoricoStr) return null;
+    const teorico = parseFloat(teoricoStr);
+    if (isNaN(teorico) || teorico <= 0) return null;
+
+    const real = parseFloat(cantidadProducida);
+    if (isNaN(real) || real <= 0) return null;
+
+    const diff = redondear3(teorico - real);
+    if (Math.abs(diff) <= EPS) return null;
+
+    const porcentaje = (Math.abs(diff) / teorico) * 100;
+    const superaTeorico = real > teorico + EPS;
+    const desvioExtremo = !superaTeorico && porcentaje > UMBRAL_DESVIO_EXTREMO_PCT;
+
+    return {
+      teorico,
+      real,
+      merma: diff > 0 ? diff : 0,
+      exceso: diff < 0 ? Math.abs(diff) : 0,
+      porcentaje,
+      superaTeorico,
+      desvioExtremo,
+    };
+  }, [productoSeleccionado, masaTandaG, cantidadProducida]);
+
+  // Cuando cambia la masa base de tanda (en g), recalcular todos los consumos reales y lotes FEFO
   const handleCambioMasaTanda = (valor: string) => {
     setMasaTandaG(valor);
     if (!productoSeleccionado) return;
@@ -306,35 +335,25 @@ export const RegistrarLoteForm = ({
       setCantidadProducida(sugerirCantidadProducida(productoSeleccionado, masaNum));
     }
 
-    setConsumosReales((prev) => {
-      const actualizados = { ...prev };
-      productoSeleccionado.insumos_teoricos.forEach((ins) => {
-        // Si el operador no lo modificó manualmente, se escala automáticamente en la unidad elegida
-        if (!insumosModificadosManual[ins.insumo_id]) {
-          const teorica = Math.round(ins.cantidad_nominal_receta * factor * 100) / 100;
-          const info = obtenerInfoUnidadInsumo({
-            simbolo: ins.unidad_medida_simbolo,
-            tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
-          });
-          const unidadBase = info.simboloBase || ins.unidad_medida_simbolo;
-          const unidadElegida = unidadesReales[ins.insumo_id] || info.unidadDefault;
-          const teoricaEnUnidad = convertirEntreUnidades(teorica, unidadBase, unidadElegida);
-          actualizados[ins.insumo_id] = String(teoricaEnUnidad);
-        }
+    const nuevosConsumos: Record<number, string> = {};
+    const nuevasAsignaciones: Record<number, AsignacionLoteForm[]> = {};
+
+    productoSeleccionado.insumos_teoricos.forEach((ins) => {
+      const teorica = Math.round(ins.cantidad_nominal_receta * factor * 100) / 100;
+      const info = obtenerInfoUnidadInsumo({
+        simbolo: ins.unidad_medida_simbolo,
+        tipo_magnitud: ins.unidad_medida_tipo ?? undefined,
       });
-      return actualizados;
+      const unidadBase = info.simboloBase || ins.unidad_medida_simbolo;
+      const unidadElegida = unidadesReales[ins.insumo_id] || info.unidadDefault;
+      const teoricaEnUnidad = convertirEntreUnidades(teorica, unidadBase, unidadElegida);
+
+      nuevosConsumos[ins.insumo_id] = String(teoricaEnUnidad);
+      nuevasAsignaciones[ins.insumo_id] = sugerirAsignacionesFEFO(ins, teorica);
     });
 
-    setAsignacionesLotes((prev) => {
-      const actualizados = { ...prev };
-      productoSeleccionado.insumos_teoricos.forEach((ins) => {
-        if (!insumosModificadosManual[ins.insumo_id] && !lotesModificadosManual[ins.insumo_id]) {
-          const teorica = Math.round(ins.cantidad_nominal_receta * factor * 100) / 100;
-          actualizados[ins.insumo_id] = sugerirAsignacionesFEFO(ins, teorica);
-        }
-      });
-      return actualizados;
-    });
+    setConsumosReales(nuevosConsumos);
+    setAsignacionesLotes(nuevasAsignaciones);
   };
 
   // Cambiar cantidad producida comercial NO altera masa base ni insumos teóricos (refleja mermas)
@@ -346,12 +365,11 @@ export const RegistrarLoteForm = ({
   // Cuando el operador edita la cantidad real de un insumo
   const handleCambioConsumoReal = (insumoId: number, valor: string) => {
     setConsumosReales((prev) => ({ ...prev, [insumoId]: valor }));
-    setInsumosModificadosManual((prev) => ({ ...prev, [insumoId]: true }));
 
     const num = parseFloat(valor);
-    if (!isNaN(num) && num === 0) {
+    if (valor.trim() === "" || isNaN(num) || num <= 0) {
       setAsignacionesLotes((prev) => ({ ...prev, [insumoId]: [] }));
-    } else if (!isNaN(num) && num > 0 && (asignacionesLotes[insumoId]?.length ?? 0) === 0) {
+    } else {
       const insumo = productoSeleccionado?.insumos_teoricos.find(
         (i) => i.insumo_id === insumoId,
       );
@@ -403,7 +421,6 @@ export const RegistrarLoteForm = ({
 
   const handleCambioAsignaciones = (insumoId: number, nuevas: AsignacionLoteForm[]) => {
     setAsignacionesLotes((prev) => ({ ...prev, [insumoId]: nuevas }));
-    setLotesModificadosManual((prev) => ({ ...prev, [insumoId]: true }));
   };
 
   // Validación y guardado directo de lote (sin modal de confirmación)
@@ -789,6 +806,54 @@ export const RegistrarLoteForm = ({
                         <Text color="red.500" fontSize="sm" mt={1}>
                           {errores.cantidadProducida}
                         </Text>
+                      ) : desvioCantidadProducida ? (
+                        <VStack align="stretch" gap={1.5} mt={1}>
+                          {!desvioCantidadProducida.superaTeorico && (
+                            <Text fontSize="xs" color="gray.500">
+                              (Teórico: {formatearCantidad(desvioCantidadProducida.teorico)}{" "}
+                              {productoSeleccionado.unidad_medida_simbolo} — Merma:{" "}
+                              {formatearCantidad(desvioCantidadProducida.merma)}{" "}
+                              {productoSeleccionado.unidad_medida_simbolo} /{" "}
+                              {desvioCantidadProducida.porcentaje.toFixed(1)}%)
+                            </Text>
+                          )}
+
+                          {(desvioCantidadProducida.superaTeorico ||
+                            desvioCantidadProducida.desvioExtremo) && (
+                            <HStack
+                              align="flex-start"
+                              gap={2}
+                              bg="yellow.50"
+                              borderWidth="1px"
+                              borderColor="yellow.300"
+                              borderLeftWidth="4px"
+                              borderLeftColor="yellow.500"
+                              borderRadius="md"
+                              px={2.5}
+                              py={1.5}
+                              color="yellow.900"
+                            >
+                              <Box mt="2px" flexShrink={0} color="yellow.700">
+                                <FiAlertTriangle size={14} />
+                              </Box>
+                              <Text fontSize="xs" lineHeight="short">
+                                {desvioCantidadProducida.superaTeorico
+                                  ? `El valor supera el teórico (${formatearCantidad(
+                                      desvioCantidadProducida.teorico,
+                                    )} ${productoSeleccionado.unidad_medida_simbolo}, +${formatearCantidad(
+                                      desvioCantidadProducida.exceso,
+                                    )} ${productoSeleccionado.unidad_medida_simbolo} / +${desvioCantidadProducida.porcentaje.toFixed(
+                                      1,
+                                    )}%). Verificá que no sea un error de carga.`
+                                  : `Desvío alto: merma del ${desvioCantidadProducida.porcentaje.toFixed(
+                                      1,
+                                    )}% respecto al teórico (${formatearCantidad(
+                                      desvioCantidadProducida.teorico,
+                                    )} ${productoSeleccionado.unidad_medida_simbolo}). Verificá si falta o sobra un dígito.`}
+                              </Text>
+                            </HStack>
+                          )}
+                        </VStack>
                       ) : (
                         <Text fontSize="xs" color="gray.500" mt={1}>
                           {productoSeleccionado.tamano_porcion != null &&
