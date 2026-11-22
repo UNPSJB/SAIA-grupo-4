@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select, update
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from src.alimento_referencia.models import AlimentoReferencia
 from src.insumos.constants import Constantes
@@ -11,7 +11,7 @@ from src.unidad_medida.models import UnidadMedida
 from src.unidad_medida import exceptions as unidad_medida_exceptions
 from src.recetas.models import Receta, PasoReceta, PasoInsumo
 from src.recetas.constants import EstadoReceta
-from src.utils.busqueda import condicion_busqueda
+from src.utils.busqueda import normalizar
 
 
 def _norm_dec(valor) -> Decimal | None:
@@ -440,24 +440,68 @@ def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
     return modificar_insumo(db, insumo_id, insumo)
 
 
+def _clave_estado_nutricion(insumo: Insumo) -> str:
+    if (insumo.categoria or "").strip().lower() == schemas.Categoria.ENVASE.value:
+        return "no_aplica"
+    if insumo.nutricion_completa and insumo.es_nutricion_modificada:
+        return "modificada"
+    if insumo.nutricion_completa:
+        return "completa"
+    return "pendiente"
+
+
+_ETIQUETAS_NUTRICION = {
+    "completa": "completa",
+    "modificada": "completa (modificada)",
+    "pendiente": "pendiente",
+    "no_aplica": "no aplica",
+}
+
+
 def listar_insumos(
     db: Session,
     busqueda: str | None = None,
     disponible: bool | None = None,
+    categoria: str | None = None,
+    nutricion: str | None = None,
 ):
-    consulta = select(Insumo)
-
-    if busqueda and busqueda.strip():
-        consulta = consulta.join(
-            UnidadMedida, Insumo.unidad_medida_id == UnidadMedida.id
-        ).where(
-            condicion_busqueda(
-                [Insumo.nombre, Insumo.categoria, UnidadMedida.nombre, UnidadMedida.simbolo],
-                busqueda,
-            )
-        )
+    consulta = select(Insumo).options(joinedload(Insumo.unidad_medida))
 
     if disponible is not None:
         consulta = consulta.where(Insumo.disponible.is_(disponible))
 
-    return db.scalars(consulta).all()
+    if categoria and categoria.strip():
+        consulta = consulta.where(
+            func.lower(Insumo.categoria) == categoria.strip().lower()
+        )
+
+    insumos = list(db.scalars(consulta).unique().all())
+
+    if nutricion and nutricion.strip():
+        nutricion_norm = nutricion.strip().lower()
+        insumos = [
+            ins for ins in insumos if _clave_estado_nutricion(ins) == nutricion_norm
+        ]
+
+    if busqueda and busqueda.strip():
+        termino = normalizar(busqueda)
+        filtrados = []
+        for ins in insumos:
+            estado_nut = _ETIQUETAS_NUTRICION[_clave_estado_nutricion(ins)]
+            campos_texto = (
+                ins.nombre,
+                ins.categoria,
+                ins.unidad_medida.nombre if ins.unidad_medida else None,
+                ins.unidad_medida.simbolo if ins.unidad_medida else None,
+                estado_nut,
+                ins.descripcion,
+                ins.denominacion_rotulo,
+                ins.clase_funcional,
+                ins.numero_ins,
+                ins.fuente_nutricional,
+            )
+            if any(termino in normalizar(campo) for campo in campos_texto if campo):
+                filtrados.append(ins)
+        insumos = filtrados
+
+    return insumos

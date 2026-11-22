@@ -47,6 +47,8 @@ def modificar_insumo(
 def listar_insumos(
     busqueda: str | None = None,
     disponible: bool | None = None,
+    categoria: str | None = None,
+    nutricion: str | None = None,
     db: Session = Depends(get_db),
 ):
-    return services.listar_insumos(db, busqueda, disponible)
+    return services.listar_insumos(db, busqueda, disponible, categoria, nutricion)
