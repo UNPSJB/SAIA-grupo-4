@@ -190,7 +190,9 @@ export default function RecetasPage() {
     try {
       await recetasApi.clonarReceta(recetaCopiar.id);
       setRecetaCopiar(null);
-      navigate("/nueva-receta");
+      navigate("/nueva-receta", {
+        state: { from: "/recetas", label: "Recetas", origen: "recetas" },
+      });
     } catch (e) {
       setErrorCopiar(
         e instanceof Error ? e.message : "No se pudo copiar la receta.",

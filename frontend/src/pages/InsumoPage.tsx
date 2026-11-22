@@ -27,7 +27,12 @@ export default function InsumoPage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const editarId = searchParams.get("editarId");
-  const from = (location.state as any)?.from;
+  const origenState = location.state as {
+    from?: string;
+    padre?: { nombre: string; to: string };
+  } | null;
+  const from = origenState?.from;
+  const padreOrigen = origenState?.padre;
   const [vista, setVista] = useState<Vista>("listado");
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<Insumo | null>(
     null,
@@ -224,7 +229,12 @@ export default function InsumoPage() {
               onGuardado={() => {
                 cerrarModalForm();
                 if (from) {
-                  navigate(from);
+                  navigate(
+                    from,
+                    padreOrigen
+                      ? { state: { from: padreOrigen.to, label: padreOrigen.nombre } }
+                      : undefined,
+                  );
                 } else {
                   setRefrescar((r) => r + 1);
                 }

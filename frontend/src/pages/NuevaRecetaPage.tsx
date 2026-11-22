@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Button, HStack } from "@chakra-ui/react";
 import { FiBookOpen, FiList, FiPlus } from "react-icons/fi";
 import {
@@ -15,16 +15,22 @@ import type { Receta } from "../features/recetas/types";
 
 export default function NuevaRecetaPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const recetaIdParam = searchParams.get("recetaId");
   const recetaId = recetaIdParam ? Number(recetaIdParam) : undefined;
+  const vinoDeRecetas =
+    (location.state as { from?: string } | null)?.from === "/recetas";
 
   const { loading, error, receta, recargar } = useRecetaBorrador(recetaId);
   const [crearAbierto, setCrearAbierto] = useState(false);
 
   const guardarReceta = (nueva: Receta) => {
     setCrearAbierto(false);
-    navigate(`/nueva-receta?recetaId=${nueva.id}`);
+    navigate(`/nueva-receta?recetaId=${nueva.id}`, {
+      replace: true,
+      state: location.state,
+    });
   };
 
   if (loading) {
@@ -44,15 +50,7 @@ export default function NuevaRecetaPage() {
           key={receta.id}
           initialReceta={receta}
           onCambio={recargar}
-          onPromovido={() =>
-            navigate("/recetas", {
-              state: {
-                from: "/nueva-receta",
-                label: "Nueva Receta",
-                origen: "nueva-receta",
-              },
-            })
-          }
+          onPromovido={() => navigate("/recetas")}
           onCrearReceta={() => setCrearAbierto(true)}
         />
 
@@ -79,13 +77,15 @@ export default function NuevaRecetaPage() {
             variant="outline"
             colorPalette="green"
             onClick={() =>
-              navigate("/recetas", {
-                state: {
-                  from: "/nueva-receta",
-                  label: "Nueva Receta",
-                  origen: "nueva-receta",
-                },
-              })
+              vinoDeRecetas
+                ? navigate("/recetas")
+                : navigate("/recetas", {
+                    state: {
+                      from: "/nueva-receta",
+                      label: "Nueva Receta",
+                      origen: "nueva-receta",
+                    },
+                  })
             }
           >
             <FiList /> Ver listado

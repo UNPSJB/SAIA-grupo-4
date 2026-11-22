@@ -162,7 +162,14 @@ export default function HistorialVersionesPage() {
             label="Ver PDF"
             title="Ver el PDF de esta versión"
             colorPalette="orange"
-            onClick={() => navigate(`/documentos/${documentoId}/versiones/${v.id}/pdf`)}
+            onClick={() =>
+              navigate(`/documentos/${documentoId}/versiones/${v.id}/pdf`, {
+                state: {
+                  from: `/documentos/${documentoId}/historial`,
+                  label: "Historial de versiones",
+                },
+              })
+            }
             visible={!!v.archivo_url}
           />
           <RowActionButton

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   Badge,
   Box,
@@ -44,10 +49,14 @@ export default function RotuloProductoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const idNumerico = Number(productoId);
 
-  const origen = (location.state as { from?: string; label?: string } | null)?.from;
-  const labelOrigen =
-    (location.state as { from?: string; label?: string } | null)?.label ??
-    "Productos";
+  const origenState = location.state as {
+    from?: string;
+    label?: string;
+    padre?: { nombre: string; to: string };
+  } | null;
+  const origen = origenState?.from;
+  const labelOrigen = origenState?.label ?? "Productos";
+  const padreOrigen = origenState?.padre;
 
   const modoInicial: ModoVistaRotulo =
     searchParams.get("vista") === "previa" ? "previa" : "editar";
@@ -60,7 +69,9 @@ export default function RotuloProductoPage() {
   const [errorGuardar, setErrorGuardar] = useState("");
   const [mensajeExito, setMensajeExito] = useState("");
 
-  const [vistaPrevia, setVistaPrevia] = useState<VistaPreviaRotulo | null>(null);
+  const [vistaPrevia, setVistaPrevia] = useState<VistaPreviaRotulo | null>(
+    null,
+  );
   const [cargandoPreview, setCargandoPreview] = useState(false);
   const [errorPreview, setErrorPreview] = useState("");
 
@@ -212,45 +223,57 @@ export default function RotuloProductoPage() {
   return (
     <>
       <Box
-        className="no-print"
+        className='no-print'
         _print={{ display: "none" }}
         p={{ base: 4, md: 6 }}
-        bg="gray.100"
-        minH="100vh"
-        w="100%"
+        bg='gray.100'
+        minH='100vh'
+        w='100%'
       >
-        <VStack align="stretch" gap={5} w="100%">
-          <HStack justify="space-between" align="flex-start" flexWrap="wrap" gap={3}>
+        <VStack align='stretch' gap={5} w='100%'>
+          <HStack
+            justify='space-between'
+            align='flex-start'
+            flexWrap='wrap'
+            gap={3}
+          >
             <Button
-              variant="outline"
-              colorPalette="green"
-              onClick={() => navigate(origen || "/productos")}
+              variant='outline'
+              colorPalette='green'
+              onClick={() =>
+                navigate(
+                  origen || "/productos",
+                  padreOrigen
+                    ? { state: { from: padreOrigen.to, label: padreOrigen.nombre } }
+                    : undefined,
+                )
+              }
             >
               <FiArrowLeft /> Volver a {labelOrigen}
             </Button>
 
             {!loading && !errorCarga && rotulo && (
-              <VStack align="end" gap={2}>
+              <VStack align='end' gap={2}>
                 <HStack
-                  bg="white"
+                  bg='white'
                   p={1}
-                  borderRadius="md"
-                  borderWidth="1px"
-                  borderColor="gray.200"
+                  borderRadius='md'
+                  borderWidth='1px'
+                  borderColor='gray.200'
                   gap={1}
                 >
                   <Button
-                    size="sm"
+                    size='sm'
                     variant={modoVista === "editar" ? "solid" : "ghost"}
-                    colorPalette="green"
+                    colorPalette='green'
                     onClick={() => cambiarModoVista("editar")}
                   >
                     <FiEdit3 /> Editar datos
                   </Button>
                   <Button
-                    size="sm"
+                    size='sm'
                     variant={modoVista === "previa" ? "solid" : "ghost"}
-                    colorPalette="green"
+                    colorPalette='green'
                     onClick={() => cambiarModoVista("previa")}
                   >
                     <FiEye /> Previsualizar borrador
@@ -261,10 +284,12 @@ export default function RotuloProductoPage() {
                   <Menu.Root>
                     <Menu.Trigger asChild>
                       <Button
-                        size="sm"
-                        variant="solid"
-                        colorPalette="blue"
-                        disabled={!vistaPrevia || cargandoPreview || cargandoRespaldo}
+                        size='sm'
+                        variant='outline'
+                        colorPalette='blue'
+                        disabled={
+                          !vistaPrevia || cargandoPreview || cargandoRespaldo
+                        }
                       >
                         <FiPrinter />
                         {cargandoRespaldo
@@ -275,34 +300,36 @@ export default function RotuloProductoPage() {
                     </Menu.Trigger>
                     <Portal>
                       <Menu.Positioner>
-                        <Menu.Content minW="270px">
+                        <Menu.Content minW='270px'>
                           <Menu.Item
-                            value="borrador"
+                            value='borrador'
                             onSelect={handleImprimirBorrador}
                             disabled={!vistaPrevia || cargandoRespaldo}
                           >
                             <FiPrinter />
                             <Box>
-                              <Text fontWeight="medium">
+                              <Text fontWeight='medium'>
                                 Imprimir / Guardar borrador PDF
                               </Text>
-                              <Text fontSize="xs" color="gray.500">
-                                Solo maqueta del rótulo (cara informativa y principal)
+                              <Text fontSize='xs' color='gray.500'>
+                                Solo maqueta del rótulo (cara informativa y
+                                principal)
                               </Text>
                             </Box>
                           </Menu.Item>
                           <Menu.Item
-                            value="respaldo"
+                            value='respaldo'
                             onSelect={() => void handleExportarConRespaldo()}
                             disabled={!vistaPrevia || cargandoRespaldo}
                           >
                             <FiFileText />
                             <Box>
-                              <Text fontWeight="medium">
+                              <Text fontWeight='medium'>
                                 Exportar PDF con respaldo de cálculo
                               </Text>
-                              <Text fontSize="xs" color="gray.500">
-                                Maqueta + anexos de receta, composición, nutrición y sellos
+                              <Text fontSize='xs' color='gray.500'>
+                                Maqueta + anexos de receta, composición,
+                                nutrición y sellos
                               </Text>
                             </Box>
                           </Menu.Item>
@@ -315,22 +342,27 @@ export default function RotuloProductoPage() {
             )}
           </HStack>
 
-          {loading && <LoadingState message="Cargando datos del rótulo..." />}
+          {loading && <LoadingState message='Cargando datos del rótulo...' />}
 
           {!loading && errorCarga && (
-            <AlertMessage type="error" message={errorCarga} />
+            <AlertMessage type='error' message={errorCarga} />
           )}
 
           {!loading && !errorCarga && rotulo && (
             <>
-              <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
-                <HStack gap={3} align="center" flexWrap="wrap">
-                  <FiTag size={26} color="#2f855a" />
-                  <VStack align="start" gap={0}>
-                    <Heading size="xl" color="green.700">
+              <HStack
+                justify='space-between'
+                align='center'
+                flexWrap='wrap'
+                gap={3}
+              >
+                <HStack gap={3} align='center' flexWrap='wrap'>
+                  <FiTag size={26} color='#2f855a' />
+                  <VStack align='start' gap={0}>
+                    <Heading size='xl' color='green.700'>
                       Rótulo Reglamentario — {rotulo.producto_nombre}
                     </Heading>
-                    <Text fontSize="sm" color="gray.600">
+                    <Text fontSize='sm' color='gray.600'>
                       Código Alimentario Argentino (Cap. V) y Ley 27.642 de
                       Promoción de la Alimentación Saludable
                     </Text>
@@ -340,10 +372,12 @@ export default function RotuloProductoPage() {
                 <HStack gap={2}>
                   <Badge
                     colorPalette={rotulo.guardado_en_bd ? "teal" : "gray"}
-                    variant="subtle"
-                    size="md"
+                    variant='subtle'
+                    size='md'
                   >
-                    {rotulo.guardado_en_bd ? "Rótulo registrado" : "Sin guardar aún"}
+                    {rotulo.guardado_en_bd
+                      ? "Rótulo registrado"
+                      : "Sin guardar aún"}
                   </Badge>
                 </HStack>
               </HStack>
@@ -359,10 +393,10 @@ export default function RotuloProductoPage() {
               ) : (
                 <>
                   {cargandoPreview && (
-                    <LoadingState message="Generando vista previa consolidada del borrador..." />
+                    <LoadingState message='Generando vista previa consolidada del borrador...' />
                   )}
                   {!cargandoPreview && errorPreview && (
-                    <AlertMessage type="error" message={errorPreview} />
+                    <AlertMessage type='error' message={errorPreview} />
                   )}
                   {!cargandoPreview && !errorPreview && vistaPrevia && (
                     <DocumentoRotuloBorrador vistaPrevia={vistaPrevia} />
