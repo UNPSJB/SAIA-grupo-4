@@ -9,7 +9,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { FiBookOpen, FiFileText, FiPrinter } from "react-icons/fi";
+import { FiBookOpen, FiClock, FiFileText, FiPrinter } from "react-icons/fi";
 
 import {
   AlertMessage,
@@ -137,6 +137,7 @@ export const ListadoRecetasOperador = () => {
         const query = filtrosAplicados.busqueda.trim().toLowerCase();
         const coincideCodigo = r.codigo_receta?.toLowerCase().includes(query);
         const coincideNombre = r.nombre_receta?.toLowerCase().includes(query);
+        const coincideVersion = r.version != null && `v${r.version}`.toLowerCase().includes(query);
         const coincideProd = r.producto?.nombre?.toLowerCase().includes(query);
         const coincideRend = String(r.rendimiento_estandar ?? "")
           .toLowerCase()
@@ -158,6 +159,7 @@ export const ListadoRecetasOperador = () => {
         if (
           !coincideCodigo &&
           !coincideNombre &&
+          !coincideVersion &&
           !coincideProd &&
           !coincideRend &&
           !coincideTiempo &&
@@ -179,6 +181,16 @@ export const ListadoRecetasOperador = () => {
   const verFicha = (r: Receta) => {
     navigate(`/recetas/${r.id}`, {
       state: { from: "/recetas", label: "Ficha Técnica" },
+    });
+  };
+
+  const verHistorial = (r: Receta) => {
+    navigate(`/recetas/historial/${r.producto_id}`, {
+      state: {
+        from: "/recetas",
+        label: "Historial de Versiones",
+        productoNombre: r.producto?.nombre,
+      },
     });
   };
 
@@ -327,7 +339,7 @@ export const ListadoRecetasOperador = () => {
       key: "acciones",
       label: "Acciones",
       exportable: false,
-      w: "130px",
+      w: "160px",
       align: "end",
       render: (r) => (
         <RowActions>
@@ -344,6 +356,13 @@ export const ListadoRecetasOperador = () => {
             title='Imprimir o guardar en PDF'
             colorPalette='blue'
             onClick={() => void handleImprimir(r)}
+          />
+          <RowActionButton
+            icon={FiClock}
+            label='Historial'
+            title='Ver historial de versiones archivadas'
+            colorPalette='yellow'
+            onClick={() => verHistorial(r)}
           />
         </RowActions>
       ),
@@ -523,6 +542,15 @@ export const ListadoRecetasOperador = () => {
                         aria-label='Imprimir ficha'
                       >
                         <FiPrinter />
+                      </Button>
+                      <Button
+                        colorPalette='yellow'
+                        variant='subtle'
+                        onClick={() => verHistorial(r)}
+                        aria-label='Ver historial de versiones'
+                        title='Historial de versiones'
+                      >
+                        <FiClock />
                       </Button>
                     </HStack>
                   </Card.Body>

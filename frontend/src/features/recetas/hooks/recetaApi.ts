@@ -101,6 +101,10 @@ export const recetasApi = {
     return request<Receta[]>(`/recetas/activas${qs ? `?${qs}` : ""}`);
   },
   obtenerRecetaActiva: (id: number) => request<Receta>(`/recetas/activas/${id}`),
+  obtenerHistorialRecetasProducto: (productoId: number) =>
+    request<Receta[]>(`/recetas/productos/${productoId}/historial`),
+  obtenerRecetaConsultable: (id: number) =>
+    request<Receta>(`/recetas/consulta/${id}`),
   obtenerComposicionPorcentual: (id: number) =>
     request<ComposicionPorcentualResponse>(`/recetas/${id}/composicion-porcentual`),
   obtenerInformacionNutricional: (id: number) =>

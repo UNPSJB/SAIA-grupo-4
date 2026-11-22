@@ -184,6 +184,27 @@ function construirMigas(pathname: string, state: unknown): MigaItem[] {
   }
 
   // 3. Caso general: la ruta arranca desde su propio módulo (ej: SideBar -> /recetas, /personal, /vencimientos)
+  if (segmentos[0] === "recetas" && segmentos[1] === "historial") {
+    return [
+      { nombre: "Recetas", to: "/recetas", esLink: true },
+      { nombre: "Historial de Versiones", to: pathname, esLink: false },
+    ];
+  }
+
+  if (
+    segmentos.length === 2 &&
+    segmentos[0] === "recetas" &&
+    esId(segmentos[1]) &&
+    typeof dynamicFrom === "string" &&
+    dynamicFrom.startsWith("/recetas/historial/")
+  ) {
+    return [
+      { nombre: "Recetas", to: "/recetas", esLink: true },
+      { nombre: "Historial de Versiones", to: dynamicFrom, esLink: true },
+      { nombre: "Ficha Técnica", to: pathname, esLink: false },
+    ];
+  }
+
   const migas: MigaItem[] = [];
   let pathAcumulado = "";
 

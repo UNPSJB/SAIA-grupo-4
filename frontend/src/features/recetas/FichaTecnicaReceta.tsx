@@ -145,8 +145,8 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
         setAplicabilidad(dataAplica);
         setSellos(dataSellos);
       } else {
-        // En modo operador, consultamos la receta activa
-        const dataReceta = await recetasApi.obtenerRecetaActiva(recetaId);
+        // En modo operador, consultamos la receta (ACTIVA o ARCHIVADA)
+        const dataReceta = await recetasApi.obtenerRecetaConsultable(recetaId);
         setReceta(dataReceta);
         setCantidadObjetivo(String(dataReceta.rendimiento_estandar));
       }
@@ -532,6 +532,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
           {/* Selector de cantidad a elaborar y Resumen de Insumos/Equipos (solo en modo operador) */}
           {!esModoAdmin && (
             <>
+              {receta.estado === "ACTIVA" && (
               <Card.Root
                 variant="outline"
                 bg="white"
@@ -644,6 +645,7 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
                   </Flex>
                 </Card.Body>
               </Card.Root>
+              )}
 
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mb={6}>
               {/* Tarjeta de Insumos Generales */}
