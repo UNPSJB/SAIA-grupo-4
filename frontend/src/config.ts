@@ -26,7 +26,7 @@ export const PUBLIC_APP_URL = (
 ).replace(/\/+$/, "");
 
 // Filas por pagina en los listados con paginacion.
-export const ITEMS_POR_PAGINA = 6;
+export const ITEMS_POR_PAGINA = 8;
 
 // Filas por pagina en los desplegables (select) que cargan entidades del backend.
 // Se usa un limite mas alto que ITEMS_POR_PAGINA para mostrar suficientes opciones

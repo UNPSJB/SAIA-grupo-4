@@ -40,7 +40,7 @@ interface ListadoDocumentosProps {
   onVerHistorial?: (doc: Documento) => void;
 }
 
-const ITEMS_POR_PAGINA = 5;
+const ITEMS_POR_PAGINA = 8;
 
 const OPCIONES_TIPO = TIPOS_DOCUMENTO.map((value) => ({
   label: TIPOS_DOCUMENTO_LABELS[value],
@@ -97,8 +97,7 @@ export const ListadoDocumentos = ({
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
 
-  const [borrador, setBorrador] =
-    useState<FiltrosDocumento>(FILTROS_INICIALES);
+  const [borrador, setBorrador] = useState<FiltrosDocumento>(FILTROS_INICIALES);
   const [aplicados, setAplicados] =
     useState<FiltrosDocumento>(FILTROS_INICIALES);
 
@@ -159,7 +158,7 @@ export const ListadoDocumentos = ({
       w: "150px",
       valorExportacion: (doc) => TIPOS_DOCUMENTO_LABELS[doc.tipo_documento],
       render: (doc) => (
-        <Badge colorPalette="blue" variant="subtle">
+        <Badge colorPalette='blue' variant='subtle'>
           {TIPOS_DOCUMENTO_LABELS[doc.tipo_documento]}
         </Badge>
       ),
@@ -168,14 +167,13 @@ export const ListadoDocumentos = ({
       key: "version_vigente",
       label: "Versión",
       w: "140px",
-      valorExportacion: (doc) => doc.version_vigente?.version ?? "No tiene versión",
+      valorExportacion: (doc) =>
+        doc.version_vigente?.version ?? "No tiene versión",
       render: (doc) =>
         doc.version_vigente ? (
-          <Badge colorPalette="green">{doc.version_vigente.version}</Badge>
+          <Badge colorPalette='green'>{doc.version_vigente.version}</Badge>
         ) : (
-          <TextoSinValor>
-            No tiene versión
-          </TextoSinValor>
+          <TextoSinValor>No tiene versión</TextoSinValor>
         ),
     },
     {
@@ -184,9 +182,10 @@ export const ListadoDocumentos = ({
       w: "170px",
       // Documento inactivo → "—" (mismo criterio que ProximoRecambio en
       // elementos de limpieza, que no muestra alerta si está dado de baja)
-      valorExportacion: (doc) => textoProximaRevision(
-        doc.activo ? doc.version_vigente?.fecha_proxima_revision : null,
-      ),
+      valorExportacion: (doc) =>
+        textoProximaRevision(
+          doc.activo ? doc.version_vigente?.fecha_proxima_revision : null,
+        ),
       render: (doc) => (
         <ProximaRevision
           fecha={
@@ -230,9 +229,9 @@ export const ListadoDocumentos = ({
   return (
     <ListadoContainer>
       <ListadoHeader
-        title="Gestión Documental"
+        title='Gestión Documental'
         icon={FiFileText}
-        buttonLabel="Nuevo documento"
+        buttonLabel='Nuevo documento'
         onCrear={onCrear}
       />
 
@@ -244,8 +243,8 @@ export const ListadoDocumentos = ({
           loading={loading}
         >
           <FiltroTexto
-            ariaLabel="Buscar documento"
-            placeholder="Código, título o descripción"
+            ariaLabel='Buscar documento'
+            placeholder='Código, título o descripción'
             value={busqueda}
             onChange={setBusqueda}
             onKeyDown={(e) => {
@@ -253,8 +252,8 @@ export const ListadoDocumentos = ({
             }}
           />
           <FiltroSelect
-            ariaLabel="Tipo de documento"
-            placeholder="Todos los tipos"
+            ariaLabel='Tipo de documento'
+            placeholder='Todos los tipos'
             options={OPCIONES_TIPO}
             value={borrador.tipoDocumento}
             onChange={(valor) =>
@@ -265,8 +264,8 @@ export const ListadoDocumentos = ({
             }
           />
           <FiltroSelect
-            ariaLabel="Estado del documento"
-            placeholder="Todos los estados"
+            ariaLabel='Estado del documento'
+            placeholder='Todos los estados'
             options={OPCIONES_ESTADO}
             value={borrador.estado}
             onChange={(valor) =>
@@ -276,13 +275,13 @@ export const ListadoDocumentos = ({
         </FiltrosBar>
       </Box>
 
-      {loading && <LoadingState message="Cargando documentos..." />}
+      {loading && <LoadingState message='Cargando documentos...' />}
 
-      {!loading && error && <AlertMessage type="error" message={error} />}
+      {!loading && error && <AlertMessage type='error' message={error} />}
 
       {!loading && !error && data.length === 0 && (
         <AlertMessage
-          type="info"
+          type='info'
           message={
             hayAplicados
               ? "No hay documentos que coincidan con los filtros seleccionados."
@@ -296,11 +295,11 @@ export const ListadoDocumentos = ({
           <DataTable
             items={itemsPaginados}
             exportarItems={data}
-            exportarTitulo="Documentos"
+            exportarTitulo='Documentos'
             exportarFiltros={filtrosExportacion}
             columns={columnas}
             getRowKey={(doc) => doc.id}
-            minW="1150px"
+            minW='1150px'
           />
 
           <SemaforoLegend />
@@ -310,8 +309,8 @@ export const ListadoDocumentos = ({
             page={page}
             pageSize={ITEMS_POR_PAGINA}
             onPageChange={setPage}
-            labelSingular="documento"
-            labelPlural="documentos"
+            labelSingular='documento'
+            labelPlural='documentos'
           />
         </>
       )}
