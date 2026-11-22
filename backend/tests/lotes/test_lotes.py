@@ -472,3 +472,145 @@ def test_consumo_falla_por_lote_vencido_o_inhabilitado(datos_produccion, session
         ],
     })
     assert res.status_code == 400
+
+
+def _registrar_produccion(datos, lote_harina_id, lote_levadura_id, cant_harina=100.0, cant_levadura=10.0):
+    """Registra un lote de producción y devuelve su id. La receta exige consumir ambos insumos."""
+    res = client.post("/lotes/", json={
+        "producto_id": datos["producto_id"],
+        "fecha_elaboracion": datetime.now().isoformat(),
+        "fecha_vencimiento": str(date.today() + timedelta(days=5)),
+        "cantidad_producida": 10.0,
+        "consumos": [
+            {
+                "insumo_id": datos["insumo1_id"],
+                "cantidad_real_utilizada": cant_harina,
+                "lotes": [{"lote_insumo_id": lote_harina_id, "cantidad": cant_harina}],
+            },
+            {
+                "insumo_id": datos["insumo2_id"],
+                "cantidad_real_utilizada": cant_levadura,
+                "lotes": [{"lote_insumo_id": lote_levadura_id, "cantidad": cant_levadura}],
+            },
+        ],
+    })
+    assert res.status_code == 201, res.text
+    return res.json()["id"]
+
+
+def _ids(respuesta):
+    assert respuesta.status_code == 200, respuesta.text
+    return {lote["id"] for lote in respuesta.json()}
+
+
+def test_filtro_lote_insumo_devuelve_solo_producciones_que_lo_usaron(datos_produccion):
+    prod_a = _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+    prod_b = _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_b_id"], datos_produccion["lote_ins2_id"])
+
+    assert _ids(client.get("/lotes/", params={"codigo_lote_insumo": "L-HAR-01"})) == {prod_a}
+    assert _ids(client.get("/lotes/", params={"codigo_lote_insumo": "L-HAR-02"})) == {prod_b}
+    # La levadura se usó en las dos producciones
+    assert _ids(client.get("/lotes/", params={"codigo_lote_insumo": "L-LEV-01"})) == {prod_a, prod_b}
+
+
+def test_filtro_lote_insumo_ignora_mayusculas_y_espacios(datos_produccion):
+    prod_a = _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+
+    res = client.get("/lotes/", params={"codigo_lote_insumo": "  l-har-01 "})
+    assert _ids(res) == {prod_a}
+
+
+def test_filtro_lote_insumo_es_coincidencia_exacta_no_parcial(datos_produccion):
+    _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+
+    assert _ids(client.get("/lotes/", params={"codigo_lote_insumo": "L-HAR"})) == set()
+    assert _ids(client.get("/lotes/", params={"codigo_lote_insumo": "L-HAR-0"})) == set()
+
+
+def test_filtro_lote_insumo_sin_uso_devuelve_lista_vacia(datos_produccion, session):
+    lote_sin_uso = LoteInsumo(
+        insumo_id=datos_produccion["insumo1_id"],
+        codigo_lote="L-HAR-NUNCA",
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        cantidad_inicial=Decimal("1000.000"),
+        cantidad_actual=Decimal("1000.000"),
+    )
+    session.add(lote_sin_uso)
+    session.commit()
+    _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+
+    # Existe como lote de insumo pero ninguna producción lo usó
+    res = client.get("/lotes/", params={"codigo_lote_insumo": "L-HAR-NUNCA"})
+    assert res.status_code == 200
+    assert res.json() == []
+
+    # Código que no existe en el sistema
+    res = client.get("/lotes/", params={"codigo_lote_insumo": "NO-EXISTE"})
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_sin_filtro_lote_insumo_lista_todas_las_producciones(datos_produccion):
+    prod_a = _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+    prod_b = _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_b_id"], datos_produccion["lote_ins2_id"])
+
+    assert _ids(client.get("/lotes/")) == {prod_a, prod_b}
+    # Un valor vacío o solo espacios equivale a no filtrar
+    assert _ids(client.get("/lotes/", params={"codigo_lote_insumo": "   "})) == {prod_a, prod_b}
+
+
+def test_filtro_lote_insumo_se_combina_con_otros_filtros(datos_produccion):
+    prod_a = _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+
+    res = client.get("/lotes/", params={
+        "codigo_lote_insumo": "L-HAR-01",
+        "producto_id": datos_produccion["producto_id"],
+    })
+    assert _ids(res) == {prod_a}
+
+    res = client.get("/lotes/", params={
+        "codigo_lote_insumo": "L-HAR-01",
+        "producto_id": 99999,
+    })
+    assert _ids(res) == set()
+
+
+def test_filtro_lote_insumo_devuelve_codigo_en_detalles_para_el_subtexto(datos_produccion):
+    _registrar_produccion(datos_produccion, datos_produccion["lote_ins1_a_id"], datos_produccion["lote_ins2_id"])
+
+    res = client.get("/lotes/", params={"codigo_lote_insumo": "L-HAR-01"})
+    assert res.status_code == 200
+    lote = res.json()[0]
+
+    codigos = [
+        detalle["codigo_lote_insumo"]
+        for consumo in lote["consumos_insumos"]
+        for detalle in consumo["detalles_lotes"]
+    ]
+    assert "L-HAR-01" in codigos
+
+
+def test_filtro_lote_insumo_no_duplica_producciones_con_mismo_codigo_en_dos_insumos(datos_produccion, session):
+    """El mismo código puede existir en insumos distintos: la producción debe aparecer una sola vez."""
+    lote_harina = LoteInsumo(
+        insumo_id=datos_produccion["insumo1_id"],
+        codigo_lote="L-COMUN",
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        cantidad_inicial=Decimal("1000.000"),
+        cantidad_actual=Decimal("1000.000"),
+    )
+    lote_levadura = LoteInsumo(
+        insumo_id=datos_produccion["insumo2_id"],
+        codigo_lote="L-COMUN",
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        cantidad_inicial=Decimal("1000.000"),
+        cantidad_actual=Decimal("1000.000"),
+    )
+    session.add_all([lote_harina, lote_levadura])
+    session.commit()
+
+    prod = _registrar_produccion(datos_produccion, lote_harina.id, lote_levadura.id)
+
+    res = client.get("/lotes/", params={"codigo_lote_insumo": "L-COMUN"})
+    assert res.status_code == 200
+    assert [lote["id"] for lote in res.json()] == [prod]
