@@ -32,6 +32,7 @@ class PersonalResumen(BaseModel):
 class LoteInsumo(LoteInsumoBase):
     id: int
     insumo_id: int
+    insumo_nombre: Optional[str] = None
     cantidad_actual: Decimal
     activo: bool
     motivo_inhabilitacion: Optional[str] = None

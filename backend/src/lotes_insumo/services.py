@@ -1,4 +1,4 @@
-from sqlalchemy import func, select, update
+from sqlalchemy import String, cast, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from src.insumos.models import Insumo
@@ -66,14 +66,34 @@ def listar_lotes_insumo(
     codigo_lote: str | None = None,
     estado: EstadoLote | None = None,
     orden: str = "asc",
+    busqueda: str | None = None,
+    limite: int | None = None,
 ):
-    consulta = select(LoteInsumo)
+    consulta = select(LoteInsumo).options(joinedload(LoteInsumo.insumo))
 
     if insumo_id is not None:
         consulta = consulta.where(LoteInsumo.insumo_id == insumo_id)
 
     if codigo_lote and codigo_lote.strip():
-        consulta = consulta.where(LoteInsumo.codigo_lote.ilike(f"%{codigo_lote.strip()}%"))
+        termino_raw = codigo_lote.strip()
+        termino = f"%{termino_raw}%"
+        termino_num = f"%{termino_raw.replace(',', '.')}%"
+        consulta = consulta.where(
+            or_(
+                LoteInsumo.codigo_lote.ilike(termino),
+                cast(LoteInsumo.cantidad_actual, String).ilike(termino_num),
+                cast(LoteInsumo.cantidad_inicial, String).ilike(termino_num),
+                cast(
+                    LoteInsumo.cantidad_inicial - LoteInsumo.cantidad_actual, String
+                ).ilike(termino_num),
+            )
+        )
+
+    if busqueda and busqueda.strip():
+        termino = f"%{busqueda.strip()}%"
+        consulta = consulta.join(LoteInsumo.insumo).where(
+            LoteInsumo.codigo_lote.ilike(termino) | Insumo.nombre.ilike(termino)
+        )
 
     if estado is not None:
         hoy = date.today()
@@ -100,7 +120,10 @@ def listar_lotes_insumo(
     else:
         consulta = consulta.order_by(LoteInsumo.fecha_vencimiento.asc(), LoteInsumo.id.asc())
 
-    return db.scalars(consulta).all()
+    if limite is not None and limite > 0:
+        consulta = consulta.limit(limite)
+
+    return db.scalars(consulta).unique().all()
 
 
 def modificar_lote_insumo(db: Session, lote_id: int, lote: schemas.LoteInsumoUpdate) -> schemas.LoteInsumo:

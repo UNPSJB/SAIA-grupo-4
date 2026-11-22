@@ -22,11 +22,13 @@ def crear_lote_insumo(lote: schemas.LoteInsumoCreate, db: Session = Depends(get_
 def listar_lotes_insumo(
     insumo_id: int | None = None,
     codigo_lote: str | None = None,
+    busqueda: str | None = None,
     estado: EstadoLote | None = None,
     orden: Literal["asc", "desc"] = "asc",
+    limite: int | None = None,
     db: Session = Depends(get_db),
 ):
-    return services.listar_lotes_insumo(db, insumo_id, codigo_lote, estado, orden)
+    return services.listar_lotes_insumo(db, insumo_id, codigo_lote, estado, orden, busqueda, limite)
 
 @router.get("/{lote_id}", response_model=schemas.LoteInsumo, dependencies=[Depends(requiere_operacion)])
 def leer_lote_insumo(lote_id: int, db: Session = Depends(get_db)):

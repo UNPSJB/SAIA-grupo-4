@@ -29,6 +29,10 @@ class LoteInsumo(ModeloBase):
     usuario_inhabilitacion: Mapped["Persona | None"] = relationship()
 
     @property
+    def insumo_nombre(self) -> str | None:
+        return self.insumo.nombre if self.insumo is not None else None
+
+    @property
     def estado(self) -> EstadoLote:
         if not self.activo:
             return EstadoLote.INHABILITADO
