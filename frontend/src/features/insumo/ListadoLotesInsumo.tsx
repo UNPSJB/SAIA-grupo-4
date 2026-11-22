@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge, Button, HStack, Box } from "@chakra-ui/react";
-import { FiArrowLeft, FiEye, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiEye, FiList, FiPackage, FiPlus, FiTrash2 } from "react-icons/fi";
 import {
   AlertMessage,
   DataTable,
@@ -107,6 +108,7 @@ export const ListadoLotesInsumo = ({
   onInhabilitarLote,
   refreshKey = 0,
 }: ListadoLotesInsumoProps) => {
+  const navigate = useNavigate();
   const [borrador, setBorrador] = useState<FiltrosLotes>(FILTROS_INICIALES);
   const [aplicados, setAplicados] = useState<FiltrosLotes>(FILTROS_INICIALES);
 
@@ -128,6 +130,20 @@ export const ListadoLotesInsumo = ({
     setBorrador(FILTROS_INICIALES);
     setAplicados(FILTROS_INICIALES);
     setPage(1);
+  };
+
+  // Trazabilidad inversa: lleva al historial de producción ya filtrado por el
+  // código de este lote de insumo.
+  const verProducciones = (lote: LoteInsumo) => {
+    navigate(
+      `/historial-lotes?codigo_lote_insumo=${encodeURIComponent(lote.codigo_lote)}`,
+      {
+        state: {
+          volverA: `/insumos/${insumo.id}/lotes`,
+          volverEtiqueta: `Volver a lotes de ${insumo.nombre}`,
+        },
+      },
+    );
   };
 
   const filtrosExportacion = armarFiltros([
@@ -191,7 +207,7 @@ export const ListadoLotesInsumo = ({
       label: "Acciones",
       exportable: false,
       align: "end",
-      w: "120px",
+      w: "160px",
       render: (l) => (
         <RowActions>
           <RowActionButton
@@ -199,6 +215,12 @@ export const ListadoLotesInsumo = ({
             label='Ver'
             colorPalette='yellow'
             onClick={() => onVerLote(l)}
+          />
+          <RowActionButton
+            icon={FiList}
+            label='Ver producciones'
+            colorPalette='blue'
+            onClick={() => verProducciones(l)}
           />
           <RowActionButton
             icon={FiTrash2}
