@@ -2229,27 +2229,35 @@ def _crear_lotes(db, personas, recetas, hoy):
 
     recetas_activas = {r.codigo_receta: r for r in recetas if r.estado == EstadoReceta.ACTIVA}
 
-    # (codigo_receta, dias_atras, masa_tanda_g, cantidad_producida_comercial, idx_op, obs)
+    # (codigo_receta, dias_atras, masa_tanda_g, cantidad_producida_comercial, idx_op, obs, estado_seed)
+    # estado_seed: None (normal/activo), "vencido", o texto motivo de retencion
     datos_lotes = [
-        ("REC-PC-002", 6, Decimal("29000.00"), Decimal("29.00"), 0, "Produccion matutina de Pan de Campo (1 tanda). Miga esponjosa."),
-        ("REC-GV-001", 5, Decimal("20000.00"), Decimal("666.00"), 1, "Galletas dulces clasicas (1 tanda completa). Empaquetado completo."),
-        ("REC-PI-001", 4, Decimal("26500.00"), Decimal("26.50"), 2, "Pan integral multicereal con abundante sesamo (1 tanda)."),
-        ("REC-BS-001", 4, Decimal("21000.00"), Decimal("21000.00"), 3, "Bizcochos salados de textura crocante tradicional (1 tanda)."),
-        ("REC-TC-002", 3, Decimal("18500.00"), Decimal("18.50"), 0, "Tortas de chocolate para venta directa en confiteria (1 tanda)."),
-        ("REC-PC-002", 3, Decimal("58000.00"), Decimal("58.00"), 1, "Pan de campo con fermentacion en frio extendida (2 tandas)."),
-        ("REC-GV-001", 2, Decimal("10000.00"), Decimal("333.00"), 2, "Lote para reposicion de galletas en salon de ventas (0.5 tanda)."),
-        ("REC-PI-001", 1, Decimal("53000.00"), Decimal("53.00"), 3, "Pan integral elaborado a primera hora del turno (2 tandas)."),
-        ("REC-BS-001", 0, Decimal("10500.00"), Decimal("10500.00"), 0, "Lote fresco del dia en control de calidad final (0.5 tanda)."),
-        ("REC-TC-002", 0, Decimal("37000.00"), Decimal("37.00"), 1, "Elaboracion especial de tortas de chocolate del dia (2 tandas)."),
+        ("REC-PC-002", 18, Decimal("29000.00"), Decimal("29.00"), 0, "Produccion matutina de Pan de Campo (1 tanda). Miga esponjosa.", "vencido"),
+        ("REC-GV-001", 25, Decimal("20000.00"), Decimal("666.00"), 1, "Galletas dulces clasicas (1 tanda completa). Empaquetado completo.", "vencido"),
+        ("REC-PI-001", 4, Decimal("26500.00"), Decimal("26.50"), 2, "Pan integral multicereal con abundante sesamo (1 tanda).", "Desvio de humedad detectado en control de calidad post-horneado."),
+        ("REC-BS-001", 4, Decimal("21000.00"), Decimal("21000.00"), 3, "Bizcochos salados de textura crocante tradicional (1 tanda).", None),
+        ("REC-TC-002", 3, Decimal("18500.00"), Decimal("18.50"), 0, "Tortas de chocolate para venta directa en confiteria (1 tanda).", "Retencion preventiva por observacion en rotulado de lote."),
+        ("REC-PC-002", 3, Decimal("58000.00"), Decimal("58.00"), 1, "Pan de campo con fermentacion en frio extendida (2 tandas).", None),
+        ("REC-GV-001", 2, Decimal("10000.00"), Decimal("333.00"), 2, "Lote para reposicion de galletas en salon de ventas (0.5 tanda).", None),
+        ("REC-PI-001", 1, Decimal("53000.00"), Decimal("53.00"), 3, "Pan integral elaborado a primera hora del turno (2 tandas).", None),
+        ("REC-BS-001", 0, Decimal("10500.00"), Decimal("10500.00"), 0, "Lote fresco del dia en control de calidad final (0.5 tanda).", None),
+        ("REC-TC-002", 0, Decimal("37000.00"), Decimal("37.00"), 1, "Elaboracion especial de tortas de chocolate del dia (2 tandas).", None),
     ]
+
+    admin_retencion = next((p for p in personas if p.activo), operadores[0])
 
     lotes_creados = []
     secuencias_dia: dict[tuple[str, str], int] = {}
 
-    # Sembrar lotes fisicos de insumo (2 lotes vigentes con stock segun unidad)
+    # Sembrar lotes fisicos de insumo (2 lotes vigentes con stock + ejemplos vencidos e inhabilitados)
     lotes_por_insumo: dict[int, list[LoteInsumo]] = {}
     todos_insumos = db.scalars(select(Insumo).order_by(Insumo.id.asc())).all()
     lotes_insumo_seed: list[LoteInsumo] = []
+    motivos_inhabilitacion = [
+        "Envase roto detectado al ingreso en deposito de materias primas.",
+        "Humedad y apelmazamiento detectado en control visual de calidad.",
+        "Desvio de temperatura reportado por el proveedor en transporte.",
+    ]
     for idx_ins, ins in enumerate(todos_insumos):
         cant_base = Decimal("20000.000") if ins.unidad_medida.simbolo == "g" else Decimal("500.000")
         l1 = LoteInsumo(
@@ -2271,17 +2279,53 @@ def _crear_lotes(db, personas, recetas, hoy):
         lotes_insumo_seed.extend([l1, l2])
         lotes_por_insumo[ins.id] = [l1, l2]
 
+        # Lotes vencidos (con stock remanente, excluidos de lotes_por_insumo para no consumirse en produccion)
+        if idx_ins in (0, 2, 4):
+            cant_v = Decimal("5000.000") if ins.unidad_medida.simbolo == "g" else Decimal("120.000")
+            lotes_insumo_seed.append(
+                LoteInsumo(
+                    insumo_id=ins.id,
+                    codigo_lote=f"LOT-INS-{ins.id:02d}-V",
+                    fecha_vencimiento=hoy - timedelta(days=4 + idx_ins * 2),
+                    cantidad_inicial=cant_v,
+                    cantidad_actual=Decimal("1500.000") if ins.unidad_medida.simbolo == "g" else Decimal("40.000"),
+                    activo=True,
+                )
+            )
+
+        # Lotes inhabilitados con motivo y auditoria
+        if idx_ins in (0, 1, 3):
+            cant_i = Decimal("10000.000") if ins.unidad_medida.simbolo == "g" else Decimal("200.000")
+            motivo = motivos_inhabilitacion[idx_ins % len(motivos_inhabilitacion)]
+            lotes_insumo_seed.append(
+                LoteInsumo(
+                    insumo_id=ins.id,
+                    codigo_lote=f"LOT-INS-{ins.id:02d}-I",
+                    fecha_vencimiento=hoy + timedelta(days=30 + idx_ins * 5),
+                    cantidad_inicial=cant_i,
+                    cantidad_actual=cant_i,
+                    activo=False,
+                    motivo_inhabilitacion=motivo,
+                    fecha_inhabilitacion=datetime.combine(hoy - timedelta(days=2), time(11, 15)),
+                    usuario_inhabilitacion_id=admin_retencion.id,
+                )
+            )
+
     db.add_all(lotes_insumo_seed)
     db.flush()
 
-    for codigo_receta, dias_atras, masa_tanda_g, cantidad, idx_op, obs in datos_lotes:
+    for idx_lote, (codigo_receta, dias_atras, masa_tanda_g, cantidad, idx_op, obs, estado_seed) in enumerate(datos_lotes):
         receta = recetas_activas.get(codigo_receta)
         if not receta:
             continue
 
         producto = receta.producto
-        fecha_elab = datetime.combine(hoy - timedelta(days=dias_atras), time(8, 30))
         dias_vida = producto.dias_vida_util or 7
+        if estado_seed == "vencido":
+            dias_elab = max(dias_atras, dias_vida + 3 + idx_lote)
+            fecha_elab = datetime.combine(hoy - timedelta(days=dias_elab), time(8, 30))
+        else:
+            fecha_elab = datetime.combine(hoy - timedelta(days=dias_atras), time(8, 30))
         fecha_vto = fecha_elab.date() + timedelta(days=dias_vida)
 
         operador = operadores[idx_op % len(operadores)]
@@ -2327,6 +2371,7 @@ def _crear_lotes(db, personas, recetas, hoy):
                 )
             )
 
+        es_retenido = estado_seed is not None and estado_seed != "vencido"
         lote = Lote(
             codigo_lote=codigo_lote,
             producto_id=producto.id,
@@ -2337,6 +2382,9 @@ def _crear_lotes(db, personas, recetas, hoy):
             fecha_registro_sistema=fecha_elab + timedelta(minutes=15),
             cantidad_producida=cantidad,
             observaciones=obs,
+            motivo_retencion=estado_seed if es_retenido else None,
+            fecha_retencion=fecha_elab + timedelta(hours=3) if es_retenido else None,
+            usuario_retencion_id=admin_retencion.id if es_retenido else None,
             consumos_insumos=consumos_orm,
         )
         lotes_creados.append(lote)
