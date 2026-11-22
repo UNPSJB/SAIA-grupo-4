@@ -1,45 +1,56 @@
 import { BASE_URL } from "../../../config";
 import { apiFetch } from "../../auth/apiFetch";
+import {
+  extraerDetalleBaja,
+  type AsociacionOperativa,
+} from "../../../components/ui";
 import type { Documento } from "../types";
 
 interface HandleDeleteOptions {
   documento: Documento | null;
+  motivo?: string;
   setLoading: (v: boolean) => void;
   setError: (msg: string) => void;
+  setAsociaciones?: (asocs: AsociacionOperativa[]) => void;
   onSuccess?: () => void;
 }
 
-export const handleDelete = async ({ documento, setLoading, setError, onSuccess }: HandleDeleteOptions) => {
+export const handleDelete = async ({
+  documento,
+  motivo,
+  setLoading,
+  setError,
+  setAsociaciones,
+  onSuccess,
+}: HandleDeleteOptions) => {
   if (!documento) return;
   setLoading(true);
   setError("");
+  setAsociaciones?.([]);
 
   try {
-    const res = await apiFetch(`${BASE_URL}/documentos/${documento.id}`, {
-      method: "DELETE",
-    });
+    const params = new URLSearchParams();
+    if (motivo?.trim()) params.set("motivo", motivo.trim());
+    const qs = params.toString();
+
+    const res = await apiFetch(
+      `${BASE_URL}/documentos/${documento.id}${qs ? `?${qs}` : ""}`,
+      { method: "DELETE" },
+    );
 
     if (!res.ok) {
       let bodyRes: { detail?: unknown } | null = null;
-      try { bodyRes = await res.json(); } catch { /* El backend no devolvió JSON */ }
-
-      let mensajeError = "No se pudo dar de baja el documento.";
-      const detalle = bodyRes?.detail;
-      if (detalle !== undefined && detalle !== null) {
-        if (typeof detalle === "string") mensajeError = detalle;
-        else if (typeof detalle === "object" && "code" in detalle && typeof detalle.code === "string") {
-          mensajeError = detalle.code;
-        }
-      } else {
-        switch (res.status) {
-          case 400: mensajeError = "La acción no está permitida."; break;
-          case 404: mensajeError = "El documento no existe."; break;
-          case 500: mensajeError = "Error interno del servidor."; break;
-          default: mensajeError = `Error ${res.status || "desconocido"}`;
-        }
+      try {
+        bodyRes = await res.json();
+      } catch {
+        // El backend no devolvió JSON
       }
-      setError(mensajeError);
-      setLoading(false);
+      const { mensaje, asociaciones } = extraerDetalleBaja(
+        bodyRes?.detail,
+        "No se pudo dar de baja el documento.",
+      );
+      setAsociaciones?.(asociaciones);
+      setError(mensaje);
       return;
     }
 

@@ -1,13 +1,13 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
+import { Alert, Box, CloseButton } from "@chakra-ui/react";
 import { apiFetch } from "../features/auth/apiFetch";
 import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import { EquipoForm } from "../features/equipos/EquipoForm";
 import { EquipoDetalle } from "../features/equipos/EquipoDetalle";
 import { ListadoEquipos } from "../features/equipos/ListadoEquipo";
-import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal, type AsociacionOperativa} from "../components/ui";
 import { handleDelete } from "../features/equipos/hooks/useEquipoDelete";
 import { useEquipoSubmit } from "../features/equipos/hooks/useEquipoSubmit";
 import type { Equipo } from "../features/equipos/types";
@@ -22,6 +22,9 @@ export default function EquiposPage() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [asociacionesBaja, setAsociacionesBaja] = useState<AsociacionOperativa[]>([]);
+  const [motivoBaja, setMotivoBaja] = useState("");
+  const [advertenciasBaja, setAdvertenciasBaja] = useState<AsociacionOperativa[]>([]);
 
   // La campana de notificaciones llega aca con `?detalle=<id>` (ruta_detalle de
   // la fila consolidada): el parametro abre el detalle del equipo, igual que
@@ -78,12 +81,17 @@ export default function EquiposPage() {
 
   const confirmarEliminar = () => {
     handleDelete({
-      equipo: equipoEliminar,
+      equipo: equipoEliminar, 
+      motivo: motivoBaja,
       setLoading,
       setError,
-      onSuccess: () => {
+      setAsociaciones: setAsociacionesBaja,
+      onSuccess: (advertencias) => {
         setEliminarAbierto(false);
         setEquipoEliminar(null);
+        setMotivoBaja("");
+        setAsociacionesBaja([]);
+        setAdvertenciasBaja(advertencias ?? []);
         setRefrescar((r) => r + 1);
       },
     });
@@ -112,6 +120,28 @@ export default function EquiposPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+      {advertenciasBaja.length > 0 && (
+        <Box maxW='6xl' mx='auto' mb={4} textAlign='left'>
+          <Alert.Root status='warning'>
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>
+                Equipo dado de baja con asociaciones operativas activas
+              </Alert.Title>
+              <Alert.Description>
+                Quedarán con alerta hasta ser actualizadas:{" "}
+                {advertenciasBaja.map((a) => a.nombre).join(", ")}.
+              </Alert.Description>
+            </Alert.Content>
+            <CloseButton
+              pos='relative'
+              top='-1'
+              insetEnd='-1'
+              onClick={() => setAdvertenciasBaja([])}
+            />
+          </Alert.Root>
+        </Box>
+      )}
       <ListadoEquipos
         key={refrescar}
         onCrear={() => setVista("crear")}
@@ -122,6 +152,8 @@ export default function EquiposPage() {
         }}
         onEliminar={(equipo) => {
           setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
           setEquipoEliminar(equipo);
           setEliminarAbierto(true);
         }}
@@ -189,13 +221,26 @@ export default function EquiposPage() {
 
       <AlertDelete
         open={eliminarAbierto}
+        title='Dar de baja Equipo'
+        confirmLabel='Dar de baja'
         name={equipoEliminar?.nombre ?? null}
         loading={loading}
         error={error}
+        asociaciones={asociacionesBaja}
+        mostrarMotivo
+        motivo={motivoBaja}
+        onMotivoChange={setMotivoBaja}
+        advertenciaVencido={
+          equipoEliminar?.operable === false
+            ? "Este equipo está no operable por vencimiento. Se permitirá la baja, pero las operaciones activas asociadas mostrarán una alerta."
+            : undefined
+        }
         onConfirm={confirmarEliminar}
         onCancel={() => {
           setEliminarAbierto(false);
           setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
         }}
       />
 

@@ -35,3 +35,18 @@ export { FiltroSelect } from "./form/filters/FiltroSelect";
 export { FiltroTexto } from "./form/filters/FiltroTexto";
 export { FiltroNumero } from "./form/filters/FiltroNumero";
 export { FiltroFechaRango } from "./form/filters/FiltroFechaRango";
+export {
+  BadgeOperabilidad,
+  MotivosNoOperablesBox,
+  AlertasRecursosBanner,
+} from "./form/data-display/OperabilidadBadges";
+export {
+  ETIQUETA_ESTADO_VENCIMIENTO,
+  extraerDetalleBaja,
+} from "./form/data-display/operabilidad";
+export type {
+  EstadoVencimientoOperabilidad,
+  AsociacionOperativa,
+  AlertaRecursoNoOperable,
+  CamposOperabilidad,
+} from "./form/data-display/operabilidad";

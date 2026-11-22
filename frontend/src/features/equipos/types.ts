@@ -1,4 +1,5 @@
 import type { Sector } from "../sectores/types";
+import type { CamposOperabilidad } from "../../components/ui";
 
 export type EstadoCalibracion = "vencido" | "proximo" | "al_dia";
 
@@ -21,7 +22,7 @@ export interface Equipo {
   activo: boolean;
 }
 
-export interface Equipo {
+export interface Equipo extends CamposOperabilidad {
   id: number;
   nombre: string;
   marca: string;

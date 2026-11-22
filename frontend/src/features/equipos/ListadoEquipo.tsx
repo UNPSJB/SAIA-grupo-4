@@ -29,6 +29,7 @@ import { calcularSemaforo, sumarDias } from "../../utils/semaforo";
 import type { Equipo } from "./types";
 import type { Sector } from "../sectores/types";
 import type { ColumnDef } from "../../components/ui";
+import { BadgeOperabilidad } from "../../components/ui";
 
 const formatearFechaISO = (fecha: string | null | undefined) => {
   if (!fecha) return "—";
@@ -144,7 +145,14 @@ export const ListadoEquipos = ({
     {
       key: "codigo",
       label: "Código",
-      render: (equipo) => equipo.numero_serie,
+      render: (equipo) => (
+      <BadgeOperabilidad
+        activo={equipo.activo}
+        operable={equipo.operable}
+        motivos={equipo.motivos_no_operables}
+        mostrarMotivo
+      />
+    ),
     },
     {
       key: "nombre",

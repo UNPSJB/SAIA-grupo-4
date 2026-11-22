@@ -1,14 +1,14 @@
 import { BASE_URL } from "../config";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
+import { Alert, Box, CloseButton } from "@chakra-ui/react";
 import { apiFetch } from "../features/auth/apiFetch";
 import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
 import { PersonalForm } from "../features/personal/PersonalForm";
 import { PersonalDetalle } from "../features/personal/PersonaDetalle";
 import { ListadoPersonal } from "../features/personal/ListadoPersonal";
 import { RegistrarVencimientoForm } from "../features/personal/RegistrarVencimientoForm";
-import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal, type AsociacionOperativa, } from "../components/ui";
 import { handleDelete } from "../features/personal/hooks/usePersonalDelete";
 import { usePersonalSubmit } from "../features/personal/hooks/usePersonalSubmit";
 import type { Persona } from "../features/personal/types";
@@ -22,6 +22,9 @@ export default function PersonalPage() {
     useState<Persona | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [asociacionesBaja, setAsociacionesBaja] = useState<AsociacionOperativa[]>([]);
+  const [motivoBaja, setMotivoBaja] = useState("");
+  const [advertenciasBaja, setAdvertenciasBaja] = useState<AsociacionOperativa[]>([]);
 
   // La campana de notificaciones llega aca con `?detalle=<id>` (ruta_detalle de
   // la fila consolidada): el parametro abre el detalle de la persona, igual que
@@ -77,12 +80,17 @@ export default function PersonalPage() {
 
   const confirmarEliminar = () => {
     handleDelete({
-      persona: personaEliminar,
+      persona: personaEliminar, 
+      motivo: motivoBaja,
       setLoading,
       setError,
-      onSuccess: () => {
+      setAsociaciones: setAsociacionesBaja,
+      onSuccess: (advertencias) => {
         setEliminarAbierto(false);
         setPersonaEliminar(null);
+        setMotivoBaja("");
+        setAsociacionesBaja([]);
+        setAdvertenciasBaja(advertencias ?? []);
         setRefrescar((r) => r + 1);
       },
     });
@@ -109,6 +117,28 @@ export default function PersonalPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+      {advertenciasBaja.length > 0 && (
+        <Box maxW='6xl' mx='auto' mb={4} textAlign='left'>
+          <Alert.Root status='warning'>
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>
+                Personal dado de baja con asociaciones operativas activas
+              </Alert.Title>
+              <Alert.Description>
+                Quedarán con alerta hasta ser actualizadas:{" "}
+                {advertenciasBaja.map((a) => a.nombre).join(", ")}.
+              </Alert.Description>
+            </Alert.Content>
+            <CloseButton
+              pos='relative'
+              top='-1'
+              insetEnd='-1'
+              onClick={() => setAdvertenciasBaja([])}
+            />
+          </Alert.Root>
+        </Box>
+      )}
       <ListadoPersonal
         key={refrescar}
         onVerCapacidades={() =>
@@ -129,6 +159,8 @@ export default function PersonalPage() {
         }}
         onEliminar={(persona) => {
           setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
           setPersonaEliminar(persona);
           setEliminarAbierto(true);
         }}
@@ -210,6 +242,8 @@ export default function PersonalPage() {
 
       <AlertDelete
         open={eliminarAbierto}
+        title='Dar de baja Personal'
+        confirmLabel='Dar de baja'
         name={
           personaEliminar
             ? `${personaEliminar.nombre} ${personaEliminar.apellido}`
@@ -217,10 +251,21 @@ export default function PersonalPage() {
         }
         loading={loading}
         error={error}
+        asociaciones={asociacionesBaja}
+        mostrarMotivo
+        motivo={motivoBaja}
+        onMotivoChange={setMotivoBaja}
+        advertenciaVencido={
+          personaEliminar?.operable === false
+            ? "Esta persona está no operable por documentación vencida. Se permitirá la baja, pero las operaciones activas asociadas mostrarán una alerta."
+            : undefined
+        }
         onConfirm={confirmarEliminar}
         onCancel={() => {
           setEliminarAbierto(false);
           setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
         }}
       />
 

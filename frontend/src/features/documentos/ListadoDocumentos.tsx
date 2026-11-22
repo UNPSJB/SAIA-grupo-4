@@ -11,6 +11,7 @@ import {
   LoadingState,
   SemaforoLegend,
   TablePagination,
+  BadgeOperabilidad
 } from "../../components/ui";
 import type { ColumnDef } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
@@ -177,10 +178,13 @@ export const ListadoDocumentos = ({
       label: "Estado",
       w: "100px",
       render: (doc) => (
-        <Badge colorPalette={doc.activo ? "green" : "red"}>
-          {doc.activo ? "Activo" : "Inactivo"}
-        </Badge>
-      ),
+      <BadgeOperabilidad
+        activo={doc.activo}
+        operable={doc.operable}
+        motivos={doc.motivos_no_operables}
+        mostrarMotivo
+      />
+    ),
     },
     {
       key: "acciones",

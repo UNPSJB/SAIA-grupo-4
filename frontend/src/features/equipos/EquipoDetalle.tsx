@@ -1,7 +1,12 @@
 import { BASE_URL } from "../../config";
-import { Badge, Box, Button, HStack, Icon, Text } from "@chakra-ui/react";
+import { Box, Button, HStack, Icon, Text } from "@chakra-ui/react";
 import { FiEye, FiThermometer, FiFileText } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
+import {
+  BadgeOperabilidad,
+  ETIQUETA_ESTADO_VENCIMIENTO,
+  MotivosNoOperablesBox,
+} from "../../components/ui";
 import type { Equipo } from "./types";
 
 interface EquipoDetalleProps {
@@ -20,6 +25,9 @@ export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
         )[0]
       : null;
 
+  const tieneMotivos =
+    Boolean(equipo.motivos_no_operables?.length) || Boolean(equipo.motivo_baja);
+
   const secciones: SeccionDetalle[] = [
     {
       titulo: "Datos del Equipo",
@@ -34,11 +42,33 @@ export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
         {
           label: "Estado",
           valor: (
-            <Badge colorPalette={equipo.activo ? "green" : "red"}>
-              {equipo.activo ? "Activo" : "Inactivo"}
-            </Badge>
+            <BadgeOperabilidad
+              activo={equipo.activo}
+              operable={equipo.operable}
+              motivos={equipo.motivos_no_operables}
+            />
           ),
         },
+        {
+          label: "Estado de calibración",
+          valor: equipo.estado_vencimiento
+            ? ETIQUETA_ESTADO_VENCIMIENTO[equipo.estado_vencimiento]
+            : "Sin configurar",
+        },
+        ...(tieneMotivos
+          ? [
+              {
+                label: "Motivo no operable / baja",
+                valor: (
+                  <MotivosNoOperablesBox
+                    motivos={equipo.motivos_no_operables}
+                    tipoBaja={equipo.tipo_baja}
+                    motivoBaja={equipo.motivo_baja}
+                  />
+                ),
+              },
+            ]
+          : []),
         {
           label: "Última calibración",
           valor: !ultimaCalibracion ? (
@@ -46,12 +76,18 @@ export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
           ) : (
             <Box mt={0}>
               <Text fontSize="sm" mb={1} color="gray.700">
-                <Text as="span" fontWeight="medium" color="gray.900">Fecha:</Text> {new Date(ultimaCalibracion.fecha_calibracion).toLocaleDateString("es-AR")}
+                <Text as="span" fontWeight="medium" color="gray.900">
+                  Fecha:
+                </Text>{" "}
+                {new Date(ultimaCalibracion.fecha_calibracion).toLocaleDateString("es-AR")}
               </Text>
 
               {ultimaCalibracion.observaciones && (
                 <Text fontSize="sm" mb={2} color="gray.700">
-                  <Text as="span" fontWeight="medium" color="gray.900">Observaciones:</Text> {ultimaCalibracion.observaciones}
+                  <Text as="span" fontWeight="medium" color="gray.900">
+                    Observaciones:
+                  </Text>{" "}
+                  {ultimaCalibracion.observaciones}
                 </Text>
               )}
 
@@ -64,7 +100,7 @@ export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
                   onClick={() =>
                     window.open(
                       `${BASE_URL}${ultimaCalibracion.certificado_url}`,
-                      "_blank"
+                      "_blank",
                     )
                   }
                 >
@@ -84,7 +120,7 @@ export const EquipoDetalle = ({ equipo, onCerrar }: EquipoDetalleProps) => {
   return (
     <DetalleModal
       open
-      title='Detalle de Equipo'
+      title="Detalle de Equipo"
       icon={FiEye}
       onClose={onCerrar}
       secciones={secciones}

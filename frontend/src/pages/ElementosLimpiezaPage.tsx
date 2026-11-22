@@ -1,14 +1,13 @@
 import { BASE_URL } from "../config";
-
 import { apiFetch } from "../features/auth/apiFetch";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
+import { Alert, Box, CloseButton } from "@chakra-ui/react";
 import { ElementoLimpiezaForm } from "../features/elementosLimpieza/ElementoLimpiezaForm";
 import { ElementoLimpiezaDetalle } from "../features/elementosLimpieza/ElementoLimpiezaDetalle";
 import { ListadoElementosLimpieza } from "../features/elementosLimpieza/ListadoElementosLimpieza";
 import { GestionTiposElementoLimpieza } from "../features/elementosLimpieza/GestionTiposElementoLimpieza";
-import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal, type AsociacionOperativa } from "../components/ui";
 import { handleDelete } from "../features/elementosLimpieza/hooks/useElementoLimpiezaDelete";
 import { useElementoLimpiezaSubmit } from "../features/elementosLimpieza/hooks/useElementoLimpiezaSubmit";
 import type { ElementoLimpieza } from "../features/elementosLimpieza/types";
@@ -22,6 +21,9 @@ export default function ElementosLimpiezaPage() {
     useState<ElementoLimpieza | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [asociacionesBaja, setAsociacionesBaja] = useState<AsociacionOperativa[]>([]);
+  const [motivoBaja, setMotivoBaja] = useState("");
+  const [advertenciasBaja, setAdvertenciasBaja] = useState<AsociacionOperativa[]>([]);
 
   const [elementoEliminar, setElementoEliminar] =
     useState<ElementoLimpieza | null>(null);
@@ -75,11 +77,16 @@ export default function ElementosLimpiezaPage() {
   const confirmarEliminar = () => {
     handleDelete({
       elemento: elementoEliminar,
+      motivo: motivoBaja,
       setLoading,
       setError,
-      onSuccess: () => {
+      setAsociaciones: setAsociacionesBaja,
+      onSuccess: (advertencias) => {
         setEliminarAbierto(false);
         setElementoEliminar(null);
+        setMotivoBaja("");
+        setAsociacionesBaja([]);
+        setAdvertenciasBaja(advertencias ?? []);
         setRefrescar((r) => r + 1);
       },
     });
@@ -106,6 +113,28 @@ export default function ElementosLimpiezaPage() {
 
   return (
     <Box textAlign='center' p={10} bg='gray.100' minH='100vh'>
+      {advertenciasBaja.length > 0 && (
+        <Box maxW='6xl' mx='auto' mb={4} textAlign='left'>
+          <Alert.Root status='warning'>
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>
+                Elemento dado de baja con asociaciones operativas activas
+              </Alert.Title>
+              <Alert.Description>
+                Quedarán con alerta hasta ser actualizadas:{" "}
+                {advertenciasBaja.map((a) => a.nombre).join(", ")}.
+              </Alert.Description>
+            </Alert.Content>
+            <CloseButton
+              pos='relative'
+              top='-1'
+              insetEnd='-1'
+              onClick={() => setAdvertenciasBaja([])}
+            />
+          </Alert.Root>
+        </Box>
+      )}
       <ListadoElementosLimpieza
         key={refrescar}
         onCrear={() => setVista("crear")}
@@ -201,13 +230,26 @@ export default function ElementosLimpiezaPage() {
 
       <AlertDelete
         open={eliminarAbierto}
-        name={elementoEliminar?.tipo?.nombre ?? null}
+        title='Dar de baja Elemento de Limpieza'
+        confirmLabel='Dar de baja'
+        name={elementoEliminar?.nombre ?? elementoEliminar?.tipo?.nombre ?? null}
         loading={loading}
         error={error}
+        asociaciones={asociacionesBaja}
+        mostrarMotivo
+        motivo={motivoBaja}
+        onMotivoChange={setMotivoBaja}
+        advertenciaVencido={
+          elementoEliminar?.operable === false
+            ? "Este elemento está no operable por recambio vencido. Se permitirá la baja, pero las tareas activas asociadas mostrarán una alerta."
+            : undefined
+        }
         onConfirm={confirmarEliminar}
         onCancel={() => {
           setEliminarAbierto(false);
           setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
         }}
       />
 

@@ -2,6 +2,11 @@ import { Badge } from "@chakra-ui/react";
 import { FiEye, FiMapPin, FiRefreshCw } from "react-icons/fi";
 import { MdOutlineCleaningServices } from "react-icons/md";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
+import {
+  BadgeOperabilidad,
+  ETIQUETA_ESTADO_VENCIMIENTO,
+  MotivosNoOperablesBox,
+} from "../../components/ui";
 import type { ElementoLimpieza } from "./types";
 
 interface ElementoLimpiezaDetalleProps {
@@ -40,12 +45,16 @@ export const ElementoLimpiezaDetalle = ({
   elemento,
   onCerrar,
 }: ElementoLimpiezaDetalleProps) => {
+  const tieneMotivos =
+    Boolean(elemento.motivos_no_operables?.length) ||
+    Boolean(elemento.motivo_baja);
+
   const asignadoA = elemento.sector ? (
-    <Badge colorPalette='blue' variant='subtle'>
+    <Badge colorPalette="blue" variant="subtle">
       Sector: {elemento.sector.nombre}
     </Badge>
   ) : elemento.equipo ? (
-    <Badge colorPalette='purple' variant='subtle'>
+    <Badge colorPalette="purple" variant="subtle">
       Equipo: {elemento.equipo.nombre}
     </Badge>
   ) : (
@@ -63,11 +72,33 @@ export const ElementoLimpiezaDetalle = ({
         {
           label: "Estado",
           valor: (
-            <Badge colorPalette={elemento.activo ? "green" : "red"}>
-              {elemento.activo ? "Activo" : "Inactivo"}
-            </Badge>
+            <BadgeOperabilidad
+              activo={elemento.activo}
+              operable={elemento.operable}
+              motivos={elemento.motivos_no_operables}
+            />
           ),
         },
+        {
+          label: "Estado de recambio",
+          valor: elemento.estado_vencimiento
+            ? ETIQUETA_ESTADO_VENCIMIENTO[elemento.estado_vencimiento]
+            : "Sin configurar",
+        },
+        ...(tieneMotivos
+          ? [
+              {
+                label: "Motivo no operable / baja",
+                valor: (
+                  <MotivosNoOperablesBox
+                    motivos={elemento.motivos_no_operables}
+                    tipoBaja={elemento.tipo_baja}
+                    motivoBaja={elemento.motivo_baja}
+                  />
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -100,7 +131,7 @@ export const ElementoLimpiezaDetalle = ({
   return (
     <DetalleModal
       open
-      title='Detalle de Elemento de Limpieza'
+      title="Detalle de Elemento de Limpieza"
       icon={FiEye}
       onClose={onCerrar}
       secciones={secciones}

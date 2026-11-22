@@ -1,8 +1,22 @@
 import { useState } from "react";
 import { Badge, Link, VStack, Text, HStack } from "@chakra-ui/react";
-import { FiEye, FiUser, FiChevronDown, FiChevronUp, FiClock, FiAward, FiFileText } from "react-icons/fi";
+import {
+  FiEye,
+  FiUser,
+  FiChevronDown,
+  FiChevronUp,
+  FiClock,
+  FiAward,
+  FiFileText,
+} from "react-icons/fi";
 import { BASE_URL } from "../../config";
-import { COLOR_ESTADO, ETIQUETA_ESTADO } from "../../components/ui";
+import {
+  BadgeOperabilidad,
+  COLOR_ESTADO,
+  ETIQUETA_ESTADO,
+  ETIQUETA_ESTADO_VENCIMIENTO,
+  MotivosNoOperablesBox,
+} from "../../components/ui";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import type { Persona } from "./types";
 
@@ -17,7 +31,11 @@ const formatearFecha = (fechaStr?: string | null) => {
     const isoString = fechaStr.includes("T") ? fechaStr : `${fechaStr}T00:00:00`;
     const fecha = new Date(isoString);
     if (isNaN(fecha.getTime())) return fechaStr;
-    return fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return fecha.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   } catch {
     return fechaStr;
   }
@@ -28,13 +46,18 @@ export const PersonalDetalle = ({ persona, onCerrar }: PersonalDetalleProps) => 
 
   const capacidadesVigentes = persona.capacidades.filter((c) => c.activo);
   const vencimientos = persona.vencimientos || [];
+  const tieneMotivos =
+    Boolean(persona.motivos_no_operables?.length) || Boolean(persona.motivo_baja);
 
-  const historialAgrupado = persona.capacidades.reduce((acc, cap) => {
-    const nombreCap = cap.capacidad.nombre;
-    if (!acc[nombreCap]) acc[nombreCap] = [];
-    acc[nombreCap].push(cap);
-    return acc;
-  }, {} as Record<string, typeof persona.capacidades>);
+  const historialAgrupado = persona.capacidades.reduce(
+    (acc, cap) => {
+      const nombreCap = cap.capacidad.nombre;
+      if (!acc[nombreCap]) acc[nombreCap] = [];
+      acc[nombreCap].push(cap);
+      return acc;
+    },
+    {} as Record<string, typeof persona.capacidades>,
+  );
 
   const secciones: SeccionDetalle[] = [
     {
@@ -51,46 +74,86 @@ export const PersonalDetalle = ({ persona, onCerrar }: PersonalDetalleProps) => 
         {
           label: "Estado actual",
           valor: (
-            <Badge colorPalette={persona.activo ? "green" : "red"}>
-              {persona.activo ? "Activo" : "Inactivo"}
-            </Badge>
+            <BadgeOperabilidad
+              activo={persona.activo}
+              operable={persona.operable}
+              motivos={persona.motivos_no_operables}
+            />
           ),
         },
+        {
+          label: "Estado de documentación",
+          valor: persona.estado_vencimiento
+            ? ETIQUETA_ESTADO_VENCIMIENTO[persona.estado_vencimiento]
+            : "Sin configurar",
+        },
+        ...(tieneMotivos
+          ? [
+              {
+                label: "Motivo no operable / baja",
+                valor: (
+                  <MotivosNoOperablesBox
+                    motivos={persona.motivos_no_operables}
+                    tipoBaja={persona.tipo_baja}
+                    motivoBaja={persona.motivo_baja}
+                  />
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
       titulo: "CAPACIDADES VIGENTES",
       icono: FiAward,
-      items: capacidadesVigentes.length > 0
-        ? capacidadesVigentes.map((cap) => ({
-            label: cap.capacidad.nombre.toUpperCase(),
-            valor: `(Vigente desde: ${formatearFecha(cap.fecha_desde)})`,
-          }))
-        : [{ label: "Estado", valor: "No posee capacidades vigentes en la actualidad." }],
+      items:
+        capacidadesVigentes.length > 0
+          ? capacidadesVigentes.map((cap) => ({
+              label: cap.capacidad.nombre.toUpperCase(),
+              valor: `(Vigente desde: ${formatearFecha(cap.fecha_desde)})`,
+            }))
+          : [
+              {
+                label: "Estado",
+                valor: "No posee capacidades vigentes en la actualidad.",
+              },
+            ],
     },
     {
       titulo: "DOCUMENTACIÓN Y VENCIMIENTOS",
       icono: FiFileText,
-      items: vencimientos.length > 0
-        ? vencimientos.map((v) => ({
-            label: v.documento.nombre,
-            valor: (
-              <HStack as="span" display="inline-flex" gap={2} wrap="wrap">
-                <Text as="span">Vence el {formatearFecha(v.fecha_vencimiento)}</Text>
-                {v.estado && (
-                  <Badge colorPalette={COLOR_ESTADO[v.estado]}>{ETIQUETA_ESTADO[v.estado]}</Badge>
-                )}
-                {v.url_comprobante ? (
-                  <Link href={`${BASE_URL}/${v.url_comprobante}`} target="_blank" rel="noopener noreferrer" colorPalette="blue">
-                    Ver comprobante
-                  </Link>
-                ) : (
-                  <Text as="span" color="gray.500">Sin comprobante</Text>
-                )}
-              </HStack>
-            ),
-          }))
-        : [{ label: "Estado", valor: "No tiene documentación cargada." }],
+      items:
+        vencimientos.length > 0
+          ? vencimientos.map((v) => ({
+              label: v.documento.nombre,
+              valor: (
+                <HStack as="span" display="inline-flex" gap={2} wrap="wrap">
+                  <Text as="span">
+                    Vence el {formatearFecha(v.fecha_vencimiento)}
+                  </Text>
+                  {v.estado && (
+                    <Badge colorPalette={COLOR_ESTADO[v.estado]}>
+                      {ETIQUETA_ESTADO[v.estado]}
+                    </Badge>
+                  )}
+                  {v.url_comprobante ? (
+                    <Link
+                      href={`${BASE_URL}/${v.url_comprobante}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      colorPalette="blue"
+                    >
+                      Ver comprobante
+                    </Link>
+                  ) : (
+                    <Text as="span" color="gray.500">
+                      Sin comprobante
+                    </Text>
+                  )}
+                </HStack>
+              ),
+            }))
+          : [{ label: "Estado", valor: "No tiene documentación cargada." }],
     },
     {
       titulo: (
@@ -116,7 +179,8 @@ export const PersonalDetalle = ({ persona, onCerrar }: PersonalDetalleProps) => 
                 <VStack align="start" gap={0}>
                   {caps.map((c, i) => (
                     <Text key={i} fontSize="sm" color="gray.600">
-                      {formatearFecha(c.fecha_desde)} — {formatearFecha(c.fecha_hasta)}
+                      {formatearFecha(c.fecha_desde)} —{" "}
+                      {formatearFecha(c.fecha_hasta)}
                     </Text>
                   ))}
                 </VStack>

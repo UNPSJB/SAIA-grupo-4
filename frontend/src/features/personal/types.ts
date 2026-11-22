@@ -1,6 +1,7 @@
 import type { Capacidad } from "../capacidades/types";
 import type { DocumentoPersonal } from "../documentosPersonal/types";
 import type { EstadoSemaforo } from "../../components/ui";
+import type { CamposOperabilidad } from "../../components/ui";
 
 export interface PersonaCapacidad {
     id: number;
@@ -24,7 +25,7 @@ export interface VencimientoPersonal {
     estado?: EstadoSemaforo;
 }
 
-export interface Persona {
+export interface Persona extends CamposOperabilidad {
     id: number;
     nombre: string;
     apellido: string;

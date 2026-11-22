@@ -1,3 +1,5 @@
+import type { CamposOperabilidad } from "../../components/ui";
+
 export const TIPOS_DOCUMENTO = [
   'MANUAL_BPM',
   'PROCEDIMIENTO',
@@ -31,7 +33,7 @@ export interface VersionDocumento {
   fecha_subida: string;
 }
 
-export interface Documento {
+export interface Documento extends CamposOperabilidad{
   id: number;
   codigo: string | null;
   titulo: string;

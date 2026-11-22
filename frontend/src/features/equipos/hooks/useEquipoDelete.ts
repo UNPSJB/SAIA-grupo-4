@@ -1,73 +1,62 @@
 import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
+import {
+  extraerDetalleBaja,
+  type AsociacionOperativa,
+} from "../../../components/ui";
 import type { Equipo } from "../types";
 
 interface HandleDeleteOptions {
   equipo: Equipo | null;
+  motivo?: string;
   setLoading: (v: boolean) => void;
   setError: (msg: string) => void;
-  onSuccess?: () => void;
+  setAsociaciones?: (asocs: AsociacionOperativa[]) => void;
+  onSuccess?: (advertencias?: AsociacionOperativa[]) => void;
 }
 
 export const handleDelete = async ({
   equipo,
+  motivo,
   setLoading,
   setError,
+  setAsociaciones,
   onSuccess,
 }: HandleDeleteOptions) => {
   if (!equipo) return;
   setLoading(true);
   setError("");
+  setAsociaciones?.([]);
 
   try {
-    const res = await apiFetch(`${BASE_URL}/equipos/${equipo.id}`, {
-      method: "DELETE",
-    });
+    const params = new URLSearchParams();
+    if (motivo?.trim()) params.set("motivo", motivo.trim());
+    const qs = params.toString();
+
+    const res = await apiFetch(
+      `${BASE_URL}/equipos/${equipo.id}${qs ? `?${qs}` : ""}`,
+      { method: "DELETE" },
+    );
 
     if (!res.ok) {
-      let bodyRes: any = null;
+      let bodyRes: { detail?: unknown } | null = null;
       try {
         bodyRes = await res.json();
       } catch {
-        // Si no manda JSON, queda en null
+        // sin JSON
       }
-
-      let mensajeError = "No se pudo eliminar el equipo.";
-
-      // 1. Extraer el mensaje exacto que manda FastAPI (Ej: NotFound, Conflict)
-      if (bodyRes?.detail) {
-        if (typeof bodyRes.detail === "string") {
-          mensajeError = bodyRes.detail;
-        } else if (typeof bodyRes.detail.code === "string") {
-          mensajeError = bodyRes.detail.code;
-        }
-      } else {
-        // 2. Fallback a los mensajes genéricos por status HTTP
-        switch (res.status) {
-          case 400:
-            mensajeError = "El equipo ya se encuentra dado de baja.";
-            break;
-          case 404:
-            mensajeError = "El equipo no existe.";
-            break;
-          case 409:
-            mensajeError = "Conflicto al intentar eliminar el equipo.";
-            break;
-          case 500:
-            mensajeError = "Error interno del servidor.";
-            break;
-          default:
-            mensajeError = `Error ${res.status || "desconocido"}`;
-        }
-      }
-
-      setError(mensajeError);
-      setLoading(false);
+      const { mensaje, asociaciones } = extraerDetalleBaja(
+        bodyRes?.detail,
+        "No se pudo dar de baja el equipo.",
+      );
+      setAsociaciones?.(asociaciones);
+      setError(mensaje);
       return;
     }
 
-    onSuccess?.();
-  } catch (err) {
+    const data = (await res.json().catch(() => null)) as Equipo | null;
+    onSuccess?.(data?.advertencias_asociaciones ?? []);
+  } catch {
     setError("Ocurrió un error de red al intentar comunicarse con el servidor.");
   } finally {
     setLoading(false);

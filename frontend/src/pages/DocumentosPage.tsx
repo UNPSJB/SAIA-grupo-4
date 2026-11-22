@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { ListadoDocumentos } from "../features/documentos/ListadoDocumentos";
 import { DocumentoForm } from "../features/documentos/DocumentoForm";
-import { AlertDelete, AlertConfirm, FormModal } from "../components/ui";
+import { AlertDelete, AlertConfirm, FormModal, type AsociacionOperativa,} from "../components/ui";
 import { BASE_URL } from "../config";
 import { apiFetch } from "../features/auth/apiFetch";
 import { useRenovacion } from "../features/vencimientos/hooks/useRenovacion";
@@ -26,6 +26,8 @@ export default function DocumentosPage() {
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState<Documento | undefined>(undefined);
   const [refrescar, setRefrescar] = useState(0);
   const [error, setError] = useState("");
+  const [asociacionesBaja, setAsociacionesBaja] = useState<AsociacionOperativa[]>([]);
+  const [motivoBaja, setMotivoBaja] = useState("");
 
   // La campana de notificaciones llega aca con `?detalle=<id>` (ruta_detalle de
   // la fila consolidada): el parametro abre el detalle del documento, igual que
@@ -96,11 +98,15 @@ export default function DocumentosPage() {
   const confirmarEliminacion = async () => {
     await handleDelete({
       documento: documentoEliminar,
+      motivo: motivoBaja,
       setLoading: setLoadingEliminar,
       setError,
+      setAsociaciones: setAsociacionesBaja,
       onSuccess: () => {
         setEliminarAbierto(false);
         setDocumentoEliminar(null);
+        setMotivoBaja("");
+        setAsociacionesBaja([]);
         setRefrescar((r) => r + 1);
       },
     });
@@ -133,6 +139,8 @@ export default function DocumentosPage() {
         }}
         onEliminar={(doc) => {
           setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
           setDocumentoEliminar(doc);
           setEliminarAbierto(true);
         }}
@@ -186,12 +194,27 @@ export default function DocumentosPage() {
       {/* ALERTAS DE CONFIRMACIÓN */}
       <AlertDelete
         open={eliminarAbierto}
-        onCancel={() => setEliminarAbierto(false)}
+        onCancel={() => {
+          setEliminarAbierto(false);
+          setError("");
+          setAsociacionesBaja([]);
+          setMotivoBaja("");
+        }}
         onConfirm={confirmarEliminacion}
         title="Dar de baja Documento"
+        confirmLabel="Dar de baja"
         name={documentoEliminar?.titulo || "el documento"} // AlertDelete espera un 'name'
         loading={loadingEliminar}
         error={error}
+        asociaciones={asociacionesBaja}
+        mostrarMotivo
+        motivo={motivoBaja}
+        onMotivoChange={setMotivoBaja}
+        advertenciaVencido={
+          documentoEliminar?.operable === false
+            ? "Este documento tiene la revisión vencida (no operable). Al darlo de baja quedará registrado el motivo."
+            : undefined
+        }
       />
 
       <AlertConfirm

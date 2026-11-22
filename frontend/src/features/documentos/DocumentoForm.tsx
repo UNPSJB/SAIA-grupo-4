@@ -34,6 +34,9 @@ import {
   AlertConfirm,
   DetalleSection,
   DetalleItem,
+  BadgeOperabilidad,
+  ETIQUETA_ESTADO_VENCIMIENTO,
+  MotivosNoOperablesBox,
 } from "../../components/ui";
 
 type DocumentoFormValues = import("zod").output<typeof documentoSchema>;
@@ -213,40 +216,65 @@ export const DocumentoForm = ({
   // MODO LECTURA ("VER")
 
   if (esModoVer && documento) {
+    const tieneMotivos =
+      Boolean(documento.motivos_no_operables?.length) ||
+      Boolean(documento.motivo_baja);
+
     return (
       <FormContainer modal={enModal}>
-        <FormHeader title='Ver Documento' icon={FiEye} />
+        <FormHeader title="Ver Documento" icon={FiEye} />
 
-        <VStack gap={6} align='stretch' w='100%' mt={4}>
-          <DetalleSection title='Información General' icon={FiFileText}>
-            <DetalleItem label='Código'>
+        <VStack gap={6} align="stretch" w="100%" mt={4}>
+          <DetalleSection title="Información General" icon={FiFileText}>
+            <DetalleItem label="Código">
               {documento.codigo || "S/C"}
             </DetalleItem>
-            <DetalleItem label='Título'>{documento.titulo}</DetalleItem>
-            <DetalleItem label='Tipo de Documento'>
+            <DetalleItem label="Título">{documento.titulo}</DetalleItem>
+            <DetalleItem label="Tipo de Documento">
               {documento.tipo_documento.replace("_", " ")}
             </DetalleItem>
-            <DetalleItem label='Descripción' fullWidth>
+            <DetalleItem label="Estado">
+              <BadgeOperabilidad
+                activo={documento.activo}
+                operable={documento.operable}
+                motivos={documento.motivos_no_operables}
+              />
+            </DetalleItem>
+            <DetalleItem label="Estado de revisión">
+              {documento.estado_vencimiento
+                ? ETIQUETA_ESTADO_VENCIMIENTO[documento.estado_vencimiento]
+                : "Sin configurar"}
+            </DetalleItem>
+            {tieneMotivos && (
+              <DetalleItem label="Motivo no operable / baja" fullWidth>
+                <MotivosNoOperablesBox
+                  motivos={documento.motivos_no_operables}
+                  tipoBaja={documento.tipo_baja}
+                  motivoBaja={documento.motivo_baja}
+                />
+              </DetalleItem>
+            )}
+            <DetalleItem label="Descripción" fullWidth>
               {documento.descripcion || "Sin descripción"}
             </DetalleItem>
           </DetalleSection>
 
           {documento.version_vigente && (
-            <DetalleSection title='Versión Vigente' icon={FiCheckCircle}>
-              <DetalleItem label='Número de Versión'>
+            <DetalleSection title="Versión Vigente" icon={FiCheckCircle}>
+              <DetalleItem label="Número de Versión">
                 {documento.version_vigente.version}
               </DetalleItem>
-              <DetalleItem label='Próxima Revisión'>
+              <DetalleItem label="Próxima Revisión">
                 {documento.version_vigente.fecha_proxima_revision
                   ? formatearFecha(
                       documento.version_vigente.fecha_proxima_revision,
                     )
                   : "No definida"}
               </DetalleItem>
-              <DetalleItem label='Fecha de Subida'>
+              <DetalleItem label="Fecha de Subida">
                 {formatearFecha(documento.version_vigente.fecha_subida)}
               </DetalleItem>
-              <DetalleItem label='Subido por'>
+              <DetalleItem label="Subido por">
                 {documento.version_vigente.subido_por_nombre ||
                   "Usuario desconocido"}
               </DetalleItem>
@@ -255,7 +283,7 @@ export const DocumentoForm = ({
         </VStack>
 
         <FormActions>
-          <CancelButton text='Cerrar' onClick={onCancelar} icon={FiXCircle} />
+          <CancelButton text="Cerrar" onClick={onCancelar} icon={FiXCircle} />
         </FormActions>
       </FormContainer>
     );
@@ -273,28 +301,28 @@ export const DocumentoForm = ({
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <FormGrid>
           {errors.root?.message && (
-            <AlertMessage type='error' message={errors.root.message} />
+            <AlertMessage type="error" message={errors.root.message} />
           )}
 
           <TextField
-            label='Código (Opcional)'
+            label="Código (Opcional)"
             defaultValue={defaultValues.codigo}
-            placeholder='Ej. POES-001 (Se autogenera)'
+            placeholder="Ej. POES-001 (Se autogenera)"
             error={errors.codigo?.message}
             {...register("codigo")}
           />
 
           <TextField
-            label='Título'
+            label="Título"
             defaultValue={defaultValues.titulo}
-            placeholder='Ej. Sanitización de Equipos'
+            placeholder="Ej. Sanitización de Equipos"
             error={errors.titulo?.message}
             {...register("titulo")}
           />
 
           <SelectField
-            label='Tipo de Documento'
-            placeholder='Seleccioná un tipo'
+            label="Tipo de Documento"
+            placeholder="Seleccioná un tipo"
             defaultValue={defaultValues.tipo_documento}
             options={opcionesTipo}
             error={errors.tipo_documento?.message}
@@ -302,23 +330,23 @@ export const DocumentoForm = ({
           />
 
           <TextAreaField
-            label='Descripción'
+            label="Descripción"
             defaultValue={defaultValues.descripcion}
-            placeholder='Breve descripción...'
+            placeholder="Breve descripción..."
             error={errors.descripcion?.message}
             {...register("descripcion")}
           />
 
           {esModoCrear && (
             <Box
-              w='100%'
+              w="100%"
               mt={4}
               pt={4}
-              borderTop='1px solid'
-              borderColor='gray.200'
-              gridColumn='1 / -1'
+              borderTop="1px solid"
+              borderColor="gray.200"
+              gridColumn="1 / -1"
             >
-              <Text fontSize='md' fontWeight='bold' mb={4} color='gray.600'>
+              <Text fontSize="md" fontWeight="bold" mb={4} color="gray.600">
                 Subir PDF (Opcional)
               </Text>
 
@@ -335,9 +363,9 @@ export const DocumentoForm = ({
                 <>
                   <Box mb={4}>
                     <TextField
-                      label='Número de Versión (Inicial)'
+                      label="Número de Versión (Inicial)"
                       defaultValue={defaultValues.version_inicial}
-                      placeholder='v1.0'
+                      placeholder="v1.0"
                       disabled
                       error={errors.version_inicial?.message}
                       {...register("version_inicial")}
@@ -345,17 +373,17 @@ export const DocumentoForm = ({
                   </Box>
 
                   <Field.Root invalid={!!errors.fecha_proxima_revision} mb={6}>
-                    <Field.Label fontSize='md' fontFamily='sans-serif'>
+                    <Field.Label fontSize="md" fontFamily="sans-serif">
                       Fecha Próxima Revisión
                     </Field.Label>
                     <Input
-                      type='date'
+                      type="date"
                       min={hoyLocal}
                       defaultValue={defaultValues.fecha_proxima_revision}
                       {...register("fecha_proxima_revision")}
                     />
                     {errors.fecha_proxima_revision && (
-                      <Text color='red.500' fontSize='sm'>
+                      <Text color="red.500" fontSize="sm">
                         {errors.fecha_proxima_revision.message as string}
                       </Text>
                     )}
@@ -369,12 +397,12 @@ export const DocumentoForm = ({
             <SubmitButton
               text={esModoModificar ? "Guardar Cambios" : "Guardar"}
               loading={isSubmitting}
-              type='submit'
+              type="submit"
               icon={FiSave}
               disabled={!isValid}
             />
             <CancelButton
-              text='Cancelar'
+              text="Cancelar"
               onClick={onCancelar}
               icon={FiXCircle}
             />
@@ -386,7 +414,7 @@ export const DocumentoForm = ({
       {esModoCrear && (
         <AlertConfirm
           open={confirmarAltaAbierto}
-          title='Reactivar Documento'
+          title="Reactivar Documento"
           message={`Ya existe un documento inactivo con el código "${codigoEnviado}". ¿Querés reactivarlo?`}
           loading={reactivar.isSubmitting}
           error={errorConfirmar}

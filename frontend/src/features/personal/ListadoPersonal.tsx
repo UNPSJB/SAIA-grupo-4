@@ -32,6 +32,7 @@ import {
   SemaforoFecha,
   SemaforoLegend,
   TablePagination,
+  BadgeOperabilidad,
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -205,10 +206,13 @@ export const ListadoPersonal = ({
       key: "activo",
       label: "Estado",
       render: (p) => (
-        <Badge colorPalette={p.activo ? "green" : "red"}>
-          {p.activo ? "Activo" : "Inactivo"}
-        </Badge>
-      ),
+      <BadgeOperabilidad
+        activo={p.activo}
+        operable={p.operable}
+        motivos={p.motivos_no_operables}
+        mostrarMotivo
+      />
+    ),
     },
     {
       key: "acciones",

@@ -22,6 +22,7 @@ import {
   RowActions,
   SemaforoLegend,
   TablePagination,
+  BadgeOperabilidad
 } from "../../components/ui";
 import { ListadoContainer, ListadoHeader } from "../../components/layout";
 import { useListadoData } from "../../hooks/useListadoData";
@@ -231,10 +232,13 @@ export const ListadoElementosLimpieza = ({
       label: "Estado",
       w: "100px",
       render: (e) => (
-        <Badge colorPalette={e.activo ? "green" : "red"}>
-          {e.activo ? "Activo" : "Inactivo"}
-        </Badge>
-      ),
+      <BadgeOperabilidad
+        activo={e.activo}
+        operable={e.operable}
+        motivos={e.motivos_no_operables}
+        mostrarMotivo
+      />
+    ),
     },
     {
       key: "acciones",

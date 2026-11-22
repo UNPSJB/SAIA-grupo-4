@@ -1,46 +1,61 @@
 import { apiFetch } from "../../../features/auth/apiFetch";
 import { BASE_URL } from "../../../config";
+import {
+  extraerDetalleBaja,
+  type AsociacionOperativa,
+} from "../../../components/ui";
 import type { ElementoLimpieza } from "../types";
 
 interface HandleDeleteOptions {
   elemento: ElementoLimpieza | null;
+  motivo?: string;
   setLoading: (v: boolean) => void;
   setError: (msg: string) => void;
-  onSuccess?: () => void;
+  setAsociaciones?: (asocs: AsociacionOperativa[]) => void;
+  onSuccess?: (advertencias?: AsociacionOperativa[]) => void;
 }
 
-export const handleDelete = async ({ elemento, setLoading, setError, onSuccess }: HandleDeleteOptions) => {
+export const handleDelete = async ({
+  elemento,
+  motivo,
+  setLoading,
+  setError,
+  setAsociaciones,
+  onSuccess,
+}: HandleDeleteOptions) => {
   if (!elemento) return;
   setLoading(true);
   setError("");
+  setAsociaciones?.([]);
 
   try {
-    const res = await apiFetch(`${BASE_URL}/elementos-limpieza/${elemento.id}`, {
-      method: "DELETE",
-    });
+    const params = new URLSearchParams();
+    if (motivo?.trim()) params.set("motivo", motivo.trim());
+    const qs = params.toString();
+
+    const res = await apiFetch(
+      `${BASE_URL}/elementos-limpieza/${elemento.id}${qs ? `?${qs}` : ""}`,
+      { method: "DELETE" },
+    );
 
     if (!res.ok) {
-      let bodyRes: any = null;
-      try { bodyRes = await res.json(); } catch {}
-
-      let mensajeError = "No se pudo dar de baja el elemento.";
-      if (bodyRes?.detail) {
-        if (typeof bodyRes.detail === "string") mensajeError = bodyRes.detail;
-        else if (typeof bodyRes.detail.code === "string") mensajeError = bodyRes.detail.code;
-      } else {
-        switch (res.status) {
-          case 400: mensajeError = "La acción no está permitida."; break;
-          case 404: mensajeError = "El elemento no existe."; break;
-          case 500: mensajeError = "Error interno del servidor."; break;
-          default: mensajeError = `Error ${res.status || "desconocido"}`;
-        }
+      let bodyRes: { detail?: unknown } | null = null;
+      try {
+        bodyRes = await res.json();
+      } catch {
+        // sin JSON
       }
-      setError(mensajeError);
-      setLoading(false);
+      const { mensaje, asociaciones } = extraerDetalleBaja(
+        bodyRes?.detail,
+        "No se pudo dar de baja el elemento.",
+      );
+      setAsociaciones?.(asociaciones);
+      setError(mensaje);
       return;
     }
 
-    onSuccess?.();
+    const data = (await res.json().catch(() => null)) as ElementoLimpieza | null;
+    onSuccess?.(data?.advertencias_asociaciones ?? []);
   } catch {
     setError("Ocurrió un error de red al intentar comunicarse con el servidor.");
   } finally {

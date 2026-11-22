@@ -1,3 +1,5 @@
+import type { CamposOperabilidad } from "../../components/ui";
+
 export interface TipoElementoLimpieza {
     id: number;
     nombre: string;
@@ -17,7 +19,7 @@ export interface Equipo {
     activo: boolean;
 }
 
-export interface ElementoLimpieza {
+export interface ElementoLimpieza extends CamposOperabilidad {
     id: number;
     codigo: string;
     nombre: string;
