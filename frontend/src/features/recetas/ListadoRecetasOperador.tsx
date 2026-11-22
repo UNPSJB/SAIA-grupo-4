@@ -9,7 +9,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { FiBookOpen, FiPrinter } from "react-icons/fi";
+import { FiBookOpen, FiFileText, FiPrinter } from "react-icons/fi";
 
 import {
   AlertMessage,
@@ -238,13 +238,20 @@ export const ListadoRecetasOperador = () => {
     {
       key: "codigo_receta",
       label: "Código",
-      w: "140px",
-      valorExportacion: (r) => r.codigo_receta,
-      render: (r) => <Text>{r.codigo_receta}</Text>,
+      w: "160px",
+      valorExportacion: (r) => `${r.codigo_receta} (v${r.version})`,
+      render: (r) => (
+        <HStack gap={1.5} wrap='wrap'>
+          <Text>{r.codigo_receta}</Text>
+          <Badge colorPalette='gray' variant='surface' size='sm'>
+            v{r.version}
+          </Badge>
+        </HStack>
+      ),
     },
     {
       key: "nombre_receta",
-      label: "Receta",
+      label: "Nombre",
       valorExportacion: (r) => r.nombre_receta,
       render: (r) => {
         const coincidencias = obtenerCoincidenciasRecursos(
@@ -325,10 +332,10 @@ export const ListadoRecetasOperador = () => {
       render: (r) => (
         <RowActions>
           <RowActionButton
-            icon={FiBookOpen}
+            icon={FiFileText}
             label='Ver ficha técnica'
             title='Ver ficha técnica completa'
-            colorPalette='green'
+            colorPalette='purple'
             onClick={() => verFicha(r)}
           />
           <RowActionButton
@@ -345,7 +352,7 @@ export const ListadoRecetasOperador = () => {
 
   return (
     <ListadoContainer>
-      <ListadoHeader title='Catálogo de Recetas' icon={FiBookOpen} />
+      <ListadoHeader title='Recetas' icon={FiBookOpen} />
 
       <Box
         mb={4}
@@ -376,8 +383,8 @@ export const ListadoRecetasOperador = () => {
           )}
         >
           <FiltroTexto
-            ariaLabel='Buscar por código, receta, producto, insumo o equipo'
-            placeholder='Código, receta, producto, insumo o equipo...'
+            ariaLabel='Buscar por código, nombre, producto, insumo o equipo'
+            placeholder='Código, nombre, producto, insumo o equipo...'
             value={borradorFiltros.busqueda}
             onChange={(v) =>
               setBorradorFiltros((prev) => ({ ...prev, busqueda: v }))
@@ -448,9 +455,14 @@ export const ListadoRecetasOperador = () => {
                 <Card.Root key={r.id} variant='outline'>
                   <Card.Body gap={2}>
                     <HStack justify='space-between' align='flex-start' gap={2}>
-                      <Text fontWeight='bold' color='green.700'>
-                        {r.codigo_receta}
-                      </Text>
+                      <HStack gap={1.5} wrap='wrap'>
+                        <Text fontWeight='bold' color='green.700'>
+                          {r.codigo_receta}
+                        </Text>
+                        <Badge colorPalette='gray' variant='surface' size='sm'>
+                          v{r.version}
+                        </Badge>
+                      </HStack>
                       <Badge
                         colorPalette='purple'
                         variant='subtle'

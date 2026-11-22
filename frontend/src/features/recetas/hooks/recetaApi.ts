@@ -139,8 +139,8 @@ export const recetasApi = {
     }),
   activarReceta: (id: number) =>
     request<Receta>(`/recetas/${id}/activar`, { method: "POST" }),
-  inhabilitarReceta: (id: number) =>
-    request<Receta>(`/recetas/${id}/inhabilitar`, { method: "POST" }),
+  archivarReceta: (id: number) =>
+    request<Receta>(`/recetas/${id}/archivar`, { method: "POST" }),
   pasarABorrador: (id: number) =>
     request<Receta>(`/recetas/${id}/pasar-a-borrador`, { method: "POST" }),
   retomarBorrador: (id: number) =>

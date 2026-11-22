@@ -1,4 +1,4 @@
-export type EstadoReceta = "BORRADOR" | "ACTIVA" | "INHABILITADA";
+export type EstadoReceta = "BORRADOR" | "ACTIVA" | "ARCHIVADA";
 
 export interface EquipoResumen {
   id: number;
@@ -78,6 +78,7 @@ export interface Receta {
   id: number;
   codigo_receta: string;
   nombre_receta: string;
+  version: number;
   producto_id: number;
   producto?: ProductoResumen;
   rendimiento_estandar: number;
