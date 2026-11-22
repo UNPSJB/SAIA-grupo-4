@@ -1,3 +1,5 @@
+import type { AlertaRecursoNoOperable } from "../../components/ui";
+
 export interface ConsumoInsumoCreate {
   insumo_id: number;
   cantidad_real_utilizada: number;
@@ -30,6 +32,7 @@ export interface ProductoDisponibleLote {
   receta_nombre: string;
   rendimiento_estandar: number | string;
   insumos_teoricos: InsumoTeoricoReceta[];
+  alertas_recursos?: AlertaRecursoNoOperable[];
 }
 
 export interface LoteCreatePayload {
@@ -61,6 +64,7 @@ export interface Lote {
   operador_nombre?: string;
 
   consumos_insumos: ConsumoInsumo[];
+  alertas_recursos?: AlertaRecursoNoOperable[];
 }
 
 export type LoteCreate = LoteCreatePayload;

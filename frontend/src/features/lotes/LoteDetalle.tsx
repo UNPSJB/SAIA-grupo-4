@@ -9,6 +9,7 @@ import {
 import { FiBox, FiClock, FiEye, FiLayers, FiUser } from "react-icons/fi";
 import { DetalleModal, type SeccionDetalle } from "../../components/layout";
 import type { Lote } from "./types";
+import { AlertasRecursosBanner } from "../../components/ui";
 
 interface LoteDetalleProps {
   lote: Lote;
@@ -162,6 +163,24 @@ export const LoteDetalle = ({ lote, onCerrar }: LoteDetalleProps) => {
       titulo: "Observaciones",
       icono: FiEye,
       items: [{ label: "Notas", valor: lote.observaciones }],
+    });
+  }
+
+  if (lote.alertas_recursos && lote.alertas_recursos.length > 0) {
+    secciones.unshift({
+      titulo: "Alertas de Recursos",
+      icono: FiClock,
+      items: [
+        {
+          label: "",
+          valor: (
+            <AlertasRecursosBanner
+              alertas={lote.alertas_recursos}
+              titulo="Recursos actualmente no operables vinculados a este lote"
+            />
+          ),
+        },
+      ],
     });
   }
 

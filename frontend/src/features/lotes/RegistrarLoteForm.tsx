@@ -19,6 +19,7 @@ import {
 } from "react-icons/fi";
 import {
   AlertMessage,
+  AlertasRecursosBanner,
   CancelButton,
   FormActions,
   FormContainer,
@@ -106,6 +107,9 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
   const productoSeleccionado = useMemo(() => {
     return productos.find((p) => p.id === productoId) || null;
   }, [productos, productoId]);
+
+  const alertasProducto = productoSeleccionado?.alertas_recursos ?? [];
+  const tieneAlertasProducto = alertasProducto.length > 0;
 
   // Autocalcular sugerencia de código de lote
   const generarSugerenciaCodigo = useCallback(
@@ -355,6 +359,12 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                     )}
                   </VStack>
                 </Box>
+                {tieneAlertasProducto && (
+                  <AlertasRecursosBanner
+                    alertas={alertasProducto}
+                    titulo="Producción bloqueada: la receta tiene recursos no operables"
+                  />
+                )}
 
                 {/* 2. Código de Lote */}
                 <Field.Root required>
@@ -518,7 +528,7 @@ export const RegistrarLoteForm = ({ onSuccess, onCancelar }: RegistrarLoteFormPr
                 loading={guardando}
                 type="submit"
                 colorPalette="green"
-                disabled={!productoSeleccionado}
+                disabled={!productoSeleccionado || tieneAlertasProducto}
               />
               {onCancelar && (
                 <CancelButton

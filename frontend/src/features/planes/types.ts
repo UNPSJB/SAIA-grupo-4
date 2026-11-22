@@ -2,6 +2,7 @@ import type { Equipo } from "../equipos/types";
 import type { Sector } from "../sectores/types";
 import type { Persona } from "../personal/types";
 import type { UnidadMedida } from "../unidadMedida/types";
+import type { AlertaRecursoNoOperable } from "../../components/ui";
 
 export type Momento = "pre-operacional" | "operacional" | "post-operacional";
 
@@ -43,6 +44,8 @@ export interface ElementoLimpiezaCatalogo {
   sector_id?: number | null;
   equipo_id?: number | null;
   activo: boolean;
+  operable?: boolean;
+  motivos_no_operables?: string[];
 }
 
 export interface TareaInsumoQuimico {
@@ -75,6 +78,7 @@ export interface TareaPOES {
   elementos_limpieza: TareaElementoLimpieza[];
   equipo?: Equipo;
   sector?: Sector;
+  alertas_recursos?: AlertaRecursoNoOperable[];
 }
 
 export interface PlanPOES {
@@ -86,6 +90,7 @@ export interface PlanPOES {
   fecha_hasta?: string;
   activo: boolean;
   tareas?: TareaPOES[];
+  alertas_recursos?: AlertaRecursoNoOperable[];
 }
 
 export interface PlanCatalogs {

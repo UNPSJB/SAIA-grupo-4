@@ -22,6 +22,7 @@ import {
 } from "react-icons/fi";
 import type { EjecucionTarea, RegistroConsumoQuimico } from "../types";
 import { etiquetaTipoPoe, obtenerDestino, obtenerPasosPoes } from "../utils";
+import { AlertasRecursosBanner } from "../../../components/ui";
 
 interface TareaCardPendienteProps {
   ejecucion: EjecucionTarea;
@@ -47,6 +48,8 @@ export function TareaCardPendiente({
 
   const { tarea } = ejecucion;
   const pasosPoes = obtenerPasosPoes(tarea.metodo);
+  const alertasRecursos = ejecucion.alertas_recursos ?? [];
+  const tieneRecursosNoOperables = alertasRecursos.length > 0;
 
   // Se indexa por insumo_quimico.id (id global del catálogo), no por el índice
   // del arreglo, para no mezclar consumos entre insumos.
@@ -134,7 +137,14 @@ export function TareaCardPendiente({
           </Text>
         </HStack>
       )}
-
+      {tieneRecursosNoOperables && (
+        <Box my={2}>
+          <AlertasRecursosBanner
+            alertas={alertasRecursos}
+            titulo="Tarea bloqueada: recursos no operables"
+          />
+        </Box>
+      )}
       {/* POES */}
       {pasosPoes.length > 0 && (
         <Box my={2} p={2} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.100">
@@ -284,6 +294,12 @@ export function TareaCardPendiente({
             w={{ base: "100%", sm: "auto" }}
             loading={isSubmitting}
             loadingText="Guardando..."
+            disabled={tieneRecursosNoOperables}
+            title={
+              tieneRecursosNoOperables
+                ? "No se puede cerrar la tarea hasta regularizar los recursos no operables."
+                : undefined
+            }
           >
             <FiCheck style={{ marginRight: "6px" }} />
             Marcar como realizada

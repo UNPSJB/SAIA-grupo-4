@@ -1,3 +1,4 @@
+import type { AlertaRecursoNoOperable } from "../../components/ui";
 // Contrato con el backend, replicando 1:1 los schemas de
 // backend/src/checklists/schemas.py. Las estructuras se mantienen anidadas y en
 // snake_case (igual que el resto de las features ya conectadas: equipos, personal,
@@ -76,6 +77,7 @@ export interface EjecucionTarea {
   observaciones: string | null;
   tarea: TareaParaChecklist;
   consumos_insumos: ConsumoEjecucionChecklist[];
+  alertas_recursos?: AlertaRecursoNoOperable[];
 }
 
 // Cuerpo del campo "datos" (JSON) del PATCH /checklists/{id}/completar.

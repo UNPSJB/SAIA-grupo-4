@@ -108,13 +108,22 @@ export const usePasoCatalogs = ({ modo, paso }: UsePasoCatalogsArgs) => {
 
   const opcionesEquipos = useMemo<CheckboxGroupOption[]>(() => {
     const filtrados = equipos.filter(
-      (e) => e.activo || (esEdicion && idsEquiposDelPaso.has(e.id)),
+      (e) =>
+        (e.activo && e.operable !== false) ||
+        (esEdicion && idsEquiposDelPaso.has(e.id)),
     );
 
-    const opciones: CheckboxGroupOption[] = filtrados.map((e) => ({
-      label: e.nombre,
-      value: String(e.id),
-    }));
+    const opciones: CheckboxGroupOption[] = filtrados.map((e) => {
+      const sufijo = !e.activo
+        ? " [Dado de baja]"
+        : e.operable === false
+          ? " [No operable]"
+          : "";
+      return {
+        label: `${e.nombre}${sufijo}`,
+        value: String(e.id),
+      };
+    });
 
     if (esEdicion && paso?.equipos) {
       const vistos = new Set(filtrados.map((e) => e.id));

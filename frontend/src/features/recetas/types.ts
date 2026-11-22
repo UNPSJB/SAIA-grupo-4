@@ -1,3 +1,5 @@
+import type { AlertaRecursoNoOperable } from "../../components/ui";
+
 export type EstadoReceta = "BORRADOR" | "ACTIVA" | "INHABILITADA";
 
 export interface EquipoResumen {
@@ -91,6 +93,7 @@ export interface Receta {
   usuario_creador_nombre?: string;
   tiene_lotes?: boolean;
   pasos?: PasoReceta[];
+  alertas_recursos?: AlertaRecursoNoOperable[];
 }
 
 export interface FiltrosReceta {

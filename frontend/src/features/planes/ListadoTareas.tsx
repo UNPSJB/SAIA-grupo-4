@@ -27,6 +27,7 @@ import {
 } from "react-icons/fi";
 import {
   AlertMessage,
+  AlertasRecursosBanner,
   DataTable,
   LoadingState,
   RowActionButton,
@@ -125,7 +126,12 @@ export const ListadoTareas = ({
     {
       key: "nombre",
       label: "Tarea de Limpieza",
-      render: (tarea) => <Text fontWeight='semibold'>{tarea.nombre}</Text>,
+      render: (tarea) => (
+        <VStack align='start' gap={0.5}>
+          <Text fontWeight='semibold'>{tarea.nombre}</Text>
+          <AlertasRecursosBanner alertas={tarea.alertas_recursos} compacto />
+        </VStack>
+      ),
     },
     {
       key: "destino",
@@ -274,6 +280,10 @@ export const ListadoTareas = ({
             <Text as='span'>{plan.objetivo ?? "—"}</Text>
           </Flex>
         </VStack>
+        <AlertasRecursosBanner
+          alertas={plan.alertas_recursos}
+          titulo='Este plan contiene recursos no operables'
+        />
       </ListadoContainer>
 
       <ListadoContainer mt={4}>

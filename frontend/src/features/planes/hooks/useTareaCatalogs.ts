@@ -17,6 +17,7 @@ interface UseTareaCatalogsArgs {
   esModoVer: boolean;
   tareaEquipoId?: number;
   tareaSectorId?: number;
+  tareaElementosIds?: number[];
 }
 
 /**
@@ -37,19 +38,31 @@ export const useTareaCatalogs = ({
   esModoVer,
   tareaEquipoId,
   tareaSectorId,
+  tareaElementosIds,
 }: UseTareaCatalogsArgs) => {
   const esEdicion = esModoModificar || esModoVer;
 
   const opcionesEquipos = useMemo(
     () =>
       catalogs.equipos
-        .filter((e) => e.activo || (esEdicion && tareaEquipoId === e.id))
-        .map((e) => ({
-          label: `${e.nombre} (${
-            e.sector?.nombre ?? "Sin sector"
-          }${e.ubicacion ? " / " + e.ubicacion : ""})`,
-          value: String(e.id),
-        })),
+        .filter(
+          (e) =>
+            (e.activo && e.operable !== false) ||
+            (esEdicion && tareaEquipoId === e.id),
+        )
+        .map((e) => {
+          const sufijo = !e.activo
+            ? " [Dado de baja]"
+            : e.operable === false
+              ? " [No operable]"
+              : "";
+          return {
+            label: `${e.nombre} (${
+              e.sector?.nombre ?? "Sin sector"
+            }${e.ubicacion ? " / " + e.ubicacion : ""})${sufijo}`,
+            value: String(e.id),
+          };
+        }),
     [catalogs.equipos, esEdicion, tareaEquipoId],
   );
 
@@ -75,18 +88,30 @@ export const useTareaCatalogs = ({
     [recursosInsumos],
   );
 
-  const opcionesElementos = useMemo<OpcionRecurso[]>(
-    () =>
-      Array.from(
-        new Map(recursosElementos.map((el) => [el.id, el])).values(),
-      ).map((el) => ({
-        label: el.nombre,
-        value: String(el.id),
-        badge: getOrigenRecurso(el),
-      })),
-    [recursosElementos],
-  );
-
+  const opcionesElementos = useMemo<OpcionRecurso[]>(() => {
+    const idsAsociados = new Set(tareaElementosIds ?? []);
+    return Array.from(
+      new Map(recursosElementos.map((el) => [el.id, el])).values(),
+    )
+      .filter(
+        (el) =>
+          (el.activo && el.operable !== false) ||
+          (esEdicion && idsAsociados.has(el.id)),
+      )
+      .map((el) => {
+        const sufijo = !el.activo
+          ? " [Dado de baja]"
+          : el.operable === false
+            ? " [No operable]"
+            : "";
+        return {
+          label: `${el.nombre}${sufijo}`,
+          value: String(el.id),
+          badge: getOrigenRecurso(el),
+        };
+      });
+  }, [recursosElementos, esEdicion, tareaElementosIds]);
+  
   return {
     opcionesEquipos,
     opcionesSectores,

@@ -13,6 +13,7 @@ import {
   labelsDias,
   parsearDetalleFrecuencia,
 } from "./utils";
+import { AlertasRecursosBanner } from "../../components/ui";
 
 interface TareaDetalleProps {
   tarea: TareaPOES;
@@ -102,6 +103,25 @@ export const TareaDetalle = ({ tarea, catalogs, onCerrar }: TareaDetalleProps) =
     },
   ];
 
+  if (tarea.alertas_recursos && tarea.alertas_recursos.length > 0) {
+    secciones.unshift({
+      titulo: "Alertas de Recursos",
+      icono: FiTool,
+      columnas: 1,
+      items: [
+        {
+          label: "",
+          valor: (
+            <AlertasRecursosBanner
+              alertas={tarea.alertas_recursos}
+              titulo="Recursos no operables en esta tarea"
+            />
+          ),
+        },
+      ],
+    });
+  }
+  
   return (
     <DetalleModal
       open

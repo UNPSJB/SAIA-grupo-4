@@ -25,7 +25,7 @@ import {
   FiTool,
 } from "react-icons/fi";
 
-import { AlertMessage, LoadingState } from "../../components/ui";
+import { AlertMessage, AlertasRecursosBanner, LoadingState } from "../../components/ui";
 import { ListadoContainer } from "../../components/layout";
 import { useAuth } from "../auth/useAuth";
 import { recetasApi } from "./hooks/recetaApi";
@@ -354,6 +354,15 @@ export const FichaTecnicaReceta = ({ modo }: FichaTecnicaRecetaProps = {}) => {
               <Text fontSize="sm" color="gray.800">
                 <strong>Observaciones:</strong> {receta.observaciones}
               </Text>
+            </Box>
+          )}
+          
+          {(receta.alertas_recursos?.length ?? 0) > 0 && (
+            <Box mb={4}>
+              <AlertasRecursosBanner
+                alertas={receta.alertas_recursos}
+                titulo="Recursos no operables asociados a esta receta"
+              />
             </Box>
           )}
 

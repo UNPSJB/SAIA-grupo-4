@@ -7,6 +7,7 @@ import { Badge, Box, Button, Heading, HStack, Icon, Text, VStack } from "@chakra
 import {
   AlertConfirm,
   AlertMessage,
+  AlertasRecursosBanner,
   DataTable,
   FiltroSelect,
   FiltrosBar,
@@ -184,6 +185,10 @@ const TareaDesplegable = ({
                 • <strong>Elementos de limpieza:</strong> {getElementosLabel(tarea, catalogs)}
               </Text>
             </VStack>
+            <AlertasRecursosBanner
+              alertas={tarea.alertas_recursos}
+              titulo="Recursos no operables en esta tarea"
+            />
           </VStack>
         </Box>
       )}
@@ -355,7 +360,16 @@ export default function HistorialPlanesPage() {
   };
 
   const columnas: ColumnDef<PlanPOES>[] = [
-    { key: "nombre", label: "Nombre", render: (plan) => plan.nombre },
+    {
+      key: "nombre",
+      label: "Nombre",
+      render: (plan) => (
+        <VStack align="start" gap={0.5}>
+          <Text>{plan.nombre}</Text>
+          <AlertasRecursosBanner alertas={plan.alertas_recursos} compacto />
+        </VStack>
+      ),
+    },
     {
       key: "autor",
       label: "Elaborado por",

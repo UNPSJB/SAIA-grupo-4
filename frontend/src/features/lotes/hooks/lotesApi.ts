@@ -9,6 +9,12 @@ async function handleResponse<T>(res: Response, fallbackError: string): Promise<
       const errorData = await res.json();
       if (typeof errorData.detail === "string") {
         mensaje = errorData.detail;
+      } else if (
+        errorData.detail &&
+        typeof errorData.detail === "object" &&
+        typeof errorData.detail.code === "string"
+      ) {
+        mensaje = errorData.detail.code;
       } else if (Array.isArray(errorData.detail)) {
         mensaje = errorData.detail.map((e: any) => e.msg || e.detail).join(", ");
       }

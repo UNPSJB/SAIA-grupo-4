@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import {
   AlertMessage,
+  AlertasRecursosBanner,
   CancelButton,
   FormActions,
   FormContainer,
@@ -203,6 +204,11 @@ export const TareaForm = ({
     elementosSeleccionados,
   });
 
+  const tareaElementosIds = useMemo(
+    () => (tarea?.elementos_limpieza ?? []).map((e) => e.elemento_limpieza_id),
+    [tarea],
+  );
+
   // Opciones de los desplegables, deduplicadas y etiquetadas por origen.
   const {
     opcionesEquipos,
@@ -217,6 +223,7 @@ export const TareaForm = ({
     esModoVer,
     tareaEquipoId: tarea?.equipo_id,
     tareaSectorId: tarea?.sector_id,
+    tareaElementosIds,
   });
 
   // 5. Estado local de recursos (consumos, diluciones, cantidades)
@@ -318,6 +325,12 @@ export const TareaForm = ({
       {/* En modo ver no hay submit: el form sirve solo para mostrar los datos. */}
       <form onSubmit={esModoVer ? undefined : onSubmit} noValidate>
         <VStack gap={4} align='stretch' ref={inicioRef}>
+          {esEdicion && (tarea?.alertas_recursos?.length ?? 0) > 0 && (
+            <AlertasRecursosBanner
+              alertas={tarea?.alertas_recursos}
+              titulo="Esta tarea tiene recursos no operables asociados"
+            />
+          )}
           {!esModoVer && (
             <HStack
               gap={2}

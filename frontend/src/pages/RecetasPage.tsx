@@ -13,6 +13,7 @@ import {
   AlertConfirm,
   AlertDelete,
   AlertMessage,
+  AlertasRecursosBanner,
   DataTable,
   FiltroSelect,
   FiltrosBar,
@@ -310,6 +311,7 @@ export default function RecetasPage() {
                 {c.texto}
               </Text>
             ))}
+            <AlertasRecursosBanner alertas={r.alertas_recursos} compacto />
           </VStack>
         );
       },

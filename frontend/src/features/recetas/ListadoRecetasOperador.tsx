@@ -13,6 +13,7 @@ import { FiBookOpen, FiPrinter } from "react-icons/fi";
 
 import {
   AlertMessage,
+  AlertasRecursosBanner,
   DataTable,
   FiltroSelect,
   FiltrosBar,
@@ -236,6 +237,7 @@ export const ListadoRecetasOperador = () => {
                 {c.texto}
               </Text>
             ))}
+            <AlertasRecursosBanner alertas={r.alertas_recursos} compacto />
           </VStack>
         );
       },
@@ -407,6 +409,7 @@ export const ListadoRecetasOperador = () => {
                         {c.texto}
                       </Text>
                     ))}
+                    <AlertasRecursosBanner alertas={r.alertas_recursos} compacto />
 
                     <Text fontSize="xs" color="gray.600">
                       Rendimiento: <strong>{rendimiento}</strong>
