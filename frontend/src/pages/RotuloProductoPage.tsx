@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -38,6 +38,7 @@ type ModoImpresionRotulo = "borrador" | "respaldo";
 
 export default function RotuloProductoPage() {
   const { productoId } = useParams<{ productoId: string }>();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const idNumerico = Number(productoId);
 
@@ -130,7 +131,7 @@ export default function RotuloProductoPage() {
     } else {
       nextParams.delete("vista");
     }
-    setSearchParams(nextParams, { replace: true });
+    setSearchParams(nextParams, { replace: true, state: location.state });
   };
 
   const handleGuardar = async (payload: RotuloProductoUpdate) => {

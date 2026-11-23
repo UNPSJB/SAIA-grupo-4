@@ -292,11 +292,16 @@ export function construirMigas(
     ];
   }
 
-  // Si vino derivado de una card del Dashboard (ej: Dashboard -> /vencimientos)
+  // Si vino derivado de una card del Dashboard (ej: Dashboard -> /vencimientos o /lotes/registrar)
   if (vinoDesdeDashboard && primerSegmento !== "dashboard") {
+    const subMigas = construirMigas(pathname, null).map((miga, idx, arr) => ({
+      ...miga,
+      esLink: idx < arr.length - 1 ? miga.esLink : false,
+      state: idx < arr.length - 1 ? (miga.state ?? { origen: "dashboard" }) : undefined,
+    }));
     return [
       { nombre: "Dashboard", to: "/dashboard", esLink: true },
-      { nombre: legible(primerSegmento), to: `/${primerSegmento}`, esLink: false },
+      ...subMigas,
     ];
   }
 
@@ -333,6 +338,15 @@ export function construirMigas(
     ) {
       migas.push({
         nombre: "Historial de versiones",
+        to: pathAcumulado,
+        esLink: puedeTenerLink,
+      });
+      continue;
+    }
+
+    if (seg === "historial" && segmentos[0] === "lotes") {
+      migas.push({
+        nombre: "Historial de Lotes",
         to: pathAcumulado,
         esLink: puedeTenerLink,
       });
