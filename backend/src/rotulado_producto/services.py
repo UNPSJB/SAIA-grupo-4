@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 import hashlib
 import json
 from typing import Optional
@@ -340,10 +340,15 @@ def _calcular_datos_autocompletados(
     conservacion_sugerida = _sugerir_conservacion(producto, receta_activa)
     firma_actual = _calcular_firma_receta_alergenos(receta_activa, alergenos_calc, producto)
 
+    hoy = date.today()
     lotes_db = db.scalars(
         select(Lote)
         .options(joinedload(Lote.receta))
-        .where(Lote.producto_id == producto.id)
+        .where(
+            Lote.producto_id == producto.id,
+            Lote.fecha_retencion.is_(None),
+            Lote.fecha_vencimiento >= hoy,
+        )
         .order_by(Lote.fecha_elaboracion.desc(), Lote.id.desc())
     ).all()
 
