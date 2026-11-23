@@ -42,6 +42,24 @@ import {
 import { useConfiguracion } from "../../features/configuracion/useConfiguracion";
 import { SCROLLBAR_OCULTA_CSS } from "./espaciado";
 
+const resolverRutaActivaSidebar = (pathname: string, state: unknown): string => {
+  const s = state && typeof state === "object" ? (state as Record<string, unknown>) : null;
+  const from = typeof s?.from === "string" ? s.from : "";
+  const padre =
+    s?.padre && typeof s.padre === "object"
+      ? (s.padre as { to?: unknown })
+      : null;
+  const padreTo = typeof padre?.to === "string" ? padre.to : "";
+
+  // Si se entra al rótulo desde la ficha técnica de una receta, mantener seleccionada "Recetas"
+  if (/^\/productos\/\d+\/rotulo\/?$/.test(pathname)) {
+    if (padreTo === "/recetas" || from.startsWith("/recetas")) {
+      return from || "/recetas";
+    }
+  }
+  return pathname;
+};
+
 const isActiveRoute = (pathname: string, to: string) => {
   if (pathname === to) return true;
   if (to === "/lotes") return pathname === "/lotes";
@@ -135,7 +153,8 @@ const NavSection = ({
   onOpenChange,
   onCollapsedClick,
 }: NavSectionProps) => {
-  const { pathname } = useLocation();
+  const { pathname: rawPathname, state } = useLocation();
+  const pathname = resolverRutaActivaSidebar(rawPathname, state);
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   return (
@@ -279,7 +298,8 @@ export const SideBar = ({
     | string
     | { base?: string; md?: string; lg?: string; xl?: string; "2xl"?: string };
 }) => {
-  const { pathname } = useLocation();
+  const { pathname: rawPathname, state } = useLocation();
+  const pathname = resolverRutaActivaSidebar(rawPathname, state);
   const { configuracion, logoSrc } = useConfiguracion();
   const nombreMostrado = configuracion.nombre_establecimiento || title;
   const [isCollapsed, setIsCollapsed] = useState(false);
