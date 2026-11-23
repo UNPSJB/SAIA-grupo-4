@@ -92,6 +92,13 @@ export const InhabilitarLoteForm = ({
           </FormGridFull>
 
           <FormActions>
+            <CancelButton
+              text='Cancelar'
+              icon={FiXCircle}
+              onClick={onCancelar}
+              colorPalette='red'
+              variant='outline'
+            />
             <SubmitButton
               text='Inhabilitar'
               icon={FiSlash}
@@ -99,13 +106,6 @@ export const InhabilitarLoteForm = ({
               type='submit'
               colorPalette='red'
               disabled={!isValid}
-            />
-            <CancelButton
-              text='Cancelar'
-              icon={FiXCircle}
-              onClick={onCancelar}
-              colorPalette='red'
-              variant='outline'
             />
           </FormActions>
 

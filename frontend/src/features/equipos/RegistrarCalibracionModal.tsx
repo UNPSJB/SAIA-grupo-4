@@ -119,6 +119,13 @@ export const RegistrarCalibracionForm = ({
         {error && <AlertMessage type='error' message={error} />}
 
         <FormActions>
+          <CancelButton
+            text='Cancelar'
+            icon={FiXCircle}
+            onClick={onCancelar}
+            colorPalette='red'
+            variant='outline'
+          />
           <SubmitButton
             text='Guardar Calibración'
             icon={FiCheck}
@@ -126,13 +133,6 @@ export const RegistrarCalibracionForm = ({
             onClick={handleGuardar}
             colorPalette='green'
             disabled={!esValido}
-          />
-          <CancelButton
-            text='Cancelar'
-            icon={FiXCircle}
-            onClick={onCancelar}
-            colorPalette='red'
-            variant='outline'
           />
         </FormActions>
       </FormGrid>

@@ -648,6 +648,13 @@ export const InsumoForm = ({
               />
             ) : (
               <>
+                <CancelButton
+                  text='Cancelar'
+                  icon={FiXCircle}
+                  onClick={onCancelar}
+                  colorPalette='red'
+                  variant='outline'
+                />
                 {pasoActual > 0 && (
                   <Button
                     type='button'
@@ -678,13 +685,6 @@ export const InsumoForm = ({
                     disabled={!isValid}
                   />
                 )}
-                <CancelButton
-                  text='Cancelar'
-                  icon={FiXCircle}
-                  onClick={onCancelar}
-                  colorPalette='red'
-                  variant='outline'
-                />
               </>
             )}
           </FormActions>

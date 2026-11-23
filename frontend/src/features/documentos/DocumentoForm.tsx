@@ -366,17 +366,17 @@ export const DocumentoForm = ({
           )}
 
           <FormActions>
+            <CancelButton
+              text='Cancelar'
+              onClick={onCancelar}
+              icon={FiXCircle}
+            />
             <SubmitButton
               text={esModoModificar ? "Guardar Cambios" : "Guardar"}
               loading={isSubmitting}
               type='submit'
               icon={FiSave}
               disabled={!isValid}
-            />
-            <CancelButton
-              text='Cancelar'
-              onClick={onCancelar}
-              icon={FiXCircle}
             />
           </FormActions>
         </FormGrid>

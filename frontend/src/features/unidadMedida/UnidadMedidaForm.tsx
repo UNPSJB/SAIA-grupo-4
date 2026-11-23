@@ -186,6 +186,13 @@ export const UnidadMedidaForm = ({
               />
             ) : (
               <>
+                <CancelButton
+                  text='Cancelar'
+                  icon={FiXCircle}
+                  onClick={onCancelar}
+                  colorPalette='red'
+                  variant='outline'
+                />
                 <SubmitButton
                   text='Guardar'
                   icon={FiSave}
@@ -193,13 +200,6 @@ export const UnidadMedidaForm = ({
                   type='submit'
                   colorPalette='green'
                   disabled={!isValid}
-                />
-                <CancelButton
-                  text='Cancelar'
-                  icon={FiXCircle}
-                  onClick={onCancelar}
-                  colorPalette='red'
-                  variant='outline'
                 />
               </>
             )}

@@ -83,6 +83,13 @@ export const RetenerLoteModal = ({
             </FormGridFull>
 
             <FormActions>
+              <CancelButton
+                text="Cancelar"
+                icon={FiXCircle}
+                onClick={onCancelar}
+                colorPalette="red"
+                variant="outline"
+              />
               <SubmitButton
                 text="Retener"
                 icon={FiSlash}
@@ -90,13 +97,6 @@ export const RetenerLoteModal = ({
                 type="submit"
                 colorPalette="red"
                 disabled={!isValid}
-              />
-              <CancelButton
-                text="Cancelar"
-                icon={FiXCircle}
-                onClick={onCancelar}
-                colorPalette="red"
-                variant="outline"
               />
             </FormActions>
 

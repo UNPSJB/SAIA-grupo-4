@@ -120,6 +120,13 @@ export const TipoElementoLimpiezaForm = ({
           placeholder='Ej. ESP'
         />
         <FormActions>
+          <CancelButton
+            text='Cancelar'
+            icon={FiXCircle}
+            onClick={onCancelar}
+            colorPalette='red'
+            variant='outline'
+          />
           <SubmitButton
             text='Guardar'
             icon={FiSave}
@@ -127,13 +134,6 @@ export const TipoElementoLimpiezaForm = ({
             onClick={handleGuardar}
             colorPalette='green'
             disabled={!esValido}
-          />
-          <CancelButton
-            text='Cancelar'
-            icon={FiXCircle}
-            onClick={onCancelar}
-            colorPalette='red'
-            variant='outline'
           />
         </FormActions>
         {errorEnvio && <AlertMessage type='error' message={errorEnvio} />}

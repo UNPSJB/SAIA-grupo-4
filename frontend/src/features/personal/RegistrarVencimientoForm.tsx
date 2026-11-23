@@ -121,8 +121,8 @@ export const RegistrarVencimientoForm = ({ persona, documentoFijo, onCancelar, o
                     selectedText="Cambiar"
                   />
                 <FormActions>
-                    <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} onClick={handleGuardar} colorPalette="green" disabled={!esValido} />
                     <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
+                    <SubmitButton text="Guardar" icon={FiSave} loading={isSubmitting} onClick={handleGuardar} colorPalette="green" disabled={!esValido} />
                 </FormActions>
                 {errorEnvio && <AlertMessage type="error" message={errorEnvio} />}
             </FormGrid>

@@ -192,17 +192,17 @@ export const SubirVersionForm = ({
           />
 
           <FormActions>
+            <CancelButton
+              text='Cancelar'
+              onClick={onCancelar}
+              icon={FiXCircle}
+            />
             <SubmitButton
               text='Subir y Activar'
               loading={isSubmitting}
               type='submit'
               icon={FiUpload}
               disabled={!isValid}
-            />
-            <CancelButton
-              text='Cancelar'
-              onClick={onCancelar}
-              icon={FiXCircle}
             />
           </FormActions>
         </FormGrid>

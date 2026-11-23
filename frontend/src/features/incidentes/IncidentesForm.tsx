@@ -262,6 +262,13 @@ export const IncidenteForm = ({
                             />
                         ) : (
                             <>
+                                <CancelButton
+                                    text="Cancelar"
+                                    icon={FiXCircle}
+                                    onClick={onCancelar}
+                                    colorPalette="red"
+                                    variant="outline"
+                                />
                                 <SubmitButton
                                     text="Guardar"
                                     icon={FiSave}
@@ -269,13 +276,6 @@ export const IncidenteForm = ({
                                     type="submit"
                                     colorPalette="green"
                                     disabled={!isValid}
-                                />
-                                <CancelButton
-                                    text="Cancelar"
-                                    icon={FiXCircle}
-                                    onClick={onCancelar}
-                                    colorPalette="red"
-                                    variant="outline"
                                 />
                             </>
                         )}

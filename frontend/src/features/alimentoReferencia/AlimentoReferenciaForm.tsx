@@ -237,6 +237,13 @@ export const AlimentoReferenciaForm = ({
           />
 
           <FormActions>
+            <CancelButton
+              text='Cancelar'
+              icon={FiXCircle}
+              onClick={onCancelar}
+              colorPalette='red'
+              variant='outline'
+            />
             <SubmitButton
               text='Guardar'
               icon={FiSave}
@@ -244,13 +251,6 @@ export const AlimentoReferenciaForm = ({
               type='submit'
               colorPalette='green'
               disabled={!isValid}
-            />
-            <CancelButton
-              text='Cancelar'
-              icon={FiXCircle}
-              onClick={onCancelar}
-              colorPalette='red'
-              variant='outline'
             />
           </FormActions>
 

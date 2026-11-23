@@ -203,8 +203,8 @@ export const RecetaForm = ({
           />
 
           <FormActions>
-            <SubmitButton text={esModoCrear ? "Guardar" : "Guardar"} icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
             <CancelButton text="Cancelar" icon={FiXCircle} onClick={onCancelar} colorPalette="red" variant="outline" />
+            <SubmitButton text={esModoCrear ? "Guardar" : "Guardar"} icon={FiSave} loading={isSubmitting} type="submit" colorPalette="green" />
           </FormActions>
 
           {errors.root?.message && <AlertMessage type="error" message={errors.root.message} />}

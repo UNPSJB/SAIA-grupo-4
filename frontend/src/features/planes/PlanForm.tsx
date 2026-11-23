@@ -134,6 +134,13 @@ export const PlanForm = ({
           </FormGridFull>
 
           <FormActions>
+            <CancelButton
+              text='Cancelar'
+              icon={FiXCircle}
+              onClick={onCancelar}
+              colorPalette='red'
+              variant='outline'
+            />
             <SubmitButton
               text={esModoCrear ? "Guardar Plan" : "Guardar"}
               icon={FiSave}
@@ -141,13 +148,6 @@ export const PlanForm = ({
               type='submit'
               colorPalette='green'
               disabled={!isValid}
-            />
-            <CancelButton
-              text='Cancelar'
-              icon={FiXCircle}
-              onClick={onCancelar}
-              colorPalette='red'
-              variant='outline'
             />
           </FormActions>
 

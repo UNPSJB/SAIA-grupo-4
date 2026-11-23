@@ -343,16 +343,6 @@ export const VistaParametrosNormativos = () => {
             ) : (
               <HStack gap={2}>
                 <Button
-                  colorPalette="green"
-                  size="sm"
-                  loading={guardandoVersion}
-                  disabled={!hayCambiosVersion}
-                  onClick={() => setConfirmarPublicarOpen(true)}
-                >
-                  <Icon as={FiPlusCircle} />
-                  Publicar Versión #{vigente.numero_version + 1}
-                </Button>
-                <Button
                   variant="outline"
                   colorPalette="red"
                   size="sm"
@@ -361,6 +351,16 @@ export const VistaParametrosNormativos = () => {
                 >
                   <Icon as={FiXCircle} />
                   Cancelar
+                </Button>
+                <Button
+                  colorPalette="green"
+                  size="sm"
+                  loading={guardandoVersion}
+                  disabled={!hayCambiosVersion}
+                  onClick={() => setConfirmarPublicarOpen(true)}
+                >
+                  <Icon as={FiPlusCircle} />
+                  Publicar Versión #{vigente.numero_version + 1}
                 </Button>
               </HStack>
             )}

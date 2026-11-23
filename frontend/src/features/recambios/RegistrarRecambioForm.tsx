@@ -101,6 +101,13 @@ export const RegistrarRecambioForm = ({
           />
         </FormGridFull>
         <FormActions>
+          <CancelButton
+            text='Cancelar'
+            icon={FiXCircle}
+            onClick={onCancelar}
+            colorPalette='red'
+            variant='outline'
+          />
           <SubmitButton
             text='Registrar'
             icon={FiSave}
@@ -108,13 +115,6 @@ export const RegistrarRecambioForm = ({
             onClick={handleGuardar}
             colorPalette='green'
             disabled={!esValido}
-          />
-          <CancelButton
-            text='Cancelar'
-            icon={FiXCircle}
-            onClick={onCancelar}
-            colorPalette='red'
-            variant='outline'
           />
         </FormActions>
         {errorEnvio && <AlertMessage type='error' message={errorEnvio} />}

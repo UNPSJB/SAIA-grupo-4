@@ -518,6 +518,13 @@ export const TareaForm = ({
               />
             ) : (
               <>
+                <CancelButton
+                  text='Cancelar'
+                  icon={FiXCircle}
+                  onClick={onCancelar}
+                  colorPalette='red'
+                  variant='outline'
+                />
                 {paso > 0 && (
                   <Button
                     type='button'
@@ -548,13 +555,6 @@ export const TareaForm = ({
                     disabled={!isValid}
                   />
                 )}
-                <CancelButton
-                  text='Cancelar'
-                  icon={FiXCircle}
-                  onClick={onCancelar}
-                  colorPalette='red'
-                  variant='outline'
-                />
               </>
             )}
           </FormActions>

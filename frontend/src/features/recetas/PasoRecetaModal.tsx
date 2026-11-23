@@ -505,6 +505,13 @@ export const PasoRecetaForm = ({
               />
             ) : (
               <>
+                <CancelButton
+                  text="Cancelar"
+                  icon={FiXCircle}
+                  onClick={onCancelar}
+                  colorPalette="red"
+                  variant="outline"
+                />
                 {pasoActualIdx > 0 && (
                   <Button
                     type="button"
@@ -534,13 +541,6 @@ export const PasoRecetaForm = ({
                     colorPalette="green"
                   />
                 )}
-                <CancelButton
-                  text="Cancelar"
-                  icon={FiXCircle}
-                  onClick={onCancelar}
-                  colorPalette="red"
-                  variant="outline"
-                />
               </>
             )}
           </FormActions>

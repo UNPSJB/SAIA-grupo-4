@@ -172,17 +172,17 @@ export const RegistrarRevisionForm = ({
           />
 
           <FormActions>
+            <CancelButton
+              text='Cancelar'
+              onClick={onCancelar}
+              icon={FiXCircle}
+            />
             <SubmitButton
               text='Confirmar Revisión'
               loading={isSubmitting}
               type='submit'
               icon={FiCheckCircle}
               disabled={!isValid}
-            />
-            <CancelButton
-              text='Cancelar'
-              onClick={onCancelar}
-              icon={FiXCircle}
             />
           </FormActions>
         </FormGrid>

@@ -927,14 +927,6 @@ export const RegistrarLoteForm = ({
 
             {/* Acciones */}
             <FormActions>
-              <SubmitButton
-                text="Guardar"
-                icon={FiSave}
-                loading={guardando}
-                type="submit"
-                colorPalette="green"
-                disabled={!productoSeleccionado}
-              />
               {onCancelar && (
                 <CancelButton
                   text="Cancelar"
@@ -944,6 +936,14 @@ export const RegistrarLoteForm = ({
                   variant="outline"
                 />
               )}
+              <SubmitButton
+                text="Guardar"
+                icon={FiSave}
+                loading={guardando}
+                type="submit"
+                colorPalette="green"
+                disabled={!productoSeleccionado}
+              />
             </FormActions>
 
             {errorEnvio && <AlertMessage type="error" message={errorEnvio} />}
