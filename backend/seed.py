@@ -2251,6 +2251,7 @@ def _crear_lotes(db, personas, recetas, hoy):
 
     # Sembrar lotes fisicos de insumo (2 lotes vigentes con stock + ejemplos vencidos e inhabilitados)
     lotes_por_insumo: dict[int, list[LoteInsumo]] = {}
+    lote_harina_inhabilitado: LoteInsumo | None = None
     todos_insumos = db.scalars(select(Insumo).order_by(Insumo.id.asc())).all()
     lotes_insumo_seed: list[LoteInsumo] = []
     motivos_inhabilitacion = [
@@ -2295,21 +2296,27 @@ def _crear_lotes(db, personas, recetas, hoy):
 
         # Lotes inhabilitados con motivo y auditoria
         if idx_ins in (0, 1, 3):
-            cant_i = Decimal("10000.000") if ins.unidad_medida.simbolo == "g" else Decimal("200.000")
+            if idx_ins == 0:
+                cant_i = Decimal("60000.000")
+            elif ins.unidad_medida.simbolo == "g":
+                cant_i = Decimal("10000.000")
+            else:
+                cant_i = Decimal("200.000")
             motivo = motivos_inhabilitacion[idx_ins % len(motivos_inhabilitacion)]
-            lotes_insumo_seed.append(
-                LoteInsumo(
-                    insumo_id=ins.id,
-                    codigo_lote=f"LOT-INS-{ins.id:02d}-I",
-                    fecha_vencimiento=hoy + timedelta(days=30 + idx_ins * 5),
-                    cantidad_inicial=cant_i,
-                    cantidad_actual=cant_i,
-                    activo=False,
-                    motivo_inhabilitacion=motivo,
-                    fecha_inhabilitacion=datetime.combine(hoy - timedelta(days=2), time(11, 15)),
-                    usuario_inhabilitacion_id=admin_retencion.id,
-                )
+            lote_inhabilitado = LoteInsumo(
+                insumo_id=ins.id,
+                codigo_lote=f"LOT-INS-{ins.id:02d}-I",
+                fecha_vencimiento=hoy + timedelta(days=30 + idx_ins * 5),
+                cantidad_inicial=cant_i,
+                cantidad_actual=cant_i,
+                activo=False,
+                motivo_inhabilitacion=motivo,
+                fecha_inhabilitacion=datetime.combine(hoy - timedelta(days=2), time(11, 15)),
+                usuario_inhabilitacion_id=admin_retencion.id,
             )
+            lotes_insumo_seed.append(lote_inhabilitado)
+            if idx_ins == 0:
+                lote_harina_inhabilitado = lote_inhabilitado
 
     db.add_all(lotes_insumo_seed)
     db.flush()
@@ -2350,7 +2357,14 @@ def _crear_lotes(db, personas, recetas, hoy):
             teorica = round(nominal * factor_escala, 2)
             restante = Decimal(str(teorica))
             detalles_orm: list[DetalleConsumoLoteInsumo] = []
-            for li in lotes_por_insumo.get(ins_id, []):
+            candidatos = lotes_por_insumo.get(ins_id, [])
+            if (
+                idx_lote in (3, 5)
+                and lote_harina_inhabilitado is not None
+                and ins_id == lote_harina_inhabilitado.insumo_id
+            ):
+                candidatos = [lote_harina_inhabilitado] + candidatos
+            for li in candidatos:
                 if restante <= 0:
                     break
                 if li.cantidad_actual <= 0:
