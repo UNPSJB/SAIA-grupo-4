@@ -917,7 +917,7 @@ def _formatear_item_rotulo_caa(insumo: Insumo) -> str:
 
     from src.insumos.constants import Constantes
     if clase_lower in Constantes.CLASES_SIN_INS_OBLIGATORIO:
-        return clase.lower() if clase else denom
+        return clase.capitalize() if clase else denom
 
     clase_titulo = clase.capitalize() if clase else "Aditivo"
     ins_str = f" (INS {ins})" if ins else ""
@@ -960,7 +960,7 @@ def _generar_texto_legal_caa(items: list[dict]) -> str:
     for clase, aditivos_grupo in grupos_aditivos:
         clase_lower = clase.lower()
         if clase_lower in Constantes.CLASES_SIN_INS_OBLIGATORIO:
-            partes_aditivos.append(clase_lower or "aromatizante")
+            partes_aditivos.append((clase or "Aromatizante").capitalize())
         else:
             clase_titulo = clase.capitalize() if clase else "Aditivo"
             detalles_aditivos = []
